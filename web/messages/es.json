@@ -1,4 +1,25 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"example_message": "Hola mundo {username}"
+	"login": {
+		"title": "Iniciar sesión",
+		"subtitle": "Accedé a tu cuenta de Nexata",
+		"email": "email@empresa.com",
+		"password": "Contraseña",
+		"submit": "Ingresar",
+		"loading": "Ingresando...",
+		"oauth": {
+		"google": "Google",
+		"microsoft": "Outlook"
+		}
+	},
+	"sidebar": {
+		"chat": "Chat",
+		"new_chat": "Nuevo Chat",
+		"delete_chat_title": "¿Eliminar chat?",
+		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
+	},
+	"common": {
+		"cancel": "Cancelar",
+		"delete": "Eliminar"
+	}
 }
