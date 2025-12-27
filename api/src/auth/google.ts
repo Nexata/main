@@ -3,12 +3,13 @@ import {
 	createOauthRedirect,
 	getOauthCallback,
 	type Oauth2Credentials,
-	oauthExtendedState,
+	oauthCredentialExtendedState,
+	oauthLoginExtendedState,
 } from '@api/auth/lib';
 import { OauthProvider, realOauthScopes } from '@api/schema';
 import { jwtPlugin } from '@api/utils/auth';
 import { warnEnv } from '@api/utils/env';
-import Elysia from 'elysia';
+import { Elysia } from 'elysia';
 import { HttpError } from 'elysia-logger';
 import { oauth2 } from 'elysia-oauth2';
 
@@ -22,29 +23,36 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 	.use(oauth2({ Google: GOOGLE_CLIENT_CREDENTIALS }))
 	.use(jwtPlugin)
 	.get(
+		'/login',
+		async ({ oauth2, query }) =>
+			createOauthRedirect(query, async () =>
+				oauth2.createURL('Google', ['openid', 'profile', 'email']),
+			),
+		{
+			detail: { summary: 'Google OAuth (login)' },
+			query: oauthLoginExtendedState,
+		},
+	)
+	.get(
 		'/',
 		async ({ oauth2, query }) =>
 			createOauthRedirect(query, async (q) => {
-				const url = oauth2.createURL(
-					'Google',
-					[
-						'openid',
-						'profile',
-						'email',
-						...(q.scope ? realOauthScopes[q.scope] : []),
-					].filter((x: unknown): x is string => typeof x === 'string'),
-				);
+				if (!q) throw HttpError.BadRequest('NO_SCOPES');
 
-				if (q) {
-					url.searchParams.set('access_type', 'offline');
-					url.searchParams.set('prompt', 'consent');
-				}
+				const url = oauth2.createURL('Google', [
+					'openid',
+					'profile',
+					'email',
+					...q.scopes.flatMap((s) => realOauthScopes[s]),
+				]);
 
+				url.searchParams.set('access_type', 'offline');
+				url.searchParams.set('prompt', 'consent');
 				return url;
 			}),
 		{
-			detail: { summary: 'Google OAuth' },
-			query: oauthExtendedState(OauthProvider.GOOGLE),
+			detail: { summary: 'Google OAuth (credential)' },
+			query: oauthCredentialExtendedState(OauthProvider.GOOGLE),
 		},
 	)
 	.get(

@@ -17,7 +17,6 @@ export const filePermission = pgTable(
 	(table) => [
 		check(
 			'file_permission_user_or_email_exists',
-			// biome-ignore lint/style/noNonNullAssertion: Drizzle miss-type
 			or(isNotNull(table.userId), isNotNull(table.email))!.getSQL(),
 		),
 	],

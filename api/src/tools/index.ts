@@ -12,11 +12,11 @@ export const getTools = async (
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
 	let tools: ToolSet = {
-		NexataListCredentials: NexataListCredentialsTool(credentials),
+		NexataListCredentials: NexataListCredentialsTool(activeUser),
 	};
 
 	const dropboxCredentials = credentials.filter((c) =>
-		c.scope.includes(OauthScope.DROPBOX),
+		c.scopes.includes(OauthScope.DROPBOX),
 	);
 
 	if (dropboxCredentials.length)

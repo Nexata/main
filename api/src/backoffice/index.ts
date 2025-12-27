@@ -4,7 +4,7 @@ import { filesRouter } from '@api/backoffice/files';
 import { tenantRouter } from '@api/backoffice/tenant';
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
 import { tObject } from '@api/utils/type';
-import Elysia, { t } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
 export const backofficeRouter = new Elysia({

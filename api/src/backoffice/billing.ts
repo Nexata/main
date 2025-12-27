@@ -1,4 +1,4 @@
-import Elysia from 'elysia';
+import { Elysia } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
 

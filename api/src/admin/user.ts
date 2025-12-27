@@ -4,7 +4,7 @@ import { filePermission, user } from '@api/schema';
 import { tObject } from '@api/utils/type';
 import { and, eq, exists, isNull, or } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-typebox';
-import Elysia, { t } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 const [insertUser, updateUser] = [
 	createInsertSchema(user, { email: t.String({ format: 'email' }) }),

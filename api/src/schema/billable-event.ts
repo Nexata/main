@@ -36,7 +36,6 @@ export const billableEvent = pgTable(
 	(table) => [
 		check(
 			'bill_event_identifiers',
-			// biome-ignore lint/style/noNonNullAssertion: Drizzle miss-type
 			or(isNotNull(table.userId), isNotNull(table.slug))!.getSQL(),
 		),
 		index('billable_event_created_at_desc').on(desc(table.createdAt)),

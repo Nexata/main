@@ -1,5 +1,6 @@
 import { OauthProvider, OauthScope } from '@api/schema';
-import type { CachedCredential } from '@api/utils/credential';
+import type { JwtPayload } from '@api/utils/auth';
+import { getCredentialsForUser } from '@api/utils/credential';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Static } from '@sinclair/typebox';
 import { jsonSchema, tool } from 'ai';
@@ -18,7 +19,7 @@ const NexataListCredentialsInput = tObject({
 	}),
 });
 
-export const NexataListCredentialsTool = (credentials: CachedCredential[]) =>
+export const NexataListCredentialsTool = (activeUser: JwtPayload) =>
 	tool({
 		description:
 			"Nexata tool to list and search user's available credentials. If user is admin, they can visualize credentials across all the tenant, else only their own or shared with them.",
@@ -26,6 +27,8 @@ export const NexataListCredentialsTool = (credentials: CachedCredential[]) =>
 			NexataListCredentialsInput,
 		),
 		execute: async (input) => {
+			let credentials = await getCredentialsForUser(activeUser, 'display');
+
 			if (input.providers?.length)
 				credentials = credentials.filter((cred) =>
 					input.providers?.includes(cred.provider),
@@ -33,7 +36,7 @@ export const NexataListCredentialsTool = (credentials: CachedCredential[]) =>
 
 			if (input.scopes?.length)
 				credentials = credentials.filter((cred) =>
-					input.scopes?.some((s) => cred.scope.includes(s)),
+					input.scopes?.some((s) => cred.scopes.includes(s)),
 				);
 
 			if (input.mails?.length)

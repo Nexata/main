@@ -9,14 +9,23 @@ import {
 
 export type TSQLObject<T = unknown> = Column | SQL<T> | SQL.Aliased<T>;
 
-export type InferSQLType<TObj extends TSQLObject | TSQLObject[]> =
-	TObj extends Column
-		? GetColumnData<TObj>
-		: TObj extends SQL.Aliased<infer InferredAliasedT>
-			? InferredAliasedT
-			: TObj extends SQL<infer InferredT>
-				? InferredT
-				: never;
+export type InferSQLType<
+	TObj extends TSQLObject<I> | TSQLObject<I>[],
+	I = unknown,
+> = TObj extends Column
+	? GetColumnData<TObj>
+	: TObj extends SQL.Aliased<infer InferredAliasedT>
+		? InferredAliasedT
+		: TObj extends SQL<infer InferredT>
+			? InferredT
+			: never;
+
+type NonEmpty<T> = T extends null | undefined | [] ? never : T;
+export const coalesce = <T extends TSQLObject[]>(...values: T) => {
+	return sql<
+		NonEmpty<InferSQLType<T[number]>>
+	>`coalesce(${sql.join(values, sql.raw(', '))})`;
+};
 
 export const sqlRegex = (rgx: RegExp) => sql.raw(`'${rgx.source}'`);
 
@@ -87,6 +96,10 @@ export function caseWhenNull<T>(col: Column, query: TSQLObject<T> | T) {
 	return sql<
 		T extends TSQLObject ? InferSQLType<T> : T | null
 	>`case when ${col} is not null then ${query} else null end`;
+}
+
+export function boolOr(condition: SQL) {
+	return sql<boolean>`bool_or(${condition})`;
 }
 
 export function sq<T extends AnyPgSelect>(query: T) {
