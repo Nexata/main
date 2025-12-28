@@ -1,46 +1,120 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
-import { credential, credentialPermission } from '@api/schema';
-import { boolOr, coalesce } from '@api/utils/sql';
-import { and, eq, or, sql } from 'drizzle-orm';
-import { createInsertSchema } from 'drizzle-typebox';
-import { Elysia } from 'elysia';
+import { credential, credentialPermission, user } from '@api/schema';
+import type { JwtPayload } from '@api/utils/auth';
+import { boolOr } from '@api/utils/sql';
+import { and, eq, exists, or, type SQLWrapper, sql } from 'drizzle-orm';
+import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
+import { Elysia, t } from 'elysia';
+import { HttpError } from 'elysia-logger';
 
-const insertCredentialPermission = createInsertSchema(credentialPermission);
+const [selectCredentialPermission, insertCredentialPermission] = [
+	createSelectSchema(credentialPermission),
+	createInsertSchema(credentialPermission),
+];
+
+const isCredentialAdmin = (
+	activeUser: JwtPayload,
+	credentialId: string,
+	...whereConditions: SQLWrapper[]
+) =>
+	db
+		.select({
+			isAdmin: activeUser.isAdmin
+				? sql<boolean>`true`
+				: or(
+						eq(credential.userId, activeUser.id),
+						boolOr(
+							and(
+								eq(credentialPermission.userId, activeUser.id),
+								eq(credentialPermission.isAdmin, true),
+							)!,
+						),
+					)!,
+		})
+		.from(credential)
+		.leftJoin(
+			credentialPermission,
+			eq(credentialPermission.credentialId, credential.id),
+		)
+		.leftJoin(user, eq(user.id, credential.userId))
+		.where(
+			and(
+				eq(credential.id, credentialId),
+				eq(user.slug, activeUser.slug),
+				...whereConditions,
+			),
+		)
+		.groupBy(credential.id);
 
 export const permissionRouter = new Elysia({ prefix: '/permission' })
 	.use(authPlugin())
-	.post(
+	.put(
 		'/',
 		async ({ body, activeUser }) => {
-			const xd = await db
-				.select({
-					isAdmin: activeUser.isAdmin
-						? sql<boolean>`true`
-						: coalesce(
-								or(
-									eq(credential.userId, activeUser.id),
-									boolOr(
-										and(
-											eq(credentialPermission.userId, activeUser.id),
-											eq(credentialPermission.isAdmin, true),
-										)!,
-									),
-								)!,
-								sql<boolean>`false`,
-							),
+			if (
+				!(
+					await isCredentialAdmin(
+						activeUser,
+						body.credentialId,
+						exists(
+							db
+								.select({ slug: user.slug })
+								.from(user)
+								.where(
+									and(eq(user.id, body.userId), eq(user.slug, activeUser.slug)),
+								),
+						),
+					)
+				).at(0)?.isAdmin
+			)
+				throw HttpError.Forbidden();
+
+			return db
+				.insert(credentialPermission)
+				.values(body)
+				.onConflictDoUpdate({
+					target: [
+						credentialPermission.credentialId,
+						credentialPermission.userId,
+					],
+					set: { isAdmin: body.isAdmin },
 				})
-				.from(credential);
+				.returning({
+					credentialId: credentialPermission.credentialId,
+					userId: credentialPermission.userId,
+					isAdmin: credentialPermission.isAdmin,
+				});
 		},
 		{
-			detail: { summary: 'Create credential permission' },
+			detail: { summary: 'Upsert credential permission' },
 			body: insertCredentialPermission,
 		},
 	)
-	.patch('/', async () => {}, {
-		detail: { summary: 'Update credential permission' },
-	})
-	.delete('/', async () => {}, {
-		detail: { summary: 'Revoke credential permission' },
-	});
-// TODO: CREATE/DELETE/UPDATE permissions / isGlobal, invalidar cache
+	.delete(
+		'/',
+		async ({ body, activeUser }) => {
+			if (
+				!(await isCredentialAdmin(activeUser, body.credentialId)).at(0)?.isAdmin
+			)
+				throw HttpError.Forbidden();
+
+			return db
+				.delete(credentialPermission)
+				.where(
+					and(
+						eq(credentialPermission.credentialId, body.credentialId),
+						eq(credentialPermission.userId, body.userId),
+					),
+				)
+				.returning({
+					credentialId: credentialPermission.credentialId,
+					userId: credentialPermission.userId,
+					isAdmin: credentialPermission.isAdmin,
+				});
+		},
+		{
+			detail: { summary: 'Delete credential permission' },
+			body: t.Pick(selectCredentialPermission, ['credentialId', 'userId']),
+		},
+	);

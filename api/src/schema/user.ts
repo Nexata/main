@@ -20,8 +20,8 @@ export const user = pgTable(
 		pfpUrl: varchar(),
 		isAdmin: boolean().notNull().default(false),
 	},
-	(table) => [
-		lowerIndex(table.email, false),
-		uniqueIndex('email_slug').on(table.email, table.slug),
+	(t) => [
+		lowerIndex(t.email, false),
+		uniqueIndex('user_email_slug').on(t.email, t.slug),
 	],
 );

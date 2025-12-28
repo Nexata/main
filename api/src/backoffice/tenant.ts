@@ -1,7 +1,7 @@
 import { db } from '@api/env';
 import { tenant, user } from '@api/schema';
 import { tObject } from '@api/utils/type';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
 
@@ -14,11 +14,14 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 	.post(
 		'/',
 		async ({ body: { email, ...body } }) =>
-			db
-				.with(db.$with('sq').as(db.insert(tenant).values(body)))
-				.insert(user)
-				.values({ email, slug: body.slug, isAdmin: true })
-				.returning({ id: user.id }),
+			db.batch([
+				db.execute(sql`SELECT set_config('app.slug', ${body.slug}, true)`),
+				db
+					.with(db.$with('sq').as(db.insert(tenant).values(body)))
+					.insert(user)
+					.values({ email, slug: body.slug, isAdmin: true })
+					.returning({ id: user.id }),
+			]),
 		{
 			detail: { summary: 'Create tenant' },
 			body: t.Intersect([

@@ -49,7 +49,7 @@ export async function getCredentialsForUser(
 	const credentials = await db
 		.select({
 			id: credential.id,
-			isAdmin: activeUser.isAdmin
+			canAdmin: activeUser.isAdmin
 				? sql<boolean>`true`
 				: coalesce(
 						or(
@@ -81,7 +81,7 @@ export async function getCredentialsForUser(
 						displayName: credentialPermissionUser.displayName,
 						email: credentialPermissionUser.email,
 						pfpUrl: credentialPermissionUser.pfpUrl,
-						isAdmin: credentialPermission.isAdmin,
+						isAdminOfCredential: credentialPermission.isAdmin,
 					}),
 					isNotNull(credentialPermissionUser.id),
 				),

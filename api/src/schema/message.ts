@@ -34,5 +34,5 @@ export const message = pgTable(
 			.references(() => thread.id, { onDelete: 'cascade' }),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(table) => [index('message_created_at_asc').on(asc(table.createdAt))],
+	(t) => [index('message_created_at_asc').on(asc(t.createdAt))],
 );

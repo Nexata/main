@@ -7,7 +7,9 @@ export const credentialPermission = pgTable(
 		credentialId: uuid()
 			.notNull()
 			.references(() => credential.id, { onDelete: 'cascade' }),
-		userId: uuid().references(() => user.id, { onDelete: 'cascade' }),
+		userId: uuid()
+			.references(() => user.id, { onDelete: 'cascade' })
+			.notNull(),
 		isAdmin: boolean().notNull().default(false),
 	},
 	(table) => [primaryKey({ columns: [table.credentialId, table.userId] })],

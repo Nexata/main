@@ -84,13 +84,8 @@ export const credential = pgTable(
 		refreshTokenExpiresAt: timestamp().notNull(),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(table) => [
-		index('credential_created_at_desc').on(desc(table.createdAt)),
-		uniqueIndex('credential_unicity').on(
-			table.userId,
-			table.email,
-			table.provider,
-			table.scopes,
-		),
+	(t) => [
+		index('credential_created_at_desc').on(desc(t.createdAt)),
+		uniqueIndex('credential_unicity').on(t.email, t.provider, t.scopes),
 	],
 );

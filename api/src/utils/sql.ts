@@ -7,6 +7,12 @@ import {
 	uniqueIndex,
 } from 'drizzle-orm/pg-core';
 
+// export const currentSetting = {
+// 	slug: sql<string>`current_setting('app.slug', true)`,
+// 	uid: sql<string>`current_setting('app.uid', true)`,
+// 	isAdmin: sql<boolean>`current_setting('app.is_admin', true)::boolean`,
+// };
+
 export type TSQLObject<T = unknown> = Column | SQL<T> | SQL.Aliased<T>;
 
 export type InferSQLType<

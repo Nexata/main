@@ -21,11 +21,6 @@ export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 			params: tObject({ id: t.String({ format: 'uuid' }) }),
 		},
 	)
-	.get(
-		'/',
-		async ({ activeUser }) =>
-			db.select().from(user).where(eq(user.slug, activeUser.slug)),
-		{
-			detail: { summary: 'List users' },
-		},
-	);
+	.get('/', async ({ activeUser }) => db.select().from(user), {
+		detail: { summary: 'List users' },
+	});

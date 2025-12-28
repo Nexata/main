@@ -12,5 +12,5 @@ export const thread = pgTable(
 		title: varchar({ length: 64 }),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(table) => [index('thread_created_at_desc').on(desc(table.createdAt))],
+	(t) => [index('thread_created_at_desc').on(desc(t.createdAt))],
 );
