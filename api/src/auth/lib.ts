@@ -180,14 +180,8 @@ export async function authorizeOauthCallback(
 			})
 			.onConflictDoUpdate({
 				set,
-				target: [
-					credential.userId,
-					credential.provider,
-					credential.email,
-					credential.scopes,
-				],
-			})
-			.catch(console.error),
+				target: [credential.provider, credential.email, credential.scopes],
+			}),
 	]);
 
 	return url ? redirect(url.href) : true;

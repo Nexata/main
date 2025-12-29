@@ -1,6 +1,8 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { tenant, user } from '@api/schema';
+import { uploadUserPfp } from '@api/utils/s3';
+import { s3 } from 'bun';
 import { eq } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
@@ -28,20 +30,33 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.get('/', async ({ activeUser }) => activeUser, {
 		detail: { summary: 'Get me' },
 	})
-	// TODO: Update pfp
 	.patch(
 		'/',
 		async ({ activeUser: { id }, body }) =>
-			db.update(user).set(body).where(eq(user.id, id)),
+			db
+				.update(user)
+				.set({
+					...body,
+					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+				})
+				.where(eq(user.id, id)),
 		{
 			detail: { summary: 'Update me' },
-			body: t.Omit(updateUser, ['id', 'slug', 'email', 'isAdmin', 'pfpUrl']),
+			body: t.Composite([
+				t.Pick(updateUser, ['displayName']),
+				t.Object({
+					pfp: t.Optional(t.File({ format: 'image/*', maxSize: '4m' })),
+				}),
+			]),
 		},
 	)
-	// TODO: Delete pfp
 	.delete(
 		'/',
-		async ({ activeUser: { id } }) => db.delete(user).where(eq(user.id, id)),
+		async ({ activeUser: { id } }) => {
+			await db.delete(user).where(eq(user.id, id));
+			await s3.delete(`u/${id}`);
+			return id;
+		},
 		{
 			detail: { summary: 'Delete me' },
 		},

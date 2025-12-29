@@ -1,6 +1,6 @@
+import { dropboxFilesSearchTool } from '@api/chat/tools/dropbox';
+import { NexataListCredentialsTool } from '@api/chat/tools/nexata';
 import { OauthScope } from '@api/schema';
-import { dropboxFilesSearchTool } from '@api/tools/dropbox';
-import { NexataListCredentialsTool } from '@api/tools/nexata';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
 import type { ToolSet } from 'ai';

@@ -14,8 +14,7 @@ const NexataListCredentialsInput = tObject({
 		description: 'Limit the search to specific scopes.',
 	}),
 	mails: Nullish(t.Array(t.String({ format: 'email' })), {
-		description:
-			'Limit the search to specific credential owners (based on their email).',
+		description: 'Limit the search to specific credentials based on mails.',
 	}),
 });
 
@@ -41,7 +40,7 @@ export const NexataListCredentialsTool = (activeUser: JwtPayload) =>
 
 			if (input.mails?.length)
 				credentials = credentials.filter((cred) =>
-					input.mails?.includes(cred.ownedBy.email),
+					input.mails?.includes(cred.email),
 				);
 
 			return credentials;

@@ -1,6 +1,7 @@
 import { authPlugin } from '@api/auth';
-import { db, S3_ACCESS_URL } from '@api/env';
+import { db } from '@api/env';
 import { filePermission, user } from '@api/schema';
+import { uploadUserPfp } from '@api/utils/s3';
 import { tObject } from '@api/utils/type';
 import { s3 } from 'bun';
 import { and, eq, exists, isNull, or } from 'drizzle-orm';
@@ -19,21 +20,17 @@ export const userRouter = new Elysia({ prefix: '/user' })
 		async ({ body, activeUser }) => {
 			const id = crypto.randomUUID();
 
-			let pfpUrl: string | null = null;
-			if (body.pfp) {
-				pfpUrl = `${S3_ACCESS_URL}/users/${id}`;
-				await s3.write(`users/${id}`, body.pfp, {
-					acl: 'public-read',
-					type: body.pfp.type,
-				});
-			}
-
 			await db
 				.with(
 					db.$with('new_user').as(
 						db
 							.insert(user)
-							.values({ ...body, id, pfpUrl, slug: activeUser.slug })
+							.values({
+								...body,
+								id,
+								pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+								slug: activeUser.slug,
+							})
 							.returning({ id: user.id }),
 					),
 				)
@@ -56,13 +53,15 @@ export const userRouter = new Elysia({ prefix: '/user' })
 			]),
 		},
 	)
-	// TODO: Patch with pfp
 	.patch(
 		'/:id',
 		async ({ body, params: { id }, activeUser }) =>
 			db
 				.update(user)
-				.set(body)
+				.set({
+					...body,
+					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+				})
 				.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
 				.returning({ id: user.id }),
 		{
@@ -76,11 +75,10 @@ export const userRouter = new Elysia({ prefix: '/user' })
 			params: tObject({ id: t.String({ format: 'uuid' }) }),
 		},
 	)
-	// TODO: Delete with pfp
 	.delete(
 		'/:id',
-		async ({ params: { id }, activeUser }) =>
-			Promise.all([
+		async ({ params: { id }, activeUser }) => {
+			await db.batch([
 				db
 					.delete(filePermission)
 					.where(
@@ -103,7 +101,12 @@ export const userRouter = new Elysia({ prefix: '/user' })
 					.delete(user)
 					.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
 					.returning({ userId: user.id }),
-			]),
+			]);
+
+			await s3.delete(`u/${id}`);
+
+			return id;
+		},
 		{
 			detail: { summary: 'Delete user by ID' },
 			params: tObject({ id: t.String({ format: 'uuid' }) }),

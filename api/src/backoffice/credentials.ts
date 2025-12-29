@@ -11,7 +11,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 			tags: ['TODO'],
 			summary: 'Refresh credentials',
 			description:
-				'Removes expired credentials and refreshes tokens if necessary. Expected to run cronologically at midnight.',
+				'Removes expired credentials and refreshes tokens if necessary. Expected to run cronologically every 4 hours.',
 		},
 	},
 );

@@ -3,8 +3,17 @@ import type { OauthProvider, OauthScope } from '@api/schema';
 import { credential, credentialPermission, user } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { boolOr, coalesce, jsonAgg, jsonBuildObject } from '@api/utils/sql';
-import { and, eq, exists, isNotNull, or, sql } from 'drizzle-orm';
+import {
+	and,
+	eq,
+	exists,
+	isNotNull,
+	or,
+	type SQLWrapper,
+	sql,
+} from 'drizzle-orm';
 import { alias } from 'drizzle-orm/pg-core';
+import { HttpError } from 'elysia-logger';
 
 export async function removeCachedCredentials(slug: string, uids?: string[]) {
 	const cachedCredentials =
@@ -160,4 +169,52 @@ export async function getCredentialsForUser(
 	return returnType === 'usage'
 		? usageCredentials
 		: credentials.map((c) => ({ ...c, accessToken: undefined }));
+}
+
+export async function getAccessTokenForUser(
+	activeUser: JwtPayload,
+	credentialId: string,
+	adminExpected?: true,
+	...addedConditions: SQLWrapper[]
+) {
+	const cached = await cache.get<string>(`at:${credentialId}:${activeUser.id}`);
+	if (cached) return cached;
+
+	const at = (
+		await db
+			.select({ at: credential.accessToken })
+			.from(credential)
+			.innerJoin(
+				user,
+				and(eq(user.id, credential.userId), eq(user.slug, activeUser.slug)),
+			)
+			.where(
+				and(
+					...addedConditions,
+					eq(credential.id, credentialId),
+					!activeUser.isAdmin
+						? or(
+								eq(credential.userId, activeUser.id),
+								adminExpected && eq(credential.isGlobal, true),
+								exists(
+									db
+										.select({ id: user.id })
+										.from(credentialPermission)
+										.where(
+											and(
+												eq(credentialPermission.credentialId, credential.id),
+												eq(credentialPermission.userId, activeUser.id),
+												adminExpected && eq(credentialPermission.isAdmin, true),
+											),
+										),
+								),
+							)
+						: undefined,
+				),
+			)
+	).at(0)?.at;
+
+	if (!at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
+	await cache.set(`at:${credentialId}:${activeUser.id}`, at, { ex: 60 * 60 });
+	return at;
 }

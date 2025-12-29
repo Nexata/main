@@ -13,23 +13,15 @@ const CACHE_CREDENTIALS = {
 	token: requireEnv('UPSTASH_REDIS_REST_TOKEN'),
 };
 
-export const S3_ACCESS_URL = requireEnv('S3_ACCESS_URL');
-
 export const cache = new Redis(CACHE_CREDENTIALS);
 
 export const db = drizzle({
-	client: neon(requireEnv('APP_DATABASE_URL')),
+	client: neon(requireEnv('DATABASE_URL')),
 	cache: upstashCache({
 		...CACHE_CREDENTIALS,
 		global: true,
 		config: { ex: 120 },
 	}),
-	casing: 'snake_case',
-	logger: !IS_PRODUCTION,
-}) as NeonHttpDatabase<typeof schema>;
-
-export const mdb = drizzle({
-	client: neon(requireEnv('DATABASE_URL')),
 	casing: 'snake_case',
 	logger: !IS_PRODUCTION,
 }) as NeonHttpDatabase<typeof schema>;
