@@ -10,7 +10,7 @@ import {
 import { removeCachedCredentials } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { lowerEq } from '@api/utils/sql';
-import { Nullish, tObject } from '@api/utils/type';
+import { Nullish } from '@api/utils/type';
 import { and, eq } from 'drizzle-orm';
 import { redirect, type Static, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
@@ -25,35 +25,48 @@ export type Oauth2Credentials = [
 export const getOauthCallback = (key: string) =>
 	`${requireEnv('DEPLOYMENT_URL')}/auth/${key}/callback`;
 
-export const oauthExtendedState = (provider?: OauthProvider) =>
-	tObject({
-		tenant: t.String({
-			minLength: 2,
-			pattern: '^[a-z0-9]{2,16}$',
-			description: 'Tenant slug',
-		}),
-		scope: Nullish(
+export const oauthLoginExtendedState = t.Object({
+	flow: t.Literal('login', { default: 'login' }),
+	tenant: t.String({
+		minLength: 2,
+		pattern: '^[a-z0-9]{2,16}$',
+		description: 'Tenant slug',
+	}),
+	redirect: Nullish(t.String({ format: 'uri' }), {
+		description: 'URL to redirect user after successful authentication.',
+	}),
+});
+export type OauthLoginExtendedState = Static<typeof oauthLoginExtendedState>;
+
+export const oauthCredentialExtendedState = (provider?: OauthProvider) =>
+	t.Object({
+		flow: t.Readonly(t.Literal('credential', { default: 'credential' })),
+		scopes: t.Array(
 			provider
 				? t.Union(scopesPerProvider[provider].map((scope) => t.Literal(scope)))
 				: t.Enum(OauthScope),
-			{
-				description:
-					'For simple login, do not provide a scope. For credentials and permissions, use the desired `scope` from the available list.',
-			},
+			{ description: 'Scopes to request from the provider.', minItems: 1 },
 		),
+		userId: t.String({ format: 'uuid' }),
 		redirect: Nullish(t.String({ format: 'uri' }), {
 			description: 'URL to redirect user after successful authentication.',
 		}),
 	});
 
-export const plainOauthExtendedState = oauthExtendedState();
-export type OauthExtendedState = Static<typeof plainOauthExtendedState>;
+export const plainOauthCredentialExtendedState = oauthCredentialExtendedState();
+export type OauthCredentialExtendedState = Static<
+	typeof plainOauthCredentialExtendedState
+>;
+
+export type OauthExtendedState =
+	| OauthLoginExtendedState
+	| OauthCredentialExtendedState;
 
 export async function createOauthRedirect(
 	query: OauthExtendedState,
-	urlFunc: (q: OauthExtendedState) => Promise<URL>,
+	urlFunc: (q: OauthCredentialExtendedState | false) => Promise<URL>,
 ) {
-	const url = await urlFunc(query);
+	const url = await urlFunc(query.flow === 'credential' && query);
 
 	const state = url.searchParams.get('state');
 	if (!state) throw HttpError.Conflict('STATE_NOT_FOUND');
@@ -84,13 +97,14 @@ export async function authorizeOauthCallback(
 	if (!q) throw HttpError.Conflict('STATE_NOT_FOUND');
 
 	if (
-		q.scope &&
-		tokens.hasScopes() &&
-		realOauthScopes[q.scope].some((scope) => !tokens.scopes().includes(scope))
+		q.flow === 'credential' &&
+		q.scopes
+			.flatMap((s) => realOauthScopes[s])
+			.some((s) => !tokens.scopes().includes(s))
 	)
 		throw HttpError.Conflict('SCOPE_MISMATCH');
 
-	if (q.scope && !tokens.hasRefreshToken())
+	if (q.flow === 'credential' && !tokens.hasRefreshToken())
 		throw HttpError.Conflict('NO_REFRESH_TOKEN');
 
 	const metadata = await metadataFunc(
@@ -101,7 +115,7 @@ export async function authorizeOauthCallback(
 		tokens.data,
 	);
 
-	if (q.scope && !metadata.refreshTokenExpiresAt)
+	if (q.flow === 'credential' && !metadata.refreshTokenExpiresAt)
 		throw HttpError.Conflict('NO_REFRESH_TOKEN_EXPIRATION');
 
 	const u = (
@@ -109,24 +123,30 @@ export async function authorizeOauthCallback(
 			.select()
 			.from(user)
 			.where(
-				and(
-					lowerEq(user.email, metadata.email.toLowerCase()),
-					eq(user.slug, q.tenant.toLowerCase()),
-				),
+				q.flow === 'credential'
+					? eq(user.id, q.userId)
+					: and(
+							lowerEq(user.email, metadata.email.toLowerCase()),
+							eq(user.slug, q.tenant.toLowerCase()),
+						),
 			)
 	).at(0);
 
 	if (!u?.id) throw HttpError.Forbidden('USER_NOT_FOUND');
 
-	if ((!u.displayName && metadata.name) || (!u.pfpUrl && metadata.pfpUrl))
+	if ((!u.displayName && metadata.name) || (!u.pfpUrl && metadata.pfpUrl)) {
 		await db
 			.update(user)
 			.set({ displayName: metadata.name, pfpUrl: metadata.pfpUrl })
 			.where(eq(user.id, u.id));
 
+		u.pfpUrl = u.pfpUrl ?? metadata.pfpUrl ?? null;
+		u.displayName = u.displayName ?? metadata.name ?? null;
+	}
+
 	const url = q.redirect && new URL(q.redirect);
 
-	if (!q.scope) {
+	if (q.flow === 'login') {
 		const [accessToken, refreshToken] = await Promise.all([
 			jwtSign(u),
 			refreshJwtSign(u),
@@ -144,7 +164,6 @@ export async function authorizeOauthCallback(
 		accessToken: tokens.accessToken(),
 		accessTokenExpiresAt: tokens.accessTokenExpiresAt(),
 		refreshToken: tokens.refreshToken(),
-		// biome-ignore lint/style/noNonNullAssertion: no reach
 		refreshTokenExpiresAt: metadata.refreshTokenExpiresAt!,
 	};
 
@@ -154,13 +173,14 @@ export async function authorizeOauthCallback(
 			.insert(credential)
 			.values({
 				userId: u.id,
+				email: metadata.email,
 				provider: provider,
-				scope: [q.scope],
+				scopes: q.scopes,
 				...set,
 			})
 			.onConflictDoUpdate({
 				set,
-				target: [credential.userId, credential.provider, credential.scope],
+				target: [credential.provider, credential.email, credential.scopes],
 			}),
 	]);
 

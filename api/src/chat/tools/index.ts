@@ -1,6 +1,6 @@
+import { dropboxFilesSearchTool } from '@api/chat/tools/dropbox';
+import { NexataListCredentialsTool } from '@api/chat/tools/nexata';
 import { OauthScope } from '@api/schema';
-import { dropboxFilesSearchTool } from '@api/tools/dropbox';
-import { NexataListCredentialsTool } from '@api/tools/nexata';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
 import type { ToolSet } from 'ai';
@@ -12,11 +12,11 @@ export const getTools = async (
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
 	let tools: ToolSet = {
-		NexataListCredentials: NexataListCredentialsTool(credentials),
+		NexataListCredentials: NexataListCredentialsTool(activeUser),
 	};
 
 	const dropboxCredentials = credentials.filter((c) =>
-		c.scope.includes(OauthScope.DROPBOX),
+		c.scopes.includes(OauthScope.DROPBOX),
 	);
 
 	if (dropboxCredentials.length)

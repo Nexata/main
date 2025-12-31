@@ -71,24 +71,21 @@ export const credential = pgTable(
 		userId: uuid()
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
-		isGlobal: boolean().notNull().default(false),
+		email: varchar({ length: 320 }).notNull(),
 		provider: OauthProviderEnum().notNull(),
-		scope: OauthScopeEnum()
+		scopes: OauthScopeEnum()
 			.array()
 			.notNull()
 			.default(sqlArray([], OauthScopeEnum.enumName)),
+		isGlobal: boolean().notNull().default(false),
 		accessToken: varchar({ length: 4096 }).notNull(),
 		accessTokenExpiresAt: timestamp().notNull(),
 		refreshToken: varchar({ length: 4096 }).notNull(),
 		refreshTokenExpiresAt: timestamp().notNull(),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(table) => [
-		index('credential_created_at_desc').on(desc(table.createdAt)),
-		uniqueIndex('credential_unicity').on(
-			table.userId,
-			table.provider,
-			table.scope,
-		),
+	(t) => [
+		index('credential_created_at_desc').on(desc(t.createdAt)),
+		uniqueIndex('credential_unicity').on(t.email, t.provider, t.scopes),
 	],
 );

@@ -2,8 +2,18 @@ import { cache, db } from '@api/env';
 import type { OauthProvider, OauthScope } from '@api/schema';
 import { credential, credentialPermission, user } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
-import { jsonBuildObject } from '@api/utils/sql';
-import { and, eq, exists, or } from 'drizzle-orm';
+import { boolOr, coalesce, jsonAgg, jsonBuildObject } from '@api/utils/sql';
+import {
+	and,
+	eq,
+	exists,
+	isNotNull,
+	or,
+	type SQLWrapper,
+	sql,
+} from 'drizzle-orm';
+import { alias } from 'drizzle-orm/pg-core';
+import { HttpError } from 'elysia-logger';
 
 export async function removeCachedCredentials(slug: string, uids?: string[]) {
 	const cachedCredentials =
@@ -15,8 +25,9 @@ export async function removeCachedCredentials(slug: string, uids?: string[]) {
 
 export type CachedCredential = {
 	provider: OauthProvider;
-	scope: OauthScope[];
+	scopes: OauthScope[];
 	accessToken: string;
+	email: string;
 	ownedBy: {
 		id: string;
 		email: string;
@@ -30,7 +41,8 @@ export async function getCredentialsForUser(
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'display',
-): Promise<unknown>; // typo
+	// biome-ignore lint/suspicious/noExplicitAny: typo
+): Promise<any[]>;
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'display' | 'usage' = 'display',
@@ -42,31 +54,73 @@ export async function getCredentialsForUser(
 		if (cached) return cached;
 	}
 
+	const credentialPermissionUser = alias(user, 'credential_permission_user');
 	const credentials = await db
 		.select({
 			id: credential.id,
-			isAdminOfCredential: credentialPermission.isAdmin,
+			canAdmin: activeUser.isAdmin
+				? sql<boolean>`true`
+				: coalesce(
+						or(
+							eq(credential.userId, activeUser.id),
+							boolOr(
+								and(
+									eq(credentialPermission.userId, activeUser.id),
+									eq(credentialPermission.isAdmin, true),
+								)!,
+							),
+						)!,
+						sql<boolean>`false`,
+					),
+			provider: credential.provider,
+			scopes: credential.scopes,
+			email: credential.email,
+			isGlobal: credential.isGlobal,
 			ownedBy: jsonBuildObject({
 				id: user.id,
 				email: user.email,
 				pfpUrl: user.pfpUrl,
 				displayName: user.displayName,
 				isAdmin: user.isAdmin,
-			}),
-			provider: credential.provider,
-			scope: credential.scope,
-			isGlobal: credential.isGlobal,
+			}).as('owned_by'),
+			permissions: coalesce(
+				jsonAgg(
+					jsonBuildObject({
+						id: credentialPermissionUser.id,
+						displayName: credentialPermissionUser.displayName,
+						email: credentialPermissionUser.email,
+						pfpUrl: credentialPermissionUser.pfpUrl,
+						isAdminOfCredential: credentialPermission.isAdmin,
+					}),
+					isNotNull(credentialPermissionUser.id),
+				),
+				sql<[]>`'[]'::json`,
+			).as('permissions'),
 			accessToken: credential.accessToken,
-			// TODO: Permissions array of users
 			createdAt: credential.createdAt,
 		})
 		.from(credential)
 		.innerJoin(user, eq(user.id, credential.userId))
+		.leftJoin(
+			credentialPermission,
+			eq(credentialPermission.credentialId, credential.id),
+		)
+		.leftJoin(
+			credentialPermissionUser,
+			and(
+				eq(credentialPermissionUser.id, credentialPermission.userId),
+				eq(credentialPermissionUser.isAdmin, false),
+			),
+		)
 		.where(
 			and(
 				!activeUser.isAdmin
 					? or(
 							eq(credential.userId, activeUser.id),
+							and(
+								eq(credential.isGlobal, true),
+								eq(user.slug, activeUser.slug),
+							),
 							exists(
 								db
 									.select({ id: user.id })
@@ -81,20 +135,30 @@ export async function getCredentialsForUser(
 						)
 					: eq(user.slug, activeUser.slug),
 			),
-		);
+		)
+		.groupBy(credential.id, user.id);
 
-	const usageCredentials = credentials.map(
-		(c) =>
-			({
-				provider: c.provider,
-				scope: c.scope,
-				accessToken: c.accessToken,
-				ownedBy: {
-					id: c.ownedBy.id,
-					email: c.ownedBy.email,
-				},
-			}) satisfies CachedCredential,
-	);
+	const usageCredentials = [
+		...credentials
+			.map(
+				(c) =>
+					({
+						provider: c.provider,
+						scopes: c.scopes,
+						email: c.email,
+						accessToken: c.accessToken,
+						ownedBy: {
+							id: c.ownedBy.id,
+							email: c.ownedBy.email,
+						},
+					}) satisfies CachedCredential,
+			)
+			.reduce((m, c) => {
+				const k = `${c.email}-${c.provider}-${JSON.stringify(c.scopes.sort())}`;
+				return m.has(k) ? m : m.set(k, c);
+			}, new Map<string, CachedCredential>())
+			.values(),
+	];
 
 	await cache.set(
 		`credentials:${activeUser.slug}:${activeUser.id}`,
@@ -105,4 +169,52 @@ export async function getCredentialsForUser(
 	return returnType === 'usage'
 		? usageCredentials
 		: credentials.map((c) => ({ ...c, accessToken: undefined }));
+}
+
+export async function getAccessTokenForUser(
+	activeUser: JwtPayload,
+	credentialId: string,
+	adminExpected?: true,
+	...addedConditions: SQLWrapper[]
+) {
+	const cached = await cache.get<string>(`at:${credentialId}:${activeUser.id}`);
+	if (cached) return cached;
+
+	const at = (
+		await db
+			.select({ at: credential.accessToken })
+			.from(credential)
+			.innerJoin(
+				user,
+				and(eq(user.id, credential.userId), eq(user.slug, activeUser.slug)),
+			)
+			.where(
+				and(
+					...addedConditions,
+					eq(credential.id, credentialId),
+					!activeUser.isAdmin
+						? or(
+								eq(credential.userId, activeUser.id),
+								adminExpected && eq(credential.isGlobal, true),
+								exists(
+									db
+										.select({ id: user.id })
+										.from(credentialPermission)
+										.where(
+											and(
+												eq(credentialPermission.credentialId, credential.id),
+												eq(credentialPermission.userId, activeUser.id),
+												adminExpected && eq(credentialPermission.isAdmin, true),
+											),
+										),
+								),
+							)
+						: undefined,
+				),
+			)
+	).at(0)?.at;
+
+	if (!at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
+	await cache.set(`at:${credentialId}:${activeUser.id}`, at, { ex: 60 * 60 });
+	return at;
 }

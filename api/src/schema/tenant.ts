@@ -21,8 +21,8 @@ export const tenant = pgTable(
 		usedMessages: integer().notNull().default(0),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(table) => [
-		check('slug_regex', matchRegex(table.slug, /^[a-z0-9]{2,16}$/)),
-		check('message_limit', gte(table.messageLimit, table.usedMessages)),
+	(t) => [
+		check('tenant_slug_regex', matchRegex(t.slug, /^[a-z0-9]{2,16}$/)),
+		check('tenant_message_limit', gte(t.messageLimit, t.usedMessages)),
 	],
 );

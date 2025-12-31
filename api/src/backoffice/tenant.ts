@@ -3,7 +3,7 @@ import { tenant, user } from '@api/schema';
 import { tObject } from '@api/utils/type';
 import { eq } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-typebox';
-import Elysia, { t } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 const [insertTenant, updateTenant] = [
 	createInsertSchema(tenant),

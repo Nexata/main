@@ -4,7 +4,7 @@ import { user } from '@api/schema';
 import { meRouter } from '@api/user/me';
 import { tObject } from '@api/utils/type';
 import { and, eq } from 'drizzle-orm';
-import Elysia, { t } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 	.use(authPlugin())

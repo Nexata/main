@@ -15,7 +15,6 @@ export const authPlugin =
 			.use(jwtPlugin)
 			.guard({
 				headers: tObject({
-					// biome-ignore lint/suspicious/noTemplateCurlyInString: Bearer check
 					authorization: t.TemplateLiteral('Bearer ${string}'),
 				}),
 			})

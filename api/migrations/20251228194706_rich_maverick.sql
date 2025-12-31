@@ -33,7 +33,7 @@ CREATE TABLE "chunk" (
 
 CREATE TABLE "credential_permission" (
 	"credential_id" uuid NOT NULL,
-	"user_id" uuid,
+	"user_id" uuid NOT NULL,
 	"is_admin" boolean DEFAULT false NOT NULL,
 	CONSTRAINT "credential_permission_credential_id_user_id_pk" PRIMARY KEY("credential_id","user_id")
 );
@@ -41,9 +41,10 @@ CREATE TABLE "credential_permission" (
 CREATE TABLE "credential" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
-	"is_global" boolean DEFAULT false NOT NULL,
+	"email" varchar(320) NOT NULL,
 	"provider" "oauth_provider" NOT NULL,
-	"scope" "oauth_scope"[] DEFAULT ARRAY[]::oauth_scope[] NOT NULL,
+	"scopes" "oauth_scope"[] DEFAULT ARRAY[]::oauth_scope[] NOT NULL,
+	"is_global" boolean DEFAULT false NOT NULL,
 	"access_token" varchar(4096) NOT NULL,
 	"access_token_expires_at" timestamp NOT NULL,
 	"refresh_token" varchar(4096) NOT NULL,
@@ -95,8 +96,8 @@ CREATE TABLE "tenant" (
 	"default_message_limit" integer DEFAULT 100 NOT NULL,
 	"used_messages" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "slug_regex" CHECK ("tenant"."slug" ~ '^[a-z0-9]{2,16}$'),
-	CONSTRAINT "message_limit" CHECK ("tenant"."message_limit" >= "tenant"."used_messages")
+	CONSTRAINT "tenant_slug_regex" CHECK ("tenant"."slug" ~ '^[a-z0-9]{2,16}$'),
+	CONSTRAINT "tenant_message_limit" CHECK ("tenant"."message_limit" >= "tenant"."used_messages")
 );
 
 CREATE TABLE "thread" (
@@ -134,8 +135,8 @@ ALTER TABLE "user" ADD CONSTRAINT "user_slug_tenant_slug_fk" FOREIGN KEY ("slug"
 CREATE INDEX "bill_created_at_desc" ON "bill" USING btree ("created_at" desc);
 CREATE INDEX "billable_event_created_at_desc" ON "billable_event" USING btree ("created_at" desc);
 CREATE INDEX "embeddingIndex" ON "chunk" USING hnsw ("embedding" vector_cosine_ops);
-CREATE UNIQUE INDEX "credential_unicity" ON "credential" USING btree ("user_id","provider","scope");
+CREATE UNIQUE INDEX "credential_unicity" ON "credential" USING btree ("email","provider","scopes");
 CREATE INDEX "message_created_at_asc" ON "message" USING btree ("created_at" asc);
 CREATE INDEX "thread_created_at_desc" ON "thread" USING btree ("created_at" desc);
 CREATE INDEX "user_email_lower" ON "user" USING btree (lower("email"));
-CREATE UNIQUE INDEX "email_slug" ON "user" USING btree ("email","slug");
+CREATE UNIQUE INDEX "user_email_slug" ON "user" USING btree ("email","slug");

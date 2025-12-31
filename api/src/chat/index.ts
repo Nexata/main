@@ -7,9 +7,9 @@ import {
 	REASONING_MODEL,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
+import { getTools } from '@api/chat/tools';
 import { cache, db } from '@api/env';
 import { type MessageRole, message, tenant, thread } from '@api/schema';
-import { getTools } from '@api/tools';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { type ModelMessage, stepCountIs, streamText } from 'ai';
@@ -69,7 +69,6 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 			threadMessages.push(userMessage);
 
-			// imgs: groq('meta-llama/llama-4-maverick-17b-128e-instruct')
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				system: BUILD_SYSTEM_PROMPT({

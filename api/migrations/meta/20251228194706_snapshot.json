@@ -1,5 +1,5 @@
 {
-  "id": "c6835c98-acfa-4a1a-8b0e-00e81e738360",
+  "id": "55688c2c-84ad-4af9-9afc-6d55cf079bd2",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -284,7 +284,7 @@
           "name": "user_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "is_admin": {
           "name": "is_admin",
@@ -354,12 +354,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "is_global": {
-          "name": "is_global",
-          "type": "boolean",
+        "email": {
+          "name": "email",
+          "type": "varchar(320)",
           "primaryKey": false,
-          "notNull": true,
-          "default": false
+          "notNull": true
         },
         "provider": {
           "name": "provider",
@@ -368,13 +367,20 @@
           "primaryKey": false,
           "notNull": true
         },
-        "scope": {
-          "name": "scope",
+        "scopes": {
+          "name": "scopes",
           "type": "oauth_scope[]",
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
           "default": "ARRAY[]::oauth_scope[]"
+        },
+        "is_global": {
+          "name": "is_global",
+          "type": "boolean",
+          "primaryKey": false,
+          "notNull": true,
+          "default": false
         },
         "access_token": {
           "name": "access_token",
@@ -413,7 +419,7 @@
           "name": "credential_unicity",
           "columns": [
             {
-              "expression": "user_id",
+              "expression": "email",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -425,7 +431,7 @@
               "nulls": "last"
             },
             {
-              "expression": "scope",
+              "expression": "scopes",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -827,12 +833,12 @@
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {
-        "slug_regex": {
-          "name": "slug_regex",
+        "tenant_slug_regex": {
+          "name": "tenant_slug_regex",
           "value": "\"tenant\".\"slug\" ~ '^[a-z0-9]{2,16}$'"
         },
-        "message_limit": {
-          "name": "message_limit",
+        "tenant_message_limit": {
+          "name": "tenant_message_limit",
           "value": "\"tenant\".\"message_limit\" >= \"tenant\".\"used_messages\""
         }
       },
@@ -966,8 +972,8 @@
           "method": "btree",
           "with": {}
         },
-        "email_slug": {
-          "name": "email_slug",
+        "user_email_slug": {
+          "name": "user_email_slug",
           "columns": [
             {
               "expression": "email",

@@ -1,4 +1,5 @@
 import { authPlugin } from '@api/auth';
+import { permissionRouter } from '@api/credential/permission';
 import { db } from '@api/env';
 import { credential, credentialPermission, user } from '@api/schema';
 import {
@@ -14,6 +15,7 @@ export const credentialRouter = new Elysia({
 	tags: ['Credential'],
 })
 	.use(authPlugin())
+	.use(permissionRouter)
 	.delete(
 		'/:id',
 		async ({ params: { id }, activeUser }) =>
@@ -59,7 +61,5 @@ export const credentialRouter = new Elysia({
 	.get(
 		'/',
 		async ({ activeUser }) => getCredentialsForUser(activeUser, 'display'),
-		{
-			detail: { summary: 'List credentials' },
-		},
+		{ detail: { summary: 'List credentials' } },
 	);

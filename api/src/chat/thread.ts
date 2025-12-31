@@ -4,7 +4,7 @@ import { db } from '@api/env';
 import { thread } from '@api/schema';
 import { Nullish, tObject } from '@api/utils/type';
 import { and, desc, eq, ilike, inArray, lt } from 'drizzle-orm';
-import Elysia, { t } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 export const threadRouter = new Elysia({ prefix: '/thread' })
 	.use(authPlugin())

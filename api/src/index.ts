@@ -4,6 +4,8 @@ import { backofficeRouter } from '@api/backoffice';
 import { chatRouter } from '@api/chat';
 import { credentialRouter } from '@api/credential';
 import { cache, db, IS_PRODUCTION } from '@api/env';
+import { fileRouter } from '@api/file';
+import { integrationRouter } from '@api/integration';
 import { userRouter } from '@api/user';
 import cors from '@elysiajs/cors';
 import openapi, { fromTypes } from '@elysiajs/openapi';
@@ -63,6 +65,8 @@ const app = new Elysia({ prefix: '/api' })
 	.use(userRouter)
 	.use(credentialRouter)
 	.use(chatRouter)
+	.use(fileRouter)
+	.use(integrationRouter)
 	.get(
 		'/',
 		async () => ({

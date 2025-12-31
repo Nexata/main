@@ -3,12 +3,13 @@ import {
 	createOauthRedirect,
 	getOauthCallback,
 	type Oauth2Credentials,
-	oauthExtendedState,
+	oauthCredentialExtendedState,
+	oauthLoginExtendedState,
 } from '@api/auth/lib';
 import { OauthProvider, realOauthScopes } from '@api/schema';
 import { jwtPlugin } from '@api/utils/auth';
 import { warnEnv } from '@api/utils/env';
-import Elysia from 'elysia';
+import { Elysia } from 'elysia';
 import { HttpError } from 'elysia-logger';
 import { oauth2 } from 'elysia-oauth2';
 
@@ -22,30 +23,44 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 	.use(oauth2({ Dropbox: DROPBOX_CLIENT_CREDENTIALS }))
 	.use(jwtPlugin)
 	.get(
-		'/',
+		'/login',
 		async ({ oauth2, query }) =>
-			createOauthRedirect(query, async (q) => {
-				const url = oauth2.createURL(
-					'Dropbox',
-					[
-						'account_info.read',
-						'openid',
-						'profile',
-						'email',
-						...(q.scope ? realOauthScopes[q.scope] : []),
-					].filter((x: unknown): x is string => typeof x === 'string'),
-				);
-
-				if (q) {
-					url.searchParams.set('token_access_type', 'offline');
-					url.searchParams.set('prompt', 'consent');
-				}
+			createOauthRedirect(query, async () => {
+				const url = oauth2.createURL('Dropbox', [
+					'account_info.read',
+					'openid',
+					'profile',
+					'email',
+				]);
 
 				return url;
 			}),
 		{
-			detail: { summary: 'Dropbox OAuth' },
-			query: oauthExtendedState(OauthProvider.DROPBOX),
+			detail: { summary: 'Dropbox OAuth (login)' },
+			query: oauthLoginExtendedState,
+		},
+	)
+	.get(
+		'/',
+		async ({ oauth2, query }) =>
+			createOauthRedirect(query, async (q) => {
+				if (!q) throw HttpError.BadRequest('NO_SCOPES');
+
+				const url = oauth2.createURL('Dropbox', [
+					'account_info.read',
+					'openid',
+					'profile',
+					'email',
+					...q.scopes.flatMap((s) => realOauthScopes[s]),
+				]);
+
+				url.searchParams.set('token_access_type', 'offline');
+				url.searchParams.set('prompt', 'consent');
+				return url;
+			}),
+		{
+			detail: { summary: 'Dropbox OAuth (credential)' },
+			query: oauthCredentialExtendedState(OauthProvider.DROPBOX),
 		},
 	)
 	.get(
