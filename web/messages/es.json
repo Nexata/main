@@ -82,30 +82,28 @@
 			"title": "Nexata | Panel de administrador",
 			"description": "Gestión general y de usuarios de Nexata"
 		},
-
 		"header": {
 			"title": "Panel de administrador",
 			"subtitle": "Gestión general y de usuarios de Nexata",
 			"personal_panel": "Panel personal",
 			"back_to_chat": "Volver al chat"
 		},
-
 		"company_overview": {
 			"title": "Información general",
+			"description": "Resumen del estado actual de tu cuenta, plan activo y consumo de mensajes.",
 			"message_balance": "Saldo de mensajes",
 			"current_plan": "Plan actual",
 			"upgrade_plan": "Upgrade plan",
 			"buy_messages": "Comprar mensajes"
 		},
-
 		"usage": {
 			"title": "Uso de mensajes",
+			"description": "Visualización del consumo de mensajes y métricas clave de actividad.",
 			"chart_type": {
 			"bars": "Barras",
 			"lines": "Líneas"
 			}
 		},
-
 		"integrations": {
 			"title": "Integraciones",
 			"configure": "Configurar",
@@ -113,13 +111,11 @@
 			"manage_description": "Gestión de cuentas y permisos para {name}.",
 			"delete_account": "Eliminar cuenta"
 		},
-
 		"users": {
 			"title": "Usuarios",
 			"delete_user": "Eliminar",
 			"real_time_toggle": "Tiempo real"
 		},
-
 		"dialogs": {
 			"confirm_action": {
 			"title": "Confirmar acción",

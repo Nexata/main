@@ -60,7 +60,7 @@ function SettingsPage() {
             <Button
               variant="destructive"
               onClick={() => navigate({ to: "/adminsettings" })}
-              className="gap-2"
+              className="gap-2 cursor-pointer"
             >
               <SettingsIcon className="h-4 w-4" />
               {m["settings.actions.admin_panel"]()}
@@ -69,7 +69,7 @@ function SettingsPage() {
             <Button
               variant="outline"
               onClick={() => navigate({ to: "/chat" })}
-              className="gap-2"
+              className="gap-2 cursor-pointer"
             >
               <ArrowLeft className="h-4 w-4" />
               {m["settings.actions.back_to_chat"]()}

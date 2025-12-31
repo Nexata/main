@@ -90,6 +90,7 @@
 		},
 		"company_overview": {
 			"title": "General information",
+			"description": "Overview of your account status, current plan, and message usage.",
 			"message_balance": "Message balance",
 			"current_plan": "Current plan",
 			"upgrade_plan": "Upgrade plan",
@@ -97,6 +98,7 @@
 		},
 		"usage": {
 			"title": "Message usage",
+			"description": "Visualization of message consumption and key activity metrics.",
 			"chart_type": {
 			"bars": "Bars",
 			"lines": "Lines"

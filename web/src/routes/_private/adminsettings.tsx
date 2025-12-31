@@ -7,6 +7,7 @@ import {
   Settings,
   ArrowLeft,
   Trash2,
+  TrendingUp,
 } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -105,18 +106,38 @@ function AdminSettingsPage() {
           </div>
 
           <div className="flex gap-2">
-            <Button variant="secondary">
-              <Settings className="h-4 w-4 mr-2" />
-              {m["admin.header.personal_panel"]()}
+            <Button
+            variant="secondary"
+            onClick={() => navigate({ to: "/settings" })}
+            className="
+                cursor-pointer
+                bg-secondary
+                text-secondary-foreground
+                border border-border
+                hover:bg-muted
+                hover:text-foreground
+                hover:shadow-sm
+                transition-all
+            "
+            >
+            <Settings className="h-4 w-4 mr-2 opacity-80" />
+            {m["admin.header.personal_panel"]()}
             </Button>
 
+
             <Button
-              variant="outline"
-              onClick={() => navigate({ to: "/chat" })}
+            variant="outline"
+            onClick={() => navigate({ to: "/chat" })}
+            className="
+                cursor-pointer
+                hover:bg-muted
+                transition-colors
+            "
             >
-              <ArrowLeft className="h-4 w-4 mr-2" />
-              {m["admin.header.back_to_chat"]()}
+                <ArrowLeft className="h-4 w-4 mr-2" />
+                {m["admin.header.back_to_chat"]()}
             </Button>
+
           </div>
         </header>
 
@@ -142,40 +163,76 @@ function CompanyOverviewSection() {
 
   return (
     <Card className="bg-[var(--sidebar)]">
-      <CardContent className="p-6 space-y-4">
-        <h2 className="text-lg font-semibold">
-          {m["admin.company_overview.title"]()}
-        </h2>
+      <CardContent className="p-6 space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+            <div>
+                <h2 className="text-lg font-semibold">
+                    {m["admin.company_overview.title"]()}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    {m["admin.company_overview.description"]()}
+                </p>
+            </div>
 
+            {/* Company logo */}
+            <img
+                src="/company_logo.png"
+                alt="Company logo"
+                className="h-8 w-auto opacity-80"
+            />
+        </div>
+
+        {/* Message balance */}
         <div>
-          <div className="flex justify-between text-sm mb-1">
+          <div className="flex justify-between text-sm mb-2">
             <span>{m["admin.company_overview.message_balance"]()}</span>
             <span className="font-medium text-primary">
               {used} / {total}
             </span>
           </div>
 
-          <div className="h-2 rounded-full bg-muted overflow-hidden">
+          <div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
             <motion.div
               initial={{ width: 0 }}
               animate={{ width: `${(used / total) * 100}%` }}
-              className="h-full bg-primary"
+              transition={{ duration: 0.6, ease: "easeOut" }}
+              className="h-full rounded-full bg-primary"
             />
           </div>
         </div>
 
-        <div className="flex justify-between items-center">
-          <span className="text-sm">
-            {m["admin.company_overview.current_plan"]()}{" "}
-            <strong>Business 500</strong>
-          </span>
+        {/* Plan + actions */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center">
+            <span className="text-sm text-muted-foreground">
+              {m["admin.company_overview.current_plan"]()}
+            </span>
+            <span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
+              Business 500
+            </span>
+          </div>
 
           <div className="flex gap-2">
-            <Button size="sm" variant="outline">
-              {m["admin.company_overview.upgrade_plan"]()}
+            <Button
+            size="sm"
+            className="
+                cursor-pointer
+                bg-orange-500/90 
+                hover:bg-orange-500 
+                text-white
+            "
+            >
+            <TrendingUp className="h-4 w-4 mr-2" />
+                {m["admin.company_overview.upgrade_plan"]()}
             </Button>
-            <Button size="sm">
-              {m["admin.company_overview.buy_messages"]()}
+
+            <Button
+            size="sm"
+            variant="outline"
+            className="cursor-pointer"
+            >
+            {m["admin.company_overview.buy_messages"]()}
             </Button>
           </div>
         </div>
@@ -184,27 +241,58 @@ function CompanyOverviewSection() {
   )
 }
 
+
 /* -------------------------------------------------------------------------- */
 /*                             UsageChartSection                               */
 /* -------------------------------------------------------------------------- */
 
 function UsageChartSection() {
-  const [type, setType] = useState<"bars" | "lines">("bars")
+    const [type, setType] = useState<"bars" | "lines">("bars")
 
-  const data = [
-    { name: "Juan", mensajes: 120 },
-    { name: "María", mensajes: 90 },
-    { name: "Pedro", mensajes: 70 },
-    { name: "Ana", mensajes: 150 },
-  ]
+    const data = [
+        { name: "Juan", mensajes: 120 },
+        { name: "María", mensajes: 90 },
+        { name: "Pedro", mensajes: 70 },
+        { name: "Ana", mensajes: 150 },
+    ]
+
+    function ChartTooltip({ active, payload, label }: any) {
+        if (!active || !payload?.length) return null
+
+        return (
+            <div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-sm font-medium text-foreground">
+                {payload[0].value} mensajes
+            </p>
+            </div>
+        )
+    }
+
+    function MetricItem({ label, value }: { label: string; value: string }) {
+        return (
+            <div className="space-y-1">
+            <p className="text-xs text-muted-foreground">{label}</p>
+            <p className="text-lg font-semibold text-foreground">
+                {value}
+            </p>
+            </div>
+        )
+    }
+
 
   return (
     <Card className="bg-[var(--sidebar)]">
       <CardContent className="p-6 space-y-4">
         <div className="flex justify-between items-center">
-          <h2 className="text-lg font-semibold">
-            {m["admin.usage.title"]()}
-          </h2>
+            <div>
+                <h2 className="text-lg font-semibold">
+                    {m["admin.usage.title"]()}
+                </h2>
+                <p className="text-sm text-muted-foreground">
+                    {m["admin.usage.description"]()}
+                </p>
+            </div>
 
           <DropdownMenu>
             <DropdownMenuTrigger>
@@ -226,29 +314,86 @@ function UsageChartSection() {
           </DropdownMenu>
         </div>
 
-        <div className="h-56">
-          <ResponsiveContainer width="100%" height="100%">
-            {type === "bars" ? (
-              <BarChart data={data}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="mensajes" fill="hsl(var(--primary))" radius={6} />
-              </BarChart>
-            ) : (
-              <LineChart data={data}>
-                <XAxis dataKey="name" />
-                <YAxis />
-                <Tooltip />
-                <Line
-                  type="monotone"
-                  dataKey="mensajes"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={3}
-                />
-              </LineChart>
-            )}
-          </ResponsiveContainer>
+        <div className="h-56 rounded-xl border border-border bg-muted/40 p-3">
+            <ResponsiveContainer width="100%" height="100%">
+                {type === "bars" ? (
+                <BarChart data={data}>
+                    <XAxis
+                    dataKey="name"
+                    stroke="var(--muted-foreground)"
+                    tickLine={false}
+                    axisLine={false}
+                    />
+                    <YAxis
+                    stroke="var(--muted-foreground)"
+                    tickLine={false}
+                    axisLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip />} cursor={false} />
+                    <Bar
+                    dataKey="mensajes"
+                    fill="var(--primary)"
+                    radius={6}
+                    activeBar={{
+                        fill: "var(--primary)",
+                        opacity: 1,
+                        stroke: "var(--primary)",
+                        strokeWidth: 1,
+                    }}
+                    />
+                </BarChart>
+                ) : (
+                <LineChart data={data}>
+                    <XAxis
+                    dataKey="name"
+                    stroke="var(--muted-foreground)"
+                    tickLine={false}
+                    axisLine={false}
+                    />
+                    <YAxis
+                    stroke="var(--muted-foreground)"
+                    tickLine={false}
+                    axisLine={false}
+                    />
+                    <Tooltip content={<ChartTooltip />} cursor={false} />
+                    <Line
+                    type="monotone"
+                    dataKey="mensajes"
+                    stroke="var(--primary)"
+                    strokeWidth={3}
+                    dot={{ r: 4, fill: "var(--primary)", opacity: 0.6 }}
+                    activeDot={{
+                        r: 6,
+                        fill: "var(--primary)",
+                        stroke: "var(--background)",
+                        strokeWidth: 2,
+                    }}
+                    />
+                </LineChart>
+                )}
+            </ResponsiveContainer>
+        </div>
+        {/* Extra info */}
+        <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 place-items-center rounded-xl border border-border bg-muted/30 p-4">
+            <MetricItem
+                label="Total de mensajes"
+                value="430"
+            />
+
+            <MetricItem
+                label="Usuario más activo"
+                value="Ana"
+            />
+
+            <MetricItem
+                label="Pico máximo"
+                value="150"
+            />
+
+            <MetricItem
+                label="Hora mas activa"
+                value="10AM - 11AM"
+            />
         </div>
       </CardContent>
     </Card>
