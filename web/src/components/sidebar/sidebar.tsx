@@ -19,6 +19,7 @@ import { Input } from "@/components/ui/input";
 import * as m from "@/paraglide/messages.js";
 import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
+import { useNavigate } from "@tanstack/react-router";
 
 export interface SidebarProps {
   darkMode: boolean;
@@ -31,6 +32,7 @@ export default function Sidebar({
   setDarkMode,
   setActiveView,
 }: SidebarProps) {
+  const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(true);
   const [chatToDelete, setChatToDelete] = useState<{
     id: number;
@@ -222,11 +224,12 @@ export default function Sidebar({
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setActiveView("settings")}
+              onClick={() => navigate({ to: "/settings" })}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
               <IoMdSettings className="w-6 h-6" />
             </Button>
+            
             <Button
               variant="ghost"
               size="icon"

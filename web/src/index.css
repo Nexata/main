@@ -2,9 +2,6 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
-@import "@fontsource/noto-sans/400.css";
-@import "@fontsource/geist-sans/400.css";
-
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -51,8 +48,9 @@
 }
 
 :root {
-  --font-sans: "Noto Sans", sans-serif;
-  --font-geist-sans: "Geist Sans", sans-serif;
+  --base-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui;
+  --font-sans: var(--base-font-family);
+  --font-geist-sans: var(--base-font-family);
   --background: oklch(1 0 0);
   --foreground: oklch(0.13 0.028 261.692);
   --card: oklch(1 0 0);
@@ -88,8 +86,9 @@
 }
 
 .dark {
-  --font-sans: "Noto Sans", sans-serif;
-  --font-geist-sans: "Geist Sans", sans-serif;
+  --base-font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui;
+  --font-sans: var(--base-font-family);
+  --font-geist-sans: var(--base-font-family);
   --background: oklch(0.13 0.028 261.692);
   --foreground: oklch(0.985 0.002 247.839);
   --card: oklch(0.21 0.034 264.665);

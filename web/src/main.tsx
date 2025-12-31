@@ -2,7 +2,6 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import { StrictMode, useEffect, useState } from 'react'; 
 import type { ReactNode } from 'react'; 
 import ReactDOM from 'react-dom/client';
-import { HelmetProvider } from 'react-helmet-async';
 import { routeTree } from './routeTree.gen';
 import { ThemeProvider } from './components/theme-provider';
 
@@ -38,7 +37,6 @@ if (!rootElement.innerHTML) {
   const root = ReactDOM.createRoot(rootElement);
 root.render(
   <StrictMode>
-    <HelmetProvider>
       <ThemeProvider defaultTheme="dark">
         <AppLayout>
           {(darkMode, setDarkMode) => (
@@ -46,7 +44,6 @@ root.render(
           )}
         </AppLayout>
       </ThemeProvider>
-    </HelmetProvider>
   </StrictMode>
 );
 }

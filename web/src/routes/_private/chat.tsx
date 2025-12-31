@@ -5,7 +5,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Chat } from "@/components/ui/chat"
 import type { Message } from "@/components/ui/chat-message"
 import { createFileRoute } from "@tanstack/react-router"
-import { Helmet } from "react-helmet-async"
+import { m } from "framer-motion"
+import * as t from "@/paraglide/messages.js"
 
 const MODELS = [
   { id: "llama-3.3-70b-versatile", name: "Llama 3.3 70B" },
@@ -20,9 +21,19 @@ interface UIMessage {
   id: string
   role: "user" | "assistant"
   parts: { type: "text"; text: string }[]
+  experimental_attachments?: {
+    name: string
+    contentType: string
+    url: string
+  }[]
 }
 
 export function NexataChat() {
+
+  useEffect(() => {
+    document.title = t["chat.meta.title"]()
+  }, [])
+
   const [selectedModel, setSelectedModel] = useState(MODELS[0]?.id)
   const [messages, setMessages] = useState<UIMessage[]>([])
   const [input, setInput] = useState("")
@@ -36,9 +47,10 @@ export function NexataChat() {
     setStatus("submitted")
 
     // Añadimos un "mensaje de IA" vacío para mostrar loading y tipado
-    const assistantMessage: UIMessage = {
+    const assistantMessage: UIMessage & { content: string } = {
       id: crypto.randomUUID(),
       role: "assistant",
+      content: "",
       parts: [{ type: "text", text: "" }],
     }
     setMessages((prev) => [...prev, assistantMessage])
@@ -53,7 +65,11 @@ export function NexataChat() {
       setMessages((prev) =>
         prev.map((msg) =>
           msg.id === assistantMessage.id
-            ? { ...msg, parts: [{ type: "text", text: currentText }] }
+            ? { 
+              ...msg,
+              content: currentText,
+              parts: [{ type: "text", text: currentText }]
+            }
             : msg
         )
       )
@@ -63,14 +79,24 @@ export function NexataChat() {
     setStatus("idle")
   }
 
-  const handleSubmit = async (event?: { preventDefault?: () => void }) => {
+  const handleSubmit = async (
+    event?: { preventDefault?: () => void },
+    options?: { experimental_attachments?: FileList }
+  ) => {
     event?.preventDefault?.()
-    if (!input.trim()) return
 
-    const userMessage: UIMessage = {
+    if (!input.trim() && !options?.experimental_attachments?.length) return
+
+    const attachments = options?.experimental_attachments
+      ? fileListToAttachments(options.experimental_attachments)
+      : undefined
+
+    const userMessage: UIMessage & { content: string } = {
       id: crypto.randomUUID(),
       role: "user",
+      content: input,
       parts: [{ type: "text", text: input }],
+      experimental_attachments: attachments,
     }
 
     setMessages((prev) => [...prev, userMessage])
@@ -79,25 +105,31 @@ export function NexataChat() {
     await mockSendMessage(userMessage)
   }
 
+
   const append = (message: { role: "user"; content: string }) => {
-    const userMessage: UIMessage = {
+    const userMessage: UIMessage & { content: string } = {
       id: crypto.randomUUID(),
       role: message.role,
+      content: message.content,
       parts: [{ type: "text", text: message.content }],
     }
+
     setMessages((prev) => [...prev, userMessage])
     mockSendMessage(userMessage)
   }
 
   const isLoading = status === "submitted" || status === "streaming"
 
+  function fileListToAttachments(fileList: FileList) {
+    return Array.from(fileList).map((file) => ({
+      name: file.name,
+      contentType: file.type,
+      url: URL.createObjectURL(file), 
+    }))
+  }
+
   return (
     <>
-      <Helmet>
-        <title>Nexata | Chat</title>
-        <meta name="description" content="Accede al chat de Nexata" />
-      </Helmet>
-
       <div className="flex flex-col h-full w-full min-h-0">
         {/* Selector de modelo */}
         <div className="flex justify-end mb-2">
@@ -129,6 +161,7 @@ export function NexataChat() {
             isGenerating={isLoading}
             stop={() => setStatus("idle")}
             append={append}
+            suggestionsLabel="Hola Matias! Con que empezamos?"
             suggestions={[
               "What is the weather in San Francisco?",
               "Explain step-by-step how to solve this math problem: If x² + 6x + 9 = 25, what is x?",

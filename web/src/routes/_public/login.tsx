@@ -1,7 +1,6 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { Helmet } from "react-helmet-async";
 import { FcGoogle } from "react-icons/fc";
 import { IoLogoMicrosoft } from "react-icons/io5";
 
@@ -16,6 +15,8 @@ export const Route = createFileRoute("/_public/login")({
 });
 
 function LoginPage() {
+	useEffect(() => { document.title = m["login.meta.title"]() }, [])
+
 	const [loading, setLoading] = useState(false);
 	const navigate = useNavigate();
 
@@ -31,11 +32,6 @@ function LoginPage() {
 
 	return (
 		<>
-			<Helmet>
-			<title>Nexata | Login</title>
-			<meta name="description" content="Accede al chat de Nexata" />
-			</Helmet>
-
 			<motion.div
 				initial={{ opacity: 0, scale: 0.96 }}
 				animate={{ opacity: 1, scale: 1 }}

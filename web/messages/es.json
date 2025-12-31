@@ -1,6 +1,9 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"login": {
+		"meta": {
+			"title": "Nexata | Iniciar sesión"
+		},
 		"title": "Iniciar sesión",
 		"subtitle": "Accedé a tu cuenta de Nexata",
 		"email": "email@empresa.com",
@@ -19,7 +22,111 @@
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
 	},
 	"common": {
+		"ask_nexy": "Preguntale a Nexy...",
 		"cancel": "Cancelar",
-		"delete": "Eliminar"
+		"delete": "Eliminar",
+		"confirm": "Confirmar"
+	},
+	"chat": {
+		"meta": {
+			"title": "Nexata | Chat"
+		}
+	},
+	"settings": {
+		"meta": {
+			"title": "Nexata | Configuración",
+			"description": "Configuración de cuenta e integraciones"
+		},
+		"title": "Configuración",
+		"subtitle": "Personalizá tus preferencias y gestioná tus integraciones",
+		"actions": {
+			"back_to_chat": "Volver al chat",
+			"admin_panel": "Panel Admin"
+		},
+		"sources": {
+			"title": "Fuentes de información dinámica",
+			"description": "Administrá las integraciones que Nexata utiliza en tiempo real para contextualizar y responder con información siempre actualizada.",
+			"connect": "Conectar",
+			"disconnect": "Desconectar",
+			"modal": {
+				"connect": {
+					"title": "Conectar \"{name}\"",
+					"description": "Al conectar esta fuente, autorizás a Nexata a acceder a los datos asociados. Serás redirigido para completar la autorización."
+				},
+				"disconnect": {
+					"title": "Desconectar \"{name}\"",
+					"description": "Al desconectar esta fuente, Nexata perderá el acceso a los datos asociados y no podrá consultarlos hasta que vuelvas a conectarla."
+				}
+			}
+		},
+		"storage": {
+			"title": "Almacenamiento",
+			"description": "Gestioná qué archivos y carpetas puede utilizar Nexata para analizar, buscar y contextualizar información.",
+			"configure": "Configurar",
+			"close": "Cerrar",
+			"selected": "Seleccionado",
+			"save_changes": "Guardar cambios",
+			"google_drive": {
+				"my_files": "Mis archivos",
+				"shared_files": "Documentos compartidos",
+				"shared_drives": "Unidades compartidas"
+			},
+			"confirm_save": {
+				"title": "Confirmar cambios",
+				"description": "¿Querés aplicar los cambios de seguimiento seleccionados?"
+			}
+		}
+  	},
+	"admin": {
+		"meta": {
+			"title": "Nexata | Panel de administrador",
+			"description": "Gestión general y de usuarios de Nexata"
+		},
+
+		"header": {
+			"title": "Panel de administrador",
+			"subtitle": "Gestión general y de usuarios de Nexata",
+			"personal_panel": "Panel personal",
+			"back_to_chat": "Volver al chat"
+		},
+
+		"company_overview": {
+			"title": "Información general",
+			"message_balance": "Saldo de mensajes",
+			"current_plan": "Plan actual",
+			"upgrade_plan": "Upgrade plan",
+			"buy_messages": "Comprar mensajes"
+		},
+
+		"usage": {
+			"title": "Uso de mensajes",
+			"chart_type": {
+			"bars": "Barras",
+			"lines": "Líneas"
+			}
+		},
+
+		"integrations": {
+			"title": "Integraciones",
+			"configure": "Configurar",
+			"close": "Cerrar",
+			"manage_description": "Gestión de cuentas y permisos para {name}.",
+			"delete_account": "Eliminar cuenta"
+		},
+
+		"users": {
+			"title": "Usuarios",
+			"delete_user": "Eliminar",
+			"real_time_toggle": "Tiempo real"
+		},
+
+		"dialogs": {
+			"confirm_action": {
+			"title": "Confirmar acción",
+			"description": "Esta acción no se puede deshacer.",
+			"cancel": "Cancelar",
+			"confirm": "Confirmar"
+			}
+		}
 	}
 }

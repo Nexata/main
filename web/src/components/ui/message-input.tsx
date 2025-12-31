@@ -12,6 +12,7 @@ import { AudioVisualizer } from "@/components/ui/audio-visualizer"
 import { Button } from "@/components/ui/button"
 import { FilePreview } from "@/components/ui/file-preview"
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
+import * as m from "@/paraglide/messages.js";
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -38,7 +39,7 @@ type MessageInputProps =
   | MessageInputWithAttachmentsProps
 
 export function MessageInput({
-  placeholder = "Ask AI...",
+  placeholder,
   className,
   onKeyDown: onKeyDownProp,
   submitOnEnter = true,
@@ -50,6 +51,7 @@ export function MessageInput({
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
+  const resolvedPlaceholder = placeholder ?? m["common.ask_nexy"]()
 
   const {
     isListening,
@@ -201,7 +203,7 @@ export function MessageInput({
         <div className="relative flex-1">
           <textarea
             aria-label="Write your prompt here"
-            placeholder={placeholder}
+            placeholder={resolvedPlaceholder}
             ref={textAreaRef}
             onPaste={onPaste}
             onKeyDown={onKeyDown}
@@ -277,7 +279,7 @@ export function MessageInput({
           <Button
             type="button"
             size="icon"
-            className="h-8 w-8"
+            className="h-8 w-8 bg-foreground text-background hover:bg-foreground/90"
             aria-label="Stop generating"
             onClick={stop}
           >
@@ -287,7 +289,7 @@ export function MessageInput({
           <Button
             type="submit"
             size="icon"
-            className="h-8 w-8 transition-opacity"
+            className={"bg-foreground text-background hover:bg-foreground/90"}
             aria-label="Send message"
             disabled={props.value === "" || isGenerating}
           >

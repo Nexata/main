@@ -35,6 +35,7 @@ interface ChatPropsBase {
   ) => void
   setMessages?: (messages: any[]) => void
   transcribeAudio?: (blob: Blob) => Promise<string>
+  suggestionsLabel?: string
 }
 
 interface ChatPropsWithoutSuggestions extends ChatPropsBase {
@@ -62,6 +63,7 @@ export function Chat({
   onRateResponse,
   setMessages,
   transcribeAudio,
+  suggestionsLabel
 }: ChatProps) {
   const lastMessage = messages.at(-1)
   const isEmpty = messages.length === 0
@@ -194,11 +196,13 @@ export function Chat({
   return (
     <ChatContainer className={className}>
       {isEmpty && append && suggestions ? (
-        <PromptSuggestions
-          label="Try these prompts ✨"
-          append={append}
-          suggestions={suggestions}
-        />
+        <div className="flex flex-1 items-center justify-center">
+          <PromptSuggestions
+            label={suggestionsLabel ?? "Try these prompts ✨"}
+            append={append}
+            suggestions={suggestions}
+          />
+        </div>
       ) : null}
 
       {messages.length > 0 ? (

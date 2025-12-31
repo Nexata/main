@@ -1,6 +1,9 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
 	"login": {
+		"meta": {
+			"title": "Nexata | Login"
+		},
 		"title": "Sign in",
 		"subtitle": "Access your Nexata account",
 		"email": "email@company.com",
@@ -19,7 +22,105 @@
 		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone."
 	},
 	"common": {
+		"ask_nexy": "Ask Nexy...",
 		"cancel": "Cancel",
-		"delete": "Delete"
+		"delete": "Delete",
+		"confirm": "Confirm"
+	},
+	"chat": {
+		"meta": {
+			"title": "Nexata | Chat"
+		}
+	},
+	"settings": {
+		"meta": {
+			"title": "Nexata | Settings",
+			"description": "Account settings and integrations"
+		},
+		"title": "Settings",
+		"subtitle": "Manage your preferences and integrations",
+		"actions": {
+			"back_to_chat": "Back to chat",
+			"admin_panel": "Admin panel"
+		},
+		"sources": {
+			"title": "Dynamic data sources",
+			"description": "Manage real-time integrations Nexata uses to contextualize and respond with up-to-date information.",
+			"connect": "Connect",
+			"disconnect": "Disconnect",
+			"modal": {
+				"connect": {
+					"title": "Connect \"{name}\"",
+					"description": "By connecting this source, you authorize Nexata to access the associated data. You will be redirected to complete authorization."
+				},
+				"disconnect": {
+					"title": "Disconnect \"{name}\"",
+					"description": "By disconnecting this source, Nexata will lose access to the associated data until you reconnect it."
+				}
+			}
+		},
+		"storage": {
+			"title": "Storage",
+			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information.",
+			"configure": "Configure",
+			"close": "Close",
+			"selected": "Selected",
+			"save_changes": "Save changes",
+			"google_drive": {
+				"my_files": "My files",
+				"shared_files": "Shared files",
+				"shared_drives": "Shared drives"
+			},
+			"confirm_save": {
+				"title": "Confirm changes",
+				"description": "Do you want to apply the selected tracking changes?"
+			}
+		}
+	},
+	"admin": {
+		"meta": {
+			"title": "Nexata | Admin Panel",
+			"description": "General and user management for Nexata"
+		},
+		"header": {
+			"title": "Admin panel",
+			"subtitle": "General and user management for Nexata",
+			"personal_panel": "Personal panel",
+			"back_to_chat": "Back to chat"
+		},
+		"company_overview": {
+			"title": "General information",
+			"message_balance": "Message balance",
+			"current_plan": "Current plan",
+			"upgrade_plan": "Upgrade plan",
+			"buy_messages": "Buy messages"
+		},
+		"usage": {
+			"title": "Message usage",
+			"chart_type": {
+			"bars": "Bars",
+			"lines": "Lines"
+			}
+		},
+		"integrations": {
+			"title": "Integrations",
+			"configure": "Configure",
+			"close": "Close",
+			"manage_description": "Manage accounts and permissions for {name}.",
+			"delete_account": "Delete account"
+		},
+		"users": {
+			"title": "Users",
+			"delete_user": "Delete",
+			"real_time_toggle": "Real time"
+		},
+		"dialogs": {
+			"confirm_action": {
+			"title": "Confirm action",
+			"description": "This action cannot be undone.",
+			"cancel": "Cancel",
+			"confirm": "Confirm"
+			}
+		}
 	}
 }
