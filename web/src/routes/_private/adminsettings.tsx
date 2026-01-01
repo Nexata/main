@@ -655,13 +655,11 @@ function UsersSection() {
                         transition-colors
                     "
                     >
-                    {/* Email (no clickable) */}
                     <span className="flex-1 font-medium">
                         {user.email}
                     </span>
 
                     <div className="flex items-center gap-3">
-                        {/* View details toggle */}
                         <button
                         onClick={() =>
                             setExpandedUserId(expanded ? null : user.id)
@@ -679,7 +677,6 @@ function UsersSection() {
                             : m["admin.users.expand"]()}
                         </button>
 
-                        {/* Remove */}
                         <Button
                         size="sm"
                         variant="outline"
