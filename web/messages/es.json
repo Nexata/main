@@ -106,15 +106,39 @@
 		},
 		"integrations": {
 			"title": "Integraciones",
+			"description": "Administrá las fuentes de datos que los usuarios pueden habilitar y conectar para utilizar Nexata.",
 			"configure": "Configurar",
 			"close": "Cerrar",
+			"enable": "Habilitar",
+			"disable": "Deshabilitar",
 			"manage_description": "Gestión de cuentas y permisos para {name}.",
 			"delete_account": "Eliminar cuenta"
 		},
 		"users": {
 			"title": "Usuarios",
-			"delete_user": "Eliminar",
-			"real_time_toggle": "Tiempo real"
+			"description": "Gestioná los usuarios que forman parte de tu empresa en Nexata.",
+			"invite": {
+				"title": "Invitar nuevo usuario",
+				"placeholder": "email@empresa.com",
+				"send": "Enviar invitación",
+				"helper": "El usuario recibirá un email para unirse a tu tenant de Nexata."
+			},
+			"expand": "Ver detalles",
+			"collapse": "Ocultar detalles",
+			"actions": {
+				"remove": "Dar de baja"
+			},
+			"dialogs": {
+				"delete": {
+					"title": "Eliminar usuario",
+					"description": "El usuario \"{email}\" será eliminado permanentemente. Esta acción no se puede deshacer y se perderá toda su información."
+				}
+			},
+			"details": {
+				"messages": "Mensajes usados",
+				"created_at": "Fecha de creación",
+				"storage": "Espacio ocupado"
+			}
 		},
 		"dialogs": {
 			"confirm_action": {

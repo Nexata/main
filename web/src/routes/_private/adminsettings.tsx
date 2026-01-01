@@ -6,14 +6,15 @@ import * as m from "@/paraglide/messages.js"
 import {
   Settings,
   ArrowLeft,
-  Trash2,
   TrendingUp,
+  CheckCircle2,
+  XCircle,
+  Check,
 } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import { Switch } from "@/components/ui/switch"
 import {
   Dialog,
   DialogContent,
@@ -39,6 +40,7 @@ import {
   Tooltip,
   ResponsiveContainer,
 } from "recharts"
+import { cn } from "@/lib/utils"
 
 export const Route = createFileRoute("/_private/adminsettings")({
   component: AdminSettingsPage,
@@ -145,8 +147,8 @@ function AdminSettingsPage() {
 
         <CompanyOverviewSection />
         <UsageChartSection />
-        <IntegrationsSection setModal={setModal} />
-        <UsersSection setModal={setModal} />
+        <IntegrationsSection />
+        <UsersSection />
         <ConfirmDialog modal={modal} setModal={setModal} />
       </motion.div>
     </>
@@ -182,6 +184,8 @@ function CompanyOverviewSection() {
                 className="h-8 w-auto opacity-80"
             />
         </div>
+
+        <Separator />
 
         {/* Message balance */}
         <div>
@@ -284,35 +288,36 @@ function UsageChartSection() {
   return (
     <Card className="bg-[var(--sidebar)]">
       <CardContent className="p-6 space-y-4">
-        <div className="flex justify-between items-center">
-            <div>
-                <h2 className="text-lg font-semibold">
-                    {m["admin.usage.title"]()}
-                </h2>
+        <div>
+            <h2 className="text-lg font-semibold">
+                {m["admin.usage.title"]()}
+            </h2>
+            <div className="flex justify-between items-center">
                 <p className="text-sm text-muted-foreground">
                     {m["admin.usage.description"]()}
                 </p>
-            </div>
+                <DropdownMenu>
+                    <DropdownMenuTrigger>
+                    <Button variant="outline" size="sm" className="cursor-pointer">
+                        {type === "bars"
+                        ? m["admin.usage.chart_type.bars"]()
+                        : m["admin.usage.chart_type.lines"]()}
+                    </Button>
+                    </DropdownMenuTrigger>
 
-          <DropdownMenu>
-            <DropdownMenuTrigger>
-              <Button variant="outline" size="sm">
-                {type === "bars"
-                  ? m["admin.usage.chart_type.bars"]()
-                  : m["admin.usage.chart_type.lines"]()}
-              </Button>
-            </DropdownMenuTrigger>
-
-            <DropdownMenuContent>
-              <DropdownMenuItem onClick={() => setType("bars")}>
-                {m["admin.usage.chart_type.bars"]()}
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setType("lines")}>
-                {m["admin.usage.chart_type.lines"]()}
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+                    <DropdownMenuContent>
+                    <DropdownMenuItem onClick={() => setType("bars")}>
+                        {m["admin.usage.chart_type.bars"]()}
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setType("lines")}>
+                        {m["admin.usage.chart_type.lines"]()}
+                    </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                </div>
         </div>
+
+        <Separator />
 
         <div className="h-56 rounded-xl border border-border bg-muted/40 p-3">
             <ResponsiveContainer width="100%" height="100%">
@@ -404,76 +409,87 @@ function UsageChartSection() {
 /*                            IntegrationsSection                              */
 /* -------------------------------------------------------------------------- */
 
-function IntegrationsSection({
-  setModal,
-}: {
-  setModal: (m: ModalState) => void
-}) {
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
-
-  const sources: DataSource[] = [
+function IntegrationsSection() {
+  const [sources, setSources] = useState<DataSource[]>([
+    { id: "gmail", name: "Gmail", status: "disconnected" },
+    { id: "gcalendar", name: "Google Calendar", status: "disconnected" },
+    { id: "outlook", name: "Outlook", status: "connected" },
+    { id: "ocalendar", name: "Outlook Calendar", status: "disconnected" },
     { id: "gdrive", name: "Google Drive", status: "connected" },
     { id: "onedrive", name: "OneDrive", status: "connected" },
-    { id: "gmail", name: "Gmail", status: "disconnected" },
-  ]
+  ])
+
+  const toggleSource = (id: string) => {
+    setSources((prev) =>
+      prev.map((s) =>
+        s.id === id
+          ? {
+              ...s,
+              status:
+                s.status === "connected"
+                  ? "disconnected"
+                  : "connected",
+            }
+          : s
+      )
+    )
+  }
+
+  const statusIcon = (status: DataSourceStatus) =>
+    status === "connected" ? (
+      <CheckCircle2 className="h-5 w-5 text-green-500" />
+    ) : (
+      <XCircle className="h-5 w-5 text-destructive" />
+    )
 
   return (
     <Card className="bg-[var(--sidebar)]">
       <CardContent className="p-6 space-y-4">
-        <h2 className="text-lg font-semibold">
-          {m["admin.integrations.title"]()}
-        </h2>
+        {/* Header */}
+        <div>
+          <h2 className="text-lg font-semibold">
+            {m["admin.integrations.title"]()}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {m["admin.integrations.description"]()}
+          </p>
+        </div>
 
-        {sources.map((s) => (
-          <div key={s.id} className="border rounded-xl">
-            <button
-              onClick={() =>
-                setExpanded((p) => ({ ...p, [s.id]: !p[s.id] }))
-              }
-              className="w-full flex justify-between items-center p-3"
+        <Separator />
+
+        {/* Sources */}
+        <div className="space-y-3">
+          {sources.map((s) => (
+            <div
+              key={s.id}
+              className="flex items-center justify-between rounded-xl border p-3"
             >
-              <span className="font-medium">{s.name}</span>
-              <span className="text-sm text-muted-foreground">
-                {expanded[s.id]
-                  ? m["admin.integrations.close"]()
-                  : m["admin.integrations.configure"]()}
-              </span>
-            </button>
+              <div className="flex items-center gap-3">
+                <img
+                  src={`/datasource_icons/${s.id}.png`}
+                  alt={s.name}
+                  className="h-6 w-6"
+                />
+                <span className="font-medium">{s.name}</span>
+              </div>
 
-            <AnimatePresence>
-              {expanded[s.id] && (
-                <motion.div
-                  initial={{ height: 0, opacity: 0 }}
-                  animate={{ height: "auto", opacity: 1 }}
-                  exit={{ height: 0, opacity: 0 }}
-                  className="px-4 pb-4"
+              <div className="flex items-center gap-4">
+                {statusIcon(s.status)}
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="cursor-pointer"
+                  onClick={() => toggleSource(s.id)}
                 >
-                  <Separator className="mb-3" />
-                  <p className="text-sm text-muted-foreground">
-                    {m["admin.integrations.manage_description"]({
-                      name: s.name,
-                    })}
-                  </p>
-
-                  <Button
-                    size="sm"
-                    variant="destructive"
-                    className="mt-3"
-                    onClick={() =>
-                      setModal({
-                        type: "deleteAccount",
-                        source: s,
-                      })
-                    }
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {m["admin.integrations.delete_account"]()}
-                  </Button>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </div>
-        ))}
+                  {s.status === "connected"
+                    ? m["admin.integrations.disable"]()
+                    : m["admin.integrations.enable"]()}
+                </Button>
+              </div>
+            </div>
+          ))}
+        </div>
       </CardContent>
     </Card>
   )
@@ -483,52 +499,279 @@ function IntegrationsSection({
 /*                                UsersSection                                 */
 /* -------------------------------------------------------------------------- */
 
-function UsersSection({
-  setModal,
-}: {
-  setModal: (m: ModalState) => void
-}) {
-  const [users] = useState<User[]>([
-    { id: "1", email: "juan@empresa.com", realTime: false },
-    { id: "2", email: "maria@empresa.com", realTime: true },
-  ])
+function UsersSection() {
+  const [inviteEmail, setInviteEmail] = useState("")
+  const [inviteSent, setInviteSent] = useState(false)
+  const [expandedUserId, setExpandedUserId] = useState<string | null>(null)
+  const [userToDelete, setUserToDelete] = useState<{
+    id: string
+    email: string
+  } | null>(null)
+
+  const users = [
+    {
+      id: "1",
+      email: "juan@empresa.com",
+      messages: 320,
+      createdAt: "2024-01-12",
+      storageMb: 48,
+    },
+    {
+      id: "2",
+      email: "maria@empresa.com",
+      messages: 110,
+      createdAt: "2024-03-04",
+      storageMb: 22,
+    },
+  ]
 
   return (
-    <Card className="bg-[var(--sidebar)]">
-      <CardContent className="p-6 space-y-4">
-        <h2 className="text-lg font-semibold">
-          {m["admin.users.title"]()}
-        </h2>
+    <>
+      <Card className="bg-[var(--sidebar)]">
+        <CardContent className="p-6 space-y-6">
+          {/* Header */}
+          <div>
+            <h2 className="text-lg font-semibold">
+              {m["admin.users.title"]()}
+            </h2>
+            <p className="text-sm text-muted-foreground">
+              {m["admin.users.description"]()}
+            </p>
+          </div>
 
-        {users.map((u) => (
-          <div
-            key={u.id}
-            className="flex items-center justify-between border rounded-xl p-3"
-          >
-            <span>{u.email}</span>
+          <Separator />
 
-            <div className="flex items-center gap-3">
-              <Switch
-                checked={u.realTime}
-                onCheckedChange={() =>
-                  setModal({ type: "toggleRealTime", user: u })
-                }
+          {/* Invite user */}
+          <div className="space-y-2">
+            <p className="text-sm font-medium">
+              {m["admin.users.invite.title"]()}
+            </p>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="email"
+                placeholder={m["admin.users.invite.placeholder"]()}
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+                className="
+                  flex-1
+                  h-9
+                  rounded-md
+                  border
+                  border-border
+                  bg-background
+                  px-3
+                  text-sm
+                  focus:outline-none
+                  focus:ring-2
+                  focus:ring-ring
+                "
               />
 
-              <Button
+                <Button
                 size="sm"
                 variant="outline"
-                onClick={() =>
-                  setModal({ type: "deleteUser", user: u })
-                }
-              >
-                {m["admin.users.delete_user"]()}
-              </Button>
+                disabled={inviteSent}
+                onClick={() => {
+                    if (!inviteEmail) return
+
+                    setInviteSent(true)
+                    setInviteEmail("")
+
+                    setTimeout(() => {
+                    setInviteSent(false)
+                    }, 2500)
+                }}
+                className={cn(
+                "cursor-pointer min-w-[150px] transition-colors",
+                inviteSent &&
+                    `
+                    bg-emerald-500
+                    border-emerald-500
+                    text-white
+                    hover:bg-emerald-500
+
+                    dark:bg-emerald-500
+                    dark:border-emerald-500
+                    dark:text-white
+                    dark:hover:bg-emerald-500
+                    `
+                )}
+                >
+                    <AnimatePresence mode="wait" initial={false}>
+                        {inviteSent ? (
+                        <motion.span
+                            key="sent"
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            exit={{ opacity: 0, scale: 0.9 }}
+                            transition={{ duration: 0.15 }}
+                            className="flex items-center justify-center"
+                        >
+                            <Check className="h-4 w-4" />
+                        </motion.span>
+                        ) : (
+                        <motion.span
+                            key="idle"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="flex items-center justify-center"
+                        >
+                            {m["admin.users.invite.send"]()}
+                        </motion.span>
+                        )}
+                    </AnimatePresence>
+                </Button>
+
             </div>
+
+            <p className="text-xs text-muted-foreground">
+              {m["admin.users.invite.helper"]()}
+            </p>
           </div>
-        ))}
-      </CardContent>
-    </Card>
+
+          <Separator />
+
+          {/* Users list */}
+          <div className="space-y-2">
+            {users.map((user) => {
+              const expanded = expandedUserId === user.id
+
+              return (
+                <div
+                  key={user.id}
+                  className="rounded-xl border border-border"
+                >
+                    {/* Row */}
+                    <div
+                    className="
+                        flex
+                        items-center
+                        justify-between
+                        px-4
+                        py-3
+                        hover:bg-muted/40
+                        transition-colors
+                    "
+                    >
+                    {/* Email (no clickable) */}
+                    <span className="flex-1 font-medium">
+                        {user.email}
+                    </span>
+
+                    <div className="flex items-center gap-3">
+                        {/* View details toggle */}
+                        <button
+                        onClick={() =>
+                            setExpandedUserId(expanded ? null : user.id)
+                        }
+                        className="
+                            text-xs
+                            text-muted-foreground
+                            hover:text-foreground
+                            transition-colors
+                            cursor-pointer
+                        "
+                        >
+                        {expanded
+                            ? m["admin.users.collapse"]()
+                            : m["admin.users.expand"]()}
+                        </button>
+
+                        {/* Remove */}
+                        <Button
+                        size="sm"
+                        variant="outline"
+                        className="cursor-pointer text-destructive hover:bg-destructive/10"
+                        onClick={() =>
+                            setUserToDelete({
+                            id: user.id,
+                            email: user.email,
+                            })
+                        }
+                        >
+                        {m["admin.users.actions.remove"]()}
+                        </Button>
+                    </div>
+                    </div>
+
+
+                  {/* Expanded details */}
+                  <AnimatePresence>
+                    {expanded && (
+                        <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        transition={{ duration: 0.2 }}
+                        className="px-4 pb-4 overflow-hidden"
+                        >
+                        <div className="divide-y divide-border text-sm">
+                            <DetailItem
+                                label={m["admin.users.details.messages"]()}
+                                value={`${user.messages}`}
+                            />
+                            <DetailItem
+                                label={m["admin.users.details.created_at"]()}
+                                value={user.createdAt}
+                            />
+                            <DetailItem
+                                label={m["admin.users.details.storage"]()}
+                                value={`${user.storageMb} MB`}
+                            />
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
+              )
+            })}
+          </div>
+        </CardContent>
+      </Card>
+
+        {/* Delete user dialog */}
+        <Dialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
+            <DialogContent className="max-w-sm">
+                <DialogHeader>
+                    <DialogTitle>
+                        {m["admin.users.dialogs.delete.title"]()}
+                    </DialogTitle>
+                    <DialogDescription>
+                        {m["admin.users.dialogs.delete.description"]({ email: userToDelete?.email ?? "" })}
+                    </DialogDescription>
+                </DialogHeader>
+                <DialogFooter className="flex justify-end gap-2">
+                    <Button variant="outline" onClick={() => setUserToDelete(null)}>
+                        {m["common.cancel"]()}
+                    </Button>
+                    <Button variant="destructive" onClick={() => { setUserToDelete(null) }}>
+                        {m["common.delete"]()}
+                    </Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    </>
+  )
+}
+
+function DetailItem({
+  label,
+  value,
+}: {
+  label: string
+  value: string
+}) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-xs text-muted-foreground">
+        {label}
+      </span>
+      <span className="font-medium text-foreground">
+        {value}
+      </span>
+    </div>
   )
 }
 
