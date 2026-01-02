@@ -220,7 +220,26 @@
 				"previous": "Anterior",
 				"next": "Siguiente"
 			}
+		},
+		"alerts": {
+			"title": "Alertas de facturación",
+			"description": "Configurá alertas para recibir notificaciones cuando tu gasto mensual se acerque o alcance un valor determinado.",
+			"amount": "Monto límite",
+			"type": "Tipo de alerta",
+			"types": {
+				"proximity": {
+				"label": "Aviso por proximidad",
+				"description": "Se enviará una notificación cuando alcances el 90% del monto configurado."
+				},
+				"threshold": {
+				"label": "Aviso por límite",
+				"description": "Se enviará una notificación cuando el gasto mensual alcance el monto configurado."
+				}
+			},
+			"save": "Guardar alerta",
+			"helper": "Las alertas se envían al email configurado del administrador.",
+			"configured": "Alertas configuradas",
+			"empty": "No hay alertas configuradas"
 		}
-
 	}
 }

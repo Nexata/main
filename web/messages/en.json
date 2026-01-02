@@ -220,6 +220,26 @@
 				"previous": "Previous",
 				"next": "Next"
 			}
+		},
+		"alerts": {
+			"title": "Billing alerts",
+			"description": "Configure alerts to receive notifications when your monthly spend approaches or reaches a defined amount.",
+			"amount": "Limit amount",
+			"type": "Alert type",
+			"types": {
+				"proximity": {
+				"label": "Proximity alert",
+				"description": "A notification will be sent when you reach 90% of the configured amount."
+				},
+				"threshold": {
+				"label": "Threshold alert",
+				"description": "A notification will be sent when the monthly spend reaches the configured amount."
+				}
+			},
+			"save": "Save alert",
+			"helper": "Alerts are sent to the configured administrator email.",
+			"configured": "Configured alerts",
+			"empty": "No alerts have been configured yet"
 		}
 	}
 }

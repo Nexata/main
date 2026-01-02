@@ -7,30 +7,19 @@ import { ArrowLeft, CalendarIcon, SettingsIcon } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Separator } from "@/components/ui/separator"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from "recharts"
 import { Table, TableBody, TableCell, TableFooter, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
+// Route definition
 export const Route = createFileRoute("/_private/billing")({
   component: BillingPage,
 })
 
 function BillingPage() {
+  // Window title
   useEffect(() => {
     document.title = m["billing.meta.title"]()
   }, [])
@@ -71,6 +60,7 @@ function BillingPage() {
 
       <BillingOverviewSection />
       <BillingMonthlySection />
+      <BillingAlertsSection />
     </motion.div>
   )
 }
@@ -544,3 +534,168 @@ function BillingMonthlySection() {
     </Card>
   )
 }
+
+/* -------------------------------------------------------------------------- */
+/*                            BillingAlertsSection                            */
+/* -------------------------------------------------------------------------- */
+
+function BillingAlertsSection() {
+  const [amount, setAmount] = useState("")
+  const ALERT_TYPES = ["proximity", "threshold"] as const
+  type AlertType = (typeof ALERT_TYPES)[number]
+  const [type, setType] = useState<AlertType>("proximity")
+
+  type Alert = {
+    id: number
+    type: AlertType
+    amount: number
+  }
+
+  const alerts: Alert[] = [
+    { id: 1, type: "proximity", amount: 900 },
+    { id: 2, type: "threshold", amount: 1200 },
+  ]
+
+  return (
+    <Card className="bg-[var(--sidebar)]">
+      <CardContent className="p-6 space-y-4">
+        {/* Header */}
+        <div>
+          <h2 className="text-lg font-semibold">
+            {m["billing.alerts.title"]()}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {m["billing.alerts.description"]()}{" "}
+            <strong className="text-destructive">
+              {m["billing.alerts.helper"]()}
+            </strong>
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* One-liner */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-start">
+          {/* Amount */}
+          <div className="flex flex-col gap-2 flex-1">
+            <label className="text-xs text-muted-foreground">
+              {m["billing.alerts.amount"]()}
+            </label>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">$</span>
+              <input
+                type="number"
+                min={0}
+                placeholder="0.00"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm
+                           [appearance:textfield]
+                           [&::-webkit-outer-spin-button]:appearance-none
+                           [&::-webkit-inner-spin-button]:appearance-none
+                           focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+            </div>
+          </div>
+
+          {/* Type */}
+          <div className="flex flex-col gap-2 sm:w-[240px]">
+            <label className="text-xs text-muted-foreground">
+              {m["billing.alerts.type"]()}
+            </label>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 w-full justify-between"
+                >
+                  {m[`billing.alerts.types.${type}.label`]()}
+                </Button>
+              </DropdownMenuTrigger>
+
+              <DropdownMenuContent align="end" className="w-64">
+                {ALERT_TYPES.map((t) => (
+                  <DropdownMenuItem
+                    key={t}
+                    onClick={() => setType(t)}
+                    className="
+                      flex flex-col items-start gap-1
+                      cursor-pointer
+                      data-[highlighted]:bg-muted
+                      data-[highlighted]:text-foreground
+                    "
+                  >
+                    <span className="text-sm font-medium">
+                      {m[`billing.alerts.types.${t}.label`]()}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      {m[`billing.alerts.types.${t}.description`]()}
+                    </span>
+                  </DropdownMenuItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+
+          {/* Action */}
+          <div className="sm:ml-4 mt-[22px]">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-9"
+              disabled={!amount}
+            >
+              {m["billing.alerts.save"]()}
+            </Button>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Alerts list */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium">
+            {m["billing.alerts.configured"]()}
+          </p>
+
+          {alerts.length === 0 ? (
+            <p className="text-xs text-muted-foreground">
+              {m["billing.alerts.empty"]?.() ?? "No hay alertas configuradas"}
+            </p>
+          ) : (
+            <ul className="space-y-2">
+              {alerts.map((alert) => (
+                <li
+                  key={alert.id}
+                  className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2"
+                >
+                  <div className="flex flex-col">
+                    <span className="text-sm font-medium">
+                      {m[`billing.alerts.types.${alert.type}.label`]()}
+                    </span>
+                    <span className="text-xs text-muted-foreground">
+                      ${alert.amount}
+                    </span>
+                  </div>
+
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="text-muted-foreground hover:text-destructive cursor-pointer"
+                  >
+                    ✕
+                  </Button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+
