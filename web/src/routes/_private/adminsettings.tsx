@@ -10,6 +10,7 @@ import {
   CheckCircle2,
   XCircle,
   Check,
+  CreditCard,
 } from "lucide-react"
 
 import { Card, CardContent } from "@/components/ui/card"
@@ -126,7 +127,6 @@ function AdminSettingsPage() {
             {m["admin.header.personal_panel"]()}
             </Button>
 
-
             <Button
             variant="outline"
             onClick={() => navigate({ to: "/chat" })}
@@ -162,6 +162,7 @@ function AdminSettingsPage() {
 function CompanyOverviewSection() {
   const used = 81
   const total = 500
+  const navigate = useNavigate()
 
   return (
     <Card className="bg-[var(--sidebar)]">
@@ -217,37 +218,54 @@ function CompanyOverviewSection() {
             </span>
           </div>
 
-          <div className="flex gap-2">
+            <div className="flex gap-2">
+            {/* Billing */}
             <Button
-            size="sm"
-            className="
+                size="sm"
+                onClick={() => navigate({ to: "/billing" })}
+                className="
+                cursor-pointer
+                bg-emerald-500
+                hover:bg-emerald-600
+                text-white
+                "
+            >
+                <CreditCard className="h-4 w-4 mr-2" />
+                {m["admin.company_overview.billing"]()}
+            </Button>
+
+            {/* Upgrade */}
+            <Button
+                size="sm"
+                className="
                 cursor-pointer
                 bg-orange-500/90 
                 hover:bg-orange-500 
                 text-white
-            "
+                "
             >
-            <TrendingUp className="h-4 w-4 mr-2" />
+                <TrendingUp className="h-4 w-4 mr-2" />
                 {m["admin.company_overview.upgrade_plan"]()}
             </Button>
 
+            {/* Buy messages */}
             <Button
-            size="sm"
-            variant="outline"
-            className="cursor-pointer"
+                size="sm"
+                variant="outline"
+                className="cursor-pointer"
             >
-            {m["admin.company_overview.buy_messages"]()}
+                {m["admin.company_overview.buy_messages"]()}
             </Button>
-          </div>
+            </div>
+
         </div>
       </CardContent>
     </Card>
   )
 }
 
-
 /* -------------------------------------------------------------------------- */
-/*                             UsageChartSection                               */
+/*                             UsageChartSection                              */
 /* -------------------------------------------------------------------------- */
 
 function UsageChartSection() {
@@ -283,7 +301,6 @@ function UsageChartSection() {
             </div>
         )
     }
-
 
   return (
     <Card className="bg-[var(--sidebar)]">

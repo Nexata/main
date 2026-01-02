@@ -27,6 +27,20 @@
 		"delete": "Delete",
 		"confirm": "Confirm"
 	},
+	"months": {
+		"january": "January",
+		"february": "February",
+		"march": "March",
+		"april": "April",
+		"may": "May",
+		"june": "June",
+		"july": "July",
+		"august": "August",
+		"september": "September",
+		"october": "October",
+		"november": "November",
+		"december": "December"
+  	},
 	"chat": {
 		"meta": {
 			"title": "Nexata | Chat"
@@ -94,7 +108,8 @@
 			"message_balance": "Message balance",
 			"current_plan": "Current plan",
 			"upgrade_plan": "Upgrade plan",
-			"buy_messages": "Buy messages"
+			"buy_messages": "Buy messages",
+			"billing": "Billing & usage"
 		},
 		"usage": {
 			"title": "Message usage",
@@ -146,6 +161,64 @@
 			"description": "This action cannot be undone.",
 			"cancel": "Cancel",
 			"confirm": "Confirm"
+			}
+		}
+	},
+	"billing": {
+		"meta": {
+			"title": "Nexata | Billing & Usage"
+		},
+		"header": {
+			"title": "Billing & Usage",
+			"subtitle": "Usage, costs and billing overview",
+			"admin_settings": "Admin panel",
+			"back": "Back to chat"
+		},
+		"overview": {
+			"title": "Billing overview",
+			"description": "Active plan, billing period and current spend.",
+			"plan": "Plan",
+			"period": "Current period",
+			"current_spend": "Current spend"
+		},
+		"monthly": {
+			"title": "Monthly billing",
+			"description": "Total cost per month over recent periods.",
+			"metrics": {
+				"total_year": "Yearly total",
+				"top_month": "Highest billing month",
+				"max_value": "Monthly peak"
+			}
+		},
+		"invoices": {
+			"title": "Invoices",
+			"description": "Download invoices from previous periods.",
+			"year": "Year",
+			"month": "Month",
+			"download": "Download invoice",
+			"select_period": "Select period"
+		},
+		"events": {
+			"title": "Billing events",
+			"empty": "No billing events were recorded for this period.",
+			"filters": {
+				"all": "All",
+				"storage": "Storage",
+				"embedding": "Embeddings",
+				"date": "Filter by date"
+			},
+			"table": {
+				"date": "Date",
+				"type": "Type",
+				"user": "User",
+				"units": "Units",
+				"price": "Price"
+			},
+			"pagination": {
+				"page": "Page {page} of {total}",
+				"rows": "Rows",
+				"previous": "Previous",
+				"next": "Next"
 			}
 		}
 	}

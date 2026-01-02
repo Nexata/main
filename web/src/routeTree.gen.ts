@@ -15,6 +15,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
 import { Route as PrivateChatRouteImport } from './routes/_private/chat'
+import { Route as PrivateBillingRouteImport } from './routes/_private/billing'
 import { Route as PrivateAdminsettingsRouteImport } from './routes/_private/adminsettings'
 
 const PublicRouteRoute = PublicRouteRouteImport.update({
@@ -45,6 +46,11 @@ const PrivateChatRoute = PrivateChatRouteImport.update({
   path: '/chat',
   getParentRoute: () => PrivateRouteRoute,
 } as any)
+const PrivateBillingRoute = PrivateBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
 const PrivateAdminsettingsRoute = PrivateAdminsettingsRouteImport.update({
   id: '/adminsettings',
   path: '/adminsettings',
@@ -54,6 +60,7 @@ const PrivateAdminsettingsRoute = PrivateAdminsettingsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/adminsettings': typeof PrivateAdminsettingsRoute
+  '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/settings': typeof PrivateSettingsRoute
   '/login': typeof PublicLoginRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/adminsettings': typeof PrivateAdminsettingsRoute
+  '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/settings': typeof PrivateSettingsRoute
   '/login': typeof PublicLoginRoute
@@ -71,21 +79,29 @@ export interface FileRoutesById {
   '/_private': typeof PrivateRouteRouteWithChildren
   '/_public': typeof PublicRouteRouteWithChildren
   '/_private/adminsettings': typeof PrivateAdminsettingsRoute
+  '/_private/billing': typeof PrivateBillingRoute
   '/_private/chat': typeof PrivateChatRoute
   '/_private/settings': typeof PrivateSettingsRoute
   '/_public/login': typeof PublicLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/adminsettings' | '/chat' | '/settings' | '/login'
+  fullPaths:
+    | '/'
+    | '/adminsettings'
+    | '/billing'
+    | '/chat'
+    | '/settings'
+    | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/adminsettings' | '/chat' | '/settings' | '/login'
+  to: '/' | '/adminsettings' | '/billing' | '/chat' | '/settings' | '/login'
   id:
     | '__root__'
     | '/'
     | '/_private'
     | '/_public'
     | '/_private/adminsettings'
+    | '/_private/billing'
     | '/_private/chat'
     | '/_private/settings'
     | '/_public/login'
@@ -141,6 +157,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateChatRouteImport
       parentRoute: typeof PrivateRouteRoute
     }
+    '/_private/billing': {
+      id: '/_private/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof PrivateBillingRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
     '/_private/adminsettings': {
       id: '/_private/adminsettings'
       path: '/adminsettings'
@@ -153,12 +176,14 @@ declare module '@tanstack/react-router' {
 
 interface PrivateRouteRouteChildren {
   PrivateAdminsettingsRoute: typeof PrivateAdminsettingsRoute
+  PrivateBillingRoute: typeof PrivateBillingRoute
   PrivateChatRoute: typeof PrivateChatRoute
   PrivateSettingsRoute: typeof PrivateSettingsRoute
 }
 
 const PrivateRouteRouteChildren: PrivateRouteRouteChildren = {
   PrivateAdminsettingsRoute: PrivateAdminsettingsRoute,
+  PrivateBillingRoute: PrivateBillingRoute,
   PrivateChatRoute: PrivateChatRoute,
   PrivateSettingsRoute: PrivateSettingsRoute,
 }
