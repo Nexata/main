@@ -1,4 +1,4 @@
-import { useState, useRef } from "react"
+import { useRef } from "react"
 import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router"
 import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/sidebar/sidebar"
@@ -16,21 +16,13 @@ export const Route = createFileRoute("/_private")({
 });
 
 function PrivateLayout() {
-  const [darkMode, setDarkMode] = useState(true)
-  const [activeView, setActiveView] =
-    useState<"settings" | "user">("user")
-
   const matches = useMatches()
   const currentMatch = matches[matches.length - 1]
   const hasMountedRef = useRef(false)
 
   return (
     <div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
-      <Sidebar
-        darkMode={darkMode}
-        setActiveView={setActiveView}
-        setDarkMode={setDarkMode}
-      />
+      <Sidebar />
 
       <div className="flex-1 overflow-hidden relative bg-[var(--background)] text-[var(--foreground)]">
         <AnimatePresence mode="wait">

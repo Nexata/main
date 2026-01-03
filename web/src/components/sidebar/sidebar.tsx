@@ -5,7 +5,6 @@ import { motion } from "framer-motion";
 import {
   IoMdSunny,
   IoMdMoon,
-  IoMdPerson,
   IoMdSettings,
   IoMdMenu,
   IoMdAdd,
@@ -21,19 +20,9 @@ import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
 import { useNavigate } from "@tanstack/react-router";
 
-export interface SidebarProps {
-  darkMode: boolean;
-  setDarkMode: (val: boolean) => void;
-  setActiveView: (view: "settings" | "user") => void;
-}
-
-export default function Sidebar({
-  darkMode,
-  setDarkMode,
-  setActiveView,
-}: SidebarProps) {
+export default function Sidebar() {
   const navigate = useNavigate()
-  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   const [chatToDelete, setChatToDelete] = useState<{
     id: number;
     title: string;
@@ -73,7 +62,7 @@ export default function Sidebar({
     }
   };
 
-  const sidebarWidth = isCollapsed ? 60 : 300;
+  const sidebarWidth = isCollapsed ? 60 : 250;
   const MotionDiv = motion.div;
   const { theme, setTheme } = useTheme();
   const toggleDarkMode = () => {
@@ -96,7 +85,7 @@ export default function Sidebar({
                 <motion.img
                   src="/nexata_logo.png"
                   alt="Nexata"
-                  className="h-10 w-auto object-contain"
+                  className="h-7 w-auto object-contain"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
@@ -112,7 +101,7 @@ export default function Sidebar({
                 <motion.img
                   src="/company_logo.png"
                   alt="Empresa"
-                  className="h-8 w-auto object-contain opacity-80"
+                  className="h-7 w-auto object-contain opacity-80"
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   exit={{ opacity: 0, scale: 0.9 }}
@@ -213,30 +202,22 @@ export default function Sidebar({
             }`}
           >
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={toggleDarkMode}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
             >
-              {darkMode ? <IoMdSunny className="w-6 h-6" /> : <IoMdMoon className="w-6 h-6" />}
+              {theme === "dark" ? (<IoMdSunny className="w-6 h-6" />) : (<IoMdMoon className="w-6 h-6" />)}
             </Button>
 
+
             <Button
-              variant="ghost"
+              variant="outline"
               size="icon"
               onClick={() => navigate({ to: "/settings" })}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
               <IoMdSettings className="w-6 h-6" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => setActiveView("user")}
-              className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
-            >
-              <IoMdPerson className="w-6 h-6" />
             </Button>
           </div>
         </div>
