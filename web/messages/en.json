@@ -6,13 +6,10 @@
 		},
 		"title": "Sign in",
 		"subtitle": "Access your Nexata account",
-		"email": "email@company.com",
-		"password": "Password",
-		"submit": "Sign in",
-		"loading": "Signing in...",
 		"oauth": {
-		"google": "Google",
-		"microsoft": "Outlook"
+			"google": "Google",
+			"microsoft": "Outlook",
+			"dropbox": "Dropbox"
 		}
 	},
 	"sidebar": {

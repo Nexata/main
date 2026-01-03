@@ -359,7 +359,6 @@ function BillingMonthlySection() {
     "months.november",
     "months.december",
   ] as const
-  type MonthKey = (typeof MONTH_KEYS)[number]
 
   const now = new Date()
   const currentYear = now.getFullYear()

@@ -6,13 +6,10 @@
 		},
 		"title": "Iniciar sesión",
 		"subtitle": "Accedé a tu cuenta de Nexata",
-		"email": "email@empresa.com",
-		"password": "Contraseña",
-		"submit": "Ingresar",
-		"loading": "Ingresando...",
 		"oauth": {
-		"google": "Google",
-		"microsoft": "Outlook"
+			"google": "Google",
+			"microsoft": "Outlook",
+			"dropbox": "Dropbox"
 		}
 	},
 	"sidebar": {

@@ -1,15 +1,19 @@
 import { useState, useRef } from "react"
-import {
-  Outlet,
-  createFileRoute,
-  useMatches,
-} from "@tanstack/react-router"
+import { Outlet, createFileRoute, redirect, useMatches } from "@tanstack/react-router"
 import { AnimatePresence, motion } from "framer-motion"
 import Sidebar from "@/components/sidebar/sidebar"
+import { isAuthenticated } from "@/lib/auth";
 
 export const Route = createFileRoute("/_private")({
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({
+        to: "/login",
+      });
+    }
+  },
   component: PrivateLayout,
-})
+});
 
 function PrivateLayout() {
   const [darkMode, setDarkMode] = useState(true)

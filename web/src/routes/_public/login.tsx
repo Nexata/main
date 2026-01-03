@@ -1,34 +1,30 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
 import { FcGoogle } from "react-icons/fc";
 import { IoLogoMicrosoft } from "react-icons/io5";
-
+import { SiDropbox } from "react-icons/si";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import * as m from "@/paraglide/messages.js";
+import { isAuthenticated } from "@/lib/auth";
+import { getDropboxLoginUrl, getGoogleLoginUrl } from "@/lib/oauth";
 
 export const Route = createFileRoute("/_public/login")({
-	component: LoginPage,
+  beforeLoad: () => {
+    if (isAuthenticated()) {
+      throw redirect({
+        to: "/chat",
+      });
+    }
+  },
+  component: LoginPage,
 });
 
 function LoginPage() {
 	useEffect(() => { document.title = m["login.meta.title"]() }, [])
-
-	const [loading, setLoading] = useState(false);
 	const navigate = useNavigate();
-
-	const handleSubmit = (e: React.FormEvent) => {
-		e.preventDefault();
-		setLoading(true);
-
-		setTimeout(() => {
-			setLoading(false);
-			navigate({ to: "/chat" });
-		}, 800);
-	}
 
 	return (
 		<>
@@ -63,51 +59,36 @@ function LoginPage() {
 							{m["login.subtitle"]()}
 						</p>
 
-						{/* Form */}
-						<form onSubmit={handleSubmit} className="space-y-4">
-							<Input
-								type="email"
-								required
-								placeholder={m["login.email"]()}
-								className="h-11"
-							/>
-
-							<Input
-								type="password"
-								required
-								placeholder={m["login.password"]()}
-								className="h-11"
-							/>
-
-							<Button
-								type="submit"
-								disabled={loading}
-								className="
-									w-full h-11 text-sm font-medium
-									cursor-pointer
-									transition-all duration-150
-									hover:bg-primary/65
-									active:bg-primary/55
-								"
-							>
-								{loading
-									? m["login.loading"]()
-									: m["login.submit"]()}
-							</Button>
-						</form>
-
-						<Separator className="my-6" />
-
 						{/* OAuth */}
 						<div className="flex flex-col gap-3">
-							<Button variant="outline" className="h-11 gap-3 cursor-pointer">
+							<Button
+							variant="outline"
+							className="h-11 gap-3 cursor-pointer"
+							onClick={() => {
+								window.location.href = getGoogleLoginUrl();
+							}}
+							>
 								<FcGoogle className="h-5 w-5" />
 								{m["login.oauth.google"]()}
 							</Button>
+
 							<Button variant="outline" className="h-11 gap-3 cursor-pointer">
 								<IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
 								{m["login.oauth.microsoft"]()}
 							</Button>
+
+							<Button
+							variant="outline"
+							className="h-11 gap-3 cursor-pointer"
+							onClick={() => {
+								window.location.href = getDropboxLoginUrl();
+							}}
+							>
+							<SiDropbox className="h-5 w-5 text-[#0061FF]" />
+							{m["login.oauth.dropbox"]()}
+							</Button>
+
+							<Separator className="my-1" />
 						</div>
 					</CardContent>
 				</Card>

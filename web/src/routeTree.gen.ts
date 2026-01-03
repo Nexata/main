@@ -13,6 +13,7 @@ import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
+import { Route as PublicCallbackRouteImport } from './routes/_public/callback'
 import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
 import { Route as PrivateChatRouteImport } from './routes/_private/chat'
 import { Route as PrivateBillingRouteImport } from './routes/_private/billing'
@@ -34,6 +35,11 @@ const IndexRoute = IndexRouteImport.update({
 const PublicLoginRoute = PublicLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicCallbackRoute = PublicCallbackRouteImport.update({
+  id: '/callback',
+  path: '/callback',
   getParentRoute: () => PublicRouteRoute,
 } as any)
 const PrivateSettingsRoute = PrivateSettingsRouteImport.update({
@@ -63,6 +69,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/settings': typeof PrivateSettingsRoute
+  '/callback': typeof PublicCallbackRoute
   '/login': typeof PublicLoginRoute
 }
 export interface FileRoutesByTo {
@@ -71,6 +78,7 @@ export interface FileRoutesByTo {
   '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/settings': typeof PrivateSettingsRoute
+  '/callback': typeof PublicCallbackRoute
   '/login': typeof PublicLoginRoute
 }
 export interface FileRoutesById {
@@ -82,6 +90,7 @@ export interface FileRoutesById {
   '/_private/billing': typeof PrivateBillingRoute
   '/_private/chat': typeof PrivateChatRoute
   '/_private/settings': typeof PrivateSettingsRoute
+  '/_public/callback': typeof PublicCallbackRoute
   '/_public/login': typeof PublicLoginRoute
 }
 export interface FileRouteTypes {
@@ -92,9 +101,17 @@ export interface FileRouteTypes {
     | '/billing'
     | '/chat'
     | '/settings'
+    | '/callback'
     | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/adminsettings' | '/billing' | '/chat' | '/settings' | '/login'
+  to:
+    | '/'
+    | '/adminsettings'
+    | '/billing'
+    | '/chat'
+    | '/settings'
+    | '/callback'
+    | '/login'
   id:
     | '__root__'
     | '/'
@@ -104,6 +121,7 @@ export interface FileRouteTypes {
     | '/_private/billing'
     | '/_private/chat'
     | '/_private/settings'
+    | '/_public/callback'
     | '/_public/login'
   fileRoutesById: FileRoutesById
 }
@@ -141,6 +159,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof PublicLoginRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/callback': {
+      id: '/_public/callback'
+      path: '/callback'
+      fullPath: '/callback'
+      preLoaderRoute: typeof PublicCallbackRouteImport
       parentRoute: typeof PublicRouteRoute
     }
     '/_private/settings': {
@@ -193,10 +218,12 @@ const PrivateRouteRouteWithChildren = PrivateRouteRoute._addFileChildren(
 )
 
 interface PublicRouteRouteChildren {
+  PublicCallbackRoute: typeof PublicCallbackRoute
   PublicLoginRoute: typeof PublicLoginRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicCallbackRoute: PublicCallbackRoute,
   PublicLoginRoute: PublicLoginRoute,
 }
 
