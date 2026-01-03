@@ -1,28 +1,25 @@
 import { file } from '@api/schema';
-import { EMBEDDING_DIMENSIONS, EMBEDDING_SIZE } from '@api/utils/embed';
 import {
 	index,
 	integer,
 	pgTable,
-	primaryKey,
 	uuid,
 	varchar,
 	vector,
 } from 'drizzle-orm/pg-core';
-
 export const chunk = pgTable(
 	'chunk',
 	{
-		fileId: uuid().references(() => file.id, { onDelete: 'cascade' }),
+		id: uuid().primaryKey().defaultRandom(),
+		fileId: uuid()
+			.references(() => file.id, { onDelete: 'cascade' })
+			.notNull(),
 		order: integer().notNull().default(1),
-		text: varchar({ length: EMBEDDING_SIZE }).notNull(),
-		embedding: vector({ dimensions: EMBEDDING_DIMENSIONS }),
+		text: varchar({ length: 768 }).notNull(), // EMBEDDING_SIZE
+		embedding: vector({ dimensions: 1024 }).notNull(), // EMBEDDING_DIMENSIONS
 	},
-	(table) => [
-		primaryKey({ columns: [table.fileId, table.order] }),
-		index('embeddingIndex').using(
-			'hnsw',
-			table.embedding.op('vector_cosine_ops'),
-		),
+	(t) => [
+		index('chunk_order').on(t.fileId, t.order),
+		index('chunk_embedding').using('hnsw', t.embedding.op('vector_cosine_ops')),
 	],
 );

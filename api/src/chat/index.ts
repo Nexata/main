@@ -2,13 +2,11 @@ import { authPlugin } from '@api/auth';
 import {
 	BUILD_SYSTEM_PROMPT,
 	getThreadMessages,
-	MODEL,
 	type PartialMessage,
-	REASONING_MODEL,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
-import { cache, db } from '@api/env';
+import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
 import { type MessageRole, message, tenant, thread } from '@api/schema';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -79,9 +77,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				tools: await getTools(activeUser, body.threadId),
 				providerOptions: {
 					groq: {
-						// @ts-expect-error
 						reasoningEffort: body.extraReason ? undefined : 'high',
-						// @ts-expect-error
 						reasoningFormat: body.extraReason ? undefined : 'hidden',
 					},
 				},

@@ -15,12 +15,11 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import { HttpError } from 'elysia-logger';
 
-export async function removeCachedCredentials(slug: string, uids?: string[]) {
-	const cachedCredentials =
-		uids?.map((uid) => `credentials:${slug}:${uid}`) ??
-		(await cache.keys(`credentials:${slug}:*`));
-
-	return cachedCredentials?.length ? await cache.del(...cachedCredentials) : 0;
+export async function removeCachedCredentials(slug: string) {
+	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
+	const cachedAccessTokens = await cache.keys(`at:${slug}:*`);
+	const allKeys = [...(cachedCredentials ?? []), ...(cachedAccessTokens ?? [])];
+	return allKeys.length ? await cache.del(...allKeys) : 0;
 }
 
 export type CachedCredential = {
@@ -177,7 +176,9 @@ export async function getAccessTokenForUser(
 	adminExpected?: true,
 	...addedConditions: SQLWrapper[]
 ) {
-	const cached = await cache.get<string>(`at:${credentialId}:${activeUser.id}`);
+	const cached = await cache.get<string>(
+		`at:${activeUser.slug}:${activeUser.id}:${credentialId}`,
+	);
 	if (cached) return cached;
 
 	const at = (
@@ -215,6 +216,10 @@ export async function getAccessTokenForUser(
 	).at(0)?.at;
 
 	if (!at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
-	await cache.set(`at:${credentialId}:${activeUser.id}`, at, { ex: 60 * 60 });
+	await cache.set(
+		`at:${activeUser.slug}:${activeUser.id}:${credentialId}`,
+		at,
+		{ ex: 60 * 60 },
+	);
 	return at;
 }
