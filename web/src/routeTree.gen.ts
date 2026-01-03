@@ -9,38 +9,126 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as PublicRouteRouteImport } from './routes/_public/route'
+import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PublicLoginRouteImport } from './routes/_public/login'
+import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
+import { Route as PrivateChatRouteImport } from './routes/_private/chat'
+import { Route as PrivateBillingRouteImport } from './routes/_private/billing'
+import { Route as PrivateAdminsettingsRouteImport } from './routes/_private/adminsettings'
 
+const PublicRouteRoute = PublicRouteRouteImport.update({
+  id: '/_public',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PrivateRouteRoute = PrivateRouteRouteImport.update({
+  id: '/_private',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicLoginRoute = PublicLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PrivateSettingsRoute = PrivateSettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
+const PrivateChatRoute = PrivateChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
+const PrivateBillingRoute = PrivateBillingRouteImport.update({
+  id: '/billing',
+  path: '/billing',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
+const PrivateAdminsettingsRoute = PrivateAdminsettingsRouteImport.update({
+  id: '/adminsettings',
+  path: '/adminsettings',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/adminsettings': typeof PrivateAdminsettingsRoute
+  '/billing': typeof PrivateBillingRoute
+  '/chat': typeof PrivateChatRoute
+  '/settings': typeof PrivateSettingsRoute
+  '/login': typeof PublicLoginRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/adminsettings': typeof PrivateAdminsettingsRoute
+  '/billing': typeof PrivateBillingRoute
+  '/chat': typeof PrivateChatRoute
+  '/settings': typeof PrivateSettingsRoute
+  '/login': typeof PublicLoginRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_private': typeof PrivateRouteRouteWithChildren
+  '/_public': typeof PublicRouteRouteWithChildren
+  '/_private/adminsettings': typeof PrivateAdminsettingsRoute
+  '/_private/billing': typeof PrivateBillingRoute
+  '/_private/chat': typeof PrivateChatRoute
+  '/_private/settings': typeof PrivateSettingsRoute
+  '/_public/login': typeof PublicLoginRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/adminsettings'
+    | '/billing'
+    | '/chat'
+    | '/settings'
+    | '/login'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/adminsettings' | '/billing' | '/chat' | '/settings' | '/login'
+  id:
+    | '__root__'
+    | '/'
+    | '/_private'
+    | '/_public'
+    | '/_private/adminsettings'
+    | '/_private/billing'
+    | '/_private/chat'
+    | '/_private/settings'
+    | '/_public/login'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PrivateRouteRoute: typeof PrivateRouteRouteWithChildren
+  PublicRouteRoute: typeof PublicRouteRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_public': {
+      id: '/_public'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PublicRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_private': {
+      id: '/_private'
+      path: ''
+      fullPath: ''
+      preLoaderRoute: typeof PrivateRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,11 +136,78 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/login': {
+      id: '/_public/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof PublicLoginRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_private/settings': {
+      id: '/_private/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof PrivateSettingsRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
+    '/_private/chat': {
+      id: '/_private/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof PrivateChatRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
+    '/_private/billing': {
+      id: '/_private/billing'
+      path: '/billing'
+      fullPath: '/billing'
+      preLoaderRoute: typeof PrivateBillingRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
+    '/_private/adminsettings': {
+      id: '/_private/adminsettings'
+      path: '/adminsettings'
+      fullPath: '/adminsettings'
+      preLoaderRoute: typeof PrivateAdminsettingsRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
   }
 }
 
+interface PrivateRouteRouteChildren {
+  PrivateAdminsettingsRoute: typeof PrivateAdminsettingsRoute
+  PrivateBillingRoute: typeof PrivateBillingRoute
+  PrivateChatRoute: typeof PrivateChatRoute
+  PrivateSettingsRoute: typeof PrivateSettingsRoute
+}
+
+const PrivateRouteRouteChildren: PrivateRouteRouteChildren = {
+  PrivateAdminsettingsRoute: PrivateAdminsettingsRoute,
+  PrivateBillingRoute: PrivateBillingRoute,
+  PrivateChatRoute: PrivateChatRoute,
+  PrivateSettingsRoute: PrivateSettingsRoute,
+}
+
+const PrivateRouteRouteWithChildren = PrivateRouteRoute._addFileChildren(
+  PrivateRouteRouteChildren,
+)
+
+interface PublicRouteRouteChildren {
+  PublicLoginRoute: typeof PublicLoginRoute
+}
+
+const PublicRouteRouteChildren: PublicRouteRouteChildren = {
+  PublicLoginRoute: PublicLoginRoute,
+}
+
+const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
+  PublicRouteRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PrivateRouteRoute: PrivateRouteRouteWithChildren,
+  PublicRouteRoute: PublicRouteRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

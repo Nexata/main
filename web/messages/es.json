@@ -1,4 +1,245 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
-	"example_message": "Hola mundo {username}"
+	"login": {
+		"meta": {
+			"title": "Nexata | Iniciar sesión"
+		},
+		"title": "Iniciar sesión",
+		"subtitle": "Accedé a tu cuenta de Nexata",
+		"email": "email@empresa.com",
+		"password": "Contraseña",
+		"submit": "Ingresar",
+		"loading": "Ingresando...",
+		"oauth": {
+		"google": "Google",
+		"microsoft": "Outlook"
+		}
+	},
+	"sidebar": {
+		"chat": "Chat",
+		"new_chat": "Nuevo Chat",
+		"delete_chat_title": "¿Eliminar chat?",
+		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
+	},
+	"common": {
+		"ask_nexy": "Preguntale a Nexy...",
+		"cancel": "Cancelar",
+		"delete": "Eliminar",
+		"confirm": "Confirmar"
+	},
+	"months": {
+		"january": "Enero",
+		"february": "Febrero",
+		"march": "Marzo",
+		"april": "Abril",
+		"may": "Mayo",
+		"june": "Junio",
+		"july": "Julio",
+		"august": "Agosto",
+		"september": "Septiembre",
+		"october": "Octubre",
+		"november": "Noviembre",
+		"december": "Diciembre"
+	},
+	"chat": {
+		"meta": {
+			"title": "Nexata | Chat"
+		}
+	},
+	"settings": {
+		"meta": {
+			"title": "Nexata | Configuración",
+			"description": "Configuración de cuenta e integraciones"
+		},
+		"title": "Configuración",
+		"subtitle": "Personalizá tus preferencias y gestioná tus integraciones",
+		"actions": {
+			"back_to_chat": "Volver al chat",
+			"admin_panel": "Panel Admin"
+		},
+		"sources": {
+			"title": "Fuentes de información dinámica",
+			"description": "Administrá las integraciones que Nexata utiliza en tiempo real para contextualizar y responder con información siempre actualizada.",
+			"connect": "Conectar",
+			"disconnect": "Desconectar",
+			"modal": {
+				"connect": {
+					"title": "Conectar \"{name}\"",
+					"description": "Al conectar esta fuente, autorizás a Nexata a acceder a los datos asociados. Serás redirigido para completar la autorización."
+				},
+				"disconnect": {
+					"title": "Desconectar \"{name}\"",
+					"description": "Al desconectar esta fuente, Nexata perderá el acceso a los datos asociados y no podrá consultarlos hasta que vuelvas a conectarla."
+				}
+			}
+		},
+		"storage": {
+			"title": "Almacenamiento",
+			"description": "Gestioná qué archivos y carpetas puede utilizar Nexata para analizar, buscar y contextualizar información.",
+			"configure": "Configurar",
+			"close": "Cerrar",
+			"selected": "Seleccionado",
+			"save_changes": "Guardar cambios",
+			"google_drive": {
+				"my_files": "Mis archivos",
+				"shared_files": "Documentos compartidos",
+				"shared_drives": "Unidades compartidas"
+			},
+			"confirm_save": {
+				"title": "Confirmar cambios",
+				"description": "¿Querés aplicar los cambios de seguimiento seleccionados?"
+			}
+		}
+  	},
+	"admin": {
+		"meta": {
+			"title": "Nexata | Panel de administrador",
+			"description": "Gestión general y de usuarios de Nexata"
+		},
+		"header": {
+			"title": "Panel de administrador",
+			"subtitle": "Gestión general y de usuarios de Nexata",
+			"personal_panel": "Panel personal",
+			"back_to_chat": "Volver al chat"
+		},
+		"company_overview": {
+			"title": "Información general",
+			"description": "Resumen del estado actual de tu cuenta, plan activo y consumo de mensajes.",
+			"message_balance": "Saldo de mensajes",
+			"current_plan": "Plan actual",
+			"upgrade_plan": "Upgrade plan",
+			"buy_messages": "Comprar mensajes",
+			"billing": "Facturación y uso"
+		},
+		"usage": {
+			"title": "Uso de mensajes",
+			"description": "Visualización del consumo de mensajes y métricas clave de actividad.",
+			"chart_type": {
+			"bars": "Barras",
+			"lines": "Líneas"
+			}
+		},
+		"integrations": {
+			"title": "Integraciones",
+			"description": "Administrá las fuentes de datos que los usuarios pueden habilitar y conectar para utilizar Nexata.",
+			"configure": "Configurar",
+			"close": "Cerrar",
+			"enable": "Habilitar",
+			"disable": "Deshabilitar",
+			"manage_description": "Gestión de cuentas y permisos para {name}.",
+			"delete_account": "Eliminar cuenta"
+		},
+		"users": {
+			"title": "Usuarios",
+			"description": "Gestioná los usuarios que forman parte de tu empresa en Nexata.",
+			"invite": {
+				"title": "Invitar nuevo usuario",
+				"placeholder": "email@empresa.com",
+				"send": "Enviar invitación",
+				"helper": "El usuario recibirá un email para unirse a tu tenant de Nexata."
+			},
+			"expand": "Ver detalles",
+			"collapse": "Ocultar detalles",
+			"actions": {
+				"remove": "Dar de baja"
+			},
+			"dialogs": {
+				"delete": {
+					"title": "Eliminar usuario",
+					"description": "El usuario \"{email}\" será eliminado permanentemente. Esta acción no se puede deshacer y se perderá toda su información."
+				}
+			},
+			"details": {
+				"messages": "Mensajes usados",
+				"created_at": "Fecha de creación",
+				"storage": "Espacio ocupado"
+			}
+		},
+		"dialogs": {
+			"confirm_action": {
+			"title": "Confirmar acción",
+			"description": "Esta acción no se puede deshacer.",
+			"cancel": "Cancelar",
+			"confirm": "Confirmar"
+			}
+		}
+	},
+	"billing": {
+		"meta": {
+			"title": "Nexata | Facturación y uso"
+		},
+		"header": {
+			"title": "Facturación y uso",
+			"subtitle": "Resumen de consumo, costos y facturación",
+			"admin_settings": "Panel Admin",
+			"back": "Volver al chat"
+		},
+		"overview": {
+			"title": "Resumen del período",
+			"description": "Plan activo, período de facturación y gasto actual.",
+			"plan": "Plan",
+			"period": "Período actual",
+			"current_spend": "Gasto del mes"
+		},
+		"monthly": {
+			"title": "Facturación mensual",
+			"description": "Costo total por mes durante los últimos períodos.",
+			"metrics": {
+				"total_year": "Total anual",
+				"top_month": "Mes con mayor facturación",
+				"max_value": "Máximo mensual"
+			}
+		},
+		"invoices": {
+			"title": "Facturas",
+			"description": "Descargá facturas de períodos anteriores.",
+			"year": "Año",
+			"month": "Mes",
+			"download": "Descargar factura",
+			"select_period": "Seleccionar período"
+		},
+		"events": {
+			"title": "Eventos de facturación",
+			"empty": "No se registraron eventos de facturación en este período.",
+			"filters": {
+				"all": "Todos",
+				"storage": "Almacenamiento",
+				"embedding": "Embeddings",
+				"date": "Filtrar por fecha"
+			},
+			"table": {
+				"date": "Fecha",
+				"type": "Tipo",
+				"user": "Usuario",
+				"units": "Unidades",
+				"price": "Precio"
+			},
+			"pagination": {
+				"page": "Página {page} de {total}",
+				"rows": "Filas",
+				"previous": "Anterior",
+				"next": "Siguiente"
+			}
+		},
+		"alerts": {
+			"title": "Alertas de facturación",
+			"description": "Configurá alertas para recibir notificaciones cuando tu gasto mensual se acerque o alcance un valor determinado.",
+			"amount": "Monto límite",
+			"type": "Tipo de alerta",
+			"types": {
+				"proximity": {
+				"label": "Aviso por proximidad",
+				"description": "Se enviará una notificación cuando alcances el 90% del monto configurado."
+				},
+				"threshold": {
+				"label": "Aviso por límite",
+				"description": "Se enviará una notificación cuando el gasto mensual alcance el monto configurado."
+				}
+			},
+			"save": "Guardar alerta",
+			"helper": "Las alertas se envían al email configurado del administrador.",
+			"configured": "Alertas configuradas",
+			"empty": "No hay alertas configuradas"
+		}
+	}
 }
