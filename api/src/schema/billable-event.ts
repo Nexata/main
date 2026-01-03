@@ -12,7 +12,7 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export enum BillableEventType {
-	EMBED = 'embed', // Consumption in MBs
+	EMBED = 'embed', // Consumption in token usage
 	STORAGE = 'storage', // Consumption in MBs
 	REFILL = 'refill', // Consumption in messages
 }
@@ -33,11 +33,11 @@ export const billableEvent = pgTable(
 		slug: varchar({ length: 32 }).references(() => tenant.slug),
 		createdAt: date().notNull().defaultNow(),
 	},
-	(table) => [
+	(t) => [
 		check(
 			'bill_event_identifiers',
-			or(isNotNull(table.userId), isNotNull(table.slug))!.getSQL(),
+			or(isNotNull(t.userId), isNotNull(t.slug))!.getSQL(),
 		),
-		index('billable_event_created_at_desc').on(desc(table.createdAt)),
+		index('billable_event_created_at_desc').on(desc(t.createdAt)),
 	],
 );

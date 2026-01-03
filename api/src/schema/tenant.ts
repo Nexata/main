@@ -1,4 +1,3 @@
-import { PRICING } from '@api/env';
 import { matchRegex } from '@api/utils/sql';
 import { gte } from 'drizzle-orm';
 import {
@@ -15,9 +14,9 @@ export const tenant = pgTable(
 		slug: varchar({ length: 16 }).primaryKey(),
 		displayName: varchar({ length: 64 }),
 		logoUrl: varchar(),
-		baseBill: integer().notNull().default(PRICING.baseBill),
-		messageLimit: integer().notNull().default(PRICING.baseBillMessages),
-		defaultMessageLimit: integer().notNull().default(PRICING.baseBillMessages),
+		baseBill: integer().notNull().default(20), // PRICING.baseBill
+		messageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
+		defaultMessageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
 		usedMessages: integer().notNull().default(0),
 		createdAt: timestamp().notNull().defaultNow(),
 	},

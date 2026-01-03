@@ -24,11 +24,11 @@ CREATE TABLE "billable_event" (
 );
 
 CREATE TABLE "chunk" (
-	"file_id" uuid,
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"file_id" uuid NOT NULL,
 	"order" integer DEFAULT 1 NOT NULL,
 	"text" varchar(768) NOT NULL,
-	"embedding" vector(1536),
-	CONSTRAINT "chunk_file_id_order_pk" PRIMARY KEY("file_id","order")
+	"embedding" vector(1024) NOT NULL
 );
 
 CREATE TABLE "credential_permission" (
@@ -69,10 +69,10 @@ CREATE TABLE "file" (
 	"thread_id" uuid,
 	"external_id" varchar(256),
 	"credential_id" uuid,
-	"auto_sync" boolean DEFAULT true NOT NULL,
+	"auto_sync" boolean DEFAULT false NOT NULL,
 	"url" varchar,
 	"name" varchar(96) NOT NULL,
-	"extension" varchar(8),
+	"type" varchar(256),
 	"metadata" jsonb,
 	"modified_at" timestamp DEFAULT now() NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL

@@ -1,5 +1,5 @@
 {
-  "id": "55688c2c-84ad-4af9-9afc-6d55cf079bd2",
+  "id": "954ce590-de13-4510-8c3c-9849017a05af",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -197,11 +197,18 @@
       "name": "chunk",
       "schema": "",
       "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
         "file_id": {
           "name": "file_id",
           "type": "uuid",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "order": {
           "name": "order",
@@ -218,9 +225,9 @@
         },
         "embedding": {
           "name": "embedding",
-          "type": "vector(1536)",
+          "type": "vector(1024)",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         }
       },
       "indexes": {
@@ -256,15 +263,7 @@
           "onUpdate": "no action"
         }
       },
-      "compositePrimaryKeys": {
-        "chunk_file_id_order_pk": {
-          "name": "chunk_file_id_order_pk",
-          "columns": [
-            "file_id",
-            "order"
-          ]
-        }
-      },
+      "compositePrimaryKeys": {},
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -596,7 +595,7 @@
           "type": "boolean",
           "primaryKey": false,
           "notNull": true,
-          "default": true
+          "default": false
         },
         "url": {
           "name": "url",
@@ -610,9 +609,9 @@
           "primaryKey": false,
           "notNull": true
         },
-        "extension": {
-          "name": "extension",
-          "type": "varchar(8)",
+        "type": {
+          "name": "type",
+          "type": "varchar(256)",
           "primaryKey": false,
           "notNull": false
         },
