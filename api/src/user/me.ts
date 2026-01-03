@@ -27,9 +27,23 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 			detail: { summary: 'Get my tenant' },
 		},
 	)
-	.get('/', async ({ activeUser }) => activeUser, {
-		detail: { summary: 'Get me' },
-	})
+	.get(
+		'/',
+		async ({ activeUser }) =>
+			db
+				.select({
+					id: user.id,
+					email: user.email,
+					displayName: user.displayName,
+					pfpUrl: user.pfpUrl,
+					isAdmin: user.isAdmin,
+				})
+				.from(user)
+				.where(eq(user.id, activeUser.id)),
+		{
+			detail: { summary: 'Get me' },
+		},
+	)
 	.patch(
 		'/',
 		async ({ activeUser: { id }, body }) =>
