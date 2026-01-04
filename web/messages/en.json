@@ -67,14 +67,15 @@
 			"connect": "Connect",
 			"disconnect": "Disconnect",
 			"no_accounts": "No connected accounts",
+			"owner_label": "Owner",
+			"account_label": "Account",
+			"created_at_label": "Created At",
+			"loading_accounts": "Loading accounts...",
+			"view_details": "View details",
 			"modal": {
-				"connect": {
-					"title": "Connect \"{name}\"",
-					"description": "By connecting this source, you authorize Nexata to access the associated data. You will be redirected to complete authorization."
-				},
-				"disconnect": {
-					"title": "Disconnect \"{name}\"",
-					"description": "By disconnecting this source, Nexata will lose access to the associated data until you reconnect it."
+				"delete": {
+					"title": "Delete Credential",
+					"description": "Deleting this credential will remove access to the account and associated data. This action cannot be undone."
 				}
 			}
 		},
