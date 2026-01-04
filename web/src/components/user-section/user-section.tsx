@@ -10,15 +10,17 @@ import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button
 export default function UserSection({
     me,
     collapsed,
+    loading,
     onSave,
 }: {
-    me: NonNullable<Me>;
+    me: Me | null;
     collapsed: boolean;
-    onSave: (me: NonNullable<Me>) => void;
+    loading?: boolean;
+    onSave: (me: Me) => void;
 }) {
     const [open, setOpen] = useState(false);
     const [saving, setSaving] = useState(false);
-    const [displayName, setDisplayName] = useState(me.displayName ?? "");
+    const [displayName, setDisplayName] = useState(me?.displayName ?? "");
     const [file, setFile] = useState<File | null>(null);
 
     const size = collapsed ? 28 : 32;
@@ -26,46 +28,67 @@ export default function UserSection({
     function stringToColor(str: string) {
         let hash = 0;
         for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
         }
         return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`;
     }
 
     async function handleSave() {
         try {
-        setSaving(true);
-
-        const updated = await updateMe({
-            displayName,
-            pfp: file ?? undefined,
-        });
-
-        // TODO: Ver como hacer para que no se cierre inmediato y ver la animacion de Ok
-
-        setOpen(false);
-        setFile(null);
-        onSave(updated);
+            setSaving(true);
+            const updated = await updateMe({
+                displayName,
+                pfp: file ?? undefined,
+            });
+            setOpen(false);
+            setFile(null);
+            onSave(updated);
         } finally {
-        setSaving(false);
+            setSaving(false);
         }
+    }
+
+    //  Skeleton loading 
+    if (loading) {
+        return (
+        <div className={`mt-2 rounded-lg p-2 flex items-center gap-3 ${collapsed ? "justify-center" : ""}`}>
+            {/* Avatar skeleton */}
+            <div
+            className="rounded-full bg-muted animate-pulse shrink-0"
+            style={{
+                width: size,
+                height: size,
+                minWidth: size,
+                minHeight: size,
+            }}
+            />
+
+            {/* Text skeleton */}
+            {!collapsed && (
+            <div className="flex-1 space-y-1">
+                <div className="h-4 w-24 bg-muted rounded animate-pulse" />
+                <div className="h-3 w-32 bg-muted rounded animate-pulse opacity-60" />
+            </div>
+            )}
+        </div>
+        );
     }
 
     return (
         <div className="relative">
-            {/* User row */}
             <motion.div
                 onClick={() => {
-                if (saving) return;
-                setOpen((v) => !v);
+                    if (saving) return;
+                    setOpen((v) => !v);
                 }}
                 whileHover={{ scale: 1.02 }}
                 className={`
-                mt-2 rounded-lg p-2 flex items-center gap-3 cursor-pointer
-                hover:bg-[var(--muted)/60] transition-colors
-                ${collapsed ? "justify-center" : ""}
+                    mt-2 rounded-lg p-2 flex items-center gap-3 cursor-pointer
+                    hover:bg-[var(--muted)/60] transition-colors
+                    ${collapsed ? "justify-center" : ""}
                 `}
             >
-                {me.pfpUrl ? (
+                {me?.pfpUrl ? (
                     <img
                         src={me.pfpUrl}
                         alt={me.displayName ?? me.email}
@@ -85,19 +108,19 @@ export default function UserSection({
                         height: size,
                         minWidth: size,
                         minHeight: size,
-                        backgroundColor: stringToColor(me.displayName ?? me.email),
+                        backgroundColor: stringToColor(me?.displayName ?? me?.email ?? ""),
                         fontSize: size * 0.45,
                         }}
                     >
-                        {(me.displayName ?? me.email)[0]?.toUpperCase()}
+                        {(me?.displayName ?? me?.email ?? "")[0]?.toUpperCase()}
                     </div>
                 )}
 
                 {!collapsed && (
-                    <div className="min-w-0">
-                        <div className="font-semibold truncate">{me.displayName ?? m["common.user"]()}</div>
-                        <div className="text-xs opacity-60 truncate">{me.email}</div>
-                    </div>
+                <div className="min-w-0">
+                    <div className="font-semibold truncate">{me?.displayName ?? m["common.user"]()}</div>
+                    <div className="text-xs opacity-60 truncate">{me?.email}</div>
+                </div>
                 )}
             </motion.div>
 
@@ -153,9 +176,7 @@ export default function UserSection({
                                 type="file"
                                 className="cursor-pointer"
                                 accept="image/*"
-                                onChange={(e) =>
-                                    setFile(e.target.files?.[0] ?? null)
-                                }
+                                onChange={(e) => setFile(e.target.files?.[0] ?? null)}
                                 />
                             )}
 

@@ -22,6 +22,9 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import * as m from "@/paraglide/messages.js"
+import { listCredentials } from "@/lib/credential"
+import type { DisplayCredential } from "@api/utils/credential"
+import { getGoogleCredentialUrl, type GoogleScope } from "@/lib/oauth"
 
 export const Route = createFileRoute("/_private/settings")({
   component: SettingsPage,
@@ -30,11 +33,40 @@ export const Route = createFileRoute("/_private/settings")({
 // ------------------------------- Settings Page ----------------------------------
 function SettingsPage() {
 
-    useEffect(() => {
-    document.title = m["settings.meta.title"]()
-    }, [])
+  // Window title
+  useEffect(() => {
+  document.title = m["settings.meta.title"]()
+  }, [])
 
-    const navigate = useNavigate()
+  // Navigation
+  const navigate = useNavigate()
+
+  // Credentials state
+  const [credentials, setCredentials] = useState<DisplayCredential[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCredentials() {
+      try {
+        setLoading(true)
+        const data = await listCredentials()
+        console.log(data)
+        if (mounted) setCredentials(data)
+      } catch (err) {
+        console.error(err)
+        if (mounted) setError("Failed to load credentials")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    loadCredentials()
+
+    return () => { mounted = false }
+  }, [])
 
   return (
     <>
@@ -80,7 +112,7 @@ function SettingsPage() {
         {/* Separador */}
         <div className="h-px w-full bg-border" />
 
-        <DataSourcesSection />
+        <DataSourcesSection credentials={credentials ?? []} loading={loading} />
 
         <StorageSection />
 
@@ -89,134 +121,152 @@ function SettingsPage() {
   )
 }
 
-
 // --------------------------- Data Sources Section -------------------------------
-function DataSourcesSection() {
-    const [sources, setSources] = useState([
-        { id: "gmail", name: "Gmail", status: "disconnected" },
-        { id: "gcalendar", name: "Google Calendar", status: "warning" },
-        { id: "outlook", name: "Outlook", status: "connected" },
-        { id: "ocalendar", name: "Outlook Calendar", status: "disconnected" }
-    ])
+type DataSourcesSectionProps = {
+  credentials: DisplayCredential[]
+}
 
-    const [modal, setModal] = useState<null | {
-        type: "connect" | "disconnect"
-        source: typeof sources[number]
-    }>(null)
+export function DataSourcesSection({ credentials, loading }: DataSourcesSectionProps & { loading: boolean }) {
+  const [openSource, setOpenSource] = useState<string | null>(null)
 
-    const statusIcon = (status: string) => {
-        switch (status) {
-        case "connected":
-            return <CheckCircle2 className="text-green-500 h-5 w-5" />
-        case "warning":
-            return <AlertTriangle className="text-yellow-500 h-5 w-5" />
-        default:
-            return <XCircle className="text-destructive h-5 w-5" />
-        }
-    }
+  type SourceConfig = {
+    id: string
+    name: string
+    icon: string
+    scope: GoogleScope
+  }
 
-    return (
-        <Card className="bg-[var(--sidebar)]">
-        <CardContent className="p-6 space-y-4">
-            <div>
-                <h2 className="text-lg font-semibold">
-                    {m["settings.sources.title"]()}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    {m["settings.sources.description"]()}
-                </p>
-            </div>
+  const sources: SourceConfig[] = [
+    {
+      id: "gmail",
+      name: "Gmail",
+      icon: "/datasource_icons/gmail.png",
+      scope: "gmail",
+    },
+    {
+      id: "gcalendar",
+      name: "Google Calendar",
+      icon: "/datasource_icons/gcalendar.png",
+      scope: "calendar",
+    },
+  ]
 
-            <Separator />
-
-            <div className="space-y-3">
-            {sources.map((s) => (
-                <div
-                key={s.id}
-                className="flex items-center justify-between rounded-xl border p-3"
-                >
-                <div className="flex items-center gap-3">
-                    <img
-                    src={`/datasource_icons/${s.id}.png`}
-                    className="h-6 w-6"
-                    />
-                    <span className="font-medium">{s.name}</span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {statusIcon(s.status)}
-                    <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                        setModal({
-                        type:
-                            s.status === "connected"
-                            ? "disconnect"
-                            : "connect",
-                        source: s,
-                        })
-                    }
-                    >
-                    {s.status === "connected"
-                        ? m["settings.sources.disconnect"]()
-                        : m["settings.sources.connect"]()}
-                    </Button>
-                </div>
-                </div>
-            ))}
-            </div>
-        </CardContent>
-
-        <Dialog open={!!modal} onOpenChange={() => setModal(null)}>
-            <DialogContent>
-            <DialogHeader>
-                <DialogTitle>
-                {modal?.type === "connect"
-                    ? m["settings.sources.modal.connect.title"]({ name: modal.source.name })
-                    : m["settings.sources.modal.disconnect.title"]({ name: modal?.source.name ?? "Source" })}
-                </DialogTitle>
-                <DialogDescription>
-                {modal?.type === "connect"
-                    ? m["settings.sources.modal.connect.description"]()
-                    : m["settings.sources.modal.disconnect.description"]()}
-                </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setModal(null)}>
-                    {m["common.cancel"]()}
-                </Button>
-                <Button
-                onClick={() => {
-                    if (!modal) return
-
-                    setSources((prev) =>
-                    prev.map((s) =>
-                        s.id === modal.source.id
-                        ? {
-                            ...s,
-                            status:
-                                modal.type === "connect"
-                                ? "connected"
-                                : "disconnected",
-                            }
-                        : s
-                    )
-                    )
-
-                    setModal(null)
-                }}
-                variant={modal?.type === "disconnect" ? "destructive" : "default"}
-                >
-                    {m["common.confirm"]()}
-                </Button>
-
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </Card>
+  const credentialsByScope = (scope: GoogleScope) =>
+    credentials.filter(
+      (c) =>
+        c.provider === "google" &&
+        c.scopes?.[0] === scope
     )
+
+  return (
+    <Card className="bg-[var(--sidebar)]">
+      <CardContent className="p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">
+            {m["settings.sources.title"]()}
+          </h2>
+          <p className="text-sm text-muted-foreground">
+            {m["settings.sources.description"]()}
+          </p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          {sources.map((source) => {
+            const accounts = credentialsByScope(source.scope)
+            const open = openSource === source.id
+            const accountCount = accounts.length
+
+            return (
+              <div
+                key={source.id}
+                className="rounded-xl border p-3 space-y-3 flex flex-col"
+              >
+                {/* Header */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <img src={source.icon} className="h-6 w-6" />
+                    <span className="font-medium">{source.name}</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    <button
+                      className="text-sm text-muted-foreground hover:underline cursor-pointer"
+                      onClick={() =>
+                        setOpenSource(open ? null : source.id)
+                      }
+                    >
+                      {loading
+                        ? "Loading..."
+                        : accountCount === 0
+                        ? m["settings.sources.no_accounts"]()
+                        : `${accountCount} account${
+                            accountCount > 1 ? "s" : ""
+                          } · View details`}
+                    </button>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={loading}
+                      className="cursor-pointer"
+                      onClick={() => {
+                        window.location.href =
+                          getGoogleCredentialUrl(source.scope)
+                      }}
+                    >
+                      {m["settings.sources.connect"]()}
+                    </Button>
+                  </div>
+                </div>
+
+                {/* Loading placeholder */}
+                {loading && (
+                  <div className="mt-2 h-6 w-full animate-pulse bg-muted rounded" />
+                )}
+
+                {/* Accounts detail */}
+                <AnimatePresence>
+                  {!loading && open && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="pl-9 space-y-2"
+                    >
+                      {accountCount === 0 ? (
+                        <p className="text-sm text-muted-foreground">
+                          {m["settings.sources.no_accounts"]()}
+                        </p>
+                      ) : (
+                        accounts.map((acc) => (
+                          <div
+                            key={acc.id}
+                            className="flex items-center justify-between w-full rounded-md border border-border p-2 text-sm bg-[var(--card)]"
+                          >
+                            <span className="font-medium truncate">
+                              {acc.email}
+                            </span>
+                            <span className="text-muted-foreground truncate">
+                              {acc.ownedBy.displayName ?? acc.ownedBy.email}
+                            </span>
+                            <span className="text-muted-foreground whitespace-nowrap">
+                              {new Date(acc.createdAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                        ))
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 // ------------------------------- Drive Section ----------------------------------
@@ -232,6 +282,11 @@ function StorageSection() {
       name: "OneDrive",
       icon: "/datasource_icons/onedrive.png"
     },
+    {
+      id: "dropbox",
+      name: "Dropbox",
+      icon: "/datasource_icons/dropbox.png"
+    }
   ])
 
   const [openProvider, setOpenProvider] = useState<string | null>(null)

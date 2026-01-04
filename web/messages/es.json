@@ -53,8 +53,7 @@
 	},
 	"settings": {
 		"meta": {
-			"title": "Nexata | Configuración",
-			"description": "Configuración de cuenta e integraciones"
+			"title": "Nexata | Configuración"
 		},
 		"title": "Configuración",
 		"subtitle": "Personalizá tus preferencias y gestioná tus integraciones",
@@ -67,6 +66,7 @@
 			"description": "Administrá las integraciones que Nexata utiliza en tiempo real para contextualizar y responder con información siempre actualizada.",
 			"connect": "Conectar",
 			"disconnect": "Desconectar",
+			"no_accounts": "No hay cuentas conectadas",
 			"modal": {
 				"connect": {
 					"title": "Conectar \"{name}\"",

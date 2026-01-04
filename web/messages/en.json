@@ -53,8 +53,7 @@
 	},
 	"settings": {
 		"meta": {
-			"title": "Nexata | Settings",
-			"description": "Account settings and integrations"
+			"title": "Nexata | Settings"
 		},
 		"title": "Settings",
 		"subtitle": "Manage your preferences and integrations",
@@ -67,6 +66,7 @@
 			"description": "Manage real-time integrations Nexata uses to contextualize and respond with up-to-date information.",
 			"connect": "Connect",
 			"disconnect": "Disconnect",
+			"no_accounts": "No connected accounts",
 			"modal": {
 				"connect": {
 					"title": "Connect \"{name}\"",
