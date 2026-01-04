@@ -12,6 +12,12 @@
 			"dropbox": "Dropbox"
 		}
 	},
+	"user": {
+		"profile": {
+			"title": "Perfil de usuario",
+			"display_name_placeholder": "Nombre visible"
+		}
+	},
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "Nuevo Chat",
@@ -22,7 +28,9 @@
 		"ask_nexy": "Preguntale a Nexy...",
 		"cancel": "Cancelar",
 		"delete": "Eliminar",
-		"confirm": "Confirmar"
+		"confirm": "Confirmar",
+		"user": "Usuario",
+    	"save_changes": "Guardar cambios"
 	},
 	"months": {
 		"january": "Enero",

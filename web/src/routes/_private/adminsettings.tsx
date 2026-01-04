@@ -42,6 +42,7 @@ import {
   ResponsiveContainer,
 } from "recharts"
 import { cn } from "@/lib/utils"
+import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 
 export const Route = createFileRoute("/_private/adminsettings")({
   component: AdminSettingsPage,
@@ -585,61 +586,14 @@ function UsersSection() {
                 "
               />
 
-                <Button
-                size="sm"
-                variant="outline"
-                disabled={inviteSent}
-                onClick={() => {
-                    if (!inviteEmail) return
+              <AsyncConfirmButton
+              onClick={async () => {
+                return;
+              }}
+              >
+                {m["admin.users.invite.send"]()}
+              </AsyncConfirmButton>
 
-                    setInviteSent(true)
-                    setInviteEmail("")
-
-                    setTimeout(() => {
-                    setInviteSent(false)
-                    }, 2500)
-                }}
-                className={cn(
-                "cursor-pointer min-w-[150px] transition-colors",
-                inviteSent &&
-                    `
-                    bg-emerald-500
-                    border-emerald-500
-                    text-white
-                    hover:bg-emerald-500
-
-                    dark:bg-emerald-500
-                    dark:border-emerald-500
-                    dark:text-white
-                    dark:hover:bg-emerald-500
-                    `
-                )}
-                >
-                    <AnimatePresence mode="wait" initial={false}>
-                        {inviteSent ? (
-                        <motion.span
-                            key="sent"
-                            initial={{ opacity: 0, scale: 0.9 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.9 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex items-center justify-center"
-                        >
-                            <Check className="h-4 w-4" />
-                        </motion.span>
-                        ) : (
-                        <motion.span
-                            key="idle"
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className="flex items-center justify-center"
-                        >
-                            {m["admin.users.invite.send"]()}
-                        </motion.span>
-                        )}
-                    </AnimatePresence>
-                </Button>
 
             </div>
 
