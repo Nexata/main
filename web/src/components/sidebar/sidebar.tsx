@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   IoMdSunny,
@@ -19,6 +19,8 @@ import * as m from "@/paraglide/messages.js";
 import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
 import { useNavigate } from "@tanstack/react-router";
+import { getMe, type Me } from "@/lib/user";
+import UserSection from "../user-section/user-section";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -68,6 +70,32 @@ export default function Sidebar() {
   const toggleDarkMode = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
+
+  // State for user info
+  const [me, setMe] = useState<Me>(null);
+
+  // get user info
+  useEffect(() => {
+    let mounted = true;
+
+    getMe()
+      .then((user) => {
+        if (!mounted || !user) return;
+
+        setMe(user);
+        console.log(user);
+
+        localStorage.setItem("userId", user.id);
+        localStorage.setItem("isAdmin", String(user.isAdmin));
+      })
+      .catch(() => {
+        // Ver de mostrar error
+      });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   return (
     <>
@@ -219,6 +247,15 @@ export default function Sidebar() {
             >
               <IoMdSettings className="w-6 h-6" />
             </Button>
+
+            {me && (
+              <UserSection
+                me={me}
+                collapsed={isCollapsed}
+                onSave={(updated) => setMe(updated)}
+              />
+            )}
+
           </div>
         </div>
       </MotionDiv>

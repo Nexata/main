@@ -1,6 +1,6 @@
 import { useEffect } from "react";
 import { motion } from "framer-motion";
-import { createFileRoute, redirect, useNavigate } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 import { FcGoogle } from "react-icons/fc";
 import { IoLogoMicrosoft } from "react-icons/io5";
 import { SiDropbox } from "react-icons/si";
@@ -14,9 +14,7 @@ import { getDropboxLoginUrl, getGoogleLoginUrl } from "@/lib/oauth";
 export const Route = createFileRoute("/_public/login")({
   beforeLoad: () => {
     if (isAuthenticated()) {
-      throw redirect({
-        to: "/chat",
-      });
+      throw redirect({ to: "/chat" });
     }
   },
   component: LoginPage,
@@ -24,7 +22,6 @@ export const Route = createFileRoute("/_public/login")({
 
 function LoginPage() {
 	useEffect(() => { document.title = m["login.meta.title"]() }, [])
-	const navigate = useNavigate();
 
 	return (
 		<>
@@ -66,8 +63,7 @@ function LoginPage() {
 							className="h-11 gap-3 cursor-pointer"
 							onClick={() => {
 								window.location.href = getGoogleLoginUrl();
-							}}
-							>
+							}}>
 								<FcGoogle className="h-5 w-5" />
 								{m["login.oauth.google"]()}
 							</Button>
@@ -82,10 +78,9 @@ function LoginPage() {
 							className="h-11 gap-3 cursor-pointer"
 							onClick={() => {
 								window.location.href = getDropboxLoginUrl();
-							}}
-							>
-							<SiDropbox className="h-5 w-5 text-[#0061FF]" />
-							{m["login.oauth.dropbox"]()}
+							}}>
+								<SiDropbox className="h-5 w-5 text-[#0061FF]" />
+								{m["login.oauth.dropbox"]()}
 							</Button>
 
 							<Separator className="my-1" />
