@@ -33,6 +33,31 @@ export type CachedCredential = {
 	};
 };
 
+export interface DisplayCredential {
+	id: string;
+	canAdmin: boolean;
+	provider: OauthProvider;
+	scopes: OauthScope[];
+	email: string;
+	isGlobal: boolean;
+	ownedBy: {
+		id: string;
+		email: string;
+		pfpUrl: string | null;
+		displayName: string | null;
+		isAdmin: boolean;
+	};
+	permissions: Array<{
+		id: string;
+		displayName: string | null;
+		email: string;
+		pfpUrl: string | null;
+		isAdminOfCredential: boolean;
+	}>;
+	accessToken: undefined;
+	createdAt: Date;
+}
+
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'usage',
@@ -40,8 +65,7 @@ export async function getCredentialsForUser(
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'display',
-	// biome-ignore lint/suspicious/noExplicitAny: typo
-): Promise<any[]>;
+): Promise<DisplayCredential[]>;
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'display' | 'usage' = 'display',
