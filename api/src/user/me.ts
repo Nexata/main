@@ -30,16 +30,18 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.get(
 		'/',
 		async ({ activeUser }) =>
-			(await db
-				.select({
-					id: user.id,
-					email: user.email,
-					displayName: user.displayName,
-					pfpUrl: user.pfpUrl,
-					isAdmin: user.isAdmin,
-				})
-				.from(user)
-				.where(eq(user.id, activeUser.id))).at(0),
+			(
+				await db
+					.select({
+						id: user.id,
+						email: user.email,
+						displayName: user.displayName,
+						pfpUrl: user.pfpUrl,
+						isAdmin: user.isAdmin,
+					})
+					.from(user)
+					.where(eq(user.id, activeUser.id))
+			)[0]!,
 		{
 			detail: { summary: 'Get me' },
 		},
