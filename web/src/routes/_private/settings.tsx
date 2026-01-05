@@ -22,6 +22,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import * as m from "@/paraglide/messages.js"
+import { listCredentials, updateCredentialPermission } from "@/lib/credential"
+import type { DisplayCredential } from "@api/utils/credential"
+import { getGoogleCredentialUrl, type GoogleScope } from "@/lib/oauth"
+import { getIsAdmin, getUserId } from "@/lib/auth"
+import { cn } from "@/lib/utils"
+import UserInput from "@/components/user-input/user-input"
+import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 
 export const Route = createFileRoute("/_private/settings")({
   component: SettingsPage,
@@ -30,11 +37,40 @@ export const Route = createFileRoute("/_private/settings")({
 // ------------------------------- Settings Page ----------------------------------
 function SettingsPage() {
 
-    useEffect(() => {
-    document.title = m["settings.meta.title"]()
-    }, [])
+  // Window title
+  useEffect(() => {
+  document.title = m["settings.meta.title"]()
+  }, [])
 
-    const navigate = useNavigate()
+  // Navigation
+  const navigate = useNavigate()
+
+  // Credentials state
+  const [credentials, setCredentials] = useState<DisplayCredential[] | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let mounted = true
+
+    async function loadCredentials() {
+      try {
+        setLoading(true)
+        const data = await listCredentials()
+        console.log(data)
+        if (mounted) setCredentials(data)
+      } catch (err) {
+        console.error(err)
+        if (mounted) setError("Failed to load credentials")
+      } finally {
+        if (mounted) setLoading(false)
+      }
+    }
+
+    loadCredentials()
+
+    return () => { mounted = false }
+  }, [])
 
   return (
     <>
@@ -80,7 +116,11 @@ function SettingsPage() {
         {/* Separador */}
         <div className="h-px w-full bg-border" />
 
-        <DataSourcesSection />
+        <DataSourcesSection
+          credentials={credentials ?? []}
+          loading={loading}
+          onCredentialsUpdate={setCredentials}
+        />
 
         <StorageSection />
 
@@ -89,137 +129,448 @@ function SettingsPage() {
   )
 }
 
-
+// --------------------------------------------------------------------------------
 // --------------------------- Data Sources Section -------------------------------
-function DataSourcesSection() {
-    const [sources, setSources] = useState([
-        { id: "gmail", name: "Gmail", status: "disconnected" },
-        { id: "gcalendar", name: "Google Calendar", status: "warning" },
-        { id: "outlook", name: "Outlook", status: "connected" },
-        { id: "ocalendar", name: "Outlook Calendar", status: "disconnected" }
-    ])
+// --------------------------------------------------------------------------------
 
-    const [modal, setModal] = useState<null | {
-        type: "connect" | "disconnect"
-        source: typeof sources[number]
-    }>(null)
-
-    const statusIcon = (status: string) => {
-        switch (status) {
-        case "connected":
-            return <CheckCircle2 className="text-green-500 h-5 w-5" />
-        case "warning":
-            return <AlertTriangle className="text-yellow-500 h-5 w-5" />
-        default:
-            return <XCircle className="text-destructive h-5 w-5" />
-        }
-    }
-
-    return (
-        <Card className="bg-[var(--sidebar)]">
-        <CardContent className="p-6 space-y-4">
-            <div>
-                <h2 className="text-lg font-semibold">
-                    {m["settings.sources.title"]()}
-                </h2>
-                <p className="text-sm text-muted-foreground">
-                    {m["settings.sources.description"]()}
-                </p>
-            </div>
-
-            <Separator />
-
-            <div className="space-y-3">
-            {sources.map((s) => (
-                <div
-                key={s.id}
-                className="flex items-center justify-between rounded-xl border p-3"
-                >
-                <div className="flex items-center gap-3">
-                    <img
-                    src={`/datasource_icons/${s.id}.png`}
-                    className="h-6 w-6"
-                    />
-                    <span className="font-medium">{s.name}</span>
-                </div>
-
-                <div className="flex items-center gap-4">
-                    {statusIcon(s.status)}
-                    <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() =>
-                        setModal({
-                        type:
-                            s.status === "connected"
-                            ? "disconnect"
-                            : "connect",
-                        source: s,
-                        })
-                    }
-                    >
-                    {s.status === "connected"
-                        ? m["settings.sources.disconnect"]()
-                        : m["settings.sources.connect"]()}
-                    </Button>
-                </div>
-                </div>
-            ))}
-            </div>
-        </CardContent>
-
-        <Dialog open={!!modal} onOpenChange={() => setModal(null)}>
-            <DialogContent>
-            <DialogHeader>
-                <DialogTitle>
-                {modal?.type === "connect"
-                    ? m["settings.sources.modal.connect.title"]({ name: modal.source.name })
-                    : m["settings.sources.modal.disconnect.title"]({ name: modal?.source.name ?? "Source" })}
-                </DialogTitle>
-                <DialogDescription>
-                {modal?.type === "connect"
-                    ? m["settings.sources.modal.connect.description"]()
-                    : m["settings.sources.modal.disconnect.description"]()}
-                </DialogDescription>
-            </DialogHeader>
-
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setModal(null)}>
-                    {m["common.cancel"]()}
-                </Button>
-                <Button
-                onClick={() => {
-                    if (!modal) return
-
-                    setSources((prev) =>
-                    prev.map((s) =>
-                        s.id === modal.source.id
-                        ? {
-                            ...s,
-                            status:
-                                modal.type === "connect"
-                                ? "connected"
-                                : "disconnected",
-                            }
-                        : s
-                    )
-                    )
-
-                    setModal(null)
-                }}
-                variant={modal?.type === "disconnect" ? "destructive" : "default"}
-                >
-                    {m["common.confirm"]()}
-                </Button>
-
-            </DialogFooter>
-            </DialogContent>
-        </Dialog>
-        </Card>
-    )
+type DataSourcesSectionProps = {
+  credentials: DisplayCredential[]
+  loading: boolean,
+  onCredentialsUpdate: React.Dispatch<
+    React.SetStateAction<DisplayCredential[] | null>
+  >
 }
 
+type SourceConfig = {
+  id: string
+  name: string
+  icon: string
+  scope: GoogleScope
+}
+
+export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }: DataSourcesSectionProps) {
+  const [openSourceId, setOpenSourceId] = useState<string | null>(null)
+  const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null)
+  const [deleteModal, setDeleteModal] = useState<{ credentialId: string | null }>({ credentialId: null })
+  const [selectedUsers, setSelectedUsers] = useState<Record<string, string | undefined>>({})
+
+  // Check if user can admin
+  function canManageCredential(cred: DisplayCredential) {
+    return getIsAdmin() || cred.canAdmin === true
+  }
+
+  // Delete credential handler
+  function onDeleteCredential(id: string) {
+    console.log("Eliminar credencial:", id)
+  }
+
+  // Selected user handlers
+  function setSelectedUser(credentialId: string, userId?: string) {
+    setSelectedUsers((prev) => ({
+      ...prev,
+      [credentialId]: userId,
+    }))
+  }
+
+  function getSelectedUser(credentialId: string) {
+    return selectedUsers[credentialId]
+  }
+
+  // Check if user is already in credential
+  function isUserAlreadyInCredential(
+    cred: DisplayCredential,
+    userId?: string
+  ) {
+    if (!userId) return false
+    if (cred.ownedBy.id === userId) return true
+    if (getUserId() === userId) return true
+
+    return cred.permissions.some((p) => p.id === userId)
+  }
+
+  // Add permission handler 
+  async function handleAddPermission(cred: DisplayCredential) {
+    const userId = getSelectedUser(cred.id)
+    if (!userId) return
+
+    await updateCredentialPermission({
+      credentialId: cred.id,
+      userId,
+      isAdmin: false,
+    })
+
+    const freshCredentials = await listCredentials()
+    onCredentialsUpdate(freshCredentials)
+    setSelectedUser(cred.id, undefined)
+}
+
+  // Available data sources
+  const sources: SourceConfig[] = [
+    { id: "gmail", name: "Gmail", icon: "/datasource_icons/gmail.png", scope: "gmail" },
+    { id: "gcalendar", name: "Google Calendar", icon: "/datasource_icons/gcalendar.png", scope: "calendar" },
+  ]
+
+  
+  const credentialsByScope = (scope: GoogleScope) => credentials.filter((c) => c.provider === "google" && c.scopes?.[0] === scope)
+
+  // Utility to generate a color from a string
+  function stringToColor(str: string) {
+    let hash = 0
+    for (let i = 0; i < str.length; i++) hash = str.charCodeAt(i) + ((hash << 5) - hash)
+    return `hsl(${Math.abs(hash) % 360}, 65%, 55%)`
+  }
+
+  return (
+    <Card className="bg-[var(--sidebar)]">
+      <CardContent className="p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">{m["settings.sources.title"]()}</h2>
+          <p className="text-sm text-muted-foreground">{m["settings.sources.description"]()}</p>
+        </div>
+
+        <Separator />
+
+        <div className="space-y-3">
+          {sources.map((source) => {
+            const sourceCredentials = credentialsByScope(source.scope)
+            const openSource = openSourceId === source.id
+            const accountCount = sourceCredentials.length
+            const [selectedUserId, setSelectedUserId] = useState<string | undefined>()
+
+            return (
+              <div key={source.id} className="rounded-xl border p-3 space-y-3 flex flex-col">
+                {/* Source header */}
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <img src={source.icon} className="h-6 w-6" />
+                    <span className="font-medium">{source.name}</span>
+                  </div>
+
+                  <div className="flex items-center gap-4">
+                    {loading ? (
+                      <div className="flex items-center gap-2">
+                        <div className="h-5 w-5 border-2 border-t-transparent border-primary rounded-full animate-spin" />
+                        <span className="text-sm text-muted-foreground">
+                          {m["settings.sources.loading_accounts"]()}
+                        </span>
+                      </div>
+                    ) : (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="cursor-pointer"
+                          onClick={() => setOpenSourceId(openSource ? null : source.id)}
+                        >
+                          {accountCount === 0
+                            ? m["settings.sources.no_accounts"]()
+                            : `${accountCount} account${accountCount > 1 ? "s" : ""} · ${m["settings.sources.view_details"]()}`}
+                        </Button>
+
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="cursor-pointer"
+                          onClick={() => (window.location.href = getGoogleCredentialUrl(source.scope))}
+                        >
+                          {m["settings.sources.connect"]()}
+                        </Button>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Credentials list */}
+                <AnimatePresence>
+                  {openSource && !loading && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: "auto", opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      className="flex flex-col gap-2 mt-2"
+                    >
+                      {accountCount === 0 ? (
+                        <p className="text-sm text-muted-foreground">{m["settings.sources.no_accounts"]()}</p>
+                      ) : (
+                        <>
+                          {sourceCredentials.map((cred) => {
+                            const expanded = expandedCredentialId === cred.id
+                            return (
+                              <div
+                                key={cred.id}
+                                className="rounded-md border border-border bg-[var(--card)] overflow-hidden"
+                              >
+                                {/* Row */}
+                                <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors gap-2">
+                                  {/* Owner info */}
+                                  <div className="flex items-center gap-2 flex-1 min-w-0">
+                                    {cred.ownedBy.pfpUrl ? (
+                                      <img
+                                        src={cred.ownedBy.pfpUrl}
+                                        alt={cred.ownedBy.displayName ?? cred.ownedBy.email}
+                                        className="h-6 w-6 rounded-full object-cover"
+                                      />
+                                    ) : (
+                                      <div
+                                        className="h-6 w-6 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                        style={{ backgroundColor: stringToColor(cred.ownedBy.displayName ?? cred.ownedBy.email) }}
+                                      >
+                                        {(cred.ownedBy.displayName ?? cred.ownedBy.email)[0]?.toUpperCase()}
+                                      </div>
+                                    )}
+                                    <span className="text-sm font-medium truncate">
+                                      {cred.ownedBy.displayName ?? cred.ownedBy.email}
+                                    </span>
+                                  </div>
+
+                                  {/* Actions */}
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="cursor-pointer"
+                                      onClick={() => setExpandedCredentialId(expanded ? null : cred.id)}
+                                    >
+                                      {expanded ? m["admin.users.collapse"]() : m["admin.users.expand"]()}
+                                    </Button>
+
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        disabled={!canManageCredential(cred)}
+                                        className={cn(
+                                          "cursor-pointer",
+                                          !canManageCredential(cred) &&
+                                            "opacity-50 cursor-not-allowed"
+                                        )}
+                                        onClick={() => {
+                                          if (!canManageCredential(cred)) return
+                                          setDeleteModal({ credentialId: cred.id })
+                                        }}
+                                      >
+                                        {m["common.delete"]()}
+                                      </Button>
+
+                                      <ConfirmDeleteCredentialModal
+                                        modal={deleteModal}
+                                        setModal={setDeleteModal}
+                                        onDeleteCredential={onDeleteCredential}
+                                      />
+                                  </div>
+                                </div>
+
+                                {/* Expanded details */}
+                                <AnimatePresence>
+                                  {expanded && (
+                                    <motion.div
+                                      initial={{ opacity: 0, height: 0 }}
+                                      animate={{ opacity: 1, height: "auto" }}
+                                      exit={{ opacity: 0, height: 0 }}
+                                      transition={{ duration: 0.2 }}
+                                      className="px-4 pb-4 overflow-hidden"
+                                    >
+                                      <div className="space-y-4 text-sm">
+                                        {/* Basic info */}
+                                        <div className="divide-y divide-border">
+                                          <DetailItem
+                                            label="Cuenta"
+                                            value={cred.email}
+                                          />
+                                          <DetailItem
+                                            label="Fecha de creación"
+                                            value={new Date(cred.createdAt).toLocaleDateString()}
+                                          />
+                                        </div>
+
+                                        {/* Permissions section */}
+                                        {canManageCredential(cred) && (
+                                          <div className="pt-4 border-t space-y-3">
+                                            <div>
+                                              <h4 className="text-sm font-medium">
+                                                Permisos de la credencial
+                                              </h4>
+                                              <p className="text-xs text-muted-foreground">
+                                                Administrá qué usuarios pueden acceder y utilizar esta credencial.
+                                              </p>
+                                            </div>
+
+                                            {/* Add permission */}
+                                            <div className="flex items-center gap-2">
+                                              <div className="flex-1">
+                                                <UserInput
+                                                  value={getSelectedUser(cred.id)}
+                                                  onChange={(id) => setSelectedUser(cred.id, id)}
+                                                />
+                                              </div>
+
+                                              <AsyncConfirmButton
+                                                size="sm"
+                                                variant="outline"
+                                                className={cn(
+                                                  "cursor-pointer",
+                                                  ( !getSelectedUser(cred.id) ||
+                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id)) ) &&
+                                                    "opacity-50 cursor-not-allowed pointer-events-none"
+                                                )}
+                                                onClick={async () => {
+                                                  if (
+                                                    !getSelectedUser(cred.id) ||
+                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id))
+                                                  ) {
+                                                    return
+                                                  }
+
+                                                  await handleAddPermission(cred)
+                                                }}
+                                              >
+                                                Agregar
+                                              </AsyncConfirmButton>
+                                            </div>
+
+                                            {/* Permissions list */}
+                                            <div className="space-y-2">
+                                              {cred.permissions.map((user) => (
+                                                <div
+                                                  key={user.id}
+                                                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                                                >
+                                                  <div className="flex items-center gap-3 min-w-0">
+                                                    {user.pfpUrl ? (
+                                                      <img
+                                                        src={user.pfpUrl}
+                                                        alt={user.displayName ?? user.email}
+                                                        className="h-7 w-7 rounded-full object-cover"
+                                                      />
+                                                    ) : (
+                                                      <div
+                                                        className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                                                        style={{
+                                                          backgroundColor: stringToColor(
+                                                            user.displayName ?? user.email
+                                                          ),
+                                                        }}
+                                                      >
+                                                        {(user.displayName ?? user.email)[0]?.toUpperCase()}
+                                                      </div>
+                                                    )}
+
+                                                    <div className="flex flex-col min-w-0">
+                                                      <span className="text-sm truncate">
+                                                        {user.displayName ?? user.email}
+                                                      </span>
+                                                      <span className="text-xs text-muted-foreground truncate">
+                                                        {user.email}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+
+                                                  {user.isAdminOfCredential && (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                                      Admin
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+
+                                    </motion.div>
+                                  )}
+                                </AnimatePresence>
+                              </div>
+                            )
+                          })}
+                        </>
+                      )}
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            )
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+
+// Detail item component
+function DetailItem({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex items-center justify-between py-2">
+      <span className="text-xs text-muted-foreground">{label}</span>
+      <span className="font-medium text-foreground">{value}</span>
+    </div>
+  )
+}
+
+// Confirm Delete Modal
+type DeleteModalState = {
+  credentialId: string | null
+}
+
+function ConfirmDeleteCredentialModal({
+  modal,
+  setModal,
+  onDeleteCredential,
+}: {
+  modal: DeleteModalState
+  setModal: (m: DeleteModalState) => void
+  onDeleteCredential: (id: string) => void
+}) {
+  if (!modal.credentialId) return null
+
+  return (
+    <Dialog
+      open={!!modal.credentialId}
+      onOpenChange={() => setModal({ credentialId: null })}
+    >
+      <DialogContent>
+        <DialogHeader>
+          {/* Title with danger icon */}
+          <DialogTitle className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full">
+              <AlertTriangle className="h-4 w-4 text-destructive" />
+            </span>
+            {m["settings.sources.modal.delete.title"]()}
+          </DialogTitle>
+
+          <DialogDescription className="pt-1">
+            {m["settings.sources.modal.delete.description"]()}
+          </DialogDescription>
+        </DialogHeader>
+
+        <DialogFooter className="flex justify-end gap-2">
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            onClick={() => setModal({ credentialId: null })}
+          >
+            {m["common.cancel"]()}
+          </Button>
+
+          <Button
+            variant="destructive"
+            className="cursor-pointer"
+            onClick={() => {
+              if (modal.credentialId) onDeleteCredential(modal.credentialId)
+              setModal({ credentialId: null })
+            }}
+          >
+            {m["common.confirm"]()}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+// --------------------------------------------------------------------------------
 // ------------------------------- Drive Section ----------------------------------
+// --------------------------------------------------------------------------------
 function StorageSection() {
   const [providers, setProviders] = useState([
     {
@@ -232,6 +583,11 @@ function StorageSection() {
       name: "OneDrive",
       icon: "/datasource_icons/onedrive.png"
     },
+    {
+      id: "dropbox",
+      name: "Dropbox",
+      icon: "/datasource_icons/dropbox.png"
+    }
   ])
 
   const [openProvider, setOpenProvider] = useState<string | null>(null)

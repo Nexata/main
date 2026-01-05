@@ -73,6 +73,7 @@ export default function Sidebar() {
 
   // State for user info
   const [me, setMe] = useState<Me>(null);
+  const [meLoading, setMeLoading] = useState(true);
 
   // get user info
   useEffect(() => {
@@ -83,19 +84,20 @@ export default function Sidebar() {
         if (!mounted || !user) return;
 
         setMe(user);
-        console.log(user);
+        setMeLoading(false);
 
         localStorage.setItem("userId", user.id);
         localStorage.setItem("isAdmin", String(user.isAdmin));
       })
       .catch(() => {
-        // Ver de mostrar error
+        setMeLoading(false);
       });
 
     return () => {
       mounted = false;
     };
   }, []);
+
 
   return (
     <>
@@ -248,14 +250,12 @@ export default function Sidebar() {
               <IoMdSettings className="w-6 h-6" />
             </Button>
 
-            {me && (
-              <UserSection
-                me={me}
-                collapsed={isCollapsed}
-                onSave={(updated) => setMe(updated)}
-              />
-            )}
-
+            <UserSection
+              me={me}
+              collapsed={isCollapsed}
+              loading={meLoading}
+              onSave={(updated) => setMe(updated)}
+            />
           </div>
         </div>
       </MotionDiv>

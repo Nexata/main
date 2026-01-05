@@ -24,7 +24,13 @@
 		"delete_chat_title": "¿Eliminar chat?",
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
 	},
+	"user_input": {
+		"placeholder": "Seleccionar usuario",
+		"search": "Buscar usuario…",
+		"no_results": "No se encontraron usuarios"
+	},
 	"common": {
+		"loading": "Cargando…",
 		"ask_nexy": "Preguntale a Nexy...",
 		"cancel": "Cancelar",
 		"delete": "Eliminar",
@@ -53,8 +59,7 @@
 	},
 	"settings": {
 		"meta": {
-			"title": "Nexata | Configuración",
-			"description": "Configuración de cuenta e integraciones"
+			"title": "Nexata | Configuración"
 		},
 		"title": "Configuración",
 		"subtitle": "Personalizá tus preferencias y gestioná tus integraciones",
@@ -67,14 +72,16 @@
 			"description": "Administrá las integraciones que Nexata utiliza en tiempo real para contextualizar y responder con información siempre actualizada.",
 			"connect": "Conectar",
 			"disconnect": "Desconectar",
+			"no_accounts": "No hay cuentas conectadas",
+			"owner_label": "Propietario",
+			"account_label": "Cuenta",
+			"created_at_label": "Fecha de creación",
+			"loading_accounts": "Cargando cuentas...",
+			"view_details": "Ver detalles",
 			"modal": {
-				"connect": {
-					"title": "Conectar \"{name}\"",
-					"description": "Al conectar esta fuente, autorizás a Nexata a acceder a los datos asociados. Serás redirigido para completar la autorización."
-				},
-				"disconnect": {
-					"title": "Desconectar \"{name}\"",
-					"description": "Al desconectar esta fuente, Nexata perderá el acceso a los datos asociados y no podrá consultarlos hasta que vuelvas a conectarla."
+				"delete": {
+					"title": "Eliminar credencial",
+					"description": "Al eliminar esta credencial se perderá el acceso a la cuenta y los datos asociados. Esta acción no se puede deshacer."
 				}
 			}
 		},

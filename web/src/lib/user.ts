@@ -26,3 +26,13 @@ export async function updateMe(data: {
 
     return me;
 }
+
+export async function getUsers() {
+  return await withAuthRetry((headers) =>
+    apiClient.api.user.get({
+      $headers: headers,
+    })
+  );
+}
+
+export type Users = Awaited<ReturnType<typeof getUsers>>;
