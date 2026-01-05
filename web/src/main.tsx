@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 import ReactDOM from 'react-dom/client';
 import { routeTree } from './routeTree.gen';
 import { ThemeProvider } from './components/theme-provider';
+import { Toaster } from './components/ui/toaster';
 
 const router = createRouter({ routeTree });
 
@@ -27,6 +28,7 @@ function AppLayout({ children }: { children: (darkMode: boolean, setDarkMode: (v
   return (
     <div className="min-h-screen antialiased font-noto-sans">
       {children(darkMode, setDarkMode)}
+      <Toaster />
     </div>
   );
 }

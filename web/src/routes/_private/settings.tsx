@@ -22,13 +22,14 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import * as m from "@/paraglide/messages.js"
-import { listCredentials, updateCredentialPermission } from "@/lib/credential"
+import { deleteCredentialById, deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
 import type { DisplayCredential } from "@api/utils/credential"
 import { getGoogleCredentialUrl, type GoogleScope } from "@/lib/oauth"
 import { getIsAdmin, getUserId } from "@/lib/auth"
 import { cn } from "@/lib/utils"
 import UserInput from "@/components/user-input/user-input"
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
+import { infoToast } from "@/components/info-toast/info-toast"
 
 export const Route = createFileRoute("/_private/settings")({
   component: SettingsPage,
@@ -161,8 +162,64 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
 
   // Delete credential handler
   function onDeleteCredential(id: string) {
-    console.log("Eliminar credencial:", id)
+    const toastId = infoToast.loading({
+      title: m["settings.sources.modal.delete.title"](),
+      description: m["settings.sources.toast.delete.loading"](),
+    });
+
+    deleteCredentialById(id)
+      .then(async () => {
+        const freshCredentials = await listCredentials();
+        onCredentialsUpdate(freshCredentials);
+
+        infoToast.success(toastId, {
+          title: m["common.success"]?.() ?? "Listo",
+          description: m["settings.sources.toast.delete.success"](),
+        });
+      })
+      .catch((error) => {
+        console.error("Error deleting credential", error);
+
+        infoToast.error(toastId, {
+          title: m["common.error"]?.() ?? "Error",
+          description: m["settings.sources.toast.delete.error"](),
+        });
+      });
   }
+
+  async function handleDeletePermission(credentialId: string,userId: string)
+  {
+    const toastId = infoToast.loading({
+      title: m["settings.sources.permissions.remove.toast.loading.title"](),
+      description: m["settings.sources.permissions.remove.toast.loading.description"](),
+    })
+
+    try {
+      await deleteCredentialPermission({
+        credentialId,
+        userId,
+      })
+
+      const freshCredentials = await listCredentials()
+      onCredentialsUpdate(freshCredentials)
+
+      infoToast.success(toastId, {
+        title: m["settings.sources.permissions.remove.toast.success.title"](),
+        description:
+          m["settings.sources.permissions.remove.toast.success.description"](),
+      })
+    } catch (error) {
+      console.error("Error deleting credential permission", error)
+
+      infoToast.error(toastId, {
+        title: m["settings.sources.permissions.remove.toast.error.title"](),
+        description:
+          m["settings.sources.permissions.remove.toast.error.description"](),
+      })
+    }
+  }
+
+
 
   // Selected user handlers
   function setSelectedUser(credentialId: string, userId?: string) {
@@ -464,11 +521,29 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
                                                     </div>
                                                   </div>
 
-                                                  {user.isAdminOfCredential && (
-                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                                      Admin
-                                                    </span>
-                                                  )}
+                                                  <div className="flex items-center gap-2">
+                                                    {user.isAdminOfCredential && (
+                                                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                                        Admin
+                                                      </span>
+                                                    )}
+
+                                                    <Button
+                                                      size="sm"
+                                                      variant="destructive"
+                                                      disabled={!canManageCredential(cred)}
+                                                      className={cn(
+                                                        "cursor-pointer",
+                                                        !canManageCredential(cred) &&
+                                                          "opacity-50 cursor-not-allowed pointer-events-none"
+                                                      )}
+                                                      onClick={() =>
+                                                        handleDeletePermission(cred.id, user.id)
+                                                      }
+                                                    >
+                                                      {m["common.delete"]()}
+                                                    </Button>
+                                                  </div>
                                                 </div>
                                               ))}
                                             </div>

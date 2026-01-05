@@ -36,7 +36,9 @@
 		"confirm": "Confirm",
 		"user": "User",
     	"save_changes": "Save changes",
-		"loading": "Loading…"
+		"loading": "Loading…",
+		"success": "Success",
+    	"error": "Something went wrong"
 	},
 	"months": {
 		"january": "January",
@@ -82,6 +84,31 @@
 				"delete": {
 					"title": "Delete Credential",
 					"description": "Deleting this credential will remove access to the account and associated data. This action cannot be undone."
+				}
+			},
+			"toast": {
+				"delete": {
+					"loading": "Deleting credential...",
+					"success": "The credential was successfully deleted",
+					"error": "Failed to delete the credential"
+				}
+			},
+			"permissions": {
+				"remove": {
+					"toast": {
+						"loading": {
+							"title": "Removing permission",
+							"description": "Revoking user access to this credential…"
+						},
+						"success": {
+							"title": "Permission removed",
+							"description": "The user no longer has access to this credential."
+						},
+						"error": {
+							"title": "Failed to remove permission",
+							"description": "The user permission could not be removed."
+						}
+					}
 				}
 			}
 		},

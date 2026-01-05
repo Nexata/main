@@ -42,16 +42,19 @@ export async function deleteCredentialPermission(data: {
   );
 }
 
-// export async function deleteCredentialById(
-//   credentialId: string
-// ): Promise<void> {
-//   await withAuthRetry((headers) =>
-//     apiClient.api.credential[":id"]({
-//       id: credentialId,
-//     }).delete({
-//       $headers: headers,
-//     })
-//   );
-// }
+export async function deleteCredentialById(
+  credentialId: string
+): Promise<void> {
+  await withAuthRetry((headers) =>
+    apiClient.api.credential[credentialId]!.delete({
+      $headers: headers,
+    })
+  );
+}
+
+
+
+
+
 
 

@@ -36,7 +36,9 @@
 		"delete": "Eliminar",
 		"confirm": "Confirmar",
 		"user": "Usuario",
-    	"save_changes": "Guardar cambios"
+    	"save_changes": "Guardar cambios",
+		"success": "Operación exitosa",
+    	"error": "Ocurrió un error"
 	},
 	"months": {
 		"january": "Enero",
@@ -82,6 +84,31 @@
 				"delete": {
 					"title": "Eliminar credencial",
 					"description": "Al eliminar esta credencial se perderá el acceso a la cuenta y los datos asociados. Esta acción no se puede deshacer."
+				}
+			},
+			"toast": {
+				"delete": {
+					"loading": "Eliminando credencial...",
+					"success": "La credencial fue eliminada correctamente",
+					"error": "No se pudo eliminar la credencial"
+				}
+			},
+			"permissions": {
+				"remove": {
+					"toast": {
+						"loading": {
+							"title": "Eliminando permiso",
+							"description": "Quitando acceso del usuario a esta credencial…"
+						},
+						"success": {
+							"title": "Permiso eliminado",
+							"description": "El usuario ya no tiene acceso a esta credencial."
+						},
+						"error": {
+							"title": "Error al eliminar permiso",
+							"description": "No se pudo eliminar el permiso del usuario."
+						}
+					}
 				}
 			}
 		},
