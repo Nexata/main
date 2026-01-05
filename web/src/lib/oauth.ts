@@ -1,3 +1,5 @@
+import { getUserId } from "./auth";
+
 const API_URL = "http://localhost:3000";
 const TENANT = "test";
 const FLOW = "login";
@@ -17,7 +19,7 @@ export function getDropboxLoginUrl() {
 }
 
 function getUserIdFromStorage(): string {
-  const userId = localStorage.getItem("userId");
+  const userId = getUserId();
   if (!userId) {
     throw new Error("UserId not found in localStorage");
   }

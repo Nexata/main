@@ -22,9 +22,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import * as m from "@/paraglide/messages.js"
-import { listCredentials } from "@/lib/credential"
+import { listCredentials, updateCredentialPermission } from "@/lib/credential"
 import type { DisplayCredential } from "@api/utils/credential"
 import { getGoogleCredentialUrl, type GoogleScope } from "@/lib/oauth"
+import { getIsAdmin, getUserId } from "@/lib/auth"
+import { cn } from "@/lib/utils"
+import UserInput from "@/components/user-input/user-input"
+import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 
 export const Route = createFileRoute("/_private/settings")({
   component: SettingsPage,
@@ -112,7 +116,11 @@ function SettingsPage() {
         {/* Separador */}
         <div className="h-px w-full bg-border" />
 
-        <DataSourcesSection credentials={credentials ?? []} loading={loading} />
+        <DataSourcesSection
+          credentials={credentials ?? []}
+          loading={loading}
+          onCredentialsUpdate={setCredentials}
+        />
 
         <StorageSection />
 
@@ -127,7 +135,10 @@ function SettingsPage() {
 
 type DataSourcesSectionProps = {
   credentials: DisplayCredential[]
-  loading: boolean
+  loading: boolean,
+  onCredentialsUpdate: React.Dispatch<
+    React.SetStateAction<DisplayCredential[] | null>
+  >
 }
 
 type SourceConfig = {
@@ -137,15 +148,61 @@ type SourceConfig = {
   scope: GoogleScope
 }
 
-export function DataSourcesSection({ credentials, loading }: DataSourcesSectionProps) {
+export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }: DataSourcesSectionProps) {
   const [openSourceId, setOpenSourceId] = useState<string | null>(null)
   const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null)
   const [deleteModal, setDeleteModal] = useState<{ credentialId: string | null }>({ credentialId: null })
+  const [selectedUsers, setSelectedUsers] = useState<Record<string, string | undefined>>({})
+
+  // Check if user can admin
+  function canManageCredential(cred: DisplayCredential) {
+    return getIsAdmin() || cred.canAdmin === true
+  }
 
   // Delete credential handler
   function onDeleteCredential(id: string) {
     console.log("Eliminar credencial:", id)
   }
+
+  // Selected user handlers
+  function setSelectedUser(credentialId: string, userId?: string) {
+    setSelectedUsers((prev) => ({
+      ...prev,
+      [credentialId]: userId,
+    }))
+  }
+
+  function getSelectedUser(credentialId: string) {
+    return selectedUsers[credentialId]
+  }
+
+  // Check if user is already in credential
+  function isUserAlreadyInCredential(
+    cred: DisplayCredential,
+    userId?: string
+  ) {
+    if (!userId) return false
+    if (cred.ownedBy.id === userId) return true
+    if (getUserId() === userId) return true
+
+    return cred.permissions.some((p) => p.id === userId)
+  }
+
+  // Add permission handler 
+  async function handleAddPermission(cred: DisplayCredential) {
+    const userId = getSelectedUser(cred.id)
+    if (!userId) return
+
+    await updateCredentialPermission({
+      credentialId: cred.id,
+      userId,
+      isAdmin: false,
+    })
+
+    const freshCredentials = await listCredentials()
+    onCredentialsUpdate(freshCredentials)
+    setSelectedUser(cred.id, undefined)
+}
 
   // Available data sources
   const sources: SourceConfig[] = [
@@ -178,6 +235,7 @@ export function DataSourcesSection({ credentials, loading }: DataSourcesSectionP
             const sourceCredentials = credentialsByScope(source.scope)
             const openSource = openSourceId === source.id
             const accountCount = sourceCredentials.length
+            const [selectedUserId, setSelectedUserId] = useState<string | undefined>()
 
             return (
               <div key={source.id} className="rounded-xl border p-3 space-y-3 flex flex-col">
@@ -276,14 +334,22 @@ export function DataSourcesSection({ credentials, loading }: DataSourcesSectionP
                                       {expanded ? m["admin.users.collapse"]() : m["admin.users.expand"]()}
                                     </Button>
 
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      className="text-destructive cursor-pointer"
-                                      onClick={() => setDeleteModal({ credentialId: cred.id })}
-                                    >
-                                      {m["common.delete"]()}
-                                    </Button>
+                                      <Button
+                                        size="sm"
+                                        variant="destructive"
+                                        disabled={!canManageCredential(cred)}
+                                        className={cn(
+                                          "cursor-pointer",
+                                          !canManageCredential(cred) &&
+                                            "opacity-50 cursor-not-allowed"
+                                        )}
+                                        onClick={() => {
+                                          if (!canManageCredential(cred)) return
+                                          setDeleteModal({ credentialId: cred.id })
+                                        }}
+                                      >
+                                        {m["common.delete"]()}
+                                      </Button>
 
                                       <ConfirmDeleteCredentialModal
                                         modal={deleteModal}
@@ -303,16 +369,113 @@ export function DataSourcesSection({ credentials, loading }: DataSourcesSectionP
                                       transition={{ duration: 0.2 }}
                                       className="px-4 pb-4 overflow-hidden"
                                     >
-                                      <div className="divide-y divide-border text-sm">
-                                        <DetailItem
-                                          label={m["settings.sources.account_label"]()}
-                                          value={cred.email}
-                                        />
-                                        <DetailItem
-                                          label={m["settings.sources.created_at_label"]()}
-                                          value={new Date(cred.createdAt).toLocaleDateString()}
-                                        />
+                                      <div className="space-y-4 text-sm">
+                                        {/* Basic info */}
+                                        <div className="divide-y divide-border">
+                                          <DetailItem
+                                            label="Cuenta"
+                                            value={cred.email}
+                                          />
+                                          <DetailItem
+                                            label="Fecha de creación"
+                                            value={new Date(cred.createdAt).toLocaleDateString()}
+                                          />
+                                        </div>
+
+                                        {/* Permissions section */}
+                                        {canManageCredential(cred) && (
+                                          <div className="pt-4 border-t space-y-3">
+                                            <div>
+                                              <h4 className="text-sm font-medium">
+                                                Permisos de la credencial
+                                              </h4>
+                                              <p className="text-xs text-muted-foreground">
+                                                Administrá qué usuarios pueden acceder y utilizar esta credencial.
+                                              </p>
+                                            </div>
+
+                                            {/* Add permission */}
+                                            <div className="flex items-center gap-2">
+                                              <div className="flex-1">
+                                                <UserInput
+                                                  value={getSelectedUser(cred.id)}
+                                                  onChange={(id) => setSelectedUser(cred.id, id)}
+                                                />
+                                              </div>
+
+                                              <AsyncConfirmButton
+                                                size="sm"
+                                                variant="outline"
+                                                className={cn(
+                                                  "cursor-pointer",
+                                                  ( !getSelectedUser(cred.id) ||
+                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id)) ) &&
+                                                    "opacity-50 cursor-not-allowed pointer-events-none"
+                                                )}
+                                                onClick={async () => {
+                                                  if (
+                                                    !getSelectedUser(cred.id) ||
+                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id))
+                                                  ) {
+                                                    return
+                                                  }
+
+                                                  await handleAddPermission(cred)
+                                                }}
+                                              >
+                                                Agregar
+                                              </AsyncConfirmButton>
+                                            </div>
+
+                                            {/* Permissions list */}
+                                            <div className="space-y-2">
+                                              {cred.permissions.map((user) => (
+                                                <div
+                                                  key={user.id}
+                                                  className="flex items-center justify-between rounded-md border px-3 py-2"
+                                                >
+                                                  <div className="flex items-center gap-3 min-w-0">
+                                                    {user.pfpUrl ? (
+                                                      <img
+                                                        src={user.pfpUrl}
+                                                        alt={user.displayName ?? user.email}
+                                                        className="h-7 w-7 rounded-full object-cover"
+                                                      />
+                                                    ) : (
+                                                      <div
+                                                        className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium text-white"
+                                                        style={{
+                                                          backgroundColor: stringToColor(
+                                                            user.displayName ?? user.email
+                                                          ),
+                                                        }}
+                                                      >
+                                                        {(user.displayName ?? user.email)[0]?.toUpperCase()}
+                                                      </div>
+                                                    )}
+
+                                                    <div className="flex flex-col min-w-0">
+                                                      <span className="text-sm truncate">
+                                                        {user.displayName ?? user.email}
+                                                      </span>
+                                                      <span className="text-xs text-muted-foreground truncate">
+                                                        {user.email}
+                                                      </span>
+                                                    </div>
+                                                  </div>
+
+                                                  {user.isAdminOfCredential && (
+                                                    <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
+                                                      Admin
+                                                    </span>
+                                                  )}
+                                                </div>
+                                              ))}
+                                            </div>
+                                          </div>
+                                        )}
                                       </div>
+
                                     </motion.div>
                                   )}
                                 </AnimatePresence>

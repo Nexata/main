@@ -24,13 +24,19 @@
 		"delete_chat_title": "Delete chat?",
 		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone."
 	},
+	"user_input": {
+		"placeholder": "Select user",
+		"search": "Search user…",
+		"no_results": "No users found"
+	},
 	"common": {
 		"ask_nexy": "Ask Nexy...",
 		"cancel": "Cancel",
 		"delete": "Delete",
 		"confirm": "Confirm",
 		"user": "User",
-    	"save_changes": "Save changes"
+    	"save_changes": "Save changes",
+		"loading": "Loading…"
 	},
 	"months": {
 		"january": "January",

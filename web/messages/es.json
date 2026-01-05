@@ -24,7 +24,13 @@
 		"delete_chat_title": "¿Eliminar chat?",
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
 	},
+	"user_input": {
+		"placeholder": "Seleccionar usuario",
+		"search": "Buscar usuario…",
+		"no_results": "No se encontraron usuarios"
+	},
 	"common": {
+		"loading": "Cargando…",
 		"ask_nexy": "Preguntale a Nexy...",
 		"cancel": "Cancelar",
 		"delete": "Eliminar",
