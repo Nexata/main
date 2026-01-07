@@ -12,9 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
 type Props = {
   credential: DisplayCredential
-  onCredentialsUpdate: React.Dispatch<
-    React.SetStateAction<DisplayCredential[] | null>
-  >
+  onCredentialsUpdate: React.Dispatch<React.SetStateAction<DisplayCredential[] | null>>
 }
 
 export function CredentialPermissions({
@@ -23,8 +21,7 @@ export function CredentialPermissions({
 }: Props) {
     const [selectedUser, setSelectedUser] = useState<string | undefined>()
 
-    const canManageCredential =
-        getIsAdmin() || credential.canAdmin === true
+    const canManageCredential = getIsAdmin() || credential.canAdmin === true
 
     // Utility to generate a color from a string
     function stringToColor(str: string) {

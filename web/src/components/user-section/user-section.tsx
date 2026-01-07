@@ -118,7 +118,7 @@ export default function UserSection({
 
                 {!collapsed && (
                 <div className="min-w-0">
-                    <div className="font-semibold truncate">{me?.displayName ?? m["common.user"]()}</div>
+                    <div className="font-semibold truncate">{me?.displayName ?? "User"}</div>
                     <div className="text-xs opacity-60 truncate">{me?.email}</div>
                 </div>
                 )}

@@ -8,7 +8,7 @@ export function getUserId() {
 }
 
 export function getIsAdmin() {
-  return localStorage.getItem(IS_ADMIN);
+  return localStorage.getItem(IS_ADMIN) === "true";
 }
 
 export function getAccessToken() {

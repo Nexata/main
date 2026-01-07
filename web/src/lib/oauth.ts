@@ -27,7 +27,7 @@ function getUserIdFromStorage(): string {
 }
 
 export function getGoogleCredentialUrl(
-  scope: GoogleScope
+  scope: string
 ) {
   const userId = getUserIdFromStorage();
 
@@ -35,7 +35,6 @@ export function getGoogleCredentialUrl(
     userId
   )}&redirect=${encodeURIComponent(FRONTEND_CREDENTIAL_CALLBACK)}`;
 }
-export type GoogleScope = "gmail" | "calendar" | "drive"
 
 export function getDropboxCredentialUrl() {
   const userId = getUserIdFromStorage();

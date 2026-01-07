@@ -6,11 +6,14 @@
 		"cancel": "Cancel",
 		"delete": "Delete",
 		"confirm": "Confirm",
-		"user": "User",
     	"save_changes": "Save changes",
 		"loading": "Loading…",
 		"success": "Success",
-    	"error": "Something went wrong"
+    	"error": "Something went wrong",
+		"expand": "View details",
+		"collapse": "Hide details",
+		"account": "Account",
+      	"created_at": "Created at"
 	},
 
 	"months": {
@@ -52,6 +55,19 @@
 							"description": "The user permission could not be removed."
 						}
 					}
+				}
+			},
+			"modal": {
+				"delete": {
+					"title": "Delete Credential",
+					"description": "Deleting this credential will remove access to the account and associated data. This action cannot be undone."
+				}
+			},
+			"toast": {
+				"delete": {
+					"loading": "Deleting credential...",
+					"success": "The credential was successfully deleted",
+					"error": "Failed to delete the credential"
 				}
 			}
 		}
@@ -111,20 +127,7 @@
 			"account_label": "Account",
 			"created_at_label": "Created At",
 			"loading_accounts": "Loading accounts...",
-			"view_details": "View details",
-			"modal": {
-				"delete": {
-					"title": "Delete Credential",
-					"description": "Deleting this credential will remove access to the account and associated data. This action cannot be undone."
-				}
-			},
-			"toast": {
-				"delete": {
-					"loading": "Deleting credential...",
-					"success": "The credential was successfully deleted",
-					"error": "Failed to delete the credential"
-				}
-			}
+			"view_details": "View details"
 		},
 		"storage": {
 			"title": "Storage",
@@ -191,8 +194,6 @@
 			"send": "Send invitation",
 			"helper": "The user will receive an email to join your Nexata tenant."
 		},
-		"expand": "View details",
-		"collapse": "Hide details",
 		"actions": {
 			"remove": "Deactivate"
 		},
