@@ -70,6 +70,10 @@
 					"error": "No se pudo eliminar la credencial"
 				}
 			}
+		},
+
+		"sources":{
+			"view_files": "Ver archivos"
 		}
 	},
 
