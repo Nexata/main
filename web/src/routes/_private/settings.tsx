@@ -19,14 +19,13 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog"
 import * as m from "@/paraglide/messages.js"
-import { deleteCredentialById, deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
+import { deleteCredentialById, listCredentials } from "@/lib/credential"
 import type { DisplayCredential } from "@api/utils/credential"
 import { getDropboxCredentialUrl, getGoogleCredentialUrl, type GoogleScope } from "@/lib/oauth"
-import { getIsAdmin, getUserId } from "@/lib/auth"
+import { getIsAdmin } from "@/lib/auth"
 import { cn } from "@/lib/utils"
-import UserInput from "@/components/user-input/user-input"
-import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 import { infoToast } from "@/components/info-toast/info-toast"
+import { CredentialPermissions } from "@/components/credentials/credential-permissions"
 
 export const Route = createFileRoute("/_private/settings")({
   component: SettingsPage,
@@ -154,7 +153,6 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
   const [openSourceId, setOpenSourceId] = useState<string | null>(null)
   const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null)
   const [deleteModal, setDeleteModal] = useState<{ credentialId: string | null }>({ credentialId: null })
-  const [selectedUsers, setSelectedUsers] = useState<Record<string, string | undefined>>({})
 
   // Check if user can admin
   function canManageCredential(cred: DisplayCredential) {
@@ -188,79 +186,6 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
       });
   }
 
-  // Delete permission handler
-  async function handleDeletePermission(credentialId: string,userId: string)
-  {
-    const toastId = infoToast.loading({
-      title: m["settings.sources.permissions.remove.toast.loading.title"](),
-      description: m["settings.sources.permissions.remove.toast.loading.description"](),
-    })
-
-    try {
-      await deleteCredentialPermission({
-        credentialId,
-        userId,
-      })
-
-      const freshCredentials = await listCredentials()
-      onCredentialsUpdate(freshCredentials)
-
-      infoToast.success(toastId, {
-        title: m["settings.sources.permissions.remove.toast.success.title"](),
-        description:
-          m["settings.sources.permissions.remove.toast.success.description"](),
-      })
-    } catch (error) {
-      console.error("Error deleting credential permission", error)
-
-      infoToast.error(toastId, {
-        title: m["settings.sources.permissions.remove.toast.error.title"](),
-        description:
-          m["settings.sources.permissions.remove.toast.error.description"](),
-      })
-    }
-  }
-
-  // Selected user handlers
-  function setSelectedUser(credentialId: string, userId?: string) {
-    setSelectedUsers((prev) => ({
-      ...prev,
-      [credentialId]: userId,
-    }))
-  }
-
-  function getSelectedUser(credentialId: string) {
-    return selectedUsers[credentialId]
-  }
-
-  // Check if user is already in credential
-  function isUserAlreadyInCredential(
-    cred: DisplayCredential,
-    userId?: string
-  ) {
-    if (!userId) return false
-    if (cred.ownedBy.id === userId) return true
-    if (getUserId() === userId) return true
-
-    return cred.permissions.some((p) => p.id === userId)
-  }
-
-  // Add permission handler 
-  async function handleAddPermission(cred: DisplayCredential) {
-    const userId = getSelectedUser(cred.id)
-    if (!userId) return
-
-    await updateCredentialPermission({
-      credentialId: cred.id,
-      userId,
-      isAdmin: false,
-    })
-
-    const freshCredentials = await listCredentials()
-    onCredentialsUpdate(freshCredentials)
-    setSelectedUser(cred.id, undefined)
-}
-
   // Available data sources
   const sources: SourceConfig[] = [
     { id: "gmail", name: "Gmail", icon: "/datasource_icons/gmail.png", scope: "gmail" },
@@ -291,7 +216,6 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
             const sourceCredentials = credentialsByScope(source.scope)
             const openSource = openSourceId === source.id
             const accountCount = sourceCredentials.length
-            const [selectedUserId, setSelectedUserId] = useState<string | undefined>()
 
             return (
               <div key={source.id} className="rounded-xl border p-3 space-y-3 flex flex-col">
@@ -438,116 +362,10 @@ export function DataSourcesSection({ credentials, loading, onCredentialsUpdate }
                                           />
                                         </div>
 
-                                        {/* Permissions section */}
-                                        {canManageCredential(cred) && (
-                                          <div className="pt-4 border-t space-y-3">
-                                            <div>
-                                              <h4 className="text-sm font-medium">
-                                                Permisos de la credencial
-                                              </h4>
-                                              <p className="text-xs text-muted-foreground">
-                                                Administrá qué usuarios pueden acceder y utilizar esta credencial.
-                                              </p>
-                                            </div>
-
-                                            {/* Add permission */}
-                                            <div className="flex items-center gap-2">
-                                              <div className="flex-1">
-                                                <UserInput
-                                                  value={getSelectedUser(cred.id)}
-                                                  onChange={(id) => setSelectedUser(cred.id, id)}
-                                                />
-                                              </div>
-
-                                              <AsyncConfirmButton
-                                                size="sm"
-                                                variant="outline"
-                                                className={cn(
-                                                  "cursor-pointer",
-                                                  ( !getSelectedUser(cred.id) ||
-                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id)) ) &&
-                                                    "opacity-50 cursor-not-allowed pointer-events-none"
-                                                )}
-                                                onClick={async () => {
-                                                  if (
-                                                    !getSelectedUser(cred.id) ||
-                                                    isUserAlreadyInCredential(cred, getSelectedUser(cred.id))
-                                                  ) {
-                                                    return
-                                                  }
-
-                                                  await handleAddPermission(cred)
-                                                }}
-                                              >
-                                                Agregar
-                                              </AsyncConfirmButton>
-                                            </div>
-
-                                            {/* Permissions list */}
-                                            <div className="space-y-2">
-                                              {cred.permissions.map((user) => (
-                                                <div
-                                                  key={user.id}
-                                                  className="flex items-center justify-between rounded-md border px-3 py-2"
-                                                >
-                                                  <div className="flex items-center gap-3 min-w-0">
-                                                    {user.pfpUrl ? (
-                                                      <img
-                                                        src={user.pfpUrl}
-                                                        alt={user.displayName ?? user.email}
-                                                        className="h-7 w-7 rounded-full object-cover"
-                                                      />
-                                                    ) : (
-                                                      <div
-                                                        className="h-7 w-7 rounded-full flex items-center justify-center text-xs font-medium text-white"
-                                                        style={{
-                                                          backgroundColor: stringToColor(
-                                                            user.displayName ?? user.email
-                                                          ),
-                                                        }}
-                                                      >
-                                                        {(user.displayName ?? user.email)[0]?.toUpperCase()}
-                                                      </div>
-                                                    )}
-
-                                                    <div className="flex flex-col min-w-0">
-                                                      <span className="text-sm truncate">
-                                                        {user.displayName ?? user.email}
-                                                      </span>
-                                                      <span className="text-xs text-muted-foreground truncate">
-                                                        {user.email}
-                                                      </span>
-                                                    </div>
-                                                  </div>
-
-                                                  <div className="flex items-center gap-2">
-                                                    {user.isAdminOfCredential && (
-                                                      <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                                        Admin
-                                                      </span>
-                                                    )}
-
-                                                    <Button
-                                                      size="sm"
-                                                      variant="destructive"
-                                                      disabled={!canManageCredential(cred)}
-                                                      className={cn(
-                                                        "cursor-pointer",
-                                                        !canManageCredential(cred) &&
-                                                          "opacity-50 cursor-not-allowed pointer-events-none"
-                                                      )}
-                                                      onClick={() =>
-                                                        handleDeletePermission(cred.id, user.id)
-                                                      }
-                                                    >
-                                                      {m["common.delete"]()}
-                                                    </Button>
-                                                  </div>
-                                                </div>
-                                              ))}
-                                            </div>
-                                          </div>
-                                        )}
+                                        <CredentialPermissions
+                                          credential={cred}
+                                          onCredentialsUpdate={onCredentialsUpdate}
+                                        />
                                       </div>
 
                                     </motion.div>

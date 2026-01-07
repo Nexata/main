@@ -1,5 +1,62 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+
+	"common": {
+		"loading": "Cargando…",
+		"ask_nexy": "Preguntale a Nexy...",
+		"cancel": "Cancelar",
+		"delete": "Eliminar",
+		"confirm": "Confirmar",
+		"user": "Usuario",
+    	"save_changes": "Guardar cambios",
+		"success": "Operación exitosa",
+    	"error": "Ocurrió un error"
+	},
+
+	"months": {
+		"january": "Enero",
+		"february": "Febrero",
+		"march": "Marzo",
+		"april": "Abril",
+		"may": "Mayo",
+		"june": "Junio",
+		"july": "Julio",
+		"august": "Agosto",
+		"september": "Septiembre",
+		"october": "Octubre",
+		"november": "Noviembre",
+		"december": "Diciembre"
+	},
+
+	"components": {
+
+		"credentials": {
+
+			"permissions": {
+				"title": "Permisos de la credencial",
+				"description": "Administrá qué usuarios pueden acceder y utilizar esta credencial.",
+				"add": "Agregar",
+				"admin_badge": "Admin",
+				"remove": {
+					"toast": {
+						"loading": {
+							"title": "Eliminando permiso",
+							"description": "Quitando acceso del usuario a esta credencial…"
+						},
+						"success": {
+							"title": "Permiso eliminado",
+							"description": "El usuario ya no tiene acceso a esta credencial."
+						},
+						"error": {
+							"title": "Error al eliminar permiso",
+							"description": "No se pudo eliminar el permiso del usuario."
+						}
+					}
+				}
+			}
+		}
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Iniciar sesión"
@@ -28,31 +85,6 @@
 		"placeholder": "Seleccionar usuario",
 		"search": "Buscar usuario…",
 		"no_results": "No se encontraron usuarios"
-	},
-	"common": {
-		"loading": "Cargando…",
-		"ask_nexy": "Preguntale a Nexy...",
-		"cancel": "Cancelar",
-		"delete": "Eliminar",
-		"confirm": "Confirmar",
-		"user": "Usuario",
-    	"save_changes": "Guardar cambios",
-		"success": "Operación exitosa",
-    	"error": "Ocurrió un error"
-	},
-	"months": {
-		"january": "Enero",
-		"february": "Febrero",
-		"march": "Marzo",
-		"april": "Abril",
-		"may": "Mayo",
-		"june": "Junio",
-		"july": "Julio",
-		"august": "Agosto",
-		"september": "Septiembre",
-		"october": "Octubre",
-		"november": "Noviembre",
-		"december": "Diciembre"
 	},
 	"chat": {
 		"meta": {
@@ -91,24 +123,6 @@
 					"loading": "Eliminando credencial...",
 					"success": "La credencial fue eliminada correctamente",
 					"error": "No se pudo eliminar la credencial"
-				}
-			},
-			"permissions": {
-				"remove": {
-					"toast": {
-						"loading": {
-							"title": "Eliminando permiso",
-							"description": "Quitando acceso del usuario a esta credencial…"
-						},
-						"success": {
-							"title": "Permiso eliminado",
-							"description": "El usuario ya no tiene acceso a esta credencial."
-						},
-						"error": {
-							"title": "Error al eliminar permiso",
-							"description": "No se pudo eliminar el permiso del usuario."
-						}
-					}
 				}
 			}
 		},

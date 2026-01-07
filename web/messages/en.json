@@ -1,5 +1,62 @@
 {
 	"$schema": "https://inlang.com/schema/inlang-message-format",
+
+	"common": {
+		"ask_nexy": "Ask Nexy...",
+		"cancel": "Cancel",
+		"delete": "Delete",
+		"confirm": "Confirm",
+		"user": "User",
+    	"save_changes": "Save changes",
+		"loading": "Loading…",
+		"success": "Success",
+    	"error": "Something went wrong"
+	},
+
+	"months": {
+		"january": "January",
+		"february": "February",
+		"march": "March",
+		"april": "April",
+		"may": "May",
+		"june": "June",
+		"july": "July",
+		"august": "August",
+		"september": "September",
+		"october": "October",
+		"november": "November",
+		"december": "December"
+  	},
+
+	"components": {
+
+		"credentials": {
+
+			"permissions": {
+				"title": "Credential permissions",
+				"description": "Manage which users can access and use this credential.",
+				"add": "Add",
+				"admin_badge": "Admin",
+				"remove": {
+					"toast": {
+						"loading": {
+							"title": "Removing permission",
+							"description": "Revoking user access to this credential…"
+						},
+						"success": {
+							"title": "Permission removed",
+							"description": "The user no longer has access to this credential."
+						},
+						"error": {
+							"title": "Failed to remove permission",
+							"description": "The user permission could not be removed."
+						}
+					}
+				}
+			}
+		}
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Login"
@@ -29,31 +86,6 @@
 		"search": "Search user…",
 		"no_results": "No users found"
 	},
-	"common": {
-		"ask_nexy": "Ask Nexy...",
-		"cancel": "Cancel",
-		"delete": "Delete",
-		"confirm": "Confirm",
-		"user": "User",
-    	"save_changes": "Save changes",
-		"loading": "Loading…",
-		"success": "Success",
-    	"error": "Something went wrong"
-	},
-	"months": {
-		"january": "January",
-		"february": "February",
-		"march": "March",
-		"april": "April",
-		"may": "May",
-		"june": "June",
-		"july": "July",
-		"august": "August",
-		"september": "September",
-		"october": "October",
-		"november": "November",
-		"december": "December"
-  	},
 	"chat": {
 		"meta": {
 			"title": "Nexata | Chat"
@@ -91,24 +123,6 @@
 					"loading": "Deleting credential...",
 					"success": "The credential was successfully deleted",
 					"error": "Failed to delete the credential"
-				}
-			},
-			"permissions": {
-				"remove": {
-					"toast": {
-						"loading": {
-							"title": "Removing permission",
-							"description": "Revoking user access to this credential…"
-						},
-						"success": {
-							"title": "Permission removed",
-							"description": "The user no longer has access to this credential."
-						},
-						"error": {
-							"title": "Failed to remove permission",
-							"description": "The user permission could not be removed."
-						}
-					}
 				}
 			}
 		},
