@@ -70,6 +70,10 @@
 					"error": "Failed to delete the credential"
 				}
 			}
+		},
+
+		"sources":{
+			"view_files": "View files"
 		}
 	},
 

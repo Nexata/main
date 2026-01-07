@@ -25,7 +25,6 @@ function SettingsPage() {
 
   const [credentials, setCredentials] = useState<DisplayCredential[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
   const [deleteModal, setDeleteModal] = useState<{credentialId: string | null}>({ credentialId: null })
 
   useEffect(() => {
@@ -38,7 +37,6 @@ function SettingsPage() {
         if (mounted) setCredentials(data)
       } catch (err) {
         console.error(err)
-        if (mounted) setError("Failed to load credentials")
       } finally {
         if (mounted) setLoading(false)
       }
