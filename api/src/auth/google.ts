@@ -57,7 +57,7 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 	)
 	.get(
 		'/callback',
-		async ({ oauth2, query, jwt, refreshJwt }) =>
+		async ({ oauth2, query, jwt, refreshJwt, headers }) =>
 			authorizeOauthCallback(
 				OauthProvider.GOOGLE,
 				query,
@@ -78,6 +78,7 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 							: undefined,
 						name: idToken?.name,
 						pfpUrl: idToken?.picture,
+						userAgent: headers['user-agent'],
 					};
 				},
 			),

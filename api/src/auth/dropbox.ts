@@ -65,7 +65,7 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 	)
 	.get(
 		'/callback',
-		async ({ oauth2, query, jwt, refreshJwt }) =>
+		async ({ oauth2, query, jwt, refreshJwt, headers }) =>
 			authorizeOauthCallback(
 				OauthProvider.DROPBOX,
 				query,
@@ -87,6 +87,7 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 							`${idToken.given_name ?? ''} ${idToken.family_name ?? ''}`.trim() ||
 							undefined,
 						pfpUrl: undefined,
+						userAgent: headers['user-agent'],
 					};
 				},
 			),

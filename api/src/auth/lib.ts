@@ -40,6 +40,7 @@ export const oauthLoginExtendedState = t.Object({
 		description: 'URL to redirect user after successful authentication.',
 	}),
 });
+
 export type OauthLoginExtendedState = Static<typeof oauthLoginExtendedState>;
 
 export const oauthCredentialExtendedState = (provider?: OauthProvider) =>
@@ -52,9 +53,6 @@ export const oauthCredentialExtendedState = (provider?: OauthProvider) =>
 			{ description: 'Scopes to request from the provider.', minItems: 1 },
 		),
 		userId: t.String({ format: 'uuid' }),
-		fingerprint: t.String({
-			description: 'Device fingerprint for token tracking',
-		}),
 		redirect: Nullish(t.String({ format: 'uri' }), {
 			description: 'URL to redirect user after successful authentication.',
 		}),
@@ -98,6 +96,7 @@ export async function authorizeOauthCallback(
 		refreshTokenExpiresAt?: Date;
 		name?: string;
 		pfpUrl?: string;
+		userAgent?: string;
 	}>,
 ) {
 	const q = await cache.getdel<OauthExtendedState>(query.state);
@@ -159,21 +158,24 @@ export async function authorizeOauthCallback(
 			refreshJwtSign(u),
 		]);
 
-		await db.batch([
-			db.insert(device).values({
-				fingerprint: q.fingerprint,
-				userId: u.id,
-				isAccessToken: true,
-			}),
-			db.insert(device).values({
-				fingerprint: q.fingerprint,
-				userId: u.id,
-				isAccessToken: false,
-			}),
-		]);
+		const set = {
+			accessToken,
+			refreshToken,
+			userAgent: metadata.userAgent,
+			createdAt: new Date(),
+		};
 
-		await cache.set(`device:${u.id}:${q.fingerprint}:access`, accessToken, {
-			ex: 43200,
+		await db
+			.insert(device)
+			.values({
+				fingerprint: q.fingerprint,
+				userId: u.id,
+				...set,
+			})
+			.onConflictDoUpdate({ target: [device.userId, device.fingerprint], set });
+
+		await cache.set(`device:${u.id}:${q.fingerprint}`, accessToken, {
+			ex: 12 * 60 * 60,
 		});
 
 		if (url) {
@@ -191,37 +193,21 @@ export async function authorizeOauthCallback(
 		refreshTokenExpiresAt: metadata.refreshTokenExpiresAt!,
 	};
 
-	await Promise.all([
-		removeCachedCredentials(u.slug),
-		db.batch([
-			db
-				.insert(credential)
-				.values({
-					userId: u.id,
-					email: metadata.email,
-					provider: provider,
-					scopes: q.scopes,
-					...set,
-				})
-				.onConflictDoUpdate({
-					set,
-					target: [credential.provider, credential.email, credential.scopes],
-				}),
-			db.insert(device).values({
-				fingerprint: q.fingerprint,
-				userId: u.id,
-				isAccessToken: true,
-			}),
-			db.insert(device).values({
-				fingerprint: q.fingerprint,
-				userId: u.id,
-				isAccessToken: false,
-			}),
-		]),
-		cache.set(`device:${u.id}:${q.fingerprint}:access`, set.accessToken, {
-			ex: 43200,
-		}),
-	]);
+	await removeCachedCredentials(u.slug);
+
+	await db
+		.insert(credential)
+		.values({
+			userId: u.id,
+			email: metadata.email,
+			provider: provider,
+			scopes: q.scopes,
+			...set,
+		})
+		.onConflictDoUpdate({
+			set,
+			target: [credential.provider, credential.email, credential.scopes],
+		});
 
 	return url ? redirect(url.href) : true;
 }

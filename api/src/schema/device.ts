@@ -1,7 +1,5 @@
 import { user } from '@api/schema';
 import {
-	boolean,
-	index,
 	pgTable,
 	timestamp,
 	uniqueIndex,
@@ -13,19 +11,14 @@ export const device = pgTable(
 	'device',
 	{
 		id: uuid().primaryKey().defaultRandom(),
-		fingerprint: varchar({ length: 256 }).notNull(),
+		fingerprint: varchar({ length: 20 }).notNull(),
+		userAgent: varchar(),
 		userId: uuid()
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
-		isAccessToken: boolean().notNull().default(true),
+		accessToken: varchar({ length: 4096 }).notNull(),
+		refreshToken: varchar({ length: 4096 }).notNull(),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
-	(t) => [
-		uniqueIndex('device_fingerprint_user_token_type').on(
-			t.fingerprint,
-			t.userId,
-			t.isAccessToken,
-		),
-		index('device_user_id').on(t.userId),
-	],
+	(t) => [uniqueIndex('device_user_fingerprint').on(t.userId, t.fingerprint)],
 );

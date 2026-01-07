@@ -15,11 +15,12 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import { HttpError } from 'elysia-logger';
 
-export async function removeCachedCredentials(slug: string) {
+export async function removeCachedCredentials(slug: string, uid?: string) {
+	if (uid) return cache.del(`credentials:${slug}:${uid}`);
 	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
 	const cachedAccessTokens = await cache.keys(`at:${slug}:*`);
 	const allKeys = [...(cachedCredentials ?? []), ...(cachedAccessTokens ?? [])];
-	return allKeys.length ? await cache.del(...allKeys) : 0;
+	return allKeys.length ? cache.del(...allKeys) : 0;
 }
 
 export type CachedCredential = {
