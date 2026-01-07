@@ -3,6 +3,7 @@ export * from '@api/schema/billable-event';
 export * from '@api/schema/chunk';
 export * from '@api/schema/credential';
 export * from '@api/schema/credential-permission';
+export * from '@api/schema/device';
 export * from '@api/schema/file';
 export * from '@api/schema/file-permission';
 export * from '@api/schema/message';

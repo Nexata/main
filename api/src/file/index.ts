@@ -13,12 +13,7 @@ import {
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { uploadFile } from '@api/utils/s3';
-import {
-	caseWhenNull,
-	coalesce,
-	jsonAgg,
-	jsonBuildObject,
-} from '@api/utils/sql';
+import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { embed } from 'ai';
 import {
@@ -74,7 +69,7 @@ export namespace File {
 	];
 
 	export async function search(
-		activeUser: JwtPayload,
+		_activeUser: JwtPayload,
 		input: Static<typeof searchInput>,
 	) {
 		const { embedding } = input.query

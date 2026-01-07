@@ -1,6 +1,7 @@
 import { cache, db } from '@api/env';
 import {
 	credential,
+	device,
 	type OauthProvider,
 	OauthScope,
 	realOauthScopes,
@@ -32,6 +33,9 @@ export const oauthLoginExtendedState = t.Object({
 		pattern: '^[a-z0-9]{2,16}$',
 		description: 'Tenant slug',
 	}),
+	fingerprint: t.String({
+		description: 'Device fingerprint for token tracking',
+	}),
 	redirect: Nullish(t.String({ format: 'uri' }), {
 		description: 'URL to redirect user after successful authentication.',
 	}),
@@ -48,6 +52,9 @@ export const oauthCredentialExtendedState = (provider?: OauthProvider) =>
 			{ description: 'Scopes to request from the provider.', minItems: 1 },
 		),
 		userId: t.String({ format: 'uuid' }),
+		fingerprint: t.String({
+			description: 'Device fingerprint for token tracking',
+		}),
 		redirect: Nullish(t.String({ format: 'uri' }), {
 			description: 'URL to redirect user after successful authentication.',
 		}),
@@ -152,6 +159,23 @@ export async function authorizeOauthCallback(
 			refreshJwtSign(u),
 		]);
 
+		await db.batch([
+			db.insert(device).values({
+				fingerprint: q.fingerprint,
+				userId: u.id,
+				isAccessToken: true,
+			}),
+			db.insert(device).values({
+				fingerprint: q.fingerprint,
+				userId: u.id,
+				isAccessToken: false,
+			}),
+		]);
+
+		await cache.set(`device:${u.id}:${q.fingerprint}:access`, accessToken, {
+			ex: 43200,
+		});
+
 		if (url) {
 			url.searchParams.set('at', accessToken);
 			url.searchParams.set('rt', refreshToken);
@@ -169,19 +193,34 @@ export async function authorizeOauthCallback(
 
 	await Promise.all([
 		removeCachedCredentials(u.slug),
-		db
-			.insert(credential)
-			.values({
+		db.batch([
+			db
+				.insert(credential)
+				.values({
+					userId: u.id,
+					email: metadata.email,
+					provider: provider,
+					scopes: q.scopes,
+					...set,
+				})
+				.onConflictDoUpdate({
+					set,
+					target: [credential.provider, credential.email, credential.scopes],
+				}),
+			db.insert(device).values({
+				fingerprint: q.fingerprint,
 				userId: u.id,
-				email: metadata.email,
-				provider: provider,
-				scopes: q.scopes,
-				...set,
-			})
-			.onConflictDoUpdate({
-				set,
-				target: [credential.provider, credential.email, credential.scopes],
+				isAccessToken: true,
 			}),
+			db.insert(device).values({
+				fingerprint: q.fingerprint,
+				userId: u.id,
+				isAccessToken: false,
+			}),
+		]),
+		cache.set(`device:${u.id}:${q.fingerprint}:access`, set.accessToken, {
+			ex: 43200,
+		}),
 	]);
 
 	return url ? redirect(url.href) : true;
