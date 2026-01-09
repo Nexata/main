@@ -12,8 +12,8 @@ export namespace Nexata {
 			providers: Nullish(t.Array(t.Enum(OauthProvider)), {
 				description: 'Limit the search to a set of providers.',
 			}),
-			scopes: Nullish(t.Array(t.Enum(OauthScope)), {
-				description: 'Limit the search to specific scopes.',
+			scope: Nullish(t.Enum(OauthScope), {
+				description: 'Limit the search to a specific scope.',
 			}),
 			mails: Nullish(t.Array(t.String({ format: 'email' })), {
 				description: 'Limit the search to specific credentials based on mails.',
@@ -32,10 +32,8 @@ export namespace Nexata {
 				input.providers?.includes(cred.provider),
 			);
 
-		if (input.scopes?.length)
-			credentials = credentials.filter((cred) =>
-				input.scopes?.some((s) => cred.scopes.includes(s)),
-			);
+		if (input.scope)
+			credentials = credentials.filter((cred) => cred.scope === input.scope);
 
 		if (input.mails?.length)
 			credentials = credentials.filter(

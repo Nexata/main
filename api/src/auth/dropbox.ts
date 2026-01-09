@@ -51,7 +51,7 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 					'openid',
 					'profile',
 					'email',
-					...q.scopes.flatMap((s) => realOauthScopes[s]),
+					...realOauthScopes[q.scope],
 				]);
 
 				url.searchParams.set('token_access_type', 'offline');

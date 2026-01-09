@@ -60,8 +60,8 @@ export const getTools = async (
 		),
 	};
 
-	const dropboxCredentials = credentials.filter((c) =>
-		c.scopes.includes(OauthScope.DROPBOX),
+	const dropboxCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.DROPBOX,
 	);
 	if (dropboxCredentials.length)
 		tools = {

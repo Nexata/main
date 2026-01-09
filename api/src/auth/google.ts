@@ -43,7 +43,7 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 					'openid',
 					'profile',
 					'email',
-					...q.scopes.flatMap((s) => realOauthScopes[s]),
+					...realOauthScopes[q.scope],
 				]);
 
 				url.searchParams.set('access_type', 'offline');

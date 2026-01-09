@@ -25,7 +25,7 @@ export async function removeCachedCredentials(slug: string, uid?: string) {
 
 export type CachedCredential = {
 	provider: OauthProvider;
-	scopes: OauthScope[];
+	scope: OauthScope;
 	accessToken: string;
 	email: string;
 	ownedBy: {
@@ -38,7 +38,7 @@ export interface DisplayCredential {
 	id: string;
 	canAdmin: boolean;
 	provider: OauthProvider;
-	scopes: OauthScope[];
+	scope: OauthScope;
 	email: string;
 	isGlobal: boolean;
 	ownedBy: {
@@ -97,7 +97,7 @@ export async function getCredentialsForUser(
 						sql<boolean>`false`,
 					),
 			provider: credential.provider,
-			scopes: credential.scopes,
+			scope: credential.scope,
 			email: credential.email,
 			isGlobal: credential.isGlobal,
 			ownedBy: jsonBuildObject({
@@ -162,27 +162,19 @@ export async function getCredentialsForUser(
 		)
 		.groupBy(credential.id, user.id);
 
-	const usageCredentials = [
-		...credentials
-			.map(
-				(c) =>
-					({
-						provider: c.provider,
-						scopes: c.scopes,
-						email: c.email,
-						accessToken: c.accessToken,
-						ownedBy: {
-							id: c.ownedBy.id,
-							email: c.ownedBy.email,
-						},
-					}) satisfies CachedCredential,
-			)
-			.reduce((m, c) => {
-				const k = `${c.email}-${c.provider}-${JSON.stringify(c.scopes.sort())}`;
-				return m.has(k) ? m : m.set(k, c);
-			}, new Map<string, CachedCredential>())
-			.values(),
-	];
+	const usageCredentials = credentials.map(
+		(c) =>
+			({
+				provider: c.provider,
+				scope: c.scope,
+				email: c.email,
+				accessToken: c.accessToken,
+				ownedBy: {
+					id: c.ownedBy.id,
+					email: c.ownedBy.email,
+				},
+			}) satisfies CachedCredential,
+	);
 
 	await cache.set(
 		`credentials:${activeUser.slug}:${activeUser.id}`,

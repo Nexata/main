@@ -1,5 +1,4 @@
 import { user } from '@api/schema';
-import { sqlArray } from '@api/utils/sql';
 import { desc } from 'drizzle-orm';
 import { index } from 'drizzle-orm/gel-core';
 import {
@@ -73,10 +72,7 @@ export const credential = pgTable(
 			.references(() => user.id, { onDelete: 'cascade' }),
 		email: varchar({ length: 320 }).notNull(),
 		provider: OauthProviderEnum().notNull(),
-		scopes: OauthScopeEnum()
-			.array()
-			.notNull()
-			.default(sqlArray([], OauthScopeEnum.enumName)),
+		scope: OauthScopeEnum().notNull(),
 		isGlobal: boolean().notNull().default(false),
 		accessToken: varchar({ length: 4096 }).notNull(),
 		accessTokenExpiresAt: timestamp().notNull(),
@@ -86,6 +82,6 @@ export const credential = pgTable(
 	},
 	(t) => [
 		index('credential_created_at_desc').on(desc(t.createdAt)),
-		uniqueIndex('credential_unicity').on(t.email, t.provider, t.scopes),
+		uniqueIndex('credential_unicity').on(t.email, t.provider, t.scope),
 	],
 );

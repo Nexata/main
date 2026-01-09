@@ -1,6 +1,7 @@
 import { cache, db } from '@api/env';
 import {
 	credential,
+	credentialPermission,
 	device,
 	type OauthProvider,
 	OauthScope,
@@ -46,12 +47,14 @@ export type OauthLoginExtendedState = Static<typeof oauthLoginExtendedState>;
 export const oauthCredentialExtendedState = (provider?: OauthProvider) =>
 	t.Object({
 		flow: t.Readonly(t.Literal('credential', { default: 'credential' })),
-		scopes: t.Array(
-			provider
-				? t.Union(scopesPerProvider[provider].map((scope) => t.Literal(scope)))
-				: t.Enum(OauthScope),
-			{ description: 'Scopes to request from the provider.', minItems: 1 },
-		),
+		scope: provider
+			? t.Union(
+					scopesPerProvider[provider].map((scope) => t.Literal(scope)),
+					{ description: `Scopes to request from ${provider}.` },
+				)
+			: t.Enum(OauthScope, {
+					description: 'Scopes to request from the provider.',
+				}),
 		userId: t.String({ format: 'uuid' }),
 		redirect: Nullish(t.String({ format: 'uri' }), {
 			description: 'URL to redirect user after successful authentication.',
@@ -104,9 +107,7 @@ export async function authorizeOauthCallback(
 
 	if (
 		q.flow === 'credential' &&
-		q.scopes
-			.flatMap((s) => realOauthScopes[s])
-			.some((s) => !tokens.scopes().includes(s))
+		realOauthScopes[q.scope].some((s) => !tokens.scopes().includes(s))
 	)
 		throw HttpError.Conflict('SCOPE_MISMATCH');
 
@@ -195,19 +196,39 @@ export async function authorizeOauthCallback(
 
 	await removeCachedCredentials(u.slug);
 
-	await db
+	const credentialResult = await db
 		.insert(credential)
 		.values({
 			userId: u.id,
 			email: metadata.email,
 			provider: provider,
-			scopes: q.scopes,
+			scope: q.scope,
 			...set,
 		})
 		.onConflictDoUpdate({
 			set,
-			target: [credential.provider, credential.email, credential.scopes],
-		});
+			target: [credential.provider, credential.email, credential.scope],
+		})
+		.returning({ id: credential.id, userId: credential.userId });
+
+	const cred = credentialResult.at(0);
+	if (!cred) throw HttpError.InternalServerError('CREDENTIAL_NOT_FOUND');
+
+	if (cred.userId !== u.id)
+		await db
+			.insert(credentialPermission)
+			.values({
+				credentialId: cred.id,
+				userId: u.id,
+				isAdmin: true,
+			})
+			.onConflictDoUpdate({
+				target: [
+					credentialPermission.credentialId,
+					credentialPermission.userId,
+				],
+				set: { isAdmin: true },
+			});
 
 	return url ? redirect(url.href) : true;
 }
