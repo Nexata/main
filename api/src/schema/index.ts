@@ -9,4 +9,5 @@ export * from '@api/schema/file-permission';
 export * from '@api/schema/message';
 export * from '@api/schema/tenant';
 export * from '@api/schema/thread';
+export * from '@api/schema/trace';
 export * from '@api/schema/user';

@@ -7,6 +7,8 @@ import {
 	OauthScope,
 	realOauthScopes,
 	scopesPerProvider,
+	TraceType,
+	trace,
 	user,
 } from '@api/schema';
 import { removeCachedCredentials } from '@api/utils/credential';
@@ -229,6 +231,12 @@ export async function authorizeOauthCallback(
 				],
 				set: { isAdmin: true },
 			});
+
+	await db.insert(trace).values({
+		userId: u.id,
+		type: TraceType.CREDENTIAL_ADDED,
+		metadata: { credentialId: cred.id },
+	});
 
 	return url ? redirect(url.href) : true;
 }

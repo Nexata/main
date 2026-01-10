@@ -7,7 +7,14 @@ import {
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
 import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
-import { type MessageRole, message, tenant, thread } from '@api/schema';
+import {
+	type MessageRole,
+	message,
+	TraceType,
+	thread,
+	trace,
+} from '@api/schema';
+import { getMessageCount } from '@api/utils/chat';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { type ModelMessage, stepCountIs, streamText } from 'ai';
@@ -21,18 +28,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser }) => {
-			const count =
-				(await cache.get<{ limit: number; used: number }>(
-					`tenant:${activeUser.slug}:messages`,
-				)) ??
-				(
-					await db
-						.select({ limit: tenant.messageLimit, used: tenant.usedMessages })
-						.from(tenant)
-				).at(0);
-
-			if (!count) throw HttpError.InternalServerError('NO_MESSAGE_COUNT');
-			if (count.used + 1 >= count.limit)
+			const messageData = await getMessageCount(activeUser.slug);
+			if (messageData.count + 1 >= messageData.limit)
 				throw HttpError.MethodNotAllowed('MESSAGE_LIMIT_REACHED');
 
 			const userMessage: PartialMessage = {
@@ -131,6 +128,15 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					if (!threadId) throw new Error('THREAD_NOT_CREATED');
 
 					const appendedMessages = await db
+						.with(
+							db.$with('trace').as(
+								db.insert(trace).values({
+									userId: activeUser.id,
+									type: TraceType.MESSAGE_SENT,
+									metadata: { threadId },
+								}),
+							),
+						)
 						.insert(message)
 						.values(
 							messagesToAppend.map((m) => ({
@@ -145,28 +151,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							content: message.content,
 						});
 
-					const usedMessages = await db
-						.update(tenant)
-						.set({ usedMessages: sql`${tenant.usedMessages} + 1` })
-						.where(eq(tenant.slug, activeUser.slug))
-						.returning({ usedMessages: tenant.usedMessages })
-						.catch(async () => {
-							await cache.del(`tenant:${activeUser.slug}:messages`);
-							throw new Error('USED_MESSAGES_UPDATE_FAILED');
-						});
-
 					await Promise.all([
 						cache.set(threadId, [...threadMessages, ...appendedMessages], {
 							ex: 60 * 5,
 						}),
-						cache.set(
-							`tenant:${activeUser.slug}:messages`,
-							{
-								limit: count.limit,
-								used: usedMessages.at(0)?.usedMessages ?? 1,
-							},
-							{ ex: 60 * 60 },
-						),
+						cache.del(`tenant:${activeUser.slug}:message-count`),
 					]);
 				},
 			});

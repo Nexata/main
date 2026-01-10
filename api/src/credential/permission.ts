@@ -1,6 +1,12 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
-import { credential, credentialPermission, user } from '@api/schema';
+import {
+	credential,
+	credentialPermission,
+	TraceType,
+	trace,
+	user,
+} from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { removeCachedCredentials } from '@api/utils/credential';
 import { boolOr } from '@api/utils/sql';
@@ -74,6 +80,15 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 			await removeCachedCredentials(activeUser.slug, body.userId);
 
 			return db
+				.with(
+					db.$with('trace').as(
+						db.insert(trace).values({
+							userId: activeUser.id,
+							type: TraceType.CREDENTIAL_ADDED,
+							metadata: { credentialId: body.credentialId },
+						}),
+					),
+				)
 				.insert(credentialPermission)
 				.values(body)
 				.onConflictDoUpdate({
@@ -104,19 +119,28 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 
 			await removeCachedCredentials(activeUser.slug, body.userId);
 
-			return db
-				.delete(credentialPermission)
-				.where(
-					and(
-						eq(credentialPermission.credentialId, body.credentialId),
-						eq(credentialPermission.userId, body.userId),
-					),
-				)
-				.returning({
-					credentialId: credentialPermission.credentialId,
-					userId: credentialPermission.userId,
-					isAdmin: credentialPermission.isAdmin,
-				});
+			const [result] = await db.batch([
+				db
+					.delete(credentialPermission)
+					.where(
+						and(
+							eq(credentialPermission.credentialId, body.credentialId),
+							eq(credentialPermission.userId, body.userId),
+						),
+					)
+					.returning({
+						credentialId: credentialPermission.credentialId,
+						userId: credentialPermission.userId,
+						isAdmin: credentialPermission.isAdmin,
+					}),
+				db.insert(trace).values({
+					userId: activeUser.id,
+					type: TraceType.CREDENTIAL_REMOVED,
+					metadata: { credentialId: body.credentialId },
+				}),
+			]);
+
+			return result;
 		},
 		{
 			detail: { summary: 'Delete credential permission' },
