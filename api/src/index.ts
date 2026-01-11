@@ -15,7 +15,7 @@ import { helmet } from 'elysia-helmet';
 import { logger } from 'elysia-logger';
 import { sentry } from 'elysiajs-sentry';
 
-const app = new Elysia({ prefix: '/api' })
+export const app = new Elysia({ prefix: '/api' })
 	.use(
 		IS_PRODUCTION &&
 			sentry({

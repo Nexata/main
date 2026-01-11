@@ -205,8 +205,7 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.delete(
 		'/',
 		// TODO: Revisar que tenga admin permissions
-		async ({ body }) =>
-			db.delete(file).where(inArray(file.id, body.ids)),
+		async ({ body }) => db.delete(file).where(inArray(file.id, body.ids)),
 		{
 			detail: { summary: 'Delete files' },
 			body: tObject({ ids: t.Array(t.String({ format: 'uuid' })) }),
