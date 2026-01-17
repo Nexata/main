@@ -1,4 +1,5 @@
 import { Nexata } from '@api/chat/tools/nexata';
+import { File } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
@@ -57,6 +58,13 @@ export const getTools = async (
 			activeUser,
 			(au) => au,
 			async (au, input) => Nexata.listCredentials(au, input),
+		),
+		NexataFileSearch: toolify(
+			File.searchDescription,
+			File.searchInput,
+			activeUser,
+			(au) => au,
+			async (au, input) => File.search(au, input),
 		),
 	};
 
