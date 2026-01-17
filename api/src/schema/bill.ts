@@ -4,6 +4,7 @@ import {
 	boolean,
 	date,
 	index,
+	json,
 	pgTable,
 	uuid,
 	varchar,
@@ -18,6 +19,7 @@ export const bill = pgTable(
 			.references(() => tenant.slug, { onDelete: 'cascade' }),
 		createdAt: date().notNull().defaultNow(),
 		paid: boolean().notNull().default(false),
+		details: json().notNull(), // keys being BillableEventType enum keys, values the totals
 	},
 	(table) => [index('bill_created_at_desc').on(desc(table.createdAt))],
 );
