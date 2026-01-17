@@ -10,6 +10,8 @@ import { type Static, t } from 'elysia';
 import sharp from 'sharp';
 
 export function isRelevantImage(width: number, height: number) {
+	if (!width || !height) return false;
+
 	const isTooSmall = width < 300 && height < 300;
 
 	const ratio = width / height;

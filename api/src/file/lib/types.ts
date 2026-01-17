@@ -12,6 +12,8 @@ export enum SupportedMime {
 	JSON = 'application/json',
 	XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 	XLS = 'application/vnd.ms-excel',
+	DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+	DOC = 'application/msword',
 }
 
 export type FileLike =

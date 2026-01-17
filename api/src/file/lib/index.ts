@@ -8,6 +8,7 @@ import {
 	SupportedMime,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { docToChunks } from '@api/file/lib/word';
 import type { chunk } from '@api/schema';
 import { embedMany } from 'ai';
 import { HttpError } from 'elysia-logger';
@@ -29,6 +30,8 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 			[SupportedMime.JSON]: textToChunks,
 			[SupportedMime.XLSX]: excelToChunks,
 			[SupportedMime.XLS]: excelToChunks,
+			[SupportedMime.DOCX]: docToChunks,
+			[SupportedMime.DOC]: docToChunks,
 		} as Record<
 			SupportedMime,
 			(f: FileLike, meta?: object) => Promise<ToStringChunksResult>
