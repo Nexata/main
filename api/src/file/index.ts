@@ -35,9 +35,6 @@ import {
 import { createInsertSchema } from 'drizzle-typebox';
 import { Elysia, type Static, t } from 'elysia';
 
-// TODO: file | file-permission | chunk
-// Si tiene acceso a la credential, automaticamente tiene acceso a los files vectorizados
-
 const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt', 'modifiedAt']);
 
