@@ -10,6 +10,8 @@ export enum SupportedMime {
 	IMG = 'image/',
 	PDF = 'application/pdf',
 	JSON = 'application/json',
+	XLSX = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+	XLS = 'application/vnd.ms-excel',
 }
 
 export type FileLike =

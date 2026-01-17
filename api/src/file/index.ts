@@ -187,7 +187,7 @@ export namespace File {
 										),
 								),
 							),
-					similarity && or(gt(similarity, 0.5)),
+					similarity && or(gt(similarity, 0.3)),
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
 					input.type ? ilike(file.type, `%${input.type}%`) : undefined,

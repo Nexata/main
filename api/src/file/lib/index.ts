@@ -1,4 +1,5 @@
 import { EMBEDDING_MODEL } from '@api/env';
+import { excelToChunks } from '@api/file/lib/excel';
 import { imgToChunks } from '@api/file/lib/image';
 import { pdfToChunks } from '@api/file/lib/pdf';
 import { mdToChunks, textToChunks } from '@api/file/lib/text';
@@ -26,6 +27,8 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 			[SupportedMime.IMG]: imgToChunks,
 			[SupportedMime.PDF]: pdfToChunks,
 			[SupportedMime.JSON]: textToChunks,
+			[SupportedMime.XLSX]: excelToChunks,
+			[SupportedMime.XLS]: excelToChunks,
 		} as Record<
 			SupportedMime,
 			(f: FileLike, meta?: object) => Promise<ToStringChunksResult>

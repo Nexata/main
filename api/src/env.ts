@@ -52,7 +52,7 @@ export const FALLBACK_BEHAVIOR: {
 
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	// TODO: Cambiar orden al pagar groq, deepinfra primero
+	// TODO: once groq is being paid, put deepinfra first
 	models: [groq('openai/gpt-oss-120b'), deepinfra('openai/gpt-oss-120b')],
 });
 
