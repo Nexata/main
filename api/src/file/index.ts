@@ -6,8 +6,10 @@ import {
 	billableEvent,
 	chunk,
 	credential,
+	credentialPermission,
 	FileHost,
 	file,
+	filePermission,
 	thread,
 	user,
 } from '@api/schema';
@@ -21,6 +23,7 @@ import {
 	cosineDistance,
 	desc,
 	eq,
+	exists,
 	gt,
 	gte,
 	ilike,
@@ -69,7 +72,7 @@ export namespace File {
 	];
 
 	export async function search(
-		_activeUser: JwtPayload,
+		activeUser: JwtPayload,
 		input: Static<typeof searchInput>,
 	) {
 		const { embedding } = input.query
@@ -137,9 +140,57 @@ export namespace File {
 				similarity ? eq(file.id, chunk.fileId) : sql<boolean>`false`,
 			)
 			.where(
-				// TODO: where activeUser tiene permissions
 				and(
-					similarity && or(gt(similarity, 0.5)), // ilike(chunk.text, `%${input.query}%`)
+					activeUser.isAdmin
+					? eq(user.slug, activeUser.slug)
+						: or(
+								exists(
+									db
+										.select({ credentialId: credential.id })
+										.from(credential)
+										.where(
+											and(
+												eq(credential.id, file.credentialId),
+												or(
+													eq(credential.userId, activeUser.id),
+													exists(
+														db
+															.select({ userId: credentialPermission.userId })
+															.from(credentialPermission)
+															.where(
+																and(
+																	eq(
+																		credentialPermission.credentialId,
+																		credential.id,
+																	),
+																	eq(
+																		credentialPermission.userId,
+																		activeUser.id,
+																	),
+																),
+															),
+													),
+												),
+											),
+										),
+								),
+								eq(file.userId, activeUser.id),
+								exists(
+									db
+										.select({ id: filePermission.id })
+										.from(filePermission)
+										.where(
+											and(
+												eq(filePermission.fileId, file.id),
+												or(
+													eq(filePermission.userId, activeUser.id),
+													eq(filePermission.email, activeUser.email),
+												),
+											),
+										),
+								),
+							),
+					similarity && or(gt(similarity, 0.5)),
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
 					input.type ? ilike(file.type, `%${input.type}%`) : undefined,
@@ -201,11 +252,75 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 			body: tObject({ file: t.File(), metadata: Nullish(t.String()) }),
 		},
 	)
-	// TODO: Patch sync file?
 	.delete(
 		'/',
-		// TODO: Revisar que tenga admin permissions
-		async ({ body }) => db.delete(file).where(inArray(file.id, body.ids)),
+		async ({ body: { ids }, activeUser }) =>
+			db.delete(file).where(
+				and(
+					inArray(file.id, ids),
+					activeUser.isAdmin
+						? exists(
+								db
+									.select({ id: user.id })
+									.from(user)
+									.where(
+										and(
+											eq(user.id, file.userId),
+											eq(user.slug, activeUser.slug),
+										),
+									),
+							)
+						: or(
+								exists(
+									db
+										.select({ credentialId: credential.id })
+										.from(credential)
+										.where(
+											and(
+												eq(credential.id, file.credentialId),
+												or(
+													eq(credential.userId, activeUser.id),
+													exists(
+														db
+															.select({ userId: credentialPermission.userId })
+															.from(credentialPermission)
+															.where(
+																and(
+																	eq(
+																		credentialPermission.credentialId,
+																		credential.id,
+																	),
+																	eq(
+																		credentialPermission.userId,
+																		activeUser.id,
+																	),
+																	eq(credentialPermission.isAdmin, true),
+																),
+															),
+													),
+												),
+											),
+										),
+								),
+								eq(file.userId, activeUser.id),
+								exists(
+									db
+										.select({ id: filePermission.id })
+										.from(filePermission)
+										.where(
+											and(
+												eq(filePermission.fileId, file.id),
+												or(
+													eq(filePermission.userId, activeUser.id),
+													eq(filePermission.email, activeUser.email),
+												),
+												eq(filePermission.isAdmin, true),
+											),
+										),
+								),
+							),
+				),
+			),
 		{
 			detail: { summary: 'Delete files' },
 			body: tObject({ ids: t.Array(t.String({ format: 'uuid' })) }),
