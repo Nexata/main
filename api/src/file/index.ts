@@ -139,7 +139,7 @@ export namespace File {
 			.where(
 				and(
 					activeUser.isAdmin
-					? eq(user.slug, activeUser.slug)
+						? eq(user.slug, activeUser.slug)
 						: or(
 								exists(
 									db

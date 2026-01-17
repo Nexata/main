@@ -203,3 +203,162 @@ src/
 - Set appropriate cache expiration times
 - Never expose internal system details or error messages to clients
 - Store credentials with proper encryption and token expiration
+
+### Permission System
+
+#### Overview
+Nexata uses a multi-level permission system for files and credentials based on:
+1. User's tenant membership (`user.slug`)
+2. Tenant admin status (`user.isAdmin`)
+3. Direct ownership (`credential.userId`, `file.userId`)
+4. Explicit permissions (`credentialPermission`, `filePermission`)
+
+#### Permission Levels (Priority Order)
+For **DELETE/admin operations** (strict - requires admin rights):
+1. Tenant Admin - can delete any file/credential in their tenant
+2. Credential Owner - owns the credential linked to the file
+3. Credential Admin - has `credentialPermission.isAdmin = true` on the file's credential
+4. File Owner - owns the file directly
+5. File Admin - has `filePermission.isAdmin = true`
+
+For **SELECT/read operations** (permissive - any permission grants access):
+Same hierarchy, but any `credentialPermission` (not just admin) grants credential/file access.
+
+#### Permission Schemas
+
+**credentialPermission** (composite PK: credentialId + userId):
+- `credentialId`: Reference to credential
+- `userId`: User granted permission
+- `isAdmin`: Boolean - if true, user has admin rights (can delete/manage)
+
+**filePermission**:
+- `id`: UUID primary key
+- `fileId`: Reference to file
+- `userId`: User granted permission (optional)
+- `email`: Email for users not yet in system (optional)
+- `isAdmin`: Boolean - if true, user has admin rights (can delete)
+
+**credential.userId**:
+- Owner of the credential, has implicit admin rights
+
+**file.userId**:
+- Owner of the file, has implicit admin rights
+
+#### Implementation Pattern
+
+**DELETE endpoints** (requires admin permission):
+```typescript
+and(
+  inArray(file.id, ids),
+  activeUser.isAdmin
+    ? exists(
+        db.select({ id: user.id })
+          .from(user)
+          .where(
+            and(
+              eq(user.id, file.userId),
+              eq(user.slug, activeUser.slug), // Tenant scoping
+            ),
+          ),
+      )
+    : or(
+        exists(
+          db.select({ credentialId: credential.id })
+            .from(credential)
+            .where(
+              and(
+                eq(credential.id, file.credentialId),
+                or(
+                  eq(credential.userId, activeUser.id),
+                  exists(
+                    db.select({ userId: credentialPermission.userId })
+                      .from(credentialPermission)
+                      .where(
+                        and(
+                          eq(credentialPermission.credentialId, credential.id),
+                          eq(credentialPermission.userId, activeUser.id),
+                          eq(credentialPermission.isAdmin, true),
+                        ),
+                      ),
+                  ),
+                ),
+              ),
+            ),
+        ),
+        eq(file.userId, activeUser.id),
+        exists(
+          db.select({ id: filePermission.id })
+            .from(filePermission)
+            .where(
+              and(
+                eq(filePermission.fileId, file.id),
+                or(
+                  eq(filePermission.userId, activeUser.id),
+                  eq(filePermission.email, activeUser.email),
+                ),
+                eq(filePermission.isAdmin, true),
+              ),
+            ),
+        ),
+      ),
+)
+```
+
+**SELECT/SEARCH endpoints** (any permission):
+```typescript
+and(
+  eq(user.slug, activeUser.slug),
+  activeUser.isAdmin ? undefined : or(
+    exists(
+      db.select({ credentialId: credential.id })
+        .from(credential)
+        .where(
+          and(
+            eq(credential.id, file.credentialId),
+            or(
+              eq(credential.userId, activeUser.id),
+              exists(
+                db.select({ userId: credentialPermission.userId })
+                  .from(credentialPermission)
+                  .where(
+                    and(
+                      eq(credentialPermission.credentialId, credential.id),
+                      eq(credentialPermission.userId, activeUser.id),
+                    ),
+                  ),
+              ),
+            ),
+          ),
+        ),
+    ),
+    eq(file.userId, activeUser.id),
+    exists(
+      db.select({ id: filePermission.id })
+        .from(filePermission)
+        .where(
+          and(
+            eq(filePermission.fileId, file.id),
+            or(
+              eq(filePermission.userId, activeUser.id),
+              eq(filePermission.email, activeUser.email),
+            ),
+          ),
+        ),
+    ),
+  ),
+  // Additional filters...
+)
+```
+
+#### Key Patterns
+
+1. **Tenant Scoping**: Always check `user.slug === activeUser.slug` for tenant admins
+2. **Single Query**: Use `exists()` subqueries in WHERE clause for atomic operations
+3. **Email Matching**: `filePermission` can match by `userId` OR `email` for users not in system
+4. **Credential Inheritance**: Credential permissions cascade to associated files
+5. **Admin Bypass**: Tenant admins skip permission checks but require tenant validation
+
+#### References
+- File implementation: `src/file/index.ts`
+- Credential implementation: `src/credential/index.ts`, `src/credential/permission.ts`
+- Helper functions: `src/utils/credential.ts` (getCredentialsForUser, getAccessTokenForUser)
