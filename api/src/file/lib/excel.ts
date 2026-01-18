@@ -8,7 +8,7 @@ export async function excelToChunks(
 ): Promise<ToStringChunksResult> {
 	const buffer = ArrayBuffer.isView(f) ? f.buffer : f;
 	const workbook = read(buffer, { type: 'buffer' });
-	const chunks: string[] = [];
+	const chunks: ToStringChunksResult['chunks'] = [];
 
 	for (const sheetName of workbook.SheetNames) {
 		const sheet = workbook.Sheets[sheetName];
@@ -30,13 +30,10 @@ export async function excelToChunks(
 
 			if (i === batchStart) break;
 
-			chunks.push(
-				[
-					`## Sheet: '${sheetName}'`,
-					`**Total row count: ${rows.length}**`,
-					tablemark(rows.slice(batchStart, i)),
-				].join('\n\n'),
-			);
+			chunks.push({
+				text: tablemark(rows.slice(batchStart, i)),
+				metadata: { sheetName, rowRange: [batchStart + 1, i] },
+			});
 
 			let overlapSize = 0;
 			while (i > batchStart && overlapSize < EMBEDDING_OVERLAP) {
@@ -46,5 +43,15 @@ export async function excelToChunks(
 		}
 	}
 
-	return [chunks, 0];
+	return {
+		metadata: {
+			author: workbook.Props?.Author,
+			company: workbook.Props?.Company,
+			category: workbook.Props?.Category,
+			comments: workbook.Props?.Comments,
+			language: workbook.Props?.Language,
+			sheetNames: workbook.SheetNames,
+		},
+		chunks,
+	};
 }

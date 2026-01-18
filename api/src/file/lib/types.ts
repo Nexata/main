@@ -33,7 +33,11 @@ export type FileLike =
 	| Float32Array
 	| Float64Array;
 
-export type ToStringChunksResult = [string[], number]; // [chunks, token usage (if any)]
+export type ToStringChunksResult = {
+	metadata?: object;
+	chunks: { text: string; metadata: object }[];
+	tokenUsage?: number;
+};
 
 export const splitter = new RecursiveCharacterTextSplitter({
 	chunkSize: EMBEDDING_SIZE,

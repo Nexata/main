@@ -4,6 +4,7 @@ import {
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { encode } from '@toon-format/toon';
 import mammoth from 'mammoth';
 import sharp from 'sharp';
 import TurndownService from 'turndown';
@@ -23,6 +24,8 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	);
 
 	let usage = 0;
+	const imageChunks: { text: string; metadata: object }[] = [];
+	const textChunks: { text: string; metadata: object }[] = [];
 
 	const promises: Promise<unknown>[] = [];
 	for (const [id, data] of images)
@@ -36,29 +39,52 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0))
 					return (html = html.replace(imgTag, ''));
 
-				const [chunks, imgUsage] = await imgToChunks(new Uint8Array(data), {
+				const imgResult = await imgToChunks(new Uint8Array(data), {
 					width: meta.width,
 					height: meta.height,
 					channels: meta.channels ?? 3,
 				});
 
-				usage += imgUsage;
+				usage += imgResult.tokenUsage ?? 0;
 
-				if (!chunks.length) return (html = html.replace(imgTag, ''));
+				if (!imgResult.chunks.length) return (html = html.replace(imgTag, ''));
 
-				const [description, ...ocrTexts] = chunks;
+				const [description, ...ocrTexts] = imgResult.chunks;
+				const imgMetadata = {
+					source: 'image',
+					imageIndex: images.size,
+					width: meta.width,
+					height: meta.height,
+					format: meta.format,
+					comments: meta.comments,
+				};
+
 				const parts = [
 					'**An image is here**',
-					`[Image] Description: ${description}`,
-					ocrTexts.length && `Image OCR: ${ocrTexts.join(' | ')}`,
+					description && `[Image] Description: ${description.text}`,
+					ocrTexts?.length &&
+						`Image OCR: ${ocrTexts.map((c) => c.text).join(' | ')}`,
+					`##### Metadata:\n${encode(imgMetadata)}`,
 				].filter((x) => typeof x === 'string');
 
-				html = html.replace(imgTag, `<p>${parts.join('\n')}</p>`);
+				const imageText = parts.join('\n\n');
+				imageChunks.push({ text: imageText, metadata: imgMetadata });
+
+				html = html.replace(imgTag, `<p>${imageText}</p>`);
 			})(),
 		);
 
 	await Promise.all(promises);
 
 	const markdown = new TurndownService().turndown(html);
-	return [await mdSplitter.splitText(markdown), usage];
+	const markdownChunks = await mdSplitter.splitText(markdown);
+	textChunks.push(
+		...markdownChunks.map((text) => ({ text, metadata: { source: 'text' } })),
+	);
+
+	return {
+		metadata: { imageCount: images.size },
+		chunks: [...textChunks, ...imageChunks],
+		tokenUsage: usage,
+	};
 }

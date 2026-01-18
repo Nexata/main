@@ -53,7 +53,7 @@ export async function imgToChunks(
 		}),
 		system:
 			'You are an AI assistant for image processing inside a RAG system. Expected response type: ' +
-			// FIX PARA DEEPINFRA FALLBACK
+			// TODO: Remove expected response type when using output schema compatible provider
 			JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties),
 		prompt: [
 			{
@@ -66,14 +66,23 @@ export async function imgToChunks(
 		],
 	});
 
-	const chunks: string[] = [];
+	const chunks: ToStringChunksResult['chunks'] = [];
 	const usage = res.totalUsage.totalTokens ?? res.usage.totalTokens ?? 0;
 
 	if (res.output.hasValue) {
-		if (res.output.description) chunks.push(res.output.description);
-		if (res.output.ocr)
-			chunks.push(...(await mdSplitter.splitText(res.output.ocr)));
+		if (res.output.description)
+			chunks.push({
+				text: res.output.description,
+				metadata: { type: 'description' },
+			});
+
+		if (res.output.ocr) {
+			const ocrChunks = await mdSplitter.splitText(res.output.ocr);
+			chunks.push(
+				...ocrChunks.map((text) => ({ text, metadata: { type: 'ocr' } })),
+			);
+		}
 	}
 
-	return [chunks, usage];
+	return { metadata: raw, chunks, tokenUsage: usage };
 }

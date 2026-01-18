@@ -6,16 +6,24 @@ import {
 } from '@api/file/lib/types';
 import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 
-export async function pdfToChunks(f: FileLike) {
+export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
+	const chunks: ToStringChunksResult['chunks'] = [];
 	let usage = 0;
-	const chunks: string[] = [];
 
 	const pdf = await getDocumentProxy(f);
 	const { text, totalPages } = await extractText(pdf);
 
 	for (let i = 0; i < totalPages; i++) {
 		const pageText = text[i];
-		if (pageText) chunks.push(...(await splitter.splitText(pageText)));
+		if (pageText) {
+			const pageChunks = await splitter.splitText(pageText);
+			chunks.push(
+				...pageChunks.map((text) => ({
+					text,
+					metadata: { pageNumber: i + 1 },
+				})),
+			);
+		}
 
 		const imgChunksPromises: Promise<ToStringChunksResult>[] = [];
 		for (const img of await extractImages(pdf, i + 1)) {
@@ -30,9 +38,16 @@ export async function pdfToChunks(f: FileLike) {
 		}
 
 		const imgChunks = await Promise.all(imgChunksPromises);
-		chunks.push(...imgChunks.flatMap((res) => res[0]));
-		usage += imgChunks.reduce((a, [, v]) => a + v, 0);
+		for (const imgResult of imgChunks) {
+			chunks.push(
+				...imgResult.chunks.map((chunk) => ({
+					...chunk,
+					metadata: { ...chunk.metadata, pageNumber: i + 1 },
+				})),
+			);
+			usage += imgResult.tokenUsage ?? 0;
+		}
 	}
 
-	return [chunks, usage];
+	return { metadata: { pageCount: totalPages }, chunks, tokenUsage: usage };
 }

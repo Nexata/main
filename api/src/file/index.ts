@@ -136,6 +136,7 @@ export namespace File {
 								id: chunk.id,
 								order: chunk.order,
 								text: chunk.text,
+								metadata: chunk.metadata,
 								...(similarity ? { similarity } : {}),
 							}),
 							isNotNull(chunk.id),
@@ -225,14 +226,14 @@ export namespace File {
 	) {
 		data.id = crypto.randomUUID();
 
-		const [stringChunks, stringUsage] = await toStringChunks(
+		const result = await toStringChunks(
 			await f.arrayBuffer(),
 			data.type ?? f.type,
 		);
 
 		const [chunks, embeddingUsage] = await stringToChunks(
 			data.id,
-			stringChunks,
+			result.chunks,
 		);
 
 		if (!data.provider || data.provider === FileHost.NEXATA)
@@ -246,7 +247,7 @@ export namespace File {
 			}),
 			db.insert(billableEvent).values({
 				type: BillableEventType.EMBED,
-				consumption: (stringUsage + embeddingUsage).toString(),
+				consumption: ((result.tokenUsage ?? 0) + embeddingUsage).toString(),
 				userId: data.userId,
 			}),
 			db.insert(chunk).values(chunks),
@@ -287,6 +288,7 @@ export namespace File {
 				id: chunk.id,
 				order: chunk.order,
 				text: chunk.text,
+				metadata: chunk.metadata,
 				...(similarity ? { similarity } : {}),
 			})
 			.from(chunk)

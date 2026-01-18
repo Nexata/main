@@ -1,9 +1,8 @@
 import { EMBEDDING_MODEL } from '@api/env';
 import { excelToChunks } from '@api/file/lib/excel';
 import { imgToChunks } from '@api/file/lib/image';
-import { openDocumentToChunks } from '@api/file/lib/open-document';
+import { officeToChunks } from '@api/file/lib/office';
 import { pdfToChunks } from '@api/file/lib/pdf';
-import { pptxToChunks } from '@api/file/lib/pptx';
 import { mdToChunks, textToChunks } from '@api/file/lib/text';
 import {
 	type FileLike,
@@ -34,11 +33,11 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 			[SupportedMime.XLS]: excelToChunks,
 			[SupportedMime.DOCX]: docToChunks,
 			[SupportedMime.DOC]: docToChunks,
-			[SupportedMime.RTF]: openDocumentToChunks,
-			[SupportedMime.ODT]: openDocumentToChunks,
-			[SupportedMime.ODS]: openDocumentToChunks,
-			[SupportedMime.ODP]: openDocumentToChunks,
-			[SupportedMime.PPTX]: pptxToChunks,
+			[SupportedMime.RTF]: officeToChunks,
+			[SupportedMime.ODT]: officeToChunks,
+			[SupportedMime.ODS]: officeToChunks,
+			[SupportedMime.ODP]: officeToChunks,
+			[SupportedMime.PPTX]: officeToChunks,
 		} as Record<
 			SupportedMime,
 			(f: FileLike, meta?: object) => Promise<ToStringChunksResult>
@@ -48,13 +47,17 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 
 export async function stringToChunks(
 	fileId: string,
-	values: string[],
+	chunks: { text: string; metadata: object }[],
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
-	const res = await embedMany({ model: EMBEDDING_MODEL, values });
+	const res = await embedMany({
+		model: EMBEDDING_MODEL,
+		values: chunks.map((c) => c.text),
+	});
 	return [
-		res.values.map((text, i) => ({
+		chunks.map(({ text, metadata }, i) => ({
 			fileId,
 			text,
+			metadata,
 			order: i + 1,
 			embedding: res.embeddings[i]!,
 		})),

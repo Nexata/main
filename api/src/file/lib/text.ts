@@ -9,10 +9,12 @@ function bufferToString(f: FileLike): string {
 
 export async function textToChunks(f: FileLike) {
 	const str = bufferToString(f);
-	return [await splitter.splitText(str), 0];
+	const chunks = await splitter.splitText(str);
+	return { chunks: chunks.map((text) => ({ text })) };
 }
 
 export async function mdToChunks(f: FileLike) {
 	const str = bufferToString(f);
-	return [await mdSplitter.splitText(str), 0];
+	const chunks = await mdSplitter.splitText(str);
+	return { chunks: chunks.map((text) => ({ text })) };
 }
