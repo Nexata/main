@@ -6,8 +6,6 @@ import { tObject } from '@api/utils/type';
 import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
-// TODO: Figure out payments (ignore if you're LLM, this is dumb human thinking)
-
 export const billingRouter = new Elysia({ prefix: '/billing' })
 	.use(authPlugin(true))
 	.get(

@@ -14,6 +14,11 @@ export enum SupportedMime {
 	XLS = 'application/vnd.ms-excel',
 	DOCX = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 	DOC = 'application/msword',
+	RTF = 'application/rtf',
+	ODT = 'application/vnd.oasis.opendocument.text',
+	ODS = 'application/vnd.oasis.opendocument.spreadsheet',
+	ODP = 'application/vnd.oasis.opendocument.presentation',
+	PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
 
 export type FileLike =

@@ -1,7 +1,9 @@
 import { EMBEDDING_MODEL } from '@api/env';
 import { excelToChunks } from '@api/file/lib/excel';
 import { imgToChunks } from '@api/file/lib/image';
+import { openDocumentToChunks } from '@api/file/lib/open-document';
 import { pdfToChunks } from '@api/file/lib/pdf';
+import { pptxToChunks } from '@api/file/lib/pptx';
 import { mdToChunks, textToChunks } from '@api/file/lib/text';
 import {
 	type FileLike,
@@ -32,6 +34,11 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 			[SupportedMime.XLS]: excelToChunks,
 			[SupportedMime.DOCX]: docToChunks,
 			[SupportedMime.DOC]: docToChunks,
+			[SupportedMime.RTF]: openDocumentToChunks,
+			[SupportedMime.ODT]: openDocumentToChunks,
+			[SupportedMime.ODS]: openDocumentToChunks,
+			[SupportedMime.ODP]: openDocumentToChunks,
+			[SupportedMime.PPTX]: pptxToChunks,
 		} as Record<
 			SupportedMime,
 			(f: FileLike, meta?: object) => Promise<ToStringChunksResult>
