@@ -35,7 +35,7 @@ export type FileLike =
 
 export type ToStringChunksResult = {
 	metadata?: object;
-	chunks: { text: string; metadata: object }[];
+	chunks: { text: string; metadata?: object }[];
 	tokenUsage?: number;
 };
 
