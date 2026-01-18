@@ -86,7 +86,7 @@ export async function officeToChunks(
 			const results = await Promise.all(
 				ast.content.map((node, i) =>
 					plainOfficeToChunks(node.children!, {
-						pageNumber: i + 1,
+						[`${ast.content[0]!.type}Number`]: i + 1,
 						...node.metadata,
 					}),
 				),
