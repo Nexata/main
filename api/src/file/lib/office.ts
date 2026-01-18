@@ -10,7 +10,7 @@ import {
 } from 'officeparser';
 
 async function tableNodeToMarkdown(
-	node: OfficeContentNode,
+	_node: OfficeContentNode,
 ): Promise<[string, number]> {
 	// TODO: children rows | cells
 	return ['', 0];

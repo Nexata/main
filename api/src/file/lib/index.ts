@@ -47,7 +47,7 @@ export async function toStringChunks(f: FileLike, type: string, meta?: object) {
 
 export async function stringToChunks(
 	fileId: string,
-	chunks: { text: string; metadata: object }[],
+	chunks: ToStringChunksResult['chunks'],
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
 	const res = await embedMany({
 		model: EMBEDDING_MODEL,
