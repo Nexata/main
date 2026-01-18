@@ -1,3 +1,4 @@
+import { File } from '@api/file';
 import { OauthProvider, OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
@@ -41,5 +42,37 @@ export namespace Nexata {
 			);
 
 		return credentials;
+	}
+
+	export const [listFilesOnThreadDescription, listFilesOnThreadInput] = [
+		'Nexata tool to list files attached to the current conversation thread.',
+		tObject({
+			page: Nullish(t.Integer({ min: 1, default: 1 }), {
+				description: 'Page number (offset-based) for cursor-based pagination.',
+			}),
+		}),
+	];
+
+	export async function listFilesOnThread(
+		ctx: { activeUser: JwtPayload; threadId: string },
+		input: Static<typeof listFilesOnThreadInput>,
+	) {
+		return File.search(ctx.activeUser, { threadId: ctx.threadId, ...input });
+	}
+
+	export const [listFilesOnMessageDescription, listFilesOnMessageInput] = [
+		'Current message has attachments. This tool lists the files from the database.',
+		tObject({
+			page: Nullish(t.Integer({ min: 1, default: 1 }), {
+				description: 'Page number (offset-based) for cursor-based pagination.',
+			}),
+		}),
+	];
+
+	export async function listFilesOnMessage(
+		ctx: { activeUser: JwtPayload; fileIds: string[] },
+		input: Static<typeof listFilesOnMessageInput>,
+	) {
+		return File.search(ctx.activeUser, { fileIds: ctx.fileIds, ...input });
 	}
 }

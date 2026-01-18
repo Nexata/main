@@ -47,7 +47,8 @@ const toolify = <
 
 export const getTools = async (
 	activeUser: JwtPayload,
-	_threadId: string | null = null,
+	threadId: string | null = null,
+	fileIds: string[] | null = null,
 ) => {
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
@@ -66,7 +67,40 @@ export const getTools = async (
 			(au) => au,
 			async (au, input) => File.search(au, input),
 		),
+		NexataFileRead: toolify(
+			File.readDescription,
+			File.readInput,
+			activeUser,
+			(au) => au,
+			async (au, input) => File.read(au, input),
+		),
 	};
+
+	if (threadId) {
+		tools = {
+			...tools,
+			NexataListFilesOnThread: toolify(
+				Nexata.listFilesOnThreadDescription,
+				Nexata.listFilesOnThreadInput,
+				{ activeUser, threadId },
+				(ctx) => ctx,
+				async (ctx, input) => Nexata.listFilesOnThread(ctx, input),
+			),
+		};
+	}
+
+	if (fileIds?.length) {
+		tools = {
+			...tools,
+			NexataListFilesOnMessage: toolify(
+				Nexata.listFilesOnMessageDescription,
+				Nexata.listFilesOnMessageInput,
+				{ activeUser, fileIds },
+				(ctx) => ctx,
+				async (ctx, input) => Nexata.listFilesOnMessage(ctx, input),
+			),
+		};
+	}
 
 	const dropboxCredentials = credentials.filter(
 		(c) => c.scope === OauthScope.DROPBOX,

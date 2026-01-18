@@ -10,6 +10,7 @@ import {
 	FileHost,
 	file,
 	filePermission,
+	message,
 	thread,
 	user,
 } from '@api/schema';
@@ -20,6 +21,7 @@ import { Nullish, tObject } from '@api/utils/type';
 import { embed } from 'ai';
 import {
 	and,
+	asc,
 	cosineDistance,
 	desc,
 	eq,
@@ -60,6 +62,17 @@ export namespace File {
 			}),
 			createdAt: Nullish(t.Date(), {
 				description: 'Filter by greater-than-or-equal-to ingestion date.',
+			}),
+			threadId: Nullish(t.String({ format: 'uuid' }), {
+				description:
+					'Filter by thread ID. Only files associated with the specified thread will be returned.',
+			}),
+			messageId: Nullish(t.String({ format: 'uuid' }), {
+				description:
+					'Filter by message ID. Only files associated with the specified message will be returned.',
+			}),
+			fileIds: Nullish(t.Array(t.String({ format: 'uuid' })), {
+				description: 'Limit results to a set of specified file IDs.',
 			}),
 			page: Nullish(t.Integer({ min: 1, default: 1 }), {
 				description:
@@ -123,6 +136,7 @@ export namespace File {
 								id: chunk.id,
 								order: chunk.order,
 								text: chunk.text,
+								...(similarity ? { similarity } : {}),
 							}),
 							isNotNull(chunk.id),
 						).as('chunks')
@@ -130,7 +144,8 @@ export namespace File {
 			})
 			.from(file)
 			.innerJoin(user, eq(user.id, file.userId))
-			.leftJoin(thread, eq(thread.id, file.threadId))
+			.leftJoin(message, eq(message.id, file.messageId))
+			.leftJoin(thread, eq(thread.id, message.threadId))
 			.leftJoin(credential, eq(credential.id, file.credentialId))
 			.leftJoin(
 				chunk,
@@ -188,15 +203,18 @@ export namespace File {
 								),
 							),
 					similarity && or(gt(similarity, 0.3)),
+					input.fileIds ? inArray(file.id, input.fileIds) : undefined,
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
 					input.type ? ilike(file.type, `%${input.type}%`) : undefined,
 					input.createdAt ? gte(file.createdAt, input.createdAt) : undefined,
+					input.threadId ? eq(message.threadId, input.threadId) : undefined,
+					input.messageId ? eq(file.messageId, input.messageId) : undefined,
 				),
 			)
 			.groupBy(file.id, user.id, thread.id, credential.id, chunk.id)
 			.orderBy(similarity ? desc(similarity) : desc(file.createdAt))
-			.limit(similarity ? 10 : 100)
+			.limit(similarity ? 10 : 25)
 			.offset(((input.page ?? 1) - 1) * 10)
 			.catch(console.error);
 	}
@@ -235,6 +253,88 @@ export namespace File {
 		]);
 
 		return data.id;
+	}
+
+	export const [readDescription, readInput] = [
+		'Read file content chunks with optional semantic search. Returns chunks paginated by order (25 per page). Use cursor for pagination.',
+		t.Object({
+			fileId: t.String({ format: 'uuid' }),
+			messageId: t.String({ format: 'uuid' }),
+			query: Nullish(t.String({ minLength: 1 }), {
+				description: 'Optional query for semantic search across chunks.',
+			}),
+			cursor: Nullish(t.Integer({ min: 1 }), {
+				description:
+					'Cursor value for order pagination. Returns chunks with order > cursor.',
+			}),
+		}),
+	];
+
+	export async function read(
+		activeUser: JwtPayload,
+		input: Static<typeof readInput>,
+	) {
+		const { embedding } = input.query
+			? await embed({ model: EMBEDDING_MODEL, value: input.query })
+			: { embedding: undefined };
+
+		const similarity =
+			embedding &&
+			sql<number>`1 - (${cosineDistance(chunk.embedding, embedding)})`;
+
+		return db
+			.select({
+				id: chunk.id,
+				order: chunk.order,
+				text: chunk.text,
+				...(similarity ? { similarity } : {}),
+			})
+			.from(chunk)
+			.innerJoin(file, eq(file.id, chunk.fileId))
+			.innerJoin(user, eq(user.id, file.userId))
+			.where(
+				and(
+					eq(file.id, input.fileId),
+					activeUser.isAdmin
+						? eq(user.slug, activeUser.slug)
+						: or(
+								eq(file.userId, activeUser.id),
+								exists(
+									db
+										.select({ credentialId: credentialPermission.credentialId })
+										.from(credentialPermission)
+										.innerJoin(
+											credential,
+											eq(credential.id, credentialPermission.credentialId),
+										)
+										.where(
+											and(
+												eq(credential.id, file.credentialId),
+												eq(credentialPermission.userId, activeUser.id),
+											),
+										),
+								),
+								exists(
+									db
+										.select({ id: filePermission.id })
+										.from(filePermission)
+										.where(
+											and(
+												eq(filePermission.fileId, file.id),
+												or(
+													eq(filePermission.userId, activeUser.id),
+													eq(filePermission.email, activeUser.email),
+												),
+											),
+										),
+								),
+							),
+					similarity ? gt(similarity, 0.3) : undefined,
+					input.cursor ? gt(chunk.order, input.cursor) : undefined,
+				),
+			)
+			.orderBy(similarity ? desc(similarity) : asc(chunk.order))
+			.limit(25);
 	}
 }
 

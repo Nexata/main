@@ -1,4 +1,4 @@
-import { credential, thread, user } from '@api/schema';
+import { credential, message, user } from '@api/schema';
 import {
 	boolean,
 	jsonb,
@@ -27,7 +27,7 @@ export const file = pgTable('file', {
 		.notNull()
 		.references(() => user.id, { onDelete: 'cascade' }),
 	provider: FileHostEnum().notNull().default(FileHost.NEXATA),
-	threadId: uuid().references(() => thread.id),
+	messageId: uuid().references(() => message.id, { onDelete: 'cascade' }),
 	externalParentId: varchar(),
 	externalId: varchar(),
 	credentialId: uuid().references(() => credential.id),

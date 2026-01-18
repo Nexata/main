@@ -1,13 +1,16 @@
 import { authPlugin } from '@api/auth';
 import {
 	BUILD_SYSTEM_PROMPT,
+	createThread,
 	getThreadMessages,
 	type PartialMessage,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
 import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
+import { File } from '@api/file';
 import {
+	file,
 	type MessageRole,
 	message,
 	TraceType,
@@ -17,8 +20,9 @@ import {
 import { getMessageCount } from '@api/utils/chat';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
+import { encode } from '@toon-format/toon';
 import { type ModelMessage, stepCountIs, streamText } from 'ai';
-import { and, eq, gte, lte, or, sql } from 'drizzle-orm';
+import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
@@ -28,16 +32,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser }) => {
-			const messageData = await getMessageCount(activeUser.slug);
-			if (messageData.count + 1 >= messageData.limit)
+			// Message limit handling
+			const messageCountData = await getMessageCount(activeUser.slug);
+			if (messageCountData.count + 1 >= messageCountData.limit)
 				throw HttpError.MethodNotAllowed('MESSAGE_LIMIT_REACHED');
 
-			const userMessage: PartialMessage = {
-				id: '',
-				role: 'user',
-				content: [{ type: 'text', text: body.prompt }],
-			};
-
+			// Initial history retrieval: if threadId provided
 			const threadMessages = body.threadId
 				? await getThreadMessages(body.threadId, {
 						content: 'partial',
@@ -47,21 +47,59 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					})
 				: [];
 
-			const editedMessageIndex = !body.editedMessageId
-				? -1
-				: threadMessages.findIndex(
-						(message) => message.id === body.editedMessageId,
-					);
-			const editedMessage =
-				editedMessageIndex !== -1 ? threadMessages[editedMessageIndex] : null;
-
+			// Edit message handling: if editedMessageId provided
+			let editedMessage: PartialMessage | false = false;
 			if (body.editedMessageId) {
+				const editedMessageIndex = threadMessages.findIndex(
+					(message) => message.id === body.editedMessageId,
+				);
+
+				editedMessage =
+					editedMessageIndex !== -1 && threadMessages[editedMessageIndex]!;
+
 				if (!editedMessage || editedMessage.role !== 'user')
 					throw HttpError.NotFound('EDITED_MESSAGE_NOT_FOUND');
 
 				threadMessages.splice(0, editedMessageIndex + 1);
 			}
 
+			// Attached files handling: if files provided
+			const fileIds: string[] = [];
+			let fileSystemMessage: PartialMessage | undefined;
+
+			if (body.files?.length) {
+				const insertedFiles = await Promise.all(
+					body.files.map((f) => File.ingest({ userId: activeUser.id }, f)),
+				).then((files) =>
+					files.map((id, i) => ({
+						id,
+						name: body.files!.at(i)!.name,
+						type: body.files!.at(i)!.type,
+						size: body.files!.at(i)!.size,
+					})),
+				);
+
+				fileIds.push(...insertedFiles.map((file) => file.id));
+
+				fileSystemMessage = {
+					id: crypto.randomUUID(),
+					role: 'system',
+					content: [
+						`The user attached ${fileIds.length} file(s) to the message.`,
+						encode(insertedFiles),
+						`You have tools available to list and read file contents.`,
+					].join('\n\n'),
+				};
+
+				threadMessages.push(fileSystemMessage);
+			}
+
+			// Initial user message handling and streaming
+			const userMessage: PartialMessage = {
+				id: crypto.randomUUID(),
+				role: 'user',
+				content: [{ type: 'text', text: body.prompt }],
+			};
 			threadMessages.push(userMessage);
 
 			const stream = streamText({
@@ -71,7 +109,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					languagePreference: body.languagePreference,
 				}),
 				stopWhen: stepCountIs(20),
-				tools: await getTools(activeUser, body.threadId),
+				tools: await getTools(activeUser, body.threadId, fileIds),
 				providerOptions: {
 					groq: {
 						reasoningEffort: body.extraReason ? undefined : 'high',
@@ -108,55 +146,60 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								),
 							);
 
-					const messagesToAppend = [userMessage, ...messages];
-
 					const threadId =
-						body.threadId ??
-						(
-							await db
-								.insert(thread)
-								.values({
-									userId: activeUser.id,
-									title: ((x: string) =>
-										x.length >= 28 ? `${x.slice(0, 25)}...` : x)(
-										body.prompt.charAt(0).toUpperCase() + body.prompt.slice(1),
-									),
-								})
-								.returning({ id: thread.id })
-						).at(0)?.id;
+						body.threadId ?? (await createThread(activeUser.id, body.prompt));
+					if (!body.threadId) throw new Error('THREAD_NOT_CREATED');
 
-					if (!threadId) throw new Error('THREAD_NOT_CREATED');
+					const messagesToAppend = [
+						fileSystemMessage,
+						userMessage,
+						...messages,
+					].filter((x) => typeof x !== 'undefined');
 
-					const appendedMessages = await db
+					const insertedMessages = await db
 						.with(
 							db.$with('trace').as(
 								db.insert(trace).values({
 									userId: activeUser.id,
 									type: TraceType.MESSAGE_SENT,
-									metadata: { threadId },
+									metadata: { threadId: body.threadId },
 								}),
 							),
 						)
 						.insert(message)
 						.values(
 							messagesToAppend.map((m) => ({
+								id: 'id' in m && m.id ? m.id : crypto.randomUUID(),
 								threadId,
 								role: m.role as MessageRole,
 								content: m.content,
 							})),
 						)
-						.returning({
-							id: message.id,
-							role: message.role,
-							content: message.content,
-						});
+						.returning({ id: message.id, role: message.role });
 
 					await Promise.all([
-						cache.set(threadId, [...threadMessages, ...appendedMessages], {
+						cache.set(threadId, [...threadMessages, ...insertedMessages], {
 							ex: 60 * 5,
 						}),
-						cache.del(`tenant:${activeUser.slug}:message-count`),
+						cache.set(
+							`tenant:${activeUser.slug}:message-count`,
+							{
+								limit: messageCountData.limit,
+								count: messageCountData.count + 1,
+							},
+							{ ex: 60 * 60 },
+						),
 					]);
+
+					// Update files with messageId if we have one
+					if (fileIds.length) {
+						await db
+							.update(file)
+							.set({ messageId: userMessage.id })
+							.where(
+								and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)),
+							);
+					}
 				},
 			});
 
@@ -182,6 +225,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				languagePreference: Nullish(t.String(), {
 					description: 'Language preference for the chat response.',
+				}),
+				files: Nullish(t.Files(), {
+					description: 'Files to attach to this message.',
 				}),
 			}),
 		},
