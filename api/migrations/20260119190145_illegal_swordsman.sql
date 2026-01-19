@@ -5,11 +5,13 @@ CREATE TYPE "public"."oauth_provider" AS ENUM('google', 'microsoft', 'dropbox', 
 CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outlook', 'outlook_calendar', 'onedrive', 'dropbox');
 CREATE TYPE "public"."file_host" AS ENUM('nexata', 'drive', 'one_drive', 'dropbox');
 CREATE TYPE "public"."message_role" AS ENUM('system', 'user', 'assistant', 'tool');
+CREATE TYPE "public"."trace_type" AS ENUM('message_sent', 'file_ingested', 'file_deleted', 'credential_added', 'credential_removed');
 CREATE TABLE "bill" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slug" varchar(32) NOT NULL,
 	"created_at" date DEFAULT now() NOT NULL,
-	"paid" boolean DEFAULT false NOT NULL
+	"paid" boolean DEFAULT false NOT NULL,
+	"details" json NOT NULL
 );
 
 CREATE TABLE "billable_event" (
@@ -28,7 +30,8 @@ CREATE TABLE "chunk" (
 	"file_id" uuid NOT NULL,
 	"order" integer DEFAULT 1 NOT NULL,
 	"text" varchar(768) NOT NULL,
-	"embedding" vector(1024) NOT NULL
+	"embedding" vector(1024) NOT NULL,
+	"metadata" jsonb
 );
 
 CREATE TABLE "credential_permission" (
@@ -43,12 +46,22 @@ CREATE TABLE "credential" (
 	"user_id" uuid NOT NULL,
 	"email" varchar(320) NOT NULL,
 	"provider" "oauth_provider" NOT NULL,
-	"scopes" "oauth_scope"[] DEFAULT ARRAY[]::oauth_scope[] NOT NULL,
+	"scope" "oauth_scope" NOT NULL,
 	"is_global" boolean DEFAULT false NOT NULL,
 	"access_token" varchar(4096) NOT NULL,
 	"access_token_expires_at" timestamp NOT NULL,
 	"refresh_token" varchar(4096) NOT NULL,
 	"refresh_token_expires_at" timestamp NOT NULL,
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "device" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"fingerprint" varchar(20) NOT NULL,
+	"user_agent" varchar,
+	"user_id" uuid NOT NULL,
+	"access_token" varchar(4096) NOT NULL,
+	"refresh_token" varchar(4096) NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 
@@ -66,8 +79,9 @@ CREATE TABLE "file" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"provider" "file_host" DEFAULT 'nexata' NOT NULL,
-	"thread_id" uuid,
-	"external_id" varchar(256),
+	"message_id" uuid,
+	"external_parent_id" varchar,
+	"external_id" varchar,
 	"credential_id" uuid,
 	"auto_sync" boolean DEFAULT false NOT NULL,
 	"url" varchar,
@@ -94,16 +108,22 @@ CREATE TABLE "tenant" (
 	"base_bill" integer DEFAULT 20 NOT NULL,
 	"message_limit" integer DEFAULT 100 NOT NULL,
 	"default_message_limit" integer DEFAULT 100 NOT NULL,
-	"used_messages" integer DEFAULT 0 NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL,
-	CONSTRAINT "tenant_slug_regex" CHECK ("tenant"."slug" ~ '^[a-z0-9]{2,16}$'),
-	CONSTRAINT "tenant_message_limit" CHECK ("tenant"."message_limit" >= "tenant"."used_messages")
+	CONSTRAINT "tenant_slug_regex" CHECK ("tenant"."slug" ~ '^[a-z0-9]{2,16}$')
 );
 
 CREATE TABLE "thread" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"user_id" uuid NOT NULL,
 	"title" varchar(64),
+	"created_at" timestamp DEFAULT now() NOT NULL
+);
+
+CREATE TABLE "trace" (
+	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
+	"user_id" uuid,
+	"type" "trace_type" NOT NULL,
+	"metadata" json NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
 
@@ -124,19 +144,24 @@ ALTER TABLE "chunk" ADD CONSTRAINT "chunk_file_id_file_id_fk" FOREIGN KEY ("file
 ALTER TABLE "credential_permission" ADD CONSTRAINT "credential_permission_credential_id_credential_id_fk" FOREIGN KEY ("credential_id") REFERENCES "public"."credential"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "credential_permission" ADD CONSTRAINT "credential_permission_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "credential" ADD CONSTRAINT "credential_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "device" ADD CONSTRAINT "device_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "file_permission" ADD CONSTRAINT "file_permission_file_id_file_id_fk" FOREIGN KEY ("file_id") REFERENCES "public"."file"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "file_permission" ADD CONSTRAINT "file_permission_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
 ALTER TABLE "file" ADD CONSTRAINT "file_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "file" ADD CONSTRAINT "file_thread_id_thread_id_fk" FOREIGN KEY ("thread_id") REFERENCES "public"."thread"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "file" ADD CONSTRAINT "file_message_id_message_id_fk" FOREIGN KEY ("message_id") REFERENCES "public"."message"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "file" ADD CONSTRAINT "file_credential_id_credential_id_fk" FOREIGN KEY ("credential_id") REFERENCES "public"."credential"("id") ON DELETE no action ON UPDATE no action;
 ALTER TABLE "message" ADD CONSTRAINT "message_thread_id_thread_id_fk" FOREIGN KEY ("thread_id") REFERENCES "public"."thread"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "thread" ADD CONSTRAINT "thread_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "trace" ADD CONSTRAINT "trace_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
 ALTER TABLE "user" ADD CONSTRAINT "user_slug_tenant_slug_fk" FOREIGN KEY ("slug") REFERENCES "public"."tenant"("slug") ON DELETE cascade ON UPDATE no action;
 CREATE INDEX "bill_created_at_desc" ON "bill" USING btree ("created_at" desc);
 CREATE INDEX "billable_event_created_at_desc" ON "billable_event" USING btree ("created_at" desc);
-CREATE INDEX "embeddingIndex" ON "chunk" USING hnsw ("embedding" vector_cosine_ops);
-CREATE UNIQUE INDEX "credential_unicity" ON "credential" USING btree ("email","provider","scopes");
+CREATE INDEX "chunk_order" ON "chunk" USING btree ("file_id","order");
+CREATE INDEX "chunk_embedding" ON "chunk" USING hnsw ("embedding" vector_cosine_ops);
+CREATE UNIQUE INDEX "credential_unicity" ON "credential" USING btree ("email","provider","scope");
+CREATE UNIQUE INDEX "device_user_fingerprint" ON "device" USING btree ("user_id","fingerprint");
 CREATE INDEX "message_created_at_asc" ON "message" USING btree ("created_at" asc);
 CREATE INDEX "thread_created_at_desc" ON "thread" USING btree ("created_at" desc);
+CREATE INDEX "trace_created_at_desc" ON "trace" USING btree ("created_at" desc);
 CREATE INDEX "user_email_lower" ON "user" USING btree (lower("email"));
 CREATE UNIQUE INDEX "user_email_slug" ON "user" USING btree ("email","slug");

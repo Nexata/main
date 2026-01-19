@@ -1,6 +1,6 @@
 {
-  "id": "f75dac13-94b7-401a-a7b4-e1f0b4cd39f8",
-  "prevId": "954ce590-de13-4510-8c3c-9849017a05af",
+  "id": "4b76d8b9-4e79-4a29-9aea-1f9fa5609188",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -34,6 +34,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "details": {
+          "name": "details",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
         }
       },
       "indexes": {
@@ -228,6 +234,12 @@
           "type": "vector(1024)",
           "primaryKey": false,
           "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -387,13 +399,12 @@
           "primaryKey": false,
           "notNull": true
         },
-        "scopes": {
-          "name": "scopes",
-          "type": "oauth_scope[]",
+        "scope": {
+          "name": "scope",
+          "type": "oauth_scope",
           "typeSchema": "public",
           "primaryKey": false,
-          "notNull": true,
-          "default": "ARRAY[]::oauth_scope[]"
+          "notNull": true
         },
         "is_global": {
           "name": "is_global",
@@ -451,7 +462,7 @@
               "nulls": "last"
             },
             {
-              "expression": "scopes",
+              "expression": "scope",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -497,9 +508,15 @@
         },
         "fingerprint": {
           "name": "fingerprint",
-          "type": "varchar(256)",
+          "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true
+        },
+        "user_agent": {
+          "name": "user_agent",
+          "type": "varchar",
+          "primaryKey": false,
+          "notNull": false
         },
         "user_id": {
           "name": "user_id",
@@ -507,15 +524,14 @@
           "primaryKey": false,
           "notNull": true
         },
-        "is_access_token": {
-          "name": "is_access_token",
-          "type": "boolean",
+        "access_token": {
+          "name": "access_token",
+          "type": "varchar(4096)",
           "primaryKey": false,
-          "notNull": true,
-          "default": true
+          "notNull": true
         },
-        "token": {
-          "name": "token",
+        "refresh_token": {
+          "name": "refresh_token",
           "type": "varchar(4096)",
           "primaryKey": false,
           "notNull": true
@@ -529,15 +545,9 @@
         }
       },
       "indexes": {
-        "device_fingerprint_user_token_type": {
-          "name": "device_fingerprint_user_token_type",
+        "device_user_fingerprint": {
+          "name": "device_user_fingerprint",
           "columns": [
-            {
-              "expression": "fingerprint",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
             {
               "expression": "user_id",
               "isExpression": false,
@@ -545,7 +555,7 @@
               "nulls": "last"
             },
             {
-              "expression": "is_access_token",
+              "expression": "fingerprint",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -687,15 +697,21 @@
           "notNull": true,
           "default": "'nexata'"
         },
-        "thread_id": {
-          "name": "thread_id",
+        "message_id": {
+          "name": "message_id",
           "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "external_parent_id": {
+          "name": "external_parent_id",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
         "external_id": {
           "name": "external_id",
-          "type": "varchar(256)",
+          "type": "varchar",
           "primaryKey": false,
           "notNull": false
         },
@@ -766,17 +782,17 @@
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
-        "file_thread_id_thread_id_fk": {
-          "name": "file_thread_id_thread_id_fk",
+        "file_message_id_message_id_fk": {
+          "name": "file_message_id_message_id_fk",
           "tableFrom": "file",
-          "tableTo": "thread",
+          "tableTo": "message",
           "columnsFrom": [
-            "thread_id"
+            "message_id"
           ],
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "file_credential_id_credential_id_fk": {
@@ -926,13 +942,6 @@
           "notNull": true,
           "default": 100
         },
-        "used_messages": {
-          "name": "used_messages",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 0
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp",
@@ -950,10 +959,6 @@
         "tenant_slug_regex": {
           "name": "tenant_slug_regex",
           "value": "\"tenant\".\"slug\" ~ '^[a-z0-9]{2,16}$'"
-        },
-        "tenant_message_limit": {
-          "name": "tenant_message_limit",
-          "value": "\"tenant\".\"message_limit\" >= \"tenant\".\"used_messages\""
         }
       },
       "isRLSEnabled": false
@@ -1018,6 +1023,82 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
+    "public.trace": {
+      "name": "trace",
+      "schema": "",
+      "columns": {
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": true,
+          "notNull": true,
+          "default": "gen_random_uuid()"
+        },
+        "user_id": {
+          "name": "user_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "type": {
+          "name": "type",
+          "type": "trace_type",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "metadata": {
+          "name": "metadata",
+          "type": "json",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        }
+      },
+      "indexes": {
+        "trace_created_at_desc": {
+          "name": "trace_created_at_desc",
+          "columns": [
+            {
+              "expression": "\"created_at\" desc",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "trace_user_id_user_id_fk": {
+          "name": "trace_user_id_user_id_fk",
+          "tableFrom": "trace",
+          "tableTo": "user",
+          "columnsFrom": [
+            "user_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },
@@ -1181,6 +1262,17 @@
         "user",
         "assistant",
         "tool"
+      ]
+    },
+    "public.trace_type": {
+      "name": "trace_type",
+      "schema": "public",
+      "values": [
+        "message_sent",
+        "file_ingested",
+        "file_deleted",
+        "credential_added",
+        "credential_removed"
       ]
     }
   },
