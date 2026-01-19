@@ -3,21 +3,43 @@ import {
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { markdownTable } from 'markdown-table';
 import {
+	type CellMetadata,
 	type HeadingMetadata,
+	type ImageMetadata,
+	type OfficeAttachment,
 	type OfficeContentNode,
 	parseOffice,
 } from 'officeparser';
 
 async function tableNodeToMarkdown(
-	_node: OfficeContentNode,
+	rows: OfficeContentNode[],
+	attachments?: OfficeAttachment[],
 ): Promise<[string, number]> {
-	// TODO: children rows | cells
-	return ['', 0];
+	const mdTable: string[][] = Array(rows.length).fill([]);
+	let tokenUsage = 0;
+
+	for (const row of rows) {
+		const mdCells = await Promise.all(
+			row.children!.map((r) => nodeToMarkdown(r, attachments)),
+		);
+
+		for (let i = 0; i < mdCells.length; i++) {
+			const [mdCellText, cellTokenUsage] = mdCells[i]!;
+			tokenUsage += cellTokenUsage;
+
+			const cellMetadata = row.children![i]!.metadata as CellMetadata;
+			mdTable[cellMetadata.row]![cellMetadata.col] = mdCellText;
+		}
+	}
+
+	return [markdownTable(mdTable), tokenUsage];
 }
 
 async function nodeToMarkdown(
 	node: OfficeContentNode,
+	attachments?: OfficeAttachment[],
 ): Promise<[string, number]> {
 	switch (node.type) {
 		case 'heading':
@@ -27,37 +49,46 @@ async function nodeToMarkdown(
 			];
 
 		case 'table':
-			return tableNodeToMarkdown(node);
+			return tableNodeToMarkdown(node.children!);
 
 		case 'list': {
-			const parsed = await Promise.all(node.children!.map(nodeToMarkdown));
+			const parsed = await Promise.all(
+				node.children!.map((r) => nodeToMarkdown(r, attachments)),
+			);
+
 			return [
 				`- ${parsed.map(([md]) => md).join('\n- ')}`,
 				parsed.reduce((acc, [_, usage]) => acc + usage, 0),
 			];
 		}
 
-		// TODO: 'image' | 'chart' | 'drawing' | 'note'
+		case 'image': {
+			const metadata = node.metadata as ImageMetadata;
+			const image = attachments?.find(
+				(a) => a.name === metadata.attachmentName,
+			);
+
+			if (!image) return [node.text ?? '---', 0];
+
+			// FIXME: Implement similar logic as PDF and others for images.
+
+			return [node.text ?? '---', 0];
+		}
+
+		// ? 'chart' | 'drawing' | 'note'
 
 		default:
 			return [node.text ?? '---', 0];
 	}
 }
 
-async function plainOfficeToChunks(
+async function spreadsheetToChunks(
 	content: OfficeContentNode[],
 	contextualMetadata?: object,
+	attachments?: OfficeAttachment[],
 ): Promise<ToStringChunksResult> {
-	const mdNodes: string[] = [];
-	let tokenUsage = 0;
-
-	for (const node of content) {
-		const [markdown, usage] = await nodeToMarkdown(node);
-		mdNodes.push(markdown);
-		tokenUsage += usage;
-	}
-
-	const textChunks = await mdSplitter.splitText(mdNodes.join('\n\n'));
+	const [md, tokenUsage] = await tableNodeToMarkdown(content, attachments);
+	const textChunks = await mdSplitter.splitText(md);
 
 	return {
 		chunks: textChunks.map((chunk) => ({
@@ -68,42 +99,88 @@ async function plainOfficeToChunks(
 	};
 }
 
+async function plainOfficeToChunks(
+	content: OfficeContentNode[],
+	metadata?: object,
+	attachments?: OfficeAttachment[],
+): Promise<ToStringChunksResult> {
+	const mdNodes: string[] = [];
+	let tokenUsage = 0;
+
+	const results = await Promise.all(
+		content.map((node) => nodeToMarkdown(node, attachments)),
+	);
+
+	for (const [md, usage] of results) {
+		mdNodes.push(md);
+		tokenUsage += usage;
+	}
+
+	const textChunks = await mdSplitter.splitText(mdNodes.join('\n\n'));
+	return {
+		chunks: textChunks.map((chunk) => ({ text: chunk, metadata })),
+		tokenUsage,
+	};
+}
+
 export async function officeToChunks(
 	f: FileLike,
 ): Promise<ToStringChunksResult> {
+	let tokenUsage = 0;
+	const chunks: ToStringChunksResult['chunks'] = [];
+	const accumulateResults = (results: ToStringChunksResult[]) =>
+		results.forEach((r) => {
+			tokenUsage += r.tokenUsage ?? 0;
+			chunks.push(...r.chunks);
+		});
+
 	const ast = await parseOffice(
 		Buffer.from(ArrayBuffer.isView(f) ? f.buffer : f),
 		{ outputErrorToConsole: true, extractAttachments: true },
 	);
 
-	let tokenUsage = 0;
-	const chunks: ToStringChunksResult['chunks'] = [];
-
 	switch (ast.content[0]!.type) {
-		case 'sheet':
-		case 'page':
-		case 'slide': {
-			const results = await Promise.all(
-				ast.content.map((node, i) =>
-					plainOfficeToChunks(node.children!, {
-						[`${ast.content[0]!.type}Number`]: i + 1,
-						...node.metadata,
-					}),
+		case 'sheet': {
+			accumulateResults(
+				await Promise.all(
+					ast.content.map((node, i) =>
+						spreadsheetToChunks(
+							node.children!,
+							{
+								sheetNumber: i + 1,
+								...node.metadata,
+							},
+							ast.attachments,
+						),
+					),
 				),
 			);
+			break;
+		}
 
-			for (const result of results) {
-				tokenUsage += result.tokenUsage ?? 0;
-				chunks.push(...result.chunks);
-			}
-
+		case 'page':
+		case 'slide': {
+			accumulateResults(
+				await Promise.all(
+					ast.content.map((node, i) =>
+						plainOfficeToChunks(
+							node.children!,
+							{
+								sheetNumber: i + 1,
+								...node.metadata,
+							},
+							ast.attachments,
+						),
+					),
+				),
+			);
 			break;
 		}
 
 		default: {
-			const result = await plainOfficeToChunks(ast.content);
-			tokenUsage += result.tokenUsage ?? 0;
-			chunks.push(...result.chunks);
+			accumulateResults([
+				await plainOfficeToChunks(ast.content, undefined, ast.attachments),
+			]);
 			break;
 		}
 	}

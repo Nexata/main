@@ -24,8 +24,7 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	);
 
 	let usage = 0;
-	const imageChunks: { text: string; metadata: object }[] = [];
-	const textChunks: { text: string; metadata: object }[] = [];
+	const textChunks: ToStringChunksResult['chunks'] = [];
 
 	const promises: Promise<unknown>[] = [];
 	for (const [id, data] of images)
@@ -67,10 +66,7 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 					`##### Metadata:\n${encode(imgMetadata)}`,
 				].filter((x) => typeof x === 'string');
 
-				const imageText = parts.join('\n\n');
-				imageChunks.push({ text: imageText, metadata: imgMetadata });
-
-				html = html.replace(imgTag, `<p>${imageText}</p>`);
+				html = html.replace(imgTag, `<p>${parts.join('\n\n')}</p>`);
 			})(),
 		);
 
@@ -84,7 +80,7 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 
 	return {
 		metadata: { imageCount: images.size },
-		chunks: [...textChunks, ...imageChunks],
+		chunks: [...textChunks],
 		tokenUsage: usage,
 	};
 }
