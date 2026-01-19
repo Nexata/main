@@ -257,7 +257,11 @@ export namespace File {
 	}
 
 	export const [readDescription, readInput] = [
-		'Read file content chunks with optional semantic search. Returns chunks paginated by order (25 per page). Use cursor for pagination.',
+		[
+			'Read file content chunks with optional semantic search. Returns chunks paginated by order (20 per page). Use cursor for pagination.',
+			'This tool is also incredibly useful to expand context on a certain semantically found chunk:',
+			'i.e. given a fileId 123 and a chunk order 50 that is interesting, use { fileId: 123 cursor: 40 }, to get chunks from 40 to 60.',
+		].join('\n'),
 		t.Object({
 			fileId: t.String({ format: 'uuid' }),
 			messageId: t.String({ format: 'uuid' }),
@@ -336,7 +340,7 @@ export namespace File {
 				),
 			)
 			.orderBy(similarity ? desc(similarity) : asc(chunk.order))
-			.limit(25);
+			.limit(20);
 	}
 }
 
