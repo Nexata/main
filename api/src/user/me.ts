@@ -1,9 +1,11 @@
 import { authPlugin } from '@api/auth';
-import { db } from '@api/env';
-import { tenant, user } from '@api/schema';
+import { cache, db } from '@api/env';
+import { device, TraceType, tenant, trace, user } from '@api/schema';
 import { uploadUserPfp } from '@api/utils/s3';
+import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
+import { tObject } from '@api/utils/type';
 import { s3 } from 'bun';
-import { eq } from 'drizzle-orm';
+import { and, count, eq } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
 
@@ -38,9 +40,27 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 						displayName: user.displayName,
 						pfpUrl: user.pfpUrl,
 						isAdmin: user.isAdmin,
+						devices: jsonAgg(
+							jsonBuildObject({
+								id: device.id,
+								fingerprint: device.fingerprint,
+								userAgent: device.userAgent,
+								createdAt: device.createdAt,
+							}),
+						),
+						messageCount: count(trace.id),
 					})
 					.from(user)
+					.leftJoin(device, eq(device.userId, user.id))
+					.leftJoin(
+						trace,
+						and(
+							eq(trace.userId, user.id),
+							eq(trace.type, TraceType.MESSAGE_SENT),
+						),
+					)
 					.where(eq(user.id, activeUser.id))
+					.groupBy(user.id)
 			)[0]!,
 		{
 			detail: { summary: 'Get me' },
@@ -75,5 +95,25 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 		},
 		{
 			detail: { summary: 'Delete me' },
+		},
+	)
+	.delete(
+		'/device/:fingerprint',
+		async ({ params: { fingerprint }, activeUser }) =>
+			Promise.all([
+				db
+					.delete(device)
+					.where(
+						and(
+							eq(device.fingerprint, fingerprint),
+							eq(device.userId, activeUser.id),
+						),
+					)
+					.returning({ id: device.id }),
+				cache.del(`device:${user.id}:${fingerprint}`),
+			]),
+		{
+			detail: { summary: 'Delete device' },
+			params: tObject({ fingerprint: t.String({ minLength: 1 }) }),
 		},
 	);
