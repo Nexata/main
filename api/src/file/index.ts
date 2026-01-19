@@ -11,7 +11,9 @@ import {
 	file,
 	filePermission,
 	message,
+	TraceType,
 	thread,
+	trace,
 	user,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
@@ -226,34 +228,47 @@ export namespace File {
 	) {
 		data.id = crypto.randomUUID();
 
-		const result = await toStringChunks(
-			await f.arrayBuffer(),
-			data.type ?? f.type,
-		);
+		try {
+			const result = await toStringChunks(
+				await f.arrayBuffer(),
+				data.type ?? f.type,
+			);
 
-		const [chunks, embeddingUsage] = await stringToChunks(
-			data.id,
-			result.chunks,
-		);
+			const [chunks, embeddingUsage] = await stringToChunks(
+				data.id,
+				result.chunks,
+			);
 
-		if (!data.provider || data.provider === FileHost.NEXATA)
-			data.url = await uploadFile(data.id, f);
+			if (!data.provider || data.provider === FileHost.NEXATA)
+				data.url = await uploadFile(data.id, f);
 
-		await db.batch([
-			db.insert(file).values({
-				...data,
-				name: data.name ?? f.name,
-				type: data.type ?? f.type,
-			}),
-			db.insert(billableEvent).values({
-				type: BillableEventType.EMBED,
-				consumption: ((result.tokenUsage ?? 0) + embeddingUsage).toString(),
+			await db.batch([
+				db.insert(file).values({
+					...data,
+					name: data.name ?? f.name,
+					type: data.type ?? f.type,
+				}),
+				db.insert(billableEvent).values({
+					type: BillableEventType.EMBED,
+					consumption: ((result.tokenUsage ?? 0) + embeddingUsage).toString(),
+					userId: data.userId,
+				}),
+				db.insert(chunk).values(chunks),
+			]);
+
+			return data.id;
+		} catch (error) {
+			await db.insert(trace).values({
 				userId: data.userId,
-			}),
-			db.insert(chunk).values(chunks),
-		]);
+				type: TraceType.INGEST_FAILED,
+				metadata: {
+					...data,
+					error: error instanceof Error ? error.message : 'UNKNOWN',
+				},
+			});
 
-		return data.id;
+			throw error;
+		}
 	}
 
 	export const [readDescription, readInput] = [
