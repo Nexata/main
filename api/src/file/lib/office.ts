@@ -1,8 +1,10 @@
+import { imgToChunks, isRelevantImage } from '@api/file/lib/image';
 import {
 	type FileLike,
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { encode } from '@toon-format/toon';
 import { markdownTable } from 'markdown-table';
 import {
 	type CellMetadata,
@@ -12,6 +14,7 @@ import {
 	type OfficeContentNode,
 	parseOffice,
 } from 'officeparser';
+import sharp from 'sharp';
 
 async function tableNodeToMarkdown(
 	rows: OfficeContentNode[],
@@ -70,9 +73,34 @@ async function nodeToMarkdown(
 
 			if (!image) return [node.text ?? '---', 0];
 
-			// FIXME: Implement similar logic as PDF and others for images.
+			const imgBuffer = Buffer.from(image.data, 'base64');
+			const meta = await sharp(imgBuffer).metadata();
+			if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0)) return ['', 0];
 
-			return [node.text ?? '---', 0];
+			const imgResult = await imgToChunks(imgBuffer, {
+				width: meta.width,
+				height: meta.height,
+				channels: meta.channels ?? 3,
+			});
+
+			if (!imgResult.chunks.length) return ['', 0];
+
+			const [description, ...ocrTexts] = imgResult.chunks;
+			const imgMetadata = {
+				source: 'image',
+				format: meta.format,
+				comments: meta.comments,
+			};
+
+			const parts = [
+				'**An image is here**',
+				description && `[Image] Description: ${description.text}`,
+				ocrTexts?.length &&
+					`Image OCR: ${ocrTexts.map((c) => c.text).join(' | ')}`,
+				`##### Metadata:\n${encode(imgMetadata)}`,
+			].filter((x) => typeof x === 'string');
+
+			return [parts.join('\n\n'), imgResult.tokenUsage ?? 0];
 		}
 
 		// ? 'chart' | 'drawing' | 'note'
