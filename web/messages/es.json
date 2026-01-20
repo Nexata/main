@@ -7,13 +7,13 @@
 		"cancel": "Cancelar",
 		"delete": "Eliminar",
 		"confirm": "Confirmar",
-    	"save_changes": "Guardar cambios",
+		"save_changes": "Guardar cambios",
 		"success": "Operación exitosa",
-    	"error": "Ocurrió un error",
+		"error": "Ocurrió un error",
 		"expand": "Ver detalles",
 		"collapse": "Ocultar detalles",
 		"account": "Cuenta",
-  		"created_at": "Fecha de creación"
+		"created_at": "Fecha de creación"
 	},
 
 	"months": {
@@ -32,9 +32,7 @@
 	},
 
 	"components": {
-
 		"credentials": {
-
 			"permissions": {
 				"title": "Permisos de la credencial",
 				"description": "Administrá qué usuarios pueden acceder y utilizar esta credencial.",
@@ -72,7 +70,7 @@
 			}
 		},
 
-		"sources":{
+		"sources": {
 			"view_files": "Ver archivos"
 		}
 	},
@@ -150,7 +148,7 @@
 				"description": "¿Querés aplicar los cambios de seguimiento seleccionados?"
 			}
 		}
-  	},
+	},
 	"admin": {
 		"meta": {
 			"title": "Nexata | Panel de administrador",
@@ -175,8 +173,8 @@
 			"title": "Uso de mensajes",
 			"description": "Visualización del consumo de mensajes y métricas clave de actividad.",
 			"chart_type": {
-			"bars": "Barras",
-			"lines": "Líneas"
+				"bars": "Barras",
+				"lines": "Líneas"
 			}
 		},
 		"integrations": {
@@ -215,10 +213,10 @@
 		},
 		"dialogs": {
 			"confirm_action": {
-			"title": "Confirmar acción",
-			"description": "Esta acción no se puede deshacer.",
-			"cancel": "Cancelar",
-			"confirm": "Confirmar"
+				"title": "Confirmar acción",
+				"description": "Esta acción no se puede deshacer.",
+				"cancel": "Cancelar",
+				"confirm": "Confirmar"
 			}
 		}
 	},
@@ -286,12 +284,12 @@
 			"type": "Tipo de alerta",
 			"types": {
 				"proximity": {
-				"label": "Aviso por proximidad",
-				"description": "Se enviará una notificación cuando alcances el 90% del monto configurado."
+					"label": "Aviso por proximidad",
+					"description": "Se enviará una notificación cuando alcances el 90% del monto configurado."
 				},
 				"threshold": {
-				"label": "Aviso por límite",
-				"description": "Se enviará una notificación cuando el gasto mensual alcance el monto configurado."
+					"label": "Aviso por límite",
+					"description": "Se enviará una notificación cuando el gasto mensual alcance el monto configurado."
 				}
 			},
 			"save": "Guardar alerta",

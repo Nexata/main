@@ -6,14 +6,14 @@
 		"cancel": "Cancel",
 		"delete": "Delete",
 		"confirm": "Confirm",
-    	"save_changes": "Save changes",
+		"save_changes": "Save changes",
 		"loading": "Loading…",
 		"success": "Success",
-    	"error": "Something went wrong",
+		"error": "Something went wrong",
 		"expand": "View details",
 		"collapse": "Hide details",
 		"account": "Account",
-      	"created_at": "Created at"
+		"created_at": "Created at"
 	},
 
 	"months": {
@@ -29,12 +29,10 @@
 		"october": "October",
 		"november": "November",
 		"december": "December"
-  	},
+	},
 
 	"components": {
-
 		"credentials": {
-
 			"permissions": {
 				"title": "Credential permissions",
 				"description": "Manage which users can access and use this credential.",
@@ -72,7 +70,7 @@
 			}
 		},
 
-		"sources":{
+		"sources": {
 			"view_files": "View files"
 		}
 	},
@@ -89,7 +87,7 @@
 			"dropbox": "Dropbox"
 		}
 	},
-	  "user": {
+	"user": {
 		"profile": {
 			"title": "User profile",
 			"display_name_placeholder": "Display name"
@@ -175,8 +173,8 @@
 			"title": "Message usage",
 			"description": "Visualization of message consumption and key activity metrics.",
 			"chart_type": {
-			"bars": "Bars",
-			"lines": "Lines"
+				"bars": "Bars",
+				"lines": "Lines"
 			}
 		},
 		"integrations": {
@@ -185,40 +183,40 @@
 			"configure": "Configure",
 			"close": "Close",
 			"enable": "Enable",
- 			"disable": "Disable",
+			"disable": "Disable",
 			"manage_description": "Manage accounts and permissions for {name}.",
 			"delete_account": "Delete account"
 		},
 		"users": {
-		"title": "Users",
-		"description": "Manage the users that belong to your Nexata organization.",
-		"invite": {
-			"title": "Invite new user",
-			"placeholder": "email@company.com",
-			"send": "Send invitation",
-			"helper": "The user will receive an email to join your Nexata tenant."
-		},
-		"actions": {
-			"remove": "Deactivate"
-		},
-		"dialogs": {
-			"delete": {
-			"title": "Delete user",
-			"description": "The user \"{email}\" will be permanently deleted. This action cannot be undone and all associated data will be lost."
+			"title": "Users",
+			"description": "Manage the users that belong to your Nexata organization.",
+			"invite": {
+				"title": "Invite new user",
+				"placeholder": "email@company.com",
+				"send": "Send invitation",
+				"helper": "The user will receive an email to join your Nexata tenant."
+			},
+			"actions": {
+				"remove": "Deactivate"
+			},
+			"dialogs": {
+				"delete": {
+					"title": "Delete user",
+					"description": "The user \"{email}\" will be permanently deleted. This action cannot be undone and all associated data will be lost."
+				}
+			},
+			"details": {
+				"messages": "Messages used",
+				"created_at": "Created at",
+				"storage": "Storage used"
 			}
-		},
-		"details": {
-			"messages": "Messages used",
-			"created_at": "Created at",
-			"storage": "Storage used"
-		}
 		},
 		"dialogs": {
 			"confirm_action": {
-			"title": "Confirm action",
-			"description": "This action cannot be undone.",
-			"cancel": "Cancel",
-			"confirm": "Confirm"
+				"title": "Confirm action",
+				"description": "This action cannot be undone.",
+				"cancel": "Cancel",
+				"confirm": "Confirm"
 			}
 		}
 	},
@@ -286,12 +284,12 @@
 			"type": "Alert type",
 			"types": {
 				"proximity": {
-				"label": "Proximity alert",
-				"description": "A notification will be sent when you reach 90% of the configured amount."
+					"label": "Proximity alert",
+					"description": "A notification will be sent when you reach 90% of the configured amount."
 				},
 				"threshold": {
-				"label": "Threshold alert",
-				"description": "A notification will be sent when the monthly spend reaches the configured amount."
+					"label": "Threshold alert",
+					"description": "A notification will be sent when the monthly spend reaches the configured amount."
 				}
 			},
 			"save": "Save alert",

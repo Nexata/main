@@ -3,16 +3,16 @@
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
-  IoMdSunny,
-  IoMdMoon,
-  IoMdSettings,
-  IoMdMenu,
-  IoMdAdd,
-  IoMdTrash,
-  IoMdCreate,
-  IoMdCheckmark,
-  IoMdClose,
-} from "react-icons/io";
+  IoSunny,
+  IoMoon,
+  IoSettings,
+  IoMenu,
+  IoAdd,
+  IoTrash,
+  IoCreate,
+  IoCheckmark,
+  IoClose,
+} from "react-icons/io5";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import * as m from "@/paraglide/messages.js";
@@ -72,7 +72,7 @@ export default function Sidebar() {
   };
 
   // State for user info
-  const [me, setMe] = useState<Me>(null);
+  const [me, setMe] = useState<Me | null>(null);
   const [meLoading, setMeLoading] = useState(true);
 
   // get user info
@@ -153,7 +153,7 @@ export default function Sidebar() {
                 exit={{ rotate: 90, opacity: 0 }}
                 transition={{ type: "spring", stiffness: 250, damping: 28 }}
               >
-                {isCollapsed ? <IoMdMenu className="w-6 h-6" /> : <IoMdClose className="w-6 h-6" />}
+                {isCollapsed ? <IoMenu className="w-6 h-6" /> : <IoClose className="w-6 h-6" />}
               </motion.div>
             </motion.button>
           </div>
@@ -165,7 +165,7 @@ export default function Sidebar() {
               className="w-full mb-4 flex items-center gap-2 cursor-pointer" 
               onClick={() => {}}
             >
-              <IoMdAdd className="w-5 h-5" />
+              <IoAdd className="w-5 h-5" />
               {m["sidebar.new_chat"]()}
             </Button>
           )}
@@ -192,13 +192,13 @@ export default function Sidebar() {
                           }}
                         />
                         <div className="flex gap-2 ml-2">
-                          <IoMdCheckmark
+                          <IoCheckmark
                             className="text-green-500 w-5 h-5 cursor-pointer"
                             onClick={() =>
                               handleEditSave(chat.id, inputRef.current?.value || chat.title)
                             }
                           />
-                          <IoMdClose
+                          <IoClose
                             className="text-red-500 w-5 h-5 cursor-pointer"
                             onClick={() => setEditingChatId(null)}
                           />
@@ -208,11 +208,11 @@ export default function Sidebar() {
                       <>
                         <span className="truncate">{chat.title}</span>
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <IoMdCreate
+                          <IoCreate
                             className="text-secondary-500 w-5 h-5 cursor-pointer"
                             onClick={() => handleEditClick(chat.id)}
                           />
-                          <IoMdTrash
+                          <IoTrash
                             className="text-error-500 w-5 h-5 cursor-pointer"
                             onClick={() => handleDeleteClick(chat)}
                           />
@@ -237,7 +237,7 @@ export default function Sidebar() {
               onClick={toggleDarkMode}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
             >
-              {theme === "dark" ? (<IoMdSunny className="w-6 h-6" />) : (<IoMdMoon className="w-6 h-6" />)}
+              {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
             </Button>
 
 
@@ -247,7 +247,7 @@ export default function Sidebar() {
               onClick={() => navigate({ to: "/settings" })}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
-              <IoMdSettings className="w-6 h-6" />
+              <IoSettings className="w-6 h-6" />
             </Button>
 
             <UserSection
