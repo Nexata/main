@@ -14,6 +14,7 @@ import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicCallbackRouteImport } from './routes/_public/callback'
+import { Route as PrivateUserRouteImport } from './routes/_private/user'
 import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
 import { Route as PrivateCredentialCallbackRouteImport } from './routes/_private/credential-callback'
 import { Route as PrivateChatRouteImport } from './routes/_private/chat'
@@ -42,6 +43,11 @@ const PublicCallbackRoute = PublicCallbackRouteImport.update({
   id: '/callback',
   path: '/callback',
   getParentRoute: () => PublicRouteRoute,
+} as any)
+const PrivateUserRoute = PrivateUserRouteImport.update({
+  id: '/user',
+  path: '/user',
+  getParentRoute: () => PrivateRouteRoute,
 } as any)
 const PrivateSettingsRoute = PrivateSettingsRouteImport.update({
   id: '/settings',
@@ -77,6 +83,7 @@ export interface FileRoutesByFullPath {
   '/chat': typeof PrivateChatRoute
   '/credential-callback': typeof PrivateCredentialCallbackRoute
   '/settings': typeof PrivateSettingsRoute
+  '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
   '/login': typeof PublicLoginRoute
 }
@@ -87,6 +94,7 @@ export interface FileRoutesByTo {
   '/chat': typeof PrivateChatRoute
   '/credential-callback': typeof PrivateCredentialCallbackRoute
   '/settings': typeof PrivateSettingsRoute
+  '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
   '/login': typeof PublicLoginRoute
 }
@@ -100,6 +108,7 @@ export interface FileRoutesById {
   '/_private/chat': typeof PrivateChatRoute
   '/_private/credential-callback': typeof PrivateCredentialCallbackRoute
   '/_private/settings': typeof PrivateSettingsRoute
+  '/_private/user': typeof PrivateUserRoute
   '/_public/callback': typeof PublicCallbackRoute
   '/_public/login': typeof PublicLoginRoute
 }
@@ -112,6 +121,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/credential-callback'
     | '/settings'
+    | '/user'
     | '/callback'
     | '/login'
   fileRoutesByTo: FileRoutesByTo
@@ -122,6 +132,7 @@ export interface FileRouteTypes {
     | '/chat'
     | '/credential-callback'
     | '/settings'
+    | '/user'
     | '/callback'
     | '/login'
   id:
@@ -134,6 +145,7 @@ export interface FileRouteTypes {
     | '/_private/chat'
     | '/_private/credential-callback'
     | '/_private/settings'
+    | '/_private/user'
     | '/_public/callback'
     | '/_public/login'
   fileRoutesById: FileRoutesById
@@ -149,14 +161,14 @@ declare module '@tanstack/react-router' {
     '/_public': {
       id: '/_public'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof PublicRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_private': {
       id: '/_private'
       path: ''
-      fullPath: ''
+      fullPath: '/'
       preLoaderRoute: typeof PrivateRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -180,6 +192,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/callback'
       preLoaderRoute: typeof PublicCallbackRouteImport
       parentRoute: typeof PublicRouteRoute
+    }
+    '/_private/user': {
+      id: '/_private/user'
+      path: '/user'
+      fullPath: '/user'
+      preLoaderRoute: typeof PrivateUserRouteImport
+      parentRoute: typeof PrivateRouteRoute
     }
     '/_private/settings': {
       id: '/_private/settings'
@@ -225,6 +244,7 @@ interface PrivateRouteRouteChildren {
   PrivateChatRoute: typeof PrivateChatRoute
   PrivateCredentialCallbackRoute: typeof PrivateCredentialCallbackRoute
   PrivateSettingsRoute: typeof PrivateSettingsRoute
+  PrivateUserRoute: typeof PrivateUserRoute
 }
 
 const PrivateRouteRouteChildren: PrivateRouteRouteChildren = {
@@ -233,6 +253,7 @@ const PrivateRouteRouteChildren: PrivateRouteRouteChildren = {
   PrivateChatRoute: PrivateChatRoute,
   PrivateCredentialCallbackRoute: PrivateCredentialCallbackRoute,
   PrivateSettingsRoute: PrivateSettingsRoute,
+  PrivateUserRoute: PrivateUserRoute,
 }
 
 const PrivateRouteRouteWithChildren = PrivateRouteRoute._addFileChildren(
