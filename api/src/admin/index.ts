@@ -6,7 +6,7 @@ import { authPlugin } from '@api/auth';
 import { Elysia } from 'elysia';
 
 export const adminRouter = new Elysia({ prefix: '/admin', tags: ['Admin'] })
-	.use(authPlugin(true))
+	.use(authPlugin({ admin: true }))
 	.use(billingRouter)
 	.use(userRouter)
 	.use(tenantRouter)

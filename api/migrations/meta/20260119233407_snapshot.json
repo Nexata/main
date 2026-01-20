@@ -1,5 +1,5 @@
 {
-  "id": "4b76d8b9-4e79-4a29-9aea-1f9fa5609188",
+  "id": "c9689ca5-6ac1-43bb-9fc5-dfc7942e44e4",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -1143,6 +1143,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "api_key": {
+          "name": "api_key",
+          "type": "varchar(255)",
+          "primaryKey": false,
+          "notNull": false
+        },
         "is_admin": {
           "name": "is_admin",
           "type": "boolean",
@@ -1184,6 +1190,21 @@
             }
           ],
           "isUnique": true,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "user_api_key": {
+          "name": "user_api_key",
+          "columns": [
+            {
+              "expression": "api_key",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
           "concurrently": false,
           "method": "btree",
           "with": {}
@@ -1272,7 +1293,8 @@
         "file_ingested",
         "file_deleted",
         "credential_added",
-        "credential_removed"
+        "credential_removed",
+        "ingest_failed"
       ]
     }
   },

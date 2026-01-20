@@ -5,7 +5,7 @@ CREATE TYPE "public"."oauth_provider" AS ENUM('google', 'microsoft', 'dropbox', 
 CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outlook', 'outlook_calendar', 'onedrive', 'dropbox');
 CREATE TYPE "public"."file_host" AS ENUM('nexata', 'drive', 'one_drive', 'dropbox');
 CREATE TYPE "public"."message_role" AS ENUM('system', 'user', 'assistant', 'tool');
-CREATE TYPE "public"."trace_type" AS ENUM('message_sent', 'file_ingested', 'file_deleted', 'credential_added', 'credential_removed');
+CREATE TYPE "public"."trace_type" AS ENUM('message_sent', 'file_ingested', 'file_deleted', 'credential_added', 'credential_removed', 'ingest_failed');
 CREATE TABLE "bill" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
 	"slug" varchar(32) NOT NULL,
@@ -133,6 +133,7 @@ CREATE TABLE "user" (
 	"email" varchar(320) NOT NULL,
 	"display_name" varchar(64),
 	"pfp_url" varchar,
+	"api_key" varchar(255),
 	"is_admin" boolean DEFAULT false NOT NULL
 );
 
@@ -165,3 +166,4 @@ CREATE INDEX "thread_created_at_desc" ON "thread" USING btree ("created_at" desc
 CREATE INDEX "trace_created_at_desc" ON "trace" USING btree ("created_at" desc);
 CREATE INDEX "user_email_lower" ON "user" USING btree (lower("email"));
 CREATE UNIQUE INDEX "user_email_slug" ON "user" USING btree ("email","slug");
+CREATE INDEX "user_api_key" ON "user" USING btree ("api_key");

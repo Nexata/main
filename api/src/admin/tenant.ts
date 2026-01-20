@@ -9,7 +9,7 @@ import { Elysia, t } from 'elysia';
 const updateTenant = createUpdateSchema(tenant);
 
 export const tenantRouter = new Elysia({ prefix: '/tenant' })
-	.use(authPlugin(true))
+	.use(authPlugin({ admin: true }))
 	.patch(
 		'/',
 		async ({ body, activeUser }) =>

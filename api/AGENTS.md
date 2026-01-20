@@ -26,6 +26,7 @@ bun run mig:push         # Push migrations to database
 ### Linting and Formatting
 ```bash
 bun run check            # Run Biome check with fix, unsafe fixes, and verbose output
+bun tsc                  # Run TypeScript compilation check
 ```
 
 ### Testing

@@ -2,9 +2,11 @@ import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
 import { user } from '@api/schema';
 import { jwt } from '@elysiajs/jwt';
 import { createSelectSchema } from 'drizzle-typebox';
-import { Elysia, type Static } from 'elysia';
+import { Elysia, type Static, t } from 'elysia';
 
-export const jwtPayload = createSelectSchema(user);
+export const jwtPayload = createSelectSchema(user, {
+	apiKey: t.Union([t.Never(), t.Null(), t.Undefined()]),
+});
 
 export type JwtPayload = Static<typeof jwtPayload>;
 

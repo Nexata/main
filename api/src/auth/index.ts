@@ -2,28 +2,78 @@ import { dropboxRouter } from '@api/auth/dropbox';
 import { googleRouter } from '@api/auth/google';
 import { cache, db } from '@api/env';
 import { device, user } from '@api/schema';
-import { jwtPlugin } from '@api/utils/auth';
+import { type JwtPayload, jwtPlugin } from '@api/utils/auth';
 import { tObject } from '@api/utils/type';
-import { and, eq, exists } from 'drizzle-orm';
+import { and, eq, exists, isNotNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
 export const authPlugin =
-	(admin: boolean = false) =>
+	(options: { admin?: boolean; apiAllowed?: boolean } = {}) =>
 	(app: Elysia) =>
 		app
 			.use(jwtPlugin)
 			.guard({
-				headers: tObject({
-					authorization: t.TemplateLiteral('Bearer ${string}'),
-					fingerprint: t.String(),
-				}),
+				headers: t.Union([
+					tObject({
+						authorization: t.TemplateLiteral('Bearer ${string}'),
+						fingerprint: t.String(),
+					}),
+					tObject({
+						clientId: t.String({ format: 'uuid' }),
+						clientSecret: t.String(),
+					}),
+				]),
 			})
-			.resolve(async ({ headers: { authorization, fingerprint }, jwt }) => {
+			.resolve(async ({ headers, jwt }) => {
+				if ('clientId' in headers) {
+					if (!options.apiAllowed) throw HttpError.Forbidden();
+
+					const { clientId, clientSecret } = headers as {
+						clientId: string;
+						clientSecret: string;
+					};
+
+					const cached = await cache.get<JwtPayload & { clientSecret: string }>(
+						`apikey-${clientId}`,
+					);
+					if (cached && cached.clientSecret === clientSecret) {
+						const { clientSecret, ...activeUser } = cached;
+						return { activeUser };
+					}
+
+					const u = (
+						await db
+							.select()
+							.from(user)
+							.where(and(eq(user.id, clientId), isNotNull(user.apiKey)))
+					).at(0);
+
+					if (!u) throw HttpError.NotFound();
+
+					if (!(await Bun.password.verify(u.apiKey!, clientSecret)))
+						throw HttpError.Unauthorized();
+
+					const activeUser = { ...u, apiKey: null };
+					await cache.set(
+						`apikey-${clientId}`,
+						{ ...activeUser, clientSecret } as JwtPayload & {
+							clientSecret: string;
+						},
+						{ ex: 3600 },
+					);
+					return { activeUser };
+				}
+
+				const { authorization, fingerprint } = headers as {
+					authorization: string;
+					fingerprint: string;
+				};
+
 				const at = authorization?.split(' ')[1];
 				const payload = await jwt.verify(at);
 
-				if (!at || !payload || (admin && !payload.isAdmin))
+				if (!at || !payload || (options.admin && !payload.isAdmin))
 					throw HttpError.Unauthorized();
 
 				const savedToken =
@@ -87,10 +137,9 @@ export const authRouter = new Elysia({
 			).at(0);
 
 			if (!u) throw HttpError.Forbidden();
-
 			const [accessToken, refreshToken] = await Promise.all([
-				jwt.sign(u),
-				refreshJwt.sign(u),
+				jwt.sign({ ...u, apiKey: null }),
+				refreshJwt.sign({ ...u, apiKey: null }),
 			]);
 
 			await db

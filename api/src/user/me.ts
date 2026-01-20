@@ -5,9 +5,10 @@ import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
 import { s3 } from 'bun';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, isNotNull } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
+import { HttpError } from 'elysia-logger';
 
 const updateUser = createUpdateSchema(user);
 
@@ -40,6 +41,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 						displayName: user.displayName,
 						pfpUrl: user.pfpUrl,
 						isAdmin: user.isAdmin,
+						hasApiKey: isNotNull(user.apiKey),
 						devices: jsonAgg(
 							jsonBuildObject({
 								id: device.id,
@@ -115,5 +117,56 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 		{
 			detail: { summary: 'Delete device' },
 			params: tObject({ fingerprint: t.String({ minLength: 1 }) }),
+		},
+	)
+	.put(
+		'/api-key',
+		async ({ activeUser }) => {
+			const tenantData = (
+				await db
+					.select({ hasApiAccess: tenant.hasApiAccess })
+					.from(tenant)
+					.where(eq(tenant.slug, activeUser.slug))
+					.limit(1)
+			).at(0);
+
+			if (!tenantData?.hasApiAccess)
+				throw HttpError.Forbidden('API_ACCESS_NOT_ENABLED');
+
+			const rawApiKey = (crypto.randomUUID() + crypto.randomUUID())
+				.replace(/-/g, '')
+				.toUpperCase();
+			const hashedApiKey = await Bun.password.hash(rawApiKey);
+
+			await Promise.all([
+				db
+					.update(user)
+					.set({ apiKey: hashedApiKey })
+					.where(eq(user.id, activeUser.id)),
+				cache.del(`apikey-${activeUser.id}`),
+			]);
+
+			return rawApiKey;
+		},
+		{
+			detail: { summary: 'Create or regenerate API key' },
+		},
+	)
+	.delete(
+		'/api-key',
+		async ({ activeUser }) => {
+			const [updatedUser] = await Promise.all([
+				db
+					.update(user)
+					.set({ apiKey: null })
+					.where(eq(user.id, activeUser.id))
+					.returning({ id: user.id }),
+				cache.del(`apikey-${activeUser.id}`),
+			]);
+
+			return updatedUser.at(0)?.id;
+		},
+		{
+			detail: { summary: 'Delete API key' },
 		},
 	);

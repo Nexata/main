@@ -7,7 +7,7 @@ import { and, desc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const traceRouter = new Elysia({ prefix: '/trace' })
-	.use(authPlugin(true))
+	.use(authPlugin({ admin: true }))
 	.get(
 		'/',
 		async ({ query, activeUser }) =>

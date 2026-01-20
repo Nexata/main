@@ -7,7 +7,7 @@ import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
-	.use(authPlugin(true))
+	.use(authPlugin({ admin: true }))
 	.get(
 		'/messages',
 		async ({ activeUser }) => getMessageCount(activeUser.slug),

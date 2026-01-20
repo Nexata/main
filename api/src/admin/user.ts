@@ -14,7 +14,7 @@ const [insertUser, updateUser] = [
 ];
 
 export const userRouter = new Elysia({ prefix: '/user' })
-	.use(authPlugin(true))
+	.use(authPlugin({ admin: true }))
 	.post(
 		'/',
 		async ({ body, activeUser }) => {

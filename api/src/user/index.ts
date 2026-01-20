@@ -4,7 +4,7 @@ import { device, TraceType, trace, user } from '@api/schema';
 import { meRouter } from '@api/user/me';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
-import { and, count, eq } from 'drizzle-orm';
+import { and, count, eq, isNotNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
@@ -20,6 +20,7 @@ export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 					displayName: user.displayName,
 					pfpUrl: user.pfpUrl,
 					isAdmin: user.isAdmin,
+					hasApiKey: isNotNull(user.apiKey),
 					devices: jsonAgg(
 						jsonBuildObject({
 							id: device.id,

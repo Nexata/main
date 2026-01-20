@@ -1,5 +1,6 @@
 import { matchRegex } from '@api/utils/sql';
 import {
+	boolean,
 	check,
 	integer,
 	pgTable,
@@ -16,6 +17,7 @@ export const tenant = pgTable(
 		baseBill: integer().notNull().default(20), // PRICING.baseBill
 		messageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
 		defaultMessageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
+		hasApiAccess: boolean().notNull().default(false),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
 	(t) => [check('tenant_slug_regex', matchRegex(t.slug, /^[a-z0-9]{2,16}$/))],
