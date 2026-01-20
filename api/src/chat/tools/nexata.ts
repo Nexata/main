@@ -48,7 +48,7 @@ export namespace Nexata {
 		'Nexata tool to list files attached to the current conversation thread.',
 		tObject({
 			page: Nullish(t.Integer({ min: 1, default: 1 }), {
-				description: 'Page number (offset-based) for cursor-based pagination.',
+				description: 'Page number for offset-based pagination.',
 			}),
 		}),
 	];
@@ -64,7 +64,7 @@ export namespace Nexata {
 		'Current message has attachments. This tool lists the files from the database.',
 		tObject({
 			page: Nullish(t.Integer({ min: 1, default: 1 }), {
-				description: 'Page number (offset-based) for cursor-based pagination.',
+				description: 'Page number for offset-based pagination.',
 			}),
 		}),
 	];

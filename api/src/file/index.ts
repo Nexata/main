@@ -219,14 +219,22 @@ export namespace File {
 			.groupBy(file.id, user.id, thread.id, credential.id, chunk.id)
 			.orderBy(similarity ? desc(similarity) : desc(file.createdAt))
 			.limit(similarity ? 10 : 25)
-			.offset(((input.page ?? 1) - 1) * 10);
+			.offset(((input.page ?? 1) - 1) * (similarity ? 10 : 25));
 	}
 
 	export async function ingest(
 		data: Partial<Static<typeof insertFile>> & { userId: string },
 		f: File,
 	) {
-		// TODO: Check externalId matches, delete previous file if exists
+		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId)
+			await db
+				.delete(file)
+				.where(
+					and(
+						eq(file.provider, data.provider),
+						eq(file.externalId, data.externalId),
+					),
+				);
 
 		data.id = crypto.randomUUID();
 
