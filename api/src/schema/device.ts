@@ -11,7 +11,7 @@ export const device = pgTable(
 	'device',
 	{
 		id: uuid().primaryKey().defaultRandom(),
-		fingerprint: varchar({ length: 20 }).notNull(),
+		fingerprint: varchar({ length: 36 }).notNull(),
 		userAgent: varchar(),
 		userId: uuid()
 			.notNull()
