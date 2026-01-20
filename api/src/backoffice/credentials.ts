@@ -53,6 +53,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 	{
 		detail: {
 			summary: 'Refresh credentials',
+			// NOTE: Cron job, scheduled to run once every 4 hours
 			description:
 				'Refreshes tokens that will expire in the next 4 hours. Expected to run cronologically every 4 hours.',
 		},

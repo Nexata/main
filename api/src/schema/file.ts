@@ -32,6 +32,7 @@ export const file = pgTable(
 			.references(() => user.id, { onDelete: 'cascade' }),
 		provider: FileHostEnum().notNull().default(FileHost.NEXATA),
 		messageId: uuid().references(() => message.id, { onDelete: 'cascade' }),
+		// TODO: Change to extarnalDirId
 		externalParentId: varchar(),
 		externalId: varchar(),
 		credentialId: uuid().references(() => credential.id),

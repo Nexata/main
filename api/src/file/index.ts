@@ -226,6 +226,11 @@ export namespace File {
 		data: Partial<Static<typeof insertFile>> & { userId: string },
 		f: File,
 	) {
+		// TODO: Check if the file already exists (based on externalId + provider)
+		// if modifiedAt has not changed, return 'UNMODIFIED', no further actions
+		// Probably will need a new query with select and exists
+		// where file.modifiedAt is less than data.modifiedAt
+
 		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId)
 			await db
 				.delete(file)
@@ -277,7 +282,7 @@ export namespace File {
 				},
 			});
 
-			return 'failed';
+			return 'FAILED';
 		}
 	}
 
@@ -455,10 +460,8 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 				)
 				.returning({ id: file.id, host: file.provider });
 
-			await Promise.all(
-				deleted
-					.filter(({ host }) => host === FileHost.NEXATA)
-					.map(({ id }) => s3.delete(id).catch(() => null)),
+			await Promise.allSettled(
+				deleted.filter(({ host }) => host === FileHost.NEXATA),
 			);
 
 			return deleted;

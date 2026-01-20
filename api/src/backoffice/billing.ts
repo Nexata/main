@@ -45,6 +45,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			detail: {
 				summary: 'Generate billable events',
+				// NOTE: Cron job, scheduled to run once a day
 				description:
 					'Generates chronological billable events. Expected to run chronologically at midnight.',
 			},
@@ -91,6 +92,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			detail: {
 				summary: 'Generate billing',
+				// NOTE: Cron job, scheduled to run once a month
 				description:
 					'Generates bills for the month and resets consumptions. Expected to run chronologically each first day of the month.',
 			},

@@ -1,5 +1,6 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
+import { File } from '@api/file';
 import type { NexataListDir } from '@api/integration/lib';
 import { credential, OauthProvider } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
@@ -236,6 +237,23 @@ export namespace Dropbox {
 			})),
 		};
 	}
+
+	export async function ingest(
+		dpx: DropboxClient,
+		userId: string,
+		selection: { isDir: boolean; id: string }[],
+	) {
+		selection = selection.sort(({ isDir }) => (isDir ? -1 : 1));
+
+		// TODO: If is not dir, download an ingest through File.ingest
+		// If it's dir:
+		// first check if the dir exists, if not create it
+		// then via API, iterate through all files of the dir until no cursor, getting their ids
+		// If the dir already existed, check if any file was deleted (we have the dir id and the existing file ids)
+		// If there are files deleted, let's remove them also on nexata.
+		// Then let's individually download all ids and send them to File.ingest
+		// If there are dirs in that dir, we will have to do this recursively.
+	}
 }
 
 export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
@@ -299,8 +317,14 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	)
 	.post(
 		'/ingest',
-		async () => {
-			// TODO: Download and ingest from dropbox
+		async ({ activeUser, body }) => {
+			const dpx = await Dropbox.fromRequest(
+				activeUser,
+				body.credentialId,
+				true,
+			);
+
+			await Dropbox.ingest(dpx, activeUser.id, body.selection);
 		},
 		{
 			detail: { summary: 'Ingest from dropbox' },
