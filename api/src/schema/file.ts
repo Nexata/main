@@ -1,5 +1,5 @@
 import { credential, message, user } from '@api/schema';
-import { isNotNull, sql } from 'drizzle-orm';
+import { isNotNull } from 'drizzle-orm';
 import {
 	boolean,
 	jsonb,
