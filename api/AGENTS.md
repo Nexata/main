@@ -157,7 +157,7 @@ No test scripts are currently configured in package.json. Run individual tests u
 ### Integration Patterns
 - Use provider-specific clients (e.g., `Dropbox.fromRequest(activeUser, credentialId)`)
 - Store credentials with `provider`, `scopes`, and token expiration
-- Use `getAccessTokenForUser()` helper to retrieve valid tokens
+- Use `getTokensForUser()` helper to retrieve valid tokens
 - Handle external service errors with `HttpError.Conflict('EXTERNAL_ERROR')`
 - Implement file categorization enums for integrations
 
@@ -362,4 +362,4 @@ and(
 #### References
 - File implementation: `src/file/index.ts`
 - Credential implementation: `src/credential/index.ts`, `src/credential/permission.ts`
-- Helper functions: `src/utils/credential.ts` (getCredentialsForUser, getAccessTokenForUser)
+- Helper functions: `src/utils/credential.ts` (getCredentialsForUser, getTokensForUser)

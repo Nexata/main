@@ -113,7 +113,9 @@ export const getTools = async (
 				Dropbox.searchInput,
 				dropboxCredentials,
 				(credentials) =>
-					credentials.map((c) => Dropbox.fromToken(c.accessToken)),
+					credentials.map((c) =>
+						Dropbox.fromTokens(c.accessToken, c.refreshToken),
+					),
 				async (dpx, input) => Dropbox.search(dpx, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
@@ -122,7 +124,9 @@ export const getTools = async (
 				Dropbox.listDirInput,
 				dropboxCredentials,
 				(credentials) =>
-					credentials.map((c) => Dropbox.fromToken(c.accessToken)),
+					credentials.map((c) =>
+						Dropbox.fromTokens(c.accessToken, c.refreshToken),
+					),
 				async (dpx, input) => Dropbox.listDir(dpx, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),

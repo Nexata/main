@@ -15,11 +15,34 @@ import {
 import { alias } from 'drizzle-orm/pg-core';
 import { HttpError } from 'elysia-logger';
 
-export async function removeCachedCredentials(slug: string, uid?: string) {
-	if (uid) return cache.del(`credentials:${slug}:${uid}`);
+export async function removeCachedCredentials(
+	slug: string,
+	uid?: string,
+	credentialId?: string,
+) {
+	if (uid)
+		return (
+			await Promise.all([
+				cache.del(`credentials:${slug}:${uid}`),
+				cache.del(
+					...(credentialId
+						? [`t:${slug}:${uid}:${credentialId}`]
+						: await cache.keys(`at:${slug}:${uid}:*`)),
+				),
+			])
+		).reduce((acc, val) => acc + val, 0);
+
+	if (credentialId)
+		return (
+			await Promise.all([
+				cache.del(`credentials:${slug}:*`),
+				cache.del(...(await cache.keys(`t:${slug}:*:${credentialId}`))),
+			])
+		).reduce((acc, val) => acc + val, 0);
+
 	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
-	const cachedAccessTokens = await cache.keys(`at:${slug}:*`);
-	const allKeys = [...(cachedCredentials ?? []), ...(cachedAccessTokens ?? [])];
+	const cachedAccessTokens = await cache.keys(`t:${slug}:*`);
+	const allKeys = [...cachedCredentials, ...cachedAccessTokens];
 	return allKeys.length ? cache.del(...allKeys) : 0;
 }
 
@@ -27,6 +50,7 @@ export type CachedCredential = {
 	provider: OauthProvider;
 	scope: OauthScope;
 	accessToken: string;
+	refreshToken?: string;
 	email: string;
 	ownedBy: {
 		id: string;
@@ -56,6 +80,7 @@ export interface DisplayCredential {
 		isAdminOfCredential: boolean;
 	}>;
 	accessToken: undefined;
+	refreshToken: undefined;
 	createdAt: Date;
 }
 
@@ -121,6 +146,7 @@ export async function getCredentialsForUser(
 				sql<[]>`'[]'::json`,
 			).as('permissions'),
 			accessToken: credential.accessToken,
+			refreshToken: credential.refreshToken,
 			createdAt: credential.createdAt,
 		})
 		.from(credential)
@@ -169,6 +195,7 @@ export async function getCredentialsForUser(
 				scope: c.scope,
 				email: c.email,
 				accessToken: c.accessToken,
+				refreshToken: c.refreshToken,
 				ownedBy: {
 					id: c.ownedBy.id,
 					email: c.ownedBy.email,
@@ -184,23 +211,27 @@ export async function getCredentialsForUser(
 
 	return returnType === 'usage'
 		? usageCredentials
-		: credentials.map((c) => ({ ...c, accessToken: undefined }));
+		: credentials.map((c) => ({
+				...c,
+				accessToken: undefined,
+				refreshToken: undefined,
+			}));
 }
 
-export async function getAccessTokenForUser(
+export async function getTokensForUser(
 	activeUser: JwtPayload,
 	credentialId: string,
 	adminExpected?: true,
 	...addedConditions: SQLWrapper[]
 ) {
-	const cached = await cache.get<string>(
-		`at:${activeUser.slug}:${activeUser.id}:${credentialId}`,
+	const cached = await cache.get<{ at: string; rt: string }>(
+		`t:${activeUser.slug}:${activeUser.id}:${credentialId}`,
 	);
 	if (cached) return cached;
 
-	const at = (
+	const t = (
 		await db
-			.select({ at: credential.accessToken })
+			.select({ at: credential.accessToken, rt: credential.refreshToken })
 			.from(credential)
 			.innerJoin(
 				user,
@@ -230,13 +261,23 @@ export async function getAccessTokenForUser(
 						: undefined,
 				),
 			)
-	).at(0)?.at;
+	).at(0);
 
-	if (!at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
-	await cache.set(
-		`at:${activeUser.slug}:${activeUser.id}:${credentialId}`,
-		at,
-		{ ex: 60 * 60 },
+	if (!t?.at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
+
+	await cache.set(`t:${activeUser.slug}:${activeUser.id}:${credentialId}`, t, {
+		ex: 60 * 60,
+	});
+
+	return t;
+}
+
+export async function userHasCredential(
+	activeUser: JwtPayload,
+	credentialId: string,
+	adminExpected?: true,
+) {
+	return Boolean(
+		await getTokensForUser(activeUser, credentialId, adminExpected),
 	);
-	return at;
 }

@@ -83,7 +83,7 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 					.where(and(eq(user.slug, slug), isNotNull(user.apiKey)));
 
 				if (usersWithKeys.length > 0)
-					await cache.del(...usersWithKeys.map((u) => `apikey-${u.id}`));
+					await cache.del(...usersWithKeys.map((u) => `apikey:${u.id}`));
 			}
 
 			return { hasApiAccess: newValue };

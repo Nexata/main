@@ -35,7 +35,7 @@ export const authPlugin =
 					};
 
 					const cached = await cache.get<JwtPayload & { clientSecret: string }>(
-						`apikey-${clientId}`,
+						`apikey:${clientId}`,
 					);
 					if (cached && cached.clientSecret === clientSecret) {
 						const { clientSecret, ...activeUser } = cached;
@@ -56,7 +56,7 @@ export const authPlugin =
 
 					const activeUser = { ...u, apiKey: null };
 					await cache.set(
-						`apikey-${clientId}`,
+						`apikey:${clientId}`,
 						{ ...activeUser, clientSecret } as JwtPayload & {
 							clientSecret: string;
 						},

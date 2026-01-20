@@ -21,6 +21,7 @@ import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { embed } from 'ai';
+import { s3 } from 'bun';
 import {
 	and,
 	asc,
@@ -218,14 +219,15 @@ export namespace File {
 			.groupBy(file.id, user.id, thread.id, credential.id, chunk.id)
 			.orderBy(similarity ? desc(similarity) : desc(file.createdAt))
 			.limit(similarity ? 10 : 25)
-			.offset(((input.page ?? 1) - 1) * 10)
-			.catch(console.error);
+			.offset(((input.page ?? 1) - 1) * 10);
 	}
 
 	export async function ingest(
 		data: Partial<Static<typeof insertFile>> & { userId: string },
 		f: File,
 	) {
+		// TODO: Check externalId matches, delete previous file if exists
+
 		data.id = crypto.randomUUID();
 
 		try {
@@ -267,7 +269,7 @@ export namespace File {
 				},
 			});
 
-			throw error;
+			return 'failed';
 		}
 	}
 
@@ -363,82 +365,96 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.use(authPlugin())
 	.post(
 		'/',
-		async ({ body: { file, metadata }, activeUser: { id: userId } }) =>
-			File.ingest({ userId, metadata }, file),
+		async ({ body: { files, metadata }, activeUser: { id: userId } }) =>
+			Promise.all(files.map((f) => File.ingest({ userId, metadata }, f))),
 		{
-			detail: { summary: 'Ingest file' },
-			body: tObject({ file: t.File(), metadata: Nullish(t.String()) }),
+			detail: { summary: 'Ingest files' },
+			body: tObject({ files: t.Files(), metadata: Nullish(t.String()) }),
 		},
 	)
 	.delete(
 		'/',
-		async ({ body: { ids }, activeUser }) =>
-			db.delete(file).where(
-				and(
-					inArray(file.id, ids),
-					activeUser.isAdmin
-						? exists(
-								db
-									.select({ id: user.id })
-									.from(user)
-									.where(
-										and(
-											eq(user.id, file.userId),
-											eq(user.slug, activeUser.slug),
-										),
-									),
-							)
-						: or(
-								exists(
+		async ({ body: { ids }, activeUser }) => {
+			const deleted = await db
+				.delete(file)
+				.where(
+					and(
+						inArray(file.id, ids),
+						activeUser.isAdmin
+							? exists(
 									db
-										.select({ credentialId: credential.id })
-										.from(credential)
+										.select({ id: user.id })
+										.from(user)
 										.where(
 											and(
-												eq(credential.id, file.credentialId),
-												or(
-													eq(credential.userId, activeUser.id),
-													exists(
-														db
-															.select({ userId: credentialPermission.userId })
-															.from(credentialPermission)
-															.where(
-																and(
-																	eq(
-																		credentialPermission.credentialId,
-																		credential.id,
+												eq(user.id, file.userId),
+												eq(user.slug, activeUser.slug),
+											),
+										),
+								)
+							: or(
+									exists(
+										db
+											.select({ credentialId: credential.id })
+											.from(credential)
+											.where(
+												and(
+													eq(credential.id, file.credentialId),
+													or(
+														eq(credential.userId, activeUser.id),
+														exists(
+															db
+																.select({
+																	userId: credentialPermission.userId,
+																})
+																.from(credentialPermission)
+																.where(
+																	and(
+																		eq(
+																			credentialPermission.credentialId,
+																			credential.id,
+																		),
+																		eq(
+																			credentialPermission.userId,
+																			activeUser.id,
+																		),
+																		eq(credentialPermission.isAdmin, true),
 																	),
-																	eq(
-																		credentialPermission.userId,
-																		activeUser.id,
-																	),
-																	eq(credentialPermission.isAdmin, true),
 																),
-															),
+														),
 													),
 												),
 											),
-										),
-								),
-								eq(file.userId, activeUser.id),
-								exists(
-									db
-										.select({ id: filePermission.id })
-										.from(filePermission)
-										.where(
-											and(
-												eq(filePermission.fileId, file.id),
-												or(
-													eq(filePermission.userId, activeUser.id),
-													eq(filePermission.email, activeUser.email),
+									),
+									eq(file.userId, activeUser.id),
+									exists(
+										db
+											.select({ id: filePermission.id })
+											.from(filePermission)
+											.where(
+												and(
+													eq(filePermission.fileId, file.id),
+													or(
+														eq(filePermission.userId, activeUser.id),
+														eq(filePermission.email, activeUser.email),
+													),
+													eq(filePermission.isAdmin, true),
 												),
-												eq(filePermission.isAdmin, true),
 											),
-										),
+									),
 								),
-							),
-				),
-			),
+					),
+				)
+				.returning({ id: file.id, host: file.provider });
+
+			await Promise.all(
+				deleted
+					.filter(({ host }) => host === FileHost.NEXATA)
+					.map(({ id }) => s3.delete(id).catch(() => null)),
+			);
+
+			return deleted;
+		},
 		{
 			detail: { summary: 'Delete files' },
 			body: tObject({ ids: t.Array(t.String({ format: 'uuid' })) }),

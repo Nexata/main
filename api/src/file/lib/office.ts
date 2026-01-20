@@ -103,7 +103,10 @@ async function nodeToMarkdown(
 			return [parts.join('\n\n'), imgResult.tokenUsage ?? 0];
 		}
 
-		// ? 'chart' | 'drawing' | 'note'
+		// ? 'chart' | 'drawing
+
+		case 'note':
+			return [`> Note: ${node.text ?? '_empty comment_'}`, 0];
 
 		default:
 			return [node.text ?? '---', 0];

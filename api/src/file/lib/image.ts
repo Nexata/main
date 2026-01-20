@@ -53,7 +53,6 @@ export async function imgToChunks(
 		}),
 		system:
 			'You are an AI assistant for image processing inside a RAG system. Expected response type: ' +
-			// TODO: Remove expected response type when using output schema compatible provider
 			JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties),
 		prompt: [
 			{

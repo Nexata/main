@@ -143,7 +143,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					.update(user)
 					.set({ apiKey: hashedApiKey })
 					.where(eq(user.id, activeUser.id)),
-				cache.del(`apikey-${activeUser.id}`),
+				cache.del(`apikey:${activeUser.id}`),
 			]);
 
 			return rawApiKey;
@@ -161,7 +161,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					.set({ apiKey: null })
 					.where(eq(user.id, activeUser.id))
 					.returning({ id: user.id }),
-				cache.del(`apikey-${activeUser.id}`),
+				cache.del(`apikey:${activeUser.id}`),
 			]);
 
 			return updatedUser.at(0)?.id;

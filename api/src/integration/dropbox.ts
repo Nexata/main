@@ -1,11 +1,17 @@
 import { authPlugin } from '@api/auth';
+import { db } from '@api/env';
 import type { NexataListDir } from '@api/integration/lib';
 import { credential, OauthProvider } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
-import { getAccessTokenForUser } from '@api/utils/credential';
+import {
+	getTokensForUser,
+	removeCachedCredentials,
+	userHasCredential,
+} from '@api/utils/credential';
+import { requireEnv } from '@api/utils/env';
 import { Nullish, tObject } from '@api/utils/type';
-import { eq } from 'drizzle-orm';
-import { Dropbox as DropboxClient } from 'dropbox';
+import { and, eq } from 'drizzle-orm';
+import { DropboxAuth, Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
@@ -14,18 +20,24 @@ export namespace Dropbox {
 		activeUser: JwtPayload,
 		credentialId: string,
 		adminExpected?: true,
-	) =>
-		new DropboxClient({
-			accessToken: await getAccessTokenForUser(
-				activeUser,
-				credentialId,
-				adminExpected,
-				eq(credential.provider, OauthProvider.DROPBOX),
-			),
-		});
+	) => {
+		const { at, rt } = await getTokensForUser(
+			activeUser,
+			credentialId,
+			adminExpected,
+			eq(credential.provider, OauthProvider.DROPBOX),
+		);
 
-	export const fromToken = (accessToken: string) =>
-		new DropboxClient({ accessToken });
+		return fromTokens(at, rt);
+	};
+
+	export const fromTokens = (accessToken: string, refreshToken?: string) =>
+		new DropboxClient({
+			accessToken,
+			refreshToken,
+			clientId: requireEnv('DROPBOX_APP_KEY'),
+			clientSecret: requireEnv('DROPBOX_APP_SECRET'),
+		});
 
 	export enum FileCategory {
 		IMAGE = 'image',
@@ -39,6 +51,66 @@ export namespace Dropbox {
 		PAPER = 'paper',
 		OTHERS = 'others',
 		OTHER = 'other',
+	}
+
+	export async function refreshTokens(
+		credentialId: string,
+		options?: {
+			persistenceSlug?: string;
+			tokens?: { refreshToken: string; accessToken: string };
+		},
+	) {
+		const tokens =
+			options?.tokens ??
+			(
+				await db
+					.select({
+						refreshToken: credential.refreshToken,
+						accessToken: credential.accessToken,
+					})
+					.from(credential)
+					.where(
+						and(
+							eq(credential.id, credentialId),
+							eq(credential.provider, OauthProvider.DROPBOX),
+						),
+					)
+			).at(0);
+
+		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+
+		const auth = new DropboxAuth({
+			accessToken: tokens.accessToken,
+			refreshToken: tokens.refreshToken,
+			clientId: requireEnv('DROPBOX_APP_KEY'),
+			clientSecret: requireEnv('DROPBOX_APP_SECRET'),
+		});
+
+		auth.refreshAccessToken();
+
+		const newTokens = {
+			accessToken: auth.getAccessToken(),
+			accessTokenExpiresAt: auth.getAccessTokenExpiresAt(),
+			refreshToken: auth.getRefreshToken(),
+			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // 10 years
+		};
+
+		if (newTokens.accessToken === tokens.accessToken) return false;
+
+		if (options?.persistenceSlug)
+			await Promise.all([
+				db
+					.update(credential)
+					.set(newTokens)
+					.where(eq(credential.id, credentialId)),
+				removeCachedCredentials(
+					options.persistenceSlug,
+					undefined,
+					credentialId,
+				),
+			]);
+
+		return true;
 	}
 
 	export const [searchDescription, searchInput] = [
@@ -121,7 +193,7 @@ export namespace Dropbox {
 						"Lists from a path or folder ID in the user's Dropbox. Uses the root directory if not specified.",
 				}),
 				recursive: Nullish(t.Boolean(), {
-					default: true,
+					default: false,
 					description: 'Whether to recursively list files and folders.',
 				}),
 				limit: Nullish(t.Number({ minimum: 1 }), {
@@ -141,7 +213,7 @@ export namespace Dropbox {
 			: dpx.filesListFolder({
 					path: input.path ?? '',
 					limit: input.limit ?? 50,
-					recursive: input.recursive ?? true,
+					recursive: input.recursive ?? false,
 					include_media_info: true,
 					include_non_downloadable_files: false,
 				}));
@@ -170,11 +242,14 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	.use(authPlugin())
 	.get(
 		'/search/:credentialId',
-		async ({ params: { credentialId }, query, activeUser }) =>
-			Dropbox.search(
+		async ({ params: { credentialId }, query, activeUser }) => {
+			const hasPermission = await userHasCredential(activeUser, credentialId);
+			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			return Dropbox.search(
 				await Dropbox.fromRequest(activeUser, credentialId),
 				query,
-			),
+			);
+		},
 		{
 			detail: {
 				summary: 'Search dropbox',
@@ -186,11 +261,14 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	)
 	.get(
 		'/:credentialId',
-		async ({ params: { credentialId }, query, activeUser }) =>
-			Dropbox.listDir(
+		async ({ params: { credentialId }, query, activeUser }) => {
+			const hasPermission = await userHasCredential(activeUser, credentialId);
+			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			return Dropbox.listDir(
 				await Dropbox.fromRequest(activeUser, credentialId),
 				query,
-			),
+			);
+		},
 		{
 			detail: {
 				summary: 'List dropbox dir',
@@ -198,5 +276,44 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
 			query: Dropbox.listDirInput,
+		},
+	)
+	.put(
+		'/refresh/:credentialId',
+		async ({ params: { credentialId }, activeUser }) => {
+			const hasPermission = await userHasCredential(
+				activeUser,
+				credentialId,
+				true,
+			);
+			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+
+			return Dropbox.refreshTokens(credentialId, {
+				persistenceSlug: activeUser.slug,
+			});
+		},
+		{
+			detail: { summary: 'Refresh dropbox credential' },
+			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
+		},
+	)
+	.post(
+		'/ingest',
+		async () => {
+			// TODO: Download and ingest from dropbox
+		},
+		{
+			detail: { summary: 'Ingest from dropbox' },
+			body: tObject({
+				credentialId: t.String({ format: 'uuid' }),
+				selection: t.Array(
+					tObject({
+						id: t.String({ format: 'uuid' }),
+						isDir: t.Boolean({
+							description: 'Whether the item is a directory',
+						}),
+					}),
+				),
+			}),
 		},
 	);
