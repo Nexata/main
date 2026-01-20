@@ -31,13 +31,16 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 			if (!storageByTenant.length)
 				throw HttpError.PreconditionFailed('NO_STORAGE_USED');
 
-			return db.insert(billableEvent).values(
-				storageByTenant.map((t) => ({
-					type: BillableEventType.STORAGE,
-					slug: t.slug,
-					consumption: t.consumption,
-				})),
-			);
+			return db
+				.insert(billableEvent)
+				.values(
+					storageByTenant.map((t) => ({
+						type: BillableEventType.STORAGE,
+						slug: t.slug,
+						consumption: t.consumption,
+					})),
+				)
+				.returning({ id: billableEvent.id });
 		},
 		{
 			detail: {
