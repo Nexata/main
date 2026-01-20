@@ -15,11 +15,11 @@ export const authPlugin =
 			.use(jwtPlugin)
 			.guard({
 				headers: t.Union([
-					tObject({
+					t.Object({
 						authorization: t.TemplateLiteral('Bearer ${string}'),
 						fingerprint: t.String(),
 					}),
-					tObject({
+					t.Object({
 						clientId: t.String({ format: 'uuid' }),
 						clientSecret: t.String(),
 					}),
