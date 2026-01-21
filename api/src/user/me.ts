@@ -15,22 +15,6 @@ const updateUser = createUpdateSchema(user);
 export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.use(authPlugin())
 	.get(
-		'/tenant',
-		async ({ activeUser }) =>
-			db
-				.select({
-					slug: tenant.slug,
-					displayName: tenant.displayName,
-					logoUrl: tenant.logoUrl,
-					createdAt: tenant.createdAt,
-				})
-				.from(tenant)
-				.where(eq(tenant.slug, activeUser.slug)),
-		{
-			detail: { summary: 'Get my tenant' },
-		},
-	)
-	.get(
 		'/',
 		async ({ activeUser }) =>
 			(
@@ -66,6 +50,22 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 			)[0]!,
 		{
 			detail: { summary: 'Get me' },
+		},
+	)
+	.get(
+		'/tenant',
+		async ({ activeUser }) =>
+			db
+				.select({
+					slug: tenant.slug,
+					displayName: tenant.displayName,
+					logoUrl: tenant.logoUrl,
+					createdAt: tenant.createdAt,
+				})
+				.from(tenant)
+				.where(eq(tenant.slug, activeUser.slug)),
+		{
+			detail: { summary: 'Get my tenant' },
 		},
 	)
 	.patch(
