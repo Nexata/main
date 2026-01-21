@@ -15,7 +15,7 @@ const updateUser = createUpdateSchema(user);
 export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.use(authPlugin())
 	.get(
-		'/',
+		'/info',
 		async ({ activeUser }) =>
 			(
 				await db
