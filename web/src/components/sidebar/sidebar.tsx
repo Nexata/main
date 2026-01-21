@@ -21,6 +21,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
 import { "sidebar.new_chat" as sidebar_new_chat} from "@/paraglide/messages.js";
+import { TenantLogo } from "../tenant-logo/tenant-logo";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -75,8 +76,7 @@ export default function Sidebar() {
   const { data: me, isLoading: meLoading } = useMe();
 
   // Tenant info
-  const { data: tenant, isLoading: tenantLoading } = useMyTenant();
-  const myTenant = tenant?.[0];
+  const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
   return (
     <>
@@ -107,21 +107,11 @@ export default function Sidebar() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4, ease: "easeInOut", delay: 0.15 }}
                 />
-                {tenantLoading ? (
-                  <TenantLogoSkeleton />
-                ) : (
-                  myTenant?.logoUrl && (
-                    <motion.img
-                      src={myTenant.logoUrl}
-                      alt={myTenant.displayName ?? "Company"}
-                      className="h-7 w-auto object-contain opacity-80"
-                      initial={{ opacity: 0, scale: 0.9 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.9 }}
-                      transition={{ duration: 0.4, ease: "easeInOut", delay: 0.2 }}
-                    />
-                  )
-                )}
+                <TenantLogo
+                  loading={tenantLoading}
+                  logoUrl={myTenant?.logoUrl}
+                  displayName={myTenant?.displayName}
+                />
               </div>
             )}
 
@@ -225,7 +215,6 @@ export default function Sidebar() {
               {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
             </Button>
 
-
             <Button
               variant="outline"
               size="icon"
@@ -255,12 +244,4 @@ export default function Sidebar() {
   );
 }
 
-function TenantLogoSkeleton() {
-  return (
-    <div
-      className="h-7 w-24 bg-muted rounded animate-pulse opacity-70"
-      style={{ minWidth: 96 }}
-    />
-  );
-}
 

@@ -60,14 +60,19 @@ export async function getMyTenant() {
 		}),
 	);
 }
-export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>;
+export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>[number];
 
 export function useMyTenant() {
-	return useQuery<MyTenant>({
-		queryKey: ["my-tenant"],
-		queryFn: getMyTenant,
-		staleTime: Infinity, 
-	});
+  return useQuery<
+    Awaited<ReturnType<typeof getMyTenant>>, 
+    Error,
+    MyTenant | null                     
+  >({
+    queryKey: ["my-tenant"],
+    queryFn: getMyTenant,
+    staleTime: Infinity,
+    select: (data) => data?.[0] ?? null,
+  });
 }
 
 export async function getUsers() {
