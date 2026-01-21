@@ -21,7 +21,6 @@ import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { embed } from 'ai';
-import { s3 } from 'bun';
 import {
 	and,
 	asc,
@@ -385,6 +384,8 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 			body: tObject({ files: t.Files(), metadata: Nullish(t.String()) }),
 		},
 	)
+	// TODO: patch endpoint to change autoSync if the file is from fileHost other than NEXATA
+	// If its from nexata, we should allow to change name and metadata.
 	.delete(
 		'/',
 		async ({ body: { ids }, activeUser }) => {

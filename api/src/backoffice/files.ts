@@ -5,9 +5,9 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 	async () => {
 		// TODO: Re-ingest dirs with autoSync = true,
 		// and files with autoSync = true and externalDirId null,
-		// that changed in the last hour.
-		// The ingestion is based on fileHost; i.e. if dropbox, use Dropbox.ingest from @src/integration/dropbox.ts
-		// We only have dropbox by now but it should be easy to extend this as we are going to have others.
+		// The ingestion method is based on fileHost; i.e. if dropbox, use Dropbox.ingest from @src/integration/dropbox.ts
+		// We only have dropbox by now but it should be easy to extend this as we are going to have others,
+		// Similar to refresh credentials at @src/backoffice/credentials.ts in this sense.
 	},
 	{
 		detail: {
