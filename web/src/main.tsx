@@ -5,6 +5,7 @@ import ReactDOM from 'react-dom/client';
 import { ThemeProvider } from './components/theme-provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 const router = createRouter({ routeTree });
 
@@ -43,18 +44,29 @@ function AppLayout({
 const rootElement = document.getElementById('root')!;
 if (!rootElement.innerHTML) {
 	const root = ReactDOM.createRoot(rootElement);
+	const queryClient = new QueryClient({
+		defaultOptions: {
+			queries: {
+				retry: 1,
+				refetchOnWindowFocus: false,
+			},
+		},
+	});
+
 	root.render(
 		<StrictMode>
-			<ThemeProvider defaultTheme="dark">
-				<AppLayout>
-					{(darkMode, setDarkMode) => (
-						<RouterProvider
-							router={router}
-							context={{ darkMode, setDarkMode }}
-						/>
-					)}
-				</AppLayout>
-			</ThemeProvider>
+			<QueryClientProvider client={queryClient}>
+				<ThemeProvider defaultTheme="dark">
+					<AppLayout>
+						{(darkMode, setDarkMode) => (
+							<RouterProvider
+								router={router}
+								context={{ darkMode, setDarkMode }}
+							/>
+						)}
+					</AppLayout>
+				</ThemeProvider>
+			</QueryClientProvider>
 		</StrictMode>,
 	);
 }

@@ -53,17 +53,23 @@ export default function UserSection({
             onClick={() => navigate({ to: "/user" })}
             className={`mt-2 rounded-lg p-2 flex items-center gap-3 cursor-pointer hover:bg-[var(--muted)/60] transition-colors ${collapsed ? "justify-center" : ""}`}>
             {me.pfpUrl ? (
-                <img
-                    src={me.pfpUrl}
-                    alt={me.displayName ?? me.email}
-                    className="rounded-full object-cover aspect-square shrink-0"
+                <div
+                    className="rounded-full overflow-hidden shrink-0"
                     style={{
                         width: size,
                         height: size,
                         minWidth: size,
                         minHeight: size,
                     }}
-                />
+                >
+                    <img
+                        src={me.pfpUrl}
+                        alt={me.displayName ?? me.email}
+                        className="w-full h-full object-cover"
+                        referrerPolicy="no-referrer"
+                    />
+                </div>
+
             ) : (
                 <div
                     className="rounded-full flex items-center justify-center text-white font-medium shrink-0 aspect-square"

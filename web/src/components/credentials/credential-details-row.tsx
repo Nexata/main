@@ -1,9 +1,15 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
-import * as m from "@/paraglide/messages.js"
 import { CredentialPermissions } from "@/components/credentials/credential-permissions"
 import type { DisplayCredential } from "@api/utils/credential"
+import {
+    "common.expand" as common_expand,
+    "common.account" as common_account,
+    "common.delete" as common_delete,
+    "common.created_at" as common_created_at,
+    "common.collapse" as common_collapse
+} from "@/paraglide/messages.js"
 
 type Props = {
   credential: DisplayCredential
@@ -62,7 +68,7 @@ export function CredentialDetailsRow({
                         className="cursor-pointer"
                         onClick={onToggle}
                     >
-                        {expanded ? m["common.collapse"]() : m["common.expand"]()}
+                        {expanded ? common_collapse() : common_expand()}
                     </Button>
 
                     <Button
@@ -75,7 +81,7 @@ export function CredentialDetailsRow({
                             onDelete(credential.id)
                         }}
                     >
-                        {m["common.delete"]()}
+                        {common_delete()}
                     </Button>
                 </div>
             </div>
@@ -93,8 +99,8 @@ export function CredentialDetailsRow({
                         <div className="space-y-4 text-sm">
                             {/* Basic info */}
                             <div className="divide-y divide-border">
-                                <DetailItem label={m["common.account"]()} value={credential.email} />
-                                <DetailItem label={m["common.created_at"]()} value={new Date(credential.createdAt).toLocaleDateString()} />
+                                <DetailItem label={common_account()} value={credential.email} />
+                                <DetailItem label={common_created_at()} value={new Date(credential.createdAt).toLocaleDateString()} />
                             </div>
 
                             {/* Permissions */}

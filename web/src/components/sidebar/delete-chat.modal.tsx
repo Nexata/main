@@ -7,7 +7,12 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
-import * as m from "@/paraglide/messages.js";
+import {
+  "sidebar.delete_chat_desc" as sidebar_delete_chat_desc,
+  "sidebar.delete_chat_title" as sidebar_delete_chat_title,
+  "common.cancel" as common_cancel,
+  "common.delete" as common_delete
+} from "@/paraglide/messages.js";
 
 interface DeleteChatModalProps {
   open: boolean;
@@ -26,17 +31,17 @@ export default function DeleteChatModal({
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{m["sidebar.delete_chat_title"]()}</DialogTitle>
+          <DialogTitle>{sidebar_delete_chat_title()}</DialogTitle>
           <DialogDescription>
-            {m["sidebar.delete_chat_desc"]({ title: chatTitle || "" })}
+            {sidebar_delete_chat_desc({ title: chatTitle || "" })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex justify-end gap-2">
           <Button variant="outline" onClick={onCancel}>
-            {m["common.cancel"]()}
+            {common_cancel()}
           </Button>
           <Button variant="destructive" onClick={onConfirm}>
-            {m["common.delete"]()}
+            {common_delete()}
           </Button>
         </DialogFooter>
       </DialogContent>

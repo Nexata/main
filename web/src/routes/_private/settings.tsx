@@ -16,7 +16,22 @@ import {
 	STORAGE_DATA_SOURCES,
 } from '@/lib/available-sources';
 import { deleteCredentialById, listCredentials } from '@/lib/credential';
-import * as m from '@/paraglide/messages.js';
+import {
+	'common.error' as common_error,
+	'common.success' as common_success,
+	'components.credentials.toast.delete.error' as components_credentials_toast_delete_error,
+	'components.credentials.toast.delete.loading' as components_credentials_toast_delete_loading,
+	'components.credentials.toast.delete.success' as components_credentials_toast_delete_success,
+	'settings.actions.admin_panel' as settings_actions_admin_panel,
+	'settings.actions.back_to_chat' as settings_actions_back_to_chat,
+	'settings.meta.title' as settings_meta_title,
+	'settings.sources.description' as settings_sources_description,
+	'settings.sources.title' as settings_sources_title,
+	'settings.storage.description' as settings_storage_description,
+	'settings.storage.title' as settings_storage_title,
+	'settings.subtitle' as settings_subtitle,
+	'settings.title' as settings_title,
+} from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/settings')({
 	component: SettingsPage,
@@ -25,7 +40,7 @@ export const Route = createFileRoute('/_private/settings')({
 // ------------------------------- Settings Page ----------------------------------
 function SettingsPage() {
 	useEffect(() => {
-		document.title = m['settings.meta.title']();
+		document.title = settings_meta_title();
 	}, []);
 	const navigate = useNavigate();
 
@@ -60,7 +75,7 @@ function SettingsPage() {
 
 	async function handleDeleteCredential(id: string) {
 		const toastId = infoToast.loading({
-			title: m['components.credentials.toast.delete.loading'](),
+			title: components_credentials_toast_delete_loading(),
 		});
 
 		try {
@@ -69,14 +84,14 @@ function SettingsPage() {
 			setCredentials(fresh);
 
 			infoToast.success(toastId, {
-				title: m['common.success'](),
-				description: m['components.credentials.toast.delete.success'](),
+				title: common_success(),
+				description: components_credentials_toast_delete_success(),
 			});
 		} catch (err) {
 			console.error(err);
 			infoToast.error(toastId, {
-				title: m['common.error'](),
-				description: m['components.credentials.toast.delete.error'](),
+				title: common_error(),
+				description: components_credentials_toast_delete_error(),
 			});
 		}
 	}
@@ -93,10 +108,10 @@ function SettingsPage() {
 				<div className="flex items-center justify-between">
 					<div>
 						<h1 className="text-3xl font-semibold tracking-tight">
-							{m['settings.title']()}
+							{settings_title()}
 						</h1>
 						<p className="text-sm text-muted-foreground mt-1">
-							{m['settings.subtitle']()}
+							{settings_subtitle()}
 						</p>
 					</div>
 
@@ -107,7 +122,7 @@ function SettingsPage() {
 							className="gap-2 cursor-pointer"
 						>
 							<SettingsIcon className="h-4 w-4" />
-							{m['settings.actions.admin_panel']()}
+							{settings_actions_admin_panel()}
 						</Button>
 
 						<Button
@@ -116,7 +131,7 @@ function SettingsPage() {
 							className="gap-2 cursor-pointer"
 						>
 							<ArrowLeft className="h-4 w-4" />
-							{m['settings.actions.back_to_chat']()}
+							{settings_actions_back_to_chat()}
 						</Button>
 					</div>
 				</div>
@@ -178,11 +193,9 @@ export function DataSourcesSection({
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-4">
 				<div>
-					<h2 className="text-lg font-semibold">
-						{m['settings.sources.title']()}
-					</h2>
+					<h2 className="text-lg font-semibold">{settings_sources_title()}</h2>
 					<p className="text-sm text-muted-foreground">
-						{m['settings.sources.description']()}
+						{settings_sources_description()}
 					</p>
 				</div>
 
@@ -251,11 +264,9 @@ export function StorageSection({
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-4">
 				<div>
-					<h2 className="text-lg font-semibold">
-						{m['settings.storage.title']()}
-					</h2>
+					<h2 className="text-lg font-semibold">{settings_storage_title()}</h2>
 					<p className="text-sm text-muted-foreground">
-						{m['settings.storage.description']()}
+						{settings_storage_description()}
 					</p>
 				</div>
 

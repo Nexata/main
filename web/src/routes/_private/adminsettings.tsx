@@ -37,6 +37,24 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import {
+	'admin.meta.title' as admin_meta_title,
+	'admin.header.title' as admin_header_title,
+	'admin.header.subtitle' as admin_header_subtitle,
+	'admin.header.personal_panel' as admin_header_personal_panel,
+	'admin.header.back_to_chat' as admin_header_back_to_chat,
+	'admin.company_overview.title' as admin_company_overview_title,
+	'admin.company_overview.description' as admin_company_overview_description,
+	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
+	'admin.company_overview.current_plan' as admin_company_overview_current_plan,
+	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
+	'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
+	'admin.company_overview.billing' as admin_company_overview_billing,
+	'admin.usage.chart_type.bars' as admin_usage_chart_type_bars,
+	'admin.usage.chart_type.lines' as admin_usage_chart_type_lines,
+	'admin.usage.description' as admin_usage_description,
+	'admin.usage.title' as admin_usage_title
+} from '@/paraglide/messages.js';
 import * as m from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/adminsettings')({
@@ -75,7 +93,7 @@ type ModalState = {
 
 function AdminSettingsPage() {
 	useEffect(() => {
-		document.title = m['admin.meta.title']();
+		document.title = admin_meta_title();
 	}, []);
 
 	const navigate = useNavigate();
@@ -91,12 +109,8 @@ function AdminSettingsPage() {
 			{/* Header */}
 			<header className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-semibold tracking-tight">
-						{m['admin.header.title']()}
-					</h1>
-					<p className="text-sm text-muted-foreground">
-						{m['admin.header.subtitle']()}
-					</p>
+					<h1 className="text-3xl font-semibold tracking-tight">{admin_header_title()}</h1>
+					<p className="text-sm text-muted-foreground">{admin_header_subtitle()}</p>
 				</div>
 
 				<div className="flex gap-2">
@@ -104,31 +118,27 @@ function AdminSettingsPage() {
 						variant="secondary"
 						onClick={() => navigate({ to: '/settings' })}
 						className="
-                cursor-pointer
-                bg-secondary
-                text-secondary-foreground
-                border border-border
-                hover:bg-muted
-                hover:text-foreground
-                hover:shadow-sm
-                transition-all
-            "
+							cursor-pointer
+							bg-secondary
+							text-secondary-foreground
+							border border-border
+							hover:bg-muted
+							hover:text-foreground
+							hover:shadow-sm
+							transition-all
+						"
 					>
 						<Settings className="h-4 w-4 mr-2 opacity-80" />
-						{m['admin.header.personal_panel']()}
+						{admin_header_personal_panel()}
 					</Button>
 
 					<Button
 						variant="outline"
 						onClick={() => navigate({ to: '/chat' })}
-						className="
-                cursor-pointer
-                hover:bg-muted
-                transition-colors
-            "
+						className="cursor-pointer hover:bg-muted transition-colors"
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
-						{m['admin.header.back_to_chat']()}
+						{admin_header_back_to_chat()}
 					</Button>
 				</div>
 			</header>
@@ -137,7 +147,6 @@ function AdminSettingsPage() {
 
 			<CompanyOverviewSection />
 			<UsageChartSection />
-			<IntegrationsSection />
 			<UsersSection />
 			<ConfirmDialog modal={modal} setModal={setModal} />
 		</motion.div>
@@ -159,12 +168,8 @@ function CompanyOverviewSection() {
 				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="text-lg font-semibold">
-							{m['admin.company_overview.title']()}
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							{m['admin.company_overview.description']()}
-						</p>
+						<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
+						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
 					</div>
 
 					{/* Company logo */}
@@ -180,10 +185,8 @@ function CompanyOverviewSection() {
 				{/* Message balance */}
 				<div>
 					<div className="flex justify-between text-sm mb-2">
-						<span>{m['admin.company_overview.message_balance']()}</span>
-						<span className="font-medium text-primary">
-							{used} / {total}
-						</span>
+						<span>{admin_company_overview_message_balance()}</span>
+						<span className="font-medium text-primary"> {used} / {total}</span>
 					</div>
 
 					<div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
@@ -199,9 +202,7 @@ function CompanyOverviewSection() {
 				{/* Plan + actions */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center">
-						<span className="text-sm text-muted-foreground">
-							{m['admin.company_overview.current_plan']()}
-						</span>
+						<span className="text-sm text-muted-foreground">{admin_company_overview_current_plan()}</span>
 						<span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
 							Business 500
 						</span>
@@ -212,34 +213,24 @@ function CompanyOverviewSection() {
 						<Button
 							size="sm"
 							onClick={() => navigate({ to: '/billing' })}
-							className="
-                cursor-pointer
-                bg-emerald-500
-                hover:bg-emerald-600
-                text-white
-                "
+							className="cursor-pointer bg-emerald-500 hover:bg-emerald-600text-white"
 						>
 							<CreditCard className="h-4 w-4 mr-2" />
-							{m['admin.company_overview.billing']()}
+							{admin_company_overview_billing()}
 						</Button>
 
 						{/* Upgrade */}
 						<Button
 							size="sm"
-							className="
-                cursor-pointer
-                bg-orange-500/90 
-                hover:bg-orange-500 
-                text-white
-                "
+							className="cursor-pointer bg-orange-500/90  hover:bg-orange-500  text-white"
 						>
 							<TrendingUp className="h-4 w-4 mr-2" />
-							{m['admin.company_overview.upgrade_plan']()}
+							{admin_company_overview_upgrade_plan()}
 						</Button>
 
 						{/* Buy messages */}
 						<Button size="sm" variant="outline" className="cursor-pointer">
-							{m['admin.company_overview.buy_messages']()}
+							{admin_company_overview_buy_messages()}
 						</Button>
 					</div>
 				</div>
@@ -288,27 +279,19 @@ function UsageChartSection() {
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-4">
 				<div>
-					<h2 className="text-lg font-semibold">{m['admin.usage.title']()}</h2>
+					<h2 className="text-lg font-semibold">{admin_usage_title()}</h2>
 					<div className="flex justify-between items-center">
-						<p className="text-sm text-muted-foreground">
-							{m['admin.usage.description']()}
-						</p>
+						<p className="text-sm text-muted-foreground">{admin_usage_description()}</p>
 						<DropdownMenu>
 							<DropdownMenuTrigger>
 								<Button variant="outline" size="sm" className="cursor-pointer">
-									{type === 'bars'
-										? m['admin.usage.chart_type.bars']()
-										: m['admin.usage.chart_type.lines']()}
+									{type === 'bars' ? admin_usage_chart_type_bars() : admin_usage_chart_type_lines()}
 								</Button>
 							</DropdownMenuTrigger>
 
 							<DropdownMenuContent>
-								<DropdownMenuItem onClick={() => setType('bars')}>
-									{m['admin.usage.chart_type.bars']()}
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setType('lines')}>
-									{m['admin.usage.chart_type.lines']()}
-								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setType('bars')}>{admin_usage_chart_type_bars()}</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setType('lines')}>{admin_usage_chart_type_lines()}</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
@@ -384,93 +367,6 @@ function UsageChartSection() {
 					<MetricItem label="Pico máximo" value="150" />
 
 					<MetricItem label="Hora mas activa" value="10AM - 11AM" />
-				</div>
-			</CardContent>
-		</Card>
-	);
-}
-
-/* -------------------------------------------------------------------------- */
-/*                            IntegrationsSection                              */
-/* -------------------------------------------------------------------------- */
-
-function IntegrationsSection() {
-	const [sources, setSources] = useState<DataSource[]>([
-		{ id: 'gmail', name: 'Gmail', status: 'disconnected' },
-		{ id: 'gcalendar', name: 'Google Calendar', status: 'disconnected' },
-		{ id: 'outlook', name: 'Outlook', status: 'connected' },
-		{ id: 'ocalendar', name: 'Outlook Calendar', status: 'disconnected' },
-		{ id: 'gdrive', name: 'Google Drive', status: 'connected' },
-		{ id: 'onedrive', name: 'OneDrive', status: 'connected' },
-	]);
-
-	const toggleSource = (id: string) => {
-		setSources((prev) =>
-			prev.map((s) =>
-				s.id === id
-					? {
-							...s,
-							status: s.status === 'connected' ? 'disconnected' : 'connected',
-						}
-					: s,
-			),
-		);
-	};
-
-	const statusIcon = (status: DataSourceStatus) =>
-		status === 'connected' ? (
-			<CheckCircle2 className="h-5 w-5 text-green-500" />
-		) : (
-			<XCircle className="h-5 w-5 text-destructive" />
-		);
-
-	return (
-		<Card className="bg-[var(--sidebar)]">
-			<CardContent className="p-6 space-y-4">
-				{/* Header */}
-				<div>
-					<h2 className="text-lg font-semibold">
-						{m['admin.integrations.title']()}
-					</h2>
-					<p className="text-sm text-muted-foreground">
-						{m['admin.integrations.description']()}
-					</p>
-				</div>
-
-				<Separator />
-
-				{/* Sources */}
-				<div className="space-y-3">
-					{sources.map((s) => (
-						<div
-							key={s.id}
-							className="flex items-center justify-between rounded-xl border p-3"
-						>
-							<div className="flex items-center gap-3">
-								<img
-									src={`/datasource_icons/${s.id}.png`}
-									alt={s.name}
-									className="h-6 w-6"
-								/>
-								<span className="font-medium">{s.name}</span>
-							</div>
-
-							<div className="flex items-center gap-4">
-								{statusIcon(s.status)}
-
-								<Button
-									size="sm"
-									variant="outline"
-									className="cursor-pointer"
-									onClick={() => toggleSource(s.id)}
-								>
-									{s.status === 'connected'
-										? m['admin.integrations.disable']()
-										: m['admin.integrations.enable']()}
-								</Button>
-							</div>
-						</div>
-					))}
 				</div>
 			</CardContent>
 		</Card>
@@ -593,16 +489,14 @@ function UsersSection() {
 													setExpandedUserId(expanded ? null : user.id)
 												}
 												className="
-                            text-xs
-                            text-muted-foreground
-                            hover:text-foreground
-                            transition-colors
-                            cursor-pointer
-                        "
+													text-xs
+													text-muted-foreground
+													hover:text-foreground
+													transition-colors
+													cursor-pointer
+												"
 											>
-												{expanded
-													? m['admin.users.collapse']()
-													: m['admin.users.expand']()}
+												{expanded ? m['common.collapse']() : m['common.expand']()}
 											</button>
 
 											<Button

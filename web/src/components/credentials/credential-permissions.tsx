@@ -6,9 +6,21 @@ import { deleteCredentialPermission, listCredentials, updateCredentialPermission
 import { infoToast } from "@/components/info-toast/info-toast"
 import { getIsAdmin, getUserId } from "@/lib/auth"
 import type { DisplayCredential } from "@api/utils/credential"
-import * as m from "@/paraglide/messages.js"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+    "components.credentials.permissions.remove.toast.error.description" as components_credentials_permissions_remove_toast_error_description,
+    "components.credentials.permissions.admin_badge" as components_credentials_permissions_admin_badge,
+    "common.delete" as common_delete,
+    "components.credentials.permissions.add" as components_credentials_permissions_add,
+    "components.credentials.permissions.title" as components_credentials_permissions_title,
+    "components.credentials.permissions.description" as components_credentials_permissions_description,
+    "components.credentials.permissions.remove.toast.error.title" as components_credentials_permissions_remove_toast_error_title,
+    "components.credentials.permissions.remove.toast.success.title" as components_credentials_permissions_remove_toast_success_title,
+    "components.credentials.permissions.remove.toast.success.description" as components_credentials_permissions_remove_toast_success_description,
+    "components.credentials.permissions.remove.toast.loading.title" as components_credentials_permissions_remove_toast_loading_title,
+    "components.credentials.permissions.remove.toast.loading.description" as components_credentials_permissions_remove_toast_loading_description
+} from "@/paraglide/messages.js"
 
 type Props = {
   credential: DisplayCredential
@@ -71,8 +83,8 @@ export function CredentialPermissions({
     // Deleting permission
     async function handleDeletePermission(userId: string) {
         const toastId = infoToast.loading({
-            title: m["components.credentials.permissions.remove.toast.loading.title"](),
-            description: m["components.credentials.permissions.remove.toast.loading.description"]()
+            title: components_credentials_permissions_remove_toast_loading_title(),
+            description: components_credentials_permissions_remove_toast_loading_description()
         })
 
         try {
@@ -81,16 +93,16 @@ export function CredentialPermissions({
             onCredentialsUpdate(fresh)
 
             infoToast.success(toastId, {
-                title: m["components.credentials.permissions.remove.toast.success.title"](),
-                description:m["components.credentials.permissions.remove.toast.success.description"]()
+                title: components_credentials_permissions_remove_toast_success_title(),
+                description: components_credentials_permissions_remove_toast_success_description()
             })
         } 
         catch (error) {
             console.error(error)
 
             infoToast.error(toastId, {
-                title: m["components.credentials.permissions.remove.toast.error.title"](),
-                description: m["components.credentials.permissions.remove.toast.error.description"]()
+                title: components_credentials_permissions_remove_toast_error_title(),
+                description: components_credentials_permissions_remove_toast_error_description()
             })
         }
     }
@@ -100,8 +112,8 @@ export function CredentialPermissions({
     return (
         <div className="pt-4 border-t space-y-3">
             <div>
-                <h4 className="text-sm font-medium">{m["components.credentials.permissions.title"]()}</h4>
-                <p className="text-xs text-muted-foreground">{m["components.credentials.permissions.description"]()}</p>
+                <h4 className="text-sm font-medium">{components_credentials_permissions_title()}</h4>
+                <p className="text-xs text-muted-foreground">{components_credentials_permissions_description()}</p>
             </div>
 
             {/* Add permission */}
@@ -122,7 +134,7 @@ export function CredentialPermissions({
                     )}
                     onClick={handleAddPermission}
                 >
-                    {m["components.credentials.permissions.add"]()}
+                    {components_credentials_permissions_add()}
                 </AsyncConfirmButton>
             </div>
 
@@ -151,7 +163,7 @@ export function CredentialPermissions({
                         <div className="flex items-center gap-2">
                             {user.isAdminOfCredential && (
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                    {m["components.credentials.permissions.admin_badge"]()}
+                                    {components_credentials_permissions_admin_badge()}
                                 </span>
                             )}
 
@@ -161,7 +173,7 @@ export function CredentialPermissions({
                                 className="cursor-pointer"
                                 onClick={() => handleDeletePermission(user.id)}
                             >
-                                {m["common.delete"]()}
+                                {common_delete()}
                             </Button>
                         </div>
                     </div>

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   IoSunny,
@@ -15,12 +15,12 @@ import {
 } from "react-icons/io5";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import * as m from "@/paraglide/messages.js";
 import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
 import { useNavigate } from "@tanstack/react-router";
-import { getMe, type Me } from "@/lib/user";
+import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
+import { "sidebar.new_chat" as sidebar_new_chat} from "@/paraglide/messages.js";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -71,33 +71,12 @@ export default function Sidebar() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // State for user info
-  const [me, setMe] = useState<Me | null>(null);
-  const [meLoading, setMeLoading] = useState(true);
+  // User info
+  const { data: me, isLoading: meLoading } = useMe();
 
-  // get user info
-  useEffect(() => {
-    let mounted = true;
-
-    getMe()
-      .then((user) => {
-        if (!mounted || !user) return;
-
-        setMe(user);
-        setMeLoading(false);
-
-        localStorage.setItem("userId", user.id);
-        localStorage.setItem("isAdmin", String(user.isAdmin));
-      })
-      .catch(() => {
-        setMeLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
+  // Tenant info
+  const { data: tenant, isLoading: tenantLoading } = useMyTenant();
+  const myTenant = tenant?.[0];
 
   return (
     <>
@@ -128,15 +107,21 @@ export default function Sidebar() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4, ease: "easeInOut", delay: 0.15 }}
                 />
-                <motion.img
-                  src="/company_logo.png"
-                  alt="Empresa"
-                  className="h-7 w-auto object-contain opacity-80"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4, ease: "easeInOut", delay: 0.2 }}
-                />
+                {tenantLoading ? (
+                  <TenantLogoSkeleton />
+                ) : (
+                  myTenant?.logoUrl && (
+                    <motion.img
+                      src={myTenant.logoUrl}
+                      alt={myTenant.displayName ?? "Company"}
+                      className="h-7 w-auto object-contain opacity-80"
+                      initial={{ opacity: 0, scale: 0.9 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      exit={{ opacity: 0, scale: 0.9 }}
+                      transition={{ duration: 0.4, ease: "easeInOut", delay: 0.2 }}
+                    />
+                  )
+                )}
               </div>
             )}
 
@@ -166,7 +151,7 @@ export default function Sidebar() {
               onClick={() => {}}
             >
               <IoAdd className="w-5 h-5" />
-              {m["sidebar.new_chat"]()}
+              {sidebar_new_chat()}
             </Button>
           )}
 
@@ -251,10 +236,9 @@ export default function Sidebar() {
             </Button>
 
             <UserSection
-              me={me}
+              me={me ?? null}
               collapsed={isCollapsed}
               loading={meLoading}
-              onSave={(updated) => setMe(updated)}
             />
           </div>
         </div>
@@ -270,3 +254,13 @@ export default function Sidebar() {
     </>
   );
 }
+
+function TenantLogoSkeleton() {
+  return (
+    <div
+      className="h-7 w-24 bg-muted rounded animate-pulse opacity-70"
+      style={{ minWidth: 96 }}
+    />
+  );
+}
+

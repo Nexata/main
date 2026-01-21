@@ -9,7 +9,14 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { isAuthenticated } from '@/lib/auth';
 import { getDropboxLoginUrl, getGoogleLoginUrl } from '@/lib/oauth';
-import * as m from '@/paraglide/messages.js';
+import {
+	'login.meta.title' as login_meta_title,
+	'login.oauth.dropbox' as login_oauth_dropbox,
+	'login.oauth.google' as login_oauth_google,
+	'login.oauth.microsoft' as login_oauth_microsoft,
+	'login.subtitle' as login_subtitle,
+	'login.title' as login_title,
+} from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_public/login')({
 	beforeLoad: () => {
@@ -22,7 +29,7 @@ export const Route = createFileRoute('/_public/login')({
 
 function LoginPage() {
 	useEffect(() => {
-		document.title = m['login.meta.title']();
+		document.title = login_meta_title();
 	}, []);
 
 	return (
@@ -51,10 +58,10 @@ function LoginPage() {
 
 					{/* Title */}
 					<h1 className="text-2xl font-semibold text-center mb-2">
-						{m['login.title']()}
+						{login_title()}
 					</h1>
 					<p className="text-sm text-muted-foreground text-center mb-6">
-						{m['login.subtitle']()}
+						{login_subtitle()}
 					</p>
 
 					{/* OAuth */}
@@ -67,12 +74,12 @@ function LoginPage() {
 							}}
 						>
 							<FcGoogle className="h-5 w-5" />
-							{m['login.oauth.google']()}
+							{login_oauth_google()}
 						</Button>
 
 						<Button variant="outline" className="h-11 gap-3 cursor-pointer">
 							<IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
-							{m['login.oauth.microsoft']()}
+							{login_oauth_microsoft()}
 						</Button>
 
 						<Button
@@ -83,7 +90,7 @@ function LoginPage() {
 							}}
 						>
 							<SiDropbox className="h-5 w-5 text-[#0061FF]" />
-							{m['login.oauth.dropbox']()}
+							{login_oauth_dropbox()}
 						</Button>
 
 						<Separator className="my-1" />

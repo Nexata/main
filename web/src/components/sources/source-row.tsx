@@ -1,11 +1,17 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
-import * as m from "@/paraglide/messages.js"
 import type { DisplayCredential } from "@api/utils/credential"
 import { CredentialDetailsRow } from "@/components/credentials/credential-details-row"
 import type { SourceConfig } from "@/lib/available-sources"
 import { useEffect, useState } from "react"
 import { StorageFileTree } from "./file-tree"
+import {
+    "settings.sources.loading_accounts" as settings_sources_loading_accounts,
+    "settings.sources.no_accounts" as settings_sources_no_accounts,
+    "settings.sources.view_details" as settings_sources_view_details,
+    "settings.sources.connect" as settings_sources_connect,
+    "components.sources.view_files" as components_sources_view_files
+} from "@/paraglide/messages.js"
 
 type Props = {
   source: SourceConfig
@@ -67,7 +73,7 @@ export function SourceRow({
                     <div className="flex items-center gap-2">
                     <div className="h-5 w-5 border-2 border-t-transparent border-primary rounded-full animate-spin" />
                     <span className="text-sm text-muted-foreground">
-                        {m["settings.sources.loading_accounts"]()}
+                        {settings_sources_loading_accounts()}
                     </span>
                     </div>
                 ) : (
@@ -79,7 +85,7 @@ export function SourceRow({
                                 className="cursor-pointer"
                                 onClick={() => handleToggle("details")}
                             >
-                                {count === 0 ? m["settings.sources.no_accounts"]() : `${count} · ${m["settings.sources.view_details"]()}`}
+                                {count === 0 ? settings_sources_no_accounts() : `${count} · ${settings_sources_view_details()}`}
                             </Button>
 
                             {source.kind === "storage" && count > 0 && (
@@ -89,7 +95,7 @@ export function SourceRow({
                                     className="cursor-pointer text-primary"
                                     onClick={() => handleToggle("files")}
                                 >
-                                    {m["components.sources.view_files"]()}
+                                    {components_sources_view_files()}
                                 </Button>
                             )}
 
@@ -102,7 +108,7 @@ export function SourceRow({
                                 window.open(url, "_blank", "noopener,noreferrer")
                                 }}
                             >
-                                {m["settings.sources.connect"]()}
+                                {settings_sources_connect()}
                             </Button>
                         </div>
                 )}
