@@ -4,7 +4,7 @@ import { device, TraceType, tenant, trace, user } from '@api/schema';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
-import { s3 } from 'bun';
+import { type SQL, s3 } from 'bun';
 import { and, count, eq, isNotNull } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
@@ -25,7 +25,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 						displayName: user.displayName,
 						pfpUrl: user.pfpUrl,
 						isAdmin: user.isAdmin,
-						hasApiKey: isNotNull(user.apiKey),
+						hasApiKey: isNotNull(user.apiKey) as SQL<boolean>,
 						devices: jsonAgg(
 							jsonBuildObject({
 								id: device.id,

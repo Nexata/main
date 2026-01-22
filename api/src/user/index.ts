@@ -20,7 +20,7 @@ export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 					displayName: user.displayName,
 					pfpUrl: user.pfpUrl,
 					isAdmin: user.isAdmin,
-					hasApiKey: isNotNull(user.apiKey),
+					hasApiKey: isNotNull(user.apiKey) as SQL<boolean>,
 					devices: jsonAgg(
 						jsonBuildObject({
 							id: device.id,

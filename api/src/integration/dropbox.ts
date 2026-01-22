@@ -1,6 +1,5 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
-import { File } from '@api/file';
 import type { NexataListDir } from '@api/integration/lib';
 import { credential, OauthProvider } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
@@ -239,8 +238,8 @@ export namespace Dropbox {
 	}
 
 	export async function ingest(
-		dpx: DropboxClient,
-		userId: string,
+		_dpx: DropboxClient,
+		_userId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
 		selection = selection.sort(({ isDir }) => (isDir ? -1 : 1));
