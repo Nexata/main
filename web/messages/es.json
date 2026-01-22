@@ -297,5 +297,42 @@
 			"configured": "Alertas configuradas",
 			"empty": "No hay alertas configuradas"
 		}
+	},
+
+	"user": {
+		"profile": {
+			"meta": {
+				"title": "Perfil"
+			},
+			"header": {
+				"title": "Perfil",
+				"subtitle": "Administrá tu información personal",
+				"back_to_chat": "Volver al chat"
+			},
+			"info": {
+				"messages_used": "Mensajes usados este mes"
+			},
+			"edit": {
+				"display_name_label": "Nombre visible",
+				"profile_image_label": "Imagen de perfil",
+				"cancel": "Cancelar",
+				"save": "Guardar cambios"
+			},
+			"devices": {
+				"title": "Dispositivos",
+				"subtitle": "Dispositivos actualmente conectados a tu cuenta",
+				"empty": "No hay dispositivos activos",
+				"added_on": "Agregado el",
+				"revoke": {
+					"loading_title": "Revocando dispositivo",
+					"loading_description": "Cerrando sesión del dispositivo…",
+					"success_title": "Dispositivo revocado",
+					"success_description": "El dispositivo fue eliminado correctamente",
+					"error_title": "Error al revocar",
+					"error_description": "No se pudo eliminar el dispositivo"
+				}
+			}
+		}
 	}
+
 }

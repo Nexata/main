@@ -19,6 +19,27 @@ export function useMe() {
 	});
 }
 
+// UpdateMe
+export async function updateMe(data: {
+  displayName?: string;
+  pfp?: File;
+}) {
+	return withAuthRetry((headers) => {
+		const body: {
+			displayName?: string;
+			pfp?: File;
+		} = {};
+
+		if (data.displayName !== undefined) body.displayName = data.displayName;
+		if (data.pfp !== undefined) body.pfp = data.pfp;
+
+		return apiClient.api.user.me.patch({
+			$headers: headers,
+			...body,
+		});
+	});
+}
+
 export function useUpdateMe() {
 	const queryClient = useQueryClient();
 
@@ -26,30 +47,23 @@ export function useUpdateMe() {
 		displayName?: string;
 		pfp?: File;
 	}) => {
-		await withAuthRetry((headers) =>
-			apiClient.api.user.me.patch({
-				$headers: headers,
-				displayName: data.displayName,
-				pfp: data.pfp,
-			})
-		);
-		
+		await withAuthRetry((headers) => {
+		const body: {
+			displayName?: string;
+			pfp?: File;
+		} = {};
+
+		if (data.displayName !== undefined) body.displayName = data.displayName;
+		if (data.pfp !== undefined) body.pfp = data.pfp;
+
+		return apiClient.api.user.me.patch({
+			$headers: headers,
+			...body,
+		});
+		});
+
 		await queryClient.invalidateQueries({ queryKey: ["me"] });
 	};
-}
-
-// UpdateMe
-export async function updateMe(data: {
-	displayName?: string;
-	pfp?: File;
-}) {
-	return withAuthRetry((headers) =>
-		apiClient.api.user.me.patch({
-			$headers: headers,
-			displayName: data.displayName,
-			pfp: data.pfp,
-		})
-	);
 }
 
 // GetMyTenant
@@ -83,4 +97,29 @@ export async function getUsers() {
 	);
 }
 export type Users = Awaited<ReturnType<typeof getUsers>>;
+
+// DeleteMyDevice
+export async function deleteMyDevice(fingerprint: string) {
+  return withAuthRetry((headers) =>
+    apiClient.api.user.me.device[':fingerprint'].delete({
+      $headers: headers,
+    })
+  );
+}
+
+export function useDeleteMyDevice() {
+  const queryClient = useQueryClient();
+
+  return async (fingerprint: string) => {
+    await withAuthRetry((headers) =>
+    	apiClient.api.user.me.device[':fingerprint'].delete({
+			$headers: headers,
+		})
+    );
+
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
+  };
+}
+
+
 

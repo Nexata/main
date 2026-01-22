@@ -297,5 +297,42 @@
 			"configured": "Configured alerts",
 			"empty": "No alerts have been configured yet"
 		}
+	},
+
+	"user": {
+		"profile": {
+			"meta": {
+				"title": "Profile"
+			},
+			"header": {
+				"title": "Profile",
+				"subtitle": "Manage your personal information",
+				"back_to_chat": "Back to chat"
+			},
+			"info": {
+				"messages_used": "Messages used this month"
+			},
+			"edit": {
+				"display_name_label": "Display name",
+				"profile_image_label": "Profile image",
+				"cancel": "Cancel",
+				"save": "Save changes"
+			},
+			"devices": {
+				"title": "Devices",
+				"subtitle": "Devices currently signed into your account",
+				"empty": "No active devices",
+				"added_on": "Added on",
+				"revoke": {
+					"loading_title": "Revoking device",
+					"loading_description": "Signing out the device…",
+					"success_title": "Device revoked",
+					"success_description": "The device was removed successfully",
+					"error_title": "Failed to revoke device",
+					"error_description": "The device could not be removed"
+				}
+			}
+		}
 	}
+
 }

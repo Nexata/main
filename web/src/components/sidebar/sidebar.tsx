@@ -2,14 +2,12 @@
 
 import { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, Settings } from "lucide-react";
 import {
   IoSunny,
   IoMoon,
-  IoSettings,
   IoMenu,
   IoAdd,
-  IoTrash,
-  IoCreate,
   IoCheckmark,
   IoClose,
 } from "react-icons/io5";
@@ -183,12 +181,12 @@ export default function Sidebar() {
                       <>
                         <span className="truncate">{chat.title}</span>
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <IoCreate
-                            className="text-secondary-500 w-5 h-5 cursor-pointer"
+                          <Pencil
+                            className="text-secondary-500 w-4 h-4 cursor-pointer"
                             onClick={() => handleEditClick(chat.id)}
                           />
-                          <IoTrash
-                            className="text-error-500 w-5 h-5 cursor-pointer"
+                          <Trash2
+                            className="text-error-500 w-4 h-4 cursor-pointer"
                             onClick={() => handleDeleteClick(chat)}
                           />
                         </div>
@@ -221,7 +219,7 @@ export default function Sidebar() {
               onClick={() => navigate({ to: "/settings" })}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
-              <IoSettings className="w-6 h-6" />
+              <Settings className="w-6 h-6" />
             </Button>
 
             <UserSection
