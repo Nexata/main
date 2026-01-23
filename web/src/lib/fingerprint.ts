@@ -1,16 +1,17 @@
-const FINGERPRINT_KEY = 'app:fingerprint';
+import FingerprintJS from '@fingerprintjs/fingerprintjs';
 
-export function getFingerprint(): string {
-	let fingerprint = localStorage.getItem(FINGERPRINT_KEY);
+let cachedFingerprint: string | null = null;
 
-	if (!fingerprint) {
-		fingerprint = crypto.randomUUID();
-		localStorage.setItem(FINGERPRINT_KEY, fingerprint);
-	}
+export async function getFingerprint(): Promise<string> {
+	if (cachedFingerprint) return cachedFingerprint;
+	
+	const fp = await FingerprintJS.load();
+	const result = await fp.get();
+	cachedFingerprint = result.visitorId;
 
-	return fingerprint;
+	return result.visitorId;
 }
 
 export function clearFingerprint() {
-	localStorage.removeItem(FINGERPRINT_KEY);
+	cachedFingerprint = null;
 }

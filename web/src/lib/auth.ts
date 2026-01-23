@@ -1,15 +1,5 @@
 const ACCESS_TOKEN_KEY = 'accessToken';
 const REFRESH_TOKEN_KEY = 'refreshToken';
-const USER_ID = 'userId';
-const IS_ADMIN = 'isAdmin';
-
-export function getUserId() {
-	return localStorage.getItem(USER_ID);
-}
-
-export function getIsAdmin() {
-	return localStorage.getItem(IS_ADMIN) === 'true';
-}
 
 export function getAccessToken() {
 	return localStorage.getItem(ACCESS_TOKEN_KEY);

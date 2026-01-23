@@ -298,7 +298,8 @@
 			"header": {
 				"title": "Profile",
 				"subtitle": "Manage your personal information",
-				"back_to_chat": "Back to chat"
+				"back_to_chat": "Back to chat",
+				"logout": "Logout"
 			},
 			"info": {
 				"messages_used": "Messages used this month"

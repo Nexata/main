@@ -4,7 +4,6 @@ import UserInput from "@/components/user-input/user-input"
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 import { deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
 import { infoToast } from "@/components/info-toast/info-toast"
-import { getIsAdmin, getUserId } from "@/lib/auth"
 import type { DisplayCredential } from "@api/utils/credential"
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
@@ -21,6 +20,9 @@ import {
     "components.credentials.permissions.remove.toast.loading.title" as components_credentials_permissions_remove_toast_loading_title,
     "components.credentials.permissions.remove.toast.loading.description" as components_credentials_permissions_remove_toast_loading_description
 } from "@/paraglide/messages.js"
+import { useMe } from "@/lib/user"
+import { Checkbox } from "../ui/checkbox"
+import { Label } from "../ui/label"
 
 type Props = {
   credential: DisplayCredential
@@ -32,8 +34,9 @@ export function CredentialPermissions({
   onCredentialsUpdate,
 }: Props) {
     const [selectedUser, setSelectedUser] = useState<string | undefined>()
-
-    const canManageCredential = getIsAdmin() || credential.canAdmin === true
+    const [isAdminPermission, setIsAdminPermission] = useState(false)
+    const { data: me } = useMe()
+    const canManageCredential = me?.isAdmin || credential.canAdmin === true
 
     // Utility to generate a color from a string
     function stringToColor(str: string) {
@@ -60,7 +63,7 @@ export function CredentialPermissions({
     function isUserAlreadyInCredential(userId?: string) {
         if (!userId) return false
         if (credential.ownedBy.id === userId) return true
-        if (getUserId() === userId) return true
+        if (me?.id === userId) return true
 
         return credential.permissions.some((p) => p.id === userId)
     }
@@ -72,7 +75,7 @@ export function CredentialPermissions({
         await updateCredentialPermission({
             credentialId: credential.id,
             userId: selectedUser,
-            isAdmin: false,
+            isAdmin: isAdminPermission,
         })
 
         const fresh = await listCredentials()
@@ -88,7 +91,8 @@ export function CredentialPermissions({
         })
 
         try {
-            await deleteCredentialPermission({credentialId: credential.id, userId})
+            console.log(userId)
+            await deleteCredentialPermission({credentialId: credential.id, userId: userId})
             const fresh = await listCredentials()
             onCredentialsUpdate(fresh)
 
@@ -119,10 +123,18 @@ export function CredentialPermissions({
             {/* Add permission */}
             <div className="flex items-center gap-2">
                 <div className="flex-1">
-                    <UserInput
-                        value={selectedUser}
-                        onChange={setSelectedUser}
-                    />
+                    <div className="flex items-center gap-3">
+                        <UserInput value={selectedUser} onChange={setSelectedUser} />
+                        <div className="flex items-center gap-2">
+                            <Checkbox
+                                id="admin-permission"
+                                className="cursor-pointer"
+                                checked={isAdminPermission}
+                                onCheckedChange={(checked) => setIsAdminPermission(checked === true)}
+                            />
+                            <Label htmlFor="admin-permission" className="text-xs text-muted-foreground">Admin</Label>
+                        </div>
+                    </div>
                 </div>
 
                 <AsyncConfirmButton
