@@ -69,8 +69,9 @@ function LoginPage() {
 						<Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
-							onClick={() => {
-								window.location.href = getGoogleLoginUrl();
+							onClick={async () => {
+								var url = await getGoogleLoginUrl()
+								window.location.href = url;
 							}}
 						>
 							<FcGoogle className="h-5 w-5" />
@@ -85,8 +86,9 @@ function LoginPage() {
 						<Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
-							onClick={() => {
-								window.location.href = getDropboxLoginUrl();
+							onClick={async () => {
+								var url = await getDropboxLoginUrl();
+								window.location.href = url;
 							}}
 						>
 							<SiDropbox className="h-5 w-5 text-[#0061FF]" />

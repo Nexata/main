@@ -9,7 +9,6 @@ import { SourceRow } from '@/components/sources/source-row';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { getIsAdmin } from '@/lib/auth';
 import {
 	credentialsBySource,
 	DINAMIC_DATA_SOURCES,
@@ -32,6 +31,7 @@ import {
 	'settings.subtitle' as settings_subtitle,
 	'settings.title' as settings_title,
 } from '@/paraglide/messages.js';
+import { useMe } from '@/lib/user';
 
 export const Route = createFileRoute('/_private/settings')({
 	component: SettingsPage,
@@ -182,12 +182,12 @@ export function DataSourcesSection({
 	onRequestDelete,
 }: DataSourcesSectionProps) {
 	const [openSourceId, setOpenSourceId] = useState<string | null>(null);
+	const { data: me } = useMe()
 	const [expandedCredentialId, setExpandedCredentialId] = useState<
 		string | null
 	>(null);
 
-	const canManageCredential = (cred: DisplayCredential) =>
-		getIsAdmin() || cred.canAdmin === true;
+	const canManageCredential = (cred: DisplayCredential) => me?.isAdmin || cred.canAdmin === true;
 
 	return (
 		<Card className="bg-[var(--sidebar)]">
@@ -253,12 +253,10 @@ export function StorageSection({
 	onRequestDelete,
 }: StorageSectionProps) {
 	const [openSourceId, setOpenSourceId] = useState<string | null>(null);
-	const [expandedCredentialId, setExpandedCredentialId] = useState<
-		string | null
-	>(null);
+	const { data: me } = useMe()
+	const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null);
 
-	const canManageCredential = (cred: DisplayCredential) =>
-		getIsAdmin() || cred.canAdmin === true;
+	const canManageCredential = (cred: DisplayCredential) => me?.isAdmin || cred.canAdmin === true;
 
 	return (
 		<Card className="bg-[var(--sidebar)]">

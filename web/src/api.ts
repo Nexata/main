@@ -6,7 +6,7 @@ import {
 	getRefreshToken,
 	saveTokens,
 } from '@/lib/auth';
-import { getFingerprint } from './lib/fingerprint';
+import { getFingerprint } from '@/lib/fingerprint';
 
 export const apiClient = edenTreaty<App>('http://localhost:3000');
 
@@ -14,16 +14,19 @@ export async function refreshAccessToken() {
 	const refreshToken = getRefreshToken();
 	if (!refreshToken) throw new Error('No refresh token');
 
+	const fingerprint = await getFingerprint();
+
 	const response = await fetch('http://localhost:3000/api/auth/refresh-token', {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',
+			fingerprint,
+			'user-agent': navigator.userAgent,
 		},
 		body: JSON.stringify({ token: refreshToken }),
 	});
 
 	if (!response.ok) {
-		clearTokens();
 		throw new Error('Refresh token inválido');
 	}
 
@@ -49,24 +52,32 @@ export async function withAuthRetry<T>(
 		error: ApiError | null;
 	}>,
 ): Promise<T> {
-	const makeHeaders = (): AuthHeaders => {
+	const makeHeaders = async (): Promise<AuthHeaders> => {
 		const token = getAccessToken();
 		if (!token) throw new Error('No access token');
 
 		return {
 			authorization: `Bearer ${token}`,
-			fingerprint: getFingerprint(),
+			fingerprint: await getFingerprint(),
 		};
 	};
 
-	let result = await request(makeHeaders());
+	const headers = await makeHeaders();
+	let result = await request(headers);
 
 	if (!result.error && result.data) return result.data;
 
 	if (result.error?.status !== 401) throw result.error;
 
 	await refreshAccessToken();
-	result = await request(makeHeaders());
+	try {
+		await refreshAccessToken();
+	} catch (err) {
+		clearTokens();
+		throw err;
+	}
+	const refheaders = await makeHeaders()
+	result = await request(refheaders);
 
 	if (result.error) throw result.error;
 

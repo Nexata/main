@@ -11,6 +11,7 @@ import {
 	Pencil,
 	RotateCw,
 	Trash2,
+	LogOut 
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
@@ -44,6 +45,7 @@ import {
 	useMe,
 	useUpdateMe,
 } from '@/lib/user';
+import { UAParser } from "ua-parser-js";
 import {
 	'common.cancel' as common_cancel,
 	'common.confirm' as common_confirm,
@@ -98,7 +100,10 @@ import {
 	"user.profile.api_keys.toasts.delete.success_description" as profile_api_keys_toast_delete_success_description,
 	"user.profile.api_keys.toasts.delete.error_title" as profile_api_keys_toast_delete_error_title,
 	"user.profile.api_keys.toasts.delete.error_description" as profile_api_keys_toast_delete_error_description,
+	'user.profile.header.logout' as user_profile_header_logout
 } from '@/paraglide/messages.js';
+import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
+import { clearTokens } from '@/lib/auth';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
@@ -139,7 +144,13 @@ export default function ProfilePage() {
 	}
 
 	// Delete Device
-	async function handleDeleteDevice(fingerprint: string) {
+	async function handleDeleteDevice(fingerprint: string, isLogout: boolean = false) {
+		const actualFingerprint = await getFingerprint();
+		if(!isLogout && fingerprint == actualFingerprint) {
+			await handleLogout();
+			return;
+		}
+
 		const toastId = infoToast.loading({
 			title: profile_device_revoke_loading_title(),
 			description: profile_device_revoke_loading_description(),
@@ -208,6 +219,37 @@ export default function ProfilePage() {
 		}
 	}
 
+	// UserAgent Helper
+	function formatUserAgent(ua: string | null | undefined) {
+		if (!ua) return "Unknown device";
+
+		const parser = new UAParser(ua);
+		const { browser, os, cpu, device } = parser.getResult();
+
+		const parts = [
+			browser.name && browser.version ? `${browser.name} ${browser.version}` : browser.name,
+			os.name && os.version ? `${os.name} ${os.version}` : os.name,
+			device.type ?? "Desktop",
+			cpu.architecture,
+		];
+
+		return parts.filter(Boolean).join(" · ");
+	}
+
+
+	// Handle LogOut
+	async function handleLogout() {
+		try {
+			const fingerprint = await getFingerprint();
+			await handleDeleteDevice(fingerprint, true);
+
+			clearTokens();
+			clearFingerprint();
+			localStorage.clear();
+			sessionStorage.clear();
+			window.location.href = '/login';
+		} catch (e) {}
+	}
 
 	return (
 		<motion.div
@@ -227,10 +269,17 @@ export default function ProfilePage() {
 					</p>
 				</div>
 
-				<Button variant="outline" onClick={() => navigate({ to: '/chat' })}>
-					<ArrowLeft className="h-4 w-4 mr-2" />
-					{profile_back_to_chat()}
-				</Button>
+				<div className="flex items-center gap-2">
+					<Button className="cursor-pointer" variant="outline" onClick={() => navigate({ to: '/chat' })}>
+						<ArrowLeft className="h-4 w-4 mr-2" />
+						{profile_back_to_chat()}
+					</Button>
+
+					<Button className="cursor-pointer" variant="destructive" onClick={handleLogout}>
+						<LogOut className="h-4 w-4 mr-2" />
+						{user_profile_header_logout()}
+					</Button>
+				</div>
 			</header>
 
 			<Separator />
@@ -394,9 +443,8 @@ export default function ProfilePage() {
 								"
 								>
 									<div className="space-y-1 min-w-0">
-										<p className="text-sm font-medium truncate">
-											{device.userAgent}
-										</p>
+										<p className="text-sm font-medium truncate">{formatUserAgent(device.userAgent)}</p>
+										<p className="text-xs text-muted-foreground truncate">{device.userAgent}</p>
 										<p className="text-xs text-muted-foreground">
 											{profile_devices_added_on()}{' '}
 											{new Date(device.createdAt).toLocaleDateString()}
