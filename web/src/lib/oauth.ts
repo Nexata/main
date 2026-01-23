@@ -35,15 +35,16 @@ function getUserIdFromStorage(): string {
 export function getGoogleCredentialUrl(scope: string) {
 	const userId = getUserIdFromStorage();
 
-	return `${API_URL}/api/auth/google/?flow=credential&scopes=${scope}&userId=${encodeURIComponent(
+	return `${API_URL}/api/auth/google/?flow=credential&scope=${scope}&userId=${encodeURIComponent(
 		userId,
 	)}&redirect=${encodeURIComponent(FRONTEND_CREDENTIAL_CALLBACK)}`;
 }
 
+
 export function getDropboxCredentialUrl() {
 	const userId = getUserIdFromStorage();
 
-	return `${API_URL}/api/auth/dropbox/?flow=credential&scopes=dropbox&userId=${encodeURIComponent(
+	return `${API_URL}/api/auth/dropbox/?flow=credential&scope=dropbox&userId=${encodeURIComponent(
 		userId,
 	)}&redirect=${encodeURIComponent(FRONTEND_CREDENTIAL_CALLBACK)}`;
 }

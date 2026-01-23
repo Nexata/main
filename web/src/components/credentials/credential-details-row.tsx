@@ -44,9 +44,10 @@ export function CredentialDetailsRow({
                 <div className="flex items-center gap-2 flex-1 min-w-0">
                     {credential.ownedBy.pfpUrl ? (
                         <img
-                            src={credential.ownedBy.pfpUrl}
-                            alt={credential.ownedBy.displayName ?? credential.ownedBy.email}
-                            className="h-6 w-6 rounded-full object-cover"
+                        src={credential.ownedBy.pfpUrl}
+                        alt={credential.ownedBy.displayName ?? credential.ownedBy.email}
+                        className="h-6 w-6 rounded-full object-cover shrink-0"
+                        referrerPolicy="no-referrer"
                         />
                     ) : (
                         <div
