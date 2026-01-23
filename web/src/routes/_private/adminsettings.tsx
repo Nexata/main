@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { ArrowLeft, CreditCard, Settings, TrendingUp } from 'lucide-react';
+import { Tooltip as TooltipUi, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { ArrowLeft, CreditCard, Pencil, Settings, Trash, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
 	Bar,
@@ -48,10 +49,19 @@ import {
 	'admin.usage.chart_type.lines' as admin_usage_chart_type_lines,
 	'admin.usage.description' as admin_usage_description,
 	'admin.usage.title' as admin_usage_title,
+	'admin.users.title' as admin_users_title,
+	'admin.users.description' as admin_users_description,
+	'admin.users.invite.title' as admin_users_invite_title,
+	'admin.users.invite.helper' as admin_users_invite_helper,
+	'admin.users.invite.send' as admin_users_invite_send,
+	'admin.users.invite.placeholder' as admin_users_invite_placeholder
 } from '@/paraglide/messages.js';
 import { useMyTenant } from '@/lib/user';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import { useBillingMessages } from '@/lib/admin';
+import { useBillingMessages, useEditUser, useUsers } from '@/lib/admin';
+import UserSection from '@/components/user-section/user-section';
+import { FilePreview } from '@/components/ui/file-preview';
+import { Input } from '@/components/ui/input';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -391,217 +401,186 @@ function UsageChartSection() {
 /* -------------------------------------------------------------------------- */
 
 function UsersSection() {
+	const { data: users = [], isLoading } = useUsers();
 	const [inviteEmail, setInviteEmail] = useState('');
-	const [_inviteSent, _setInviteSent] = useState(false);
-	const [expandedUserId, setExpandedUserId] = useState<string | null>(null);
-	const [userToDelete, setUserToDelete] = useState<{
-		id: string;
-		email: string;
-	} | null>(null);
+	const [editingUserId, setEditingUserId] = useState<string | null>(null);
+	const [displayName, setDisplayName] = useState('');
+	const [file, setFile] = useState<File | null>(null);
+	const editUserFn = useEditUser();
 
-	const users = [
-		{
-			id: '1',
-			email: 'juan@empresa.com',
-			messages: 320,
-			createdAt: '2024-01-12',
-			storageMb: 48,
-		},
-		{
-			id: '2',
-			email: 'maria@empresa.com',
-			messages: 110,
-			createdAt: '2024-03-04',
-			storageMb: 22,
-		},
-	];
+	// Ordenar admins primero
+	const sortedUsers = [...users].sort((a, b) => (b.isAdmin ? 1 : 0) - (a.isAdmin ? 1 : 0));
 
 	return (
-		<>
-			<Card className="bg-[var(--sidebar)]">
-				<CardContent className="p-6 space-y-6">
-					{/* Header */}
-					<div>
-						<h2 className="text-lg font-semibold">
-							{m['admin.users.title']()}
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							{m['admin.users.description']()}
-						</p>
+		<Card className="bg-[var(--sidebar)]">
+			<CardContent className="p-6 space-y-6">
+				{/* Header */}
+				<div>
+					<h2 className="text-lg font-semibold">{admin_users_title()}</h2>
+					<p className="text-sm text-muted-foreground">{admin_users_description()}</p>
+				</div>
+
+				<Separator />
+
+				{/* Invite user */}
+				<div className="space-y-2">
+					<p className="text-sm font-medium">{admin_users_invite_title()}</p>
+					<div className="flex items-center gap-2">
+						<input
+						type="email"
+						placeholder={admin_users_invite_placeholder()}
+						value={inviteEmail}
+						onChange={(e) => setInviteEmail(e.target.value)}
+						className="flex-1 h-9 rounded-md border border-border bg-background px-3 text-sm
+							focus:outline-none focus:ring-2 focus:ring-ring"
+						/>
+						<AsyncConfirmButton onClick={async () => { return; }}>{admin_users_invite_send()}</AsyncConfirmButton>
 					</div>
+					<p className="text-xs text-muted-foreground">{admin_users_invite_helper()}</p>
+				</div>
 
-					<Separator />
-
-					{/* Invite user */}
-					<div className="space-y-2">
-						<p className="text-sm font-medium">
-							{m['admin.users.invite.title']()}
-						</p>
-
-						<div className="flex items-center gap-2">
-							<input
-								type="email"
-								placeholder={m['admin.users.invite.placeholder']()}
-								value={inviteEmail}
-								onChange={(e) => setInviteEmail(e.target.value)}
-								className="
-                  flex-1
-                  h-9
-                  rounded-md
-                  border
-                  border-border
-                  bg-background
-                  px-3
-                  text-sm
-                  focus:outline-none
-                  focus:ring-2
-                  focus:ring-ring
-                "
-							/>
-
-							<AsyncConfirmButton
-								onClick={async () => {
-									return;
-								}}
-							>
-								{m['admin.users.invite.send']()}
-							</AsyncConfirmButton>
-						</div>
-
-						<p className="text-xs text-muted-foreground">
-							{m['admin.users.invite.helper']()}
-						</p>
-					</div>
-
-					<Separator />
-
-					{/* Users list */}
-					<div className="space-y-2">
-						{users.map((user) => {
-							const expanded = expandedUserId === user.id;
+				{/* Users list */}
+				<div className="space-y-2">
+					{isLoading ? (
+						<p className="text-sm text-muted-foreground">Cargando usuarios...</p>
+					) : (
+						sortedUsers.map((user) => {
+							const meForUserSection = {
+								id: user.id,
+								email: user.email,
+								displayName: user.displayName,
+								pfpUrl: user.pfpUrl ?? null,
+								isAdmin: user.isAdmin,
+								hasApiKey: !!user.apiKey,
+								devices: [], 
+								messageCount: 0,
+							};
 
 							return (
-								<div key={user.id} className="rounded-xl border border-border">
-									{/* Row */}
-									<div
-										className="
-                        flex
-                        items-center
-                        justify-between
-                        px-4
-                        py-3
-                        hover:bg-muted/40
-                        transition-colors
-                    "
-									>
-										<span className="flex-1 font-medium">{user.email}</span>
+								<div key={user.id}>
+									<div className="flex flex-col border border-border rounded-xl px-2 py-1 hover:bg-muted/40 transition-colors">
+										<div className="flex items-center justify-between gap-2">
+											<div className="flex-1">
+												<UserSection
+												me={meForUserSection}
+												collapsed={false}
+												loading={false}
+												disableHoverScale
+												disableClick
+												/>
+											</div>
 
-										<div className="flex items-center gap-3">
-											<button
-												onClick={() =>
-													setExpandedUserId(expanded ? null : user.id)
-												}
-												className="
-													text-xs
-													text-muted-foreground
-													hover:text-foreground
-													transition-colors
-													cursor-pointer
-												"
-											>
-												{expanded
-													? m['common.collapse']()
-													: m['common.expand']()}
-											</button>
+											<div className="flex gap-2">
+												<TooltipUi>
+													<TooltipTrigger>
+														<Button
+														size="icon"
+														variant="ghost"
+														className="cursor-pointer"
+														onClick={() => {
+															setEditingUserId(user.id);
+															setDisplayName(user.displayName ?? '');
+															setFile(null);
+														}}
+														>
+															<Pencil className="h-4 w-4" />
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent>Editar usuario</TooltipContent>
+												</TooltipUi>
 
-											<Button
-												size="sm"
-												variant="outline"
-												className="cursor-pointer text-destructive hover:bg-destructive/10"
-												onClick={() =>
-													setUserToDelete({
-														id: user.id,
-														email: user.email,
-													})
-												}
-											>
-												{m['admin.users.actions.remove']()}
-											</Button>
+												<TooltipUi>
+													<TooltipTrigger>
+														<Button size="icon" variant="ghost" className="cursor-pointer text-destructive">
+															<Trash className="h-4 w-4" />
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent>Eliminar usuario</TooltipContent>
+												</TooltipUi>
+											</div>
 										</div>
-									</div>
 
-									{/* Expanded details */}
-									<AnimatePresence>
-										{expanded && (
-											<motion.div
+										<AnimatePresence>
+											{editingUserId === user.id && (
+												<motion.div
 												initial={{ opacity: 0, height: 0 }}
 												animate={{ opacity: 1, height: 'auto' }}
 												exit={{ opacity: 0, height: 0 }}
-												transition={{ duration: 0.2 }}
-												className="px-4 pb-4 overflow-hidden"
-											>
-												<div className="divide-y divide-border text-sm">
-													<DetailItem
-														label={m['admin.users.details.messages']()}
-														value={`${user.messages}`}
-													/>
-													<DetailItem
-														label={m['admin.users.details.created_at']()}
-														value={user.createdAt}
-													/>
-													<DetailItem
-														label={m['admin.users.details.storage']()}
-														value={`${user.storageMb} MB`}
-													/>
-												</div>
-											</motion.div>
-										)}
-									</AnimatePresence>
+												transition={{ duration: 0.25 }}
+												className="overflow-hidden mt-2"
+												>
+													<Separator className="my-2" />
+
+													<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 py-2 px-2">
+														<div className="flex flex-col md:flex-row md:items-start gap-4 flex-1">
+															<div className="flex flex-col gap-1">
+																<label className="text-sm font-medium">Nombre de usuario</label>
+																<Input
+																className="w-full md:w-56 h-8 text-sm"
+																value={displayName}
+																onChange={(e) => setDisplayName(e.target.value)}
+																/>
+															</div>
+
+															<div className="flex flex-col gap-1">
+																<label className="text-sm font-medium">Imagen de perfil</label>
+																<div className="flex items-center gap-2">
+																	<Input
+																		type="file"
+																		accept="image/*"
+																		className="w-48 h-8 text-sm"
+																		onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+																	/>
+																</div>
+															</div>
+															{file && (
+																<div className="flex items-center justify-center">
+																	<div className="h-8">
+																		<FilePreview file={file} onRemove={() => setFile(null)} />
+																	</div>
+																</div>
+															)}
+														</div>
+
+														<div className="flex items-center justify-end gap-2 pt-3 shrink-0">
+															<Button
+															variant="ghost"
+															className="h-8 px-3 text-sm"
+															onClick={() => {
+																setEditingUserId(null);
+																setDisplayName(user.displayName ?? '');
+																setFile(null);
+															}}
+															>
+																Cancelar
+															</Button>
+
+															<AsyncConfirmButton
+															className="h-8 px-3 text-sm"
+															onClick={async () => {
+																await editUserFn(user.id, { displayName, pfp: file ?? undefined });
+																setEditingUserId(null);
+																setFile(null);
+															}}
+															>
+																Guardar
+															</AsyncConfirmButton>
+														</div>
+													</div>
+												</motion.div>
+											)}
+										</AnimatePresence>
+									</div>
 								</div>
 							);
-						})}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Delete user dialog */}
-			<Dialog open={!!userToDelete} onOpenChange={() => setUserToDelete(null)}>
-				<DialogContent className="max-w-sm">
-					<DialogHeader>
-						<DialogTitle>{m['admin.users.dialogs.delete.title']()}</DialogTitle>
-						<DialogDescription>
-							{m['admin.users.dialogs.delete.description']({
-								email: userToDelete?.email ?? '',
-							})}
-						</DialogDescription>
-					</DialogHeader>
-					<DialogFooter className="flex justify-end gap-2">
-						<Button variant="outline" onClick={() => setUserToDelete(null)}>
-							{m['common.cancel']()}
-						</Button>
-						<Button
-							variant="destructive"
-							onClick={() => {
-								setUserToDelete(null);
-							}}
-						>
-							{m['common.delete']()}
-						</Button>
-					</DialogFooter>
-				</DialogContent>
-			</Dialog>
-		</>
+						})
+					)}
+				</div>
+			</CardContent>
+		</Card>
 	);
 }
 
-function DetailItem({ label, value }: { label: string; value: string }) {
-	return (
-		<div className="flex items-center justify-between py-2">
-			<span className="text-xs text-muted-foreground">{label}</span>
-			<span className="font-medium text-foreground">{value}</span>
-		</div>
-	);
-}
 
 /* -------------------------------------------------------------------------- */
 /*                               ConfirmDialog                                 */

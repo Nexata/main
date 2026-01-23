@@ -1,15 +1,20 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "@tanstack/react-router";
 import type { Me } from "@/lib/user";
+import { Badge } from "../ui/badge";
 
 export default function UserSection({
     me,
     collapsed,
     loading,
+    disableHoverScale = false,
+    disableClick = false,
 }: {
     me: Me | null;
     collapsed: boolean;
     loading?: boolean;
+    disableHoverScale?: boolean; 
+    disableClick?: boolean; 
 }) {
     const navigate = useNavigate();
     const size = collapsed ? 28 : 32;
@@ -48,9 +53,11 @@ export default function UserSection({
 
     return (
         <motion.div
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => navigate({ to: "/user" })}
+            {...(!disableHoverScale && { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } })}
+            onClick={() => {
+                if(disableClick) return;
+                navigate({ to: "/user" })
+            }}
             className={`mt-2 rounded-lg p-2 flex items-center gap-3 cursor-pointer hover:bg-[var(--muted)/60] transition-colors ${collapsed ? "justify-center" : ""}`}>
             {me.pfpUrl ? (
                 <div
@@ -89,10 +96,13 @@ export default function UserSection({
             )}
 
             {!collapsed && (
-                <div className="min-w-0">
+            <div className="min-w-0">
+                <div className="flex items-center gap-2">
                     <div className="font-semibold truncate">{me.displayName ?? "User"}</div>
-                    <div className="text-xs opacity-60 truncate">{me.email}</div>
+                    {me.isAdmin && <Badge variant="destructive">Admin</Badge>}
                 </div>
+                <div className="text-xs opacity-60 truncate">{me.email}</div>
+            </div>
             )}
         </motion.div>
     );
