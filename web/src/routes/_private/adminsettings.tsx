@@ -1,13 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import {
-	ArrowLeft,
-	CheckCircle2,
-	CreditCard,
-	Settings,
-	TrendingUp,
-	XCircle,
-} from 'lucide-react';
+import { ArrowLeft, CreditCard, Settings, TrendingUp } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import {
 	Bar,
@@ -37,25 +30,28 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
+import * as m from '@/paraglide/messages.js';
 import {
-	'admin.meta.title' as admin_meta_title,
-	'admin.header.title' as admin_header_title,
-	'admin.header.subtitle' as admin_header_subtitle,
-	'admin.header.personal_panel' as admin_header_personal_panel,
-	'admin.header.back_to_chat' as admin_header_back_to_chat,
-	'admin.company_overview.title' as admin_company_overview_title,
-	'admin.company_overview.description' as admin_company_overview_description,
+	'admin.company_overview.billing' as admin_company_overview_billing,
 	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
 	'admin.company_overview.current_plan' as admin_company_overview_current_plan,
+	'admin.company_overview.description' as admin_company_overview_description,
 	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
+	'admin.company_overview.title' as admin_company_overview_title,
 	'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
-	'admin.company_overview.billing' as admin_company_overview_billing,
+	'admin.header.back_to_chat' as admin_header_back_to_chat,
+	'admin.header.personal_panel' as admin_header_personal_panel,
+	'admin.header.subtitle' as admin_header_subtitle,
+	'admin.header.title' as admin_header_title,
+	'admin.meta.title' as admin_meta_title,
 	'admin.usage.chart_type.bars' as admin_usage_chart_type_bars,
 	'admin.usage.chart_type.lines' as admin_usage_chart_type_lines,
 	'admin.usage.description' as admin_usage_description,
-	'admin.usage.title' as admin_usage_title
+	'admin.usage.title' as admin_usage_title,
 } from '@/paraglide/messages.js';
-import * as m from '@/paraglide/messages.js';
+import { useMyTenant } from '@/lib/user';
+import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
+import { useBillingMessages } from '@/lib/admin';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -109,8 +105,12 @@ function AdminSettingsPage() {
 			{/* Header */}
 			<header className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-semibold tracking-tight">{admin_header_title()}</h1>
-					<p className="text-sm text-muted-foreground">{admin_header_subtitle()}</p>
+					<h1 className="text-3xl font-semibold tracking-tight">
+						{admin_header_title()}
+					</h1>
+					<p className="text-sm text-muted-foreground">
+						{admin_header_subtitle()}
+					</p>
 				</div>
 
 				<div className="flex gap-2">
@@ -158,41 +158,44 @@ function AdminSettingsPage() {
 /* -------------------------------------------------------------------------- */
 
 function CompanyOverviewSection() {
-	const used = 81;
-	const total = 500;
 	const navigate = useNavigate();
+	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
+	const { data: billingMessages, isLoading: billingLoading } = useBillingMessages();
+	const used = billingMessages?.count ?? 0;
+	const total = billingMessages?.limit ?? 0;
+
 
 	return (
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-6">
-				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div>
 						<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
 						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
 					</div>
 
-					{/* Company logo */}
-					<img
-						src="/company_logo.png"
-						alt="Company logo"
-						className="h-8 w-auto opacity-80"
+					<TenantLogo
+					loading={tenantLoading}
+					logoUrl={myTenant?.logoUrl}
+					displayName={myTenant?.displayName}
 					/>
 				</div>
 
 				<Separator />
 
-				{/* Message balance */}
 				<div>
 					<div className="flex justify-between text-sm mb-2">
 						<span>{admin_company_overview_message_balance()}</span>
-						<span className="font-medium text-primary"> {used} / {total}</span>
+						<span className="font-medium text-primary">
+							{' '}
+							{billingLoading ? '— / —' : `${used} / ${total}`}
+						</span>
 					</div>
 
 					<div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
 						<motion.div
 							initial={{ width: 0 }}
-							animate={{ width: `${(used / total) * 100}%` }}
+							animate={{ width: `${total > 0 ? (used / total) * 100 : 0}%` }}
 							transition={{ duration: 0.6, ease: 'easeOut' }}
 							className="h-full rounded-full bg-primary"
 						/>
@@ -202,7 +205,9 @@ function CompanyOverviewSection() {
 				{/* Plan + actions */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center">
-						<span className="text-sm text-muted-foreground">{admin_company_overview_current_plan()}</span>
+						<span className="text-sm text-muted-foreground">
+							{admin_company_overview_current_plan()}
+						</span>
 						<span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
 							Business 500
 						</span>
@@ -281,17 +286,25 @@ function UsageChartSection() {
 				<div>
 					<h2 className="text-lg font-semibold">{admin_usage_title()}</h2>
 					<div className="flex justify-between items-center">
-						<p className="text-sm text-muted-foreground">{admin_usage_description()}</p>
+						<p className="text-sm text-muted-foreground">
+							{admin_usage_description()}
+						</p>
 						<DropdownMenu>
 							<DropdownMenuTrigger>
 								<Button variant="outline" size="sm" className="cursor-pointer">
-									{type === 'bars' ? admin_usage_chart_type_bars() : admin_usage_chart_type_lines()}
+									{type === 'bars'
+										? admin_usage_chart_type_bars()
+										: admin_usage_chart_type_lines()}
 								</Button>
 							</DropdownMenuTrigger>
 
 							<DropdownMenuContent>
-								<DropdownMenuItem onClick={() => setType('bars')}>{admin_usage_chart_type_bars()}</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setType('lines')}>{admin_usage_chart_type_lines()}</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setType('bars')}>
+									{admin_usage_chart_type_bars()}
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setType('lines')}>
+									{admin_usage_chart_type_lines()}
+								</DropdownMenuItem>
 							</DropdownMenuContent>
 						</DropdownMenu>
 					</div>
@@ -496,7 +509,9 @@ function UsersSection() {
 													cursor-pointer
 												"
 											>
-												{expanded ? m['common.collapse']() : m['common.expand']()}
+												{expanded
+													? m['common.collapse']()
+													: m['common.expand']()}
 											</button>
 
 											<Button

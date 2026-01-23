@@ -10,3 +10,7 @@ export function getFingerprint(): string {
 
 	return fingerprint;
 }
+
+export function clearFingerprint() {
+	localStorage.removeItem(FINGERPRINT_KEY);
+}

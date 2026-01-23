@@ -87,12 +87,6 @@
 			"dropbox": "Dropbox"
 		}
 	},
-	"user": {
-		"profile": {
-			"title": "Perfil de usuario",
-			"display_name_placeholder": "Nombre visible"
-		}
-	},
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "Nuevo Chat",
@@ -301,9 +295,6 @@
 
 	"user": {
 		"profile": {
-			"meta": {
-				"title": "Perfil"
-			},
 			"header": {
 				"title": "Perfil",
 				"subtitle": "Administrá tu información personal",
@@ -313,6 +304,7 @@
 				"messages_used": "Mensajes usados este mes"
 			},
 			"edit": {
+				"label": "Editar Perfil",
 				"display_name_label": "Nombre visible",
 				"profile_image_label": "Imagen de perfil",
 				"cancel": "Cancelar",
@@ -323,6 +315,7 @@
 				"subtitle": "Dispositivos actualmente conectados a tu cuenta",
 				"empty": "No hay dispositivos activos",
 				"added_on": "Agregado el",
+				"delete": "Borrar Dispositivo",
 				"revoke": {
 					"loading_title": "Revocando dispositivo",
 					"loading_description": "Cerrando sesión del dispositivo…",
@@ -331,8 +324,60 @@
 					"error_title": "Error al revocar",
 					"error_description": "No se pudo eliminar el dispositivo"
 				}
+			},
+			"delete_account": {
+				"title": "Eliminar cuenta",
+				"subtitle": "Eliminar permanentemente su cuenta y todos los datos asociados",
+				"description": "Esta acción es irreversible. Tu cuenta y todos los datos asociados serán eliminados permanentemente."
+			},
+			"api_keys": {
+				"section": {
+					"title": "Clave API",
+					"subtitle": "Administrá tu clave API personal para integraciones"
+				},
+				"actions": {
+					"regenerate": "Regenerar clave API",
+					"delete": "Eliminar clave API",
+					"create": "Crear clave API"
+				},
+				"empty": {
+					"title": "Sin clave API",
+					"description": "Creá una clave API para habilitar integraciones"
+				},
+				"one_time_modal": {
+					"title": "Tu clave API",
+					"description": "Esta es la única vez que podrás ver esta clave API. Copiala ahora y guardala de forma segura.",
+					"security_note": "Por razones de seguridad, no podrás volver a ver esta clave. Si la perdés, deberás regenerarla.",
+					"saved_button": "Ya la guardé",
+					"copy_aria_label": "Copiar clave API"
+				},
+				"delete_modal": {
+					"title": "Eliminar clave API",
+					"description": "Esto revocará permanentemente tu clave API. Cualquier integración que la use dejará de funcionar inmediatamente."
+				},
+				"toasts": {
+					"generate": {
+						"loading_title": "Generando clave API",
+						"loading_description": "Por favor esperá mientras generamos tu nueva clave API…",
+						"success_title": "Clave API generada",
+						"success_description": "Asegurate de copiarla y guardarla de forma segura.",
+						"error_title": "No se pudo generar la clave API",
+						"error_description": "Por favor, intentá nuevamente."
+					},
+					"delete": {
+						"loading_title": "Eliminando clave API",
+						"loading_description": "Eliminando tu clave API…",
+						"success_title": "Clave API eliminada",
+						"success_description": "Tu clave API fue eliminada correctamente.",
+						"error_title": "No se pudo eliminar la clave API",
+						"error_description": "Por favor, intentá nuevamente."
+					}
+				}
+			},
+			"danger_zone": {
+				"title": "Zona de peligro",
+				"subtitle": "Acciones irreversibles y destructivas"
 			}
 		}
 	}
-
 }

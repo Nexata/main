@@ -43,12 +43,12 @@ export default function UserInput({
         if (fetchedRef.current || loading) return;
 
         try {
-        setLoading(true);
-        const result = await getUsers();
-        setUsers(result ?? []);
-        fetchedRef.current = true;
+            setLoading(true);
+            const result = await getUsers();
+            setUsers(result ?? []);
+            fetchedRef.current = true;
         } finally {
-        setLoading(false);
+            setLoading(false);
         }
     };
 
@@ -142,9 +142,10 @@ function Avatar({ user }: { user: User }) {
         <div className="h-8 w-8 shrink-0 overflow-hidden rounded-full bg-muted flex items-center justify-center">
             {user.pfpUrl ? (
                 <img
-                    src={user.pfpUrl}
-                    alt={user.displayName ?? user.email}
-                    className="h-full w-full object-cover"
+                src={user.pfpUrl}
+                alt={user.displayName ?? user.email}
+                className="h-full w-full object-cover"
+                referrerPolicy="no-referrer"
                 />
             ) : (
                 <span className="text-xs font-medium text-muted-foreground">
@@ -154,3 +155,4 @@ function Avatar({ user }: { user: User }) {
         </div>
     );
 }
+
