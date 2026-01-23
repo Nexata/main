@@ -21,29 +21,26 @@ export async function removeCachedCredentials(
 	credentialId?: string,
 ) {
 	if (uid)
-		return (
-			await Promise.all([
-				cache.del(`credentials:${slug}:${uid}`),
-				cache.del(
-					...(credentialId
-						? [`t:${slug}:${uid}:${credentialId}`]
-						: await cache.keys(`at:${slug}:${uid}:*`)),
-				),
-			])
-		).reduce((acc, val) => acc + val, 0);
+		return cache.del(
+			`credentials:${slug}:${uid}`,
+			...(credentialId
+				? [`t:${slug}:${uid}:${credentialId}`]
+				: await cache.keys(`t:${slug}:${uid}:*`)),
+		);
 
-	if (credentialId)
-		return (
-			await Promise.all([
-				cache.del(`credentials:${slug}:*`),
-				cache.del(...(await cache.keys(`t:${slug}:*:${credentialId}`))),
-			])
-		).reduce((acc, val) => acc + val, 0);
+	if (credentialId) {
+		const k = [
+			...(await cache.keys(`credentials:${slug}:*`)),
+			...(await cache.keys(`t:${slug}:*:${credentialId}`)),
+		];
+
+		return k.length && cache.del(...k);
+	}
 
 	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
 	const cachedAccessTokens = await cache.keys(`t:${slug}:*:*`);
 	const allKeys = [...cachedCredentials, ...cachedAccessTokens];
-	return allKeys.length ? cache.del(...allKeys) : 0;
+	return allKeys.length && cache.del(...allKeys);
 }
 
 export type CachedCredential = {
