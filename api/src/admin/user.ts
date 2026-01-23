@@ -43,7 +43,7 @@ export const userRouter = new Elysia({ prefix: '/user' })
 		{
 			detail: { summary: 'Create user' },
 			body: t.Composite([
-				t.Omit(insertUser, ['id', 'slug', 'pfpUrl', 'isAdmin'], {
+				t.Pick(insertUser, ['email', 'displayName'], {
 					email: t.String({ format: 'email' }),
 				}),
 				t.Object({

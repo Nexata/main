@@ -41,7 +41,7 @@ export async function removeCachedCredentials(
 		).reduce((acc, val) => acc + val, 0);
 
 	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
-	const cachedAccessTokens = await cache.keys(`t:${slug}:*`);
+	const cachedAccessTokens = await cache.keys(`t:${slug}:*:*`);
 	const allKeys = [...cachedCredentials, ...cachedAccessTokens];
 	return allKeys.length ? cache.del(...allKeys) : 0;
 }
