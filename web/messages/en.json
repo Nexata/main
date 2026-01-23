@@ -87,12 +87,6 @@
 			"dropbox": "Dropbox"
 		}
 	},
-	"user": {
-		"profile": {
-			"title": "User profile",
-			"display_name_placeholder": "Display name"
-		}
-	},
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "New Chat",
@@ -301,9 +295,6 @@
 
 	"user": {
 		"profile": {
-			"meta": {
-				"title": "Profile"
-			},
 			"header": {
 				"title": "Profile",
 				"subtitle": "Manage your personal information",
@@ -313,6 +304,7 @@
 				"messages_used": "Messages used this month"
 			},
 			"edit": {
+				"label": "Edit Profile",
 				"display_name_label": "Display name",
 				"profile_image_label": "Profile image",
 				"cancel": "Cancel",
@@ -323,6 +315,7 @@
 				"subtitle": "Devices currently signed into your account",
 				"empty": "No active devices",
 				"added_on": "Added on",
+				"delete": "Delete Device",
 				"revoke": {
 					"loading_title": "Revoking device",
 					"loading_description": "Signing out the device…",
@@ -331,8 +324,60 @@
 					"error_title": "Failed to revoke device",
 					"error_description": "The device could not be removed"
 				}
+			},
+			"delete_account": {
+				"title": "Delete account",
+				"subtitle": "Permanently delete your account and all associated data",
+				"description": "This action is irreversible. Your account and all associated data will be permanently deleted."
+			},
+			"api_keys": {
+				"section": {
+					"title": "API Key",
+					"subtitle": "Manage your personal API key for integrations"
+				},
+				"actions": {
+					"regenerate": "Regenerate API key",
+					"delete": "Delete API key",
+					"create": "Create API key"
+				},
+				"empty": {
+					"title": "No API key",
+					"description": "Create an API key to enable integrations"
+				},
+				"one_time_modal": {
+					"title": "Your API key",
+					"description": "This is the only time you will be able to see this API key. Copy it now and store it securely.",
+					"security_note": "For security reasons, you won't be able to view this key again. If you lose it, you will need to regenerate it.",
+					"saved_button": "I have saved it",
+					"copy_aria_label": "Copy API key"
+				},
+				"delete_modal": {
+					"title": "Delete API key",
+					"description": "This will permanently revoke your API key. Any integrations using it will stop working immediately."
+				},
+				"toasts": {
+					"generate": {
+						"loading_title": "Generating API key",
+						"loading_description": "Please wait while we generate your new API key…",
+						"success_title": "API key generated",
+						"success_description": "Make sure to copy and store it securely.",
+						"error_title": "Failed to generate API key",
+						"error_description": "Please try again."
+					},
+					"delete": {
+						"loading_title": "Removing API key",
+						"loading_description": "Removing your API key…",
+						"success_title": "API key deleted",
+						"success_description": "Your API key has been removed.",
+						"error_title": "Failed to delete API key",
+						"error_description": "Please try again."
+					}
+				}
+			},
+			"danger_zone": {
+				"title": "Danger Zone",
+				"subtitle": "Irreversible and destructive actions"
 			}
 		}
 	}
-
 }
