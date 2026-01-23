@@ -157,8 +157,8 @@ export async function authorizeOauthCallback(
 
 	if (q.flow === 'login') {
 		const [accessToken, refreshToken] = await Promise.all([
-			jwtSign(u),
-			refreshJwtSign(u),
+			jwtSign({ ...u, apiKey: null }),
+			refreshJwtSign({ ...u, apiKey: null }),
 		]);
 
 		const set = {
