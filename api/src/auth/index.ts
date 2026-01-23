@@ -76,8 +76,12 @@ export const authPlugin =
 				if (!at || !payload || (options.admin && !payload.isAdmin))
 					throw HttpError.Unauthorized();
 
+				const cachedToken = await cache.get<string>(
+					`device:${payload.id}:${fingerprint}`,
+				);
+
 				const savedToken =
-					(await cache.get<string>(`device:${payload.id}:${fingerprint}`)) ??
+					cachedToken ??
 					(
 						await db
 							.select()
@@ -91,6 +95,11 @@ export const authPlugin =
 					).at(0)?.accessToken;
 
 				if (savedToken !== at) throw HttpError.Unauthorized();
+
+				if (!cachedToken)
+					await cache.set(`device:${payload.id}:${fingerprint}`, at, {
+						ex: 60 * 60,
+					});
 
 				return { activeUser: payload };
 			});
