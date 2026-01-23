@@ -18,12 +18,17 @@ export async function getMessageCount(
 				count: coalesce(count(trace.id), sql<number>`0`),
 			})
 			.from(tenant)
-			.leftJoin(trace, eq(trace.type, TraceType.MESSAGE_SENT))
-			.leftJoin(user, eq(user.id, trace.userId))
-			.where(and(eq(tenant.slug, slug), eq(user.slug, slug)))
+			.innerJoin(user, eq(user.slug, tenant.slug))
+			.leftJoin(
+				trace,
+				and(eq(trace.userId, user.id), eq(trace.type, TraceType.MESSAGE_SENT)),
+			)
+			.where(eq(tenant.slug, slug))
 			.groupBy(tenant.slug)
 	).at(0)!;
 
-	await cache.set(`tenant:${slug}:message-count`, result, { ex: 60 * 60 });
-	return result;
+	const c = { ...result, count: Number(result.count) };
+
+	await cache.set(`tenant:${slug}:message-count`, c, { ex: 60 * 60 });
+	return c;
 }
