@@ -49,6 +49,9 @@ import {
 	'admin.usage.description' as admin_usage_description,
 	'admin.usage.title' as admin_usage_title,
 } from '@/paraglide/messages.js';
+import { useMyTenant } from '@/lib/user';
+import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
+import { useBillingMessages } from '@/lib/admin';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -155,48 +158,44 @@ function AdminSettingsPage() {
 /* -------------------------------------------------------------------------- */
 
 function CompanyOverviewSection() {
-	const used = 81;
-	const total = 500;
 	const navigate = useNavigate();
+	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
+	const { data: billingMessages, isLoading: billingLoading } = useBillingMessages();
+	const used = billingMessages?.count ?? 0;
+	const total = billingMessages?.limit ?? 0;
+
 
 	return (
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-6">
-				{/* Header */}
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="text-lg font-semibold">
-							{admin_company_overview_title()}
-						</h2>
-						<p className="text-sm text-muted-foreground">
-							{admin_company_overview_description()}
-						</p>
+						<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
+						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
 					</div>
 
-					{/* Company logo */}
-					<img
-						src="/company_logo.png"
-						alt="Company logo"
-						className="h-8 w-auto opacity-80"
+					<TenantLogo
+					loading={tenantLoading}
+					logoUrl={myTenant?.logoUrl}
+					displayName={myTenant?.displayName}
 					/>
 				</div>
 
 				<Separator />
 
-				{/* Message balance */}
 				<div>
 					<div className="flex justify-between text-sm mb-2">
 						<span>{admin_company_overview_message_balance()}</span>
 						<span className="font-medium text-primary">
 							{' '}
-							{used} / {total}
+							{billingLoading ? '— / —' : `${used} / ${total}`}
 						</span>
 					</div>
 
 					<div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
 						<motion.div
 							initial={{ width: 0 }}
-							animate={{ width: `${(used / total) * 100}%` }}
+							animate={{ width: `${total > 0 ? (used / total) * 100 : 0}%` }}
 							transition={{ duration: 0.6, ease: 'easeOut' }}
 							className="h-full rounded-full bg-primary"
 						/>
