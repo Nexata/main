@@ -1,7 +1,12 @@
 import { AlertTriangle } from "lucide-react"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "../ui/dialog"
 import { Button } from "../ui/button"
-import * as m from "@/paraglide/messages.js"
+import { 
+    "components.credentials.modal.delete.title" as components_credentials_modal_delete_title,
+    "components.credentials.modal.delete.description" as components_credentials_modal_delete_description,
+    "common.cancel" as common_cancel,
+    "common.confirm" as common_confirm
+} from "@/paraglide/messages.js";
 
 type DeleteModalState = {
   credentialId: string | null
@@ -27,11 +32,11 @@ export function ConfirmDeleteCredentialModal({
                         <span className="flex h-8 w-8 items-center justify-center rounded-full">
                             <AlertTriangle className="h-4 w-4 text-destructive" />
                         </span>
-                        {m["components.credentials.modal.delete.title"]()}
+                        {components_credentials_modal_delete_title()}
                     </DialogTitle>
 
                     <DialogDescription className="pt-1">
-                        {m["components.credentials.modal.delete.description"]()}
+                        {components_credentials_modal_delete_description()}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -41,7 +46,7 @@ export function ConfirmDeleteCredentialModal({
                         className="cursor-pointer"
                         onClick={() => setModal({ credentialId: null })}
                     >
-                        {m["common.cancel"]()}
+                        {common_cancel()}
                     </Button>
 
                     <Button
@@ -52,7 +57,7 @@ export function ConfirmDeleteCredentialModal({
                             setModal({ credentialId: null })
                         }}
                     >
-                        {m["common.confirm"]()}
+                        {common_confirm()}
                     </Button>
                 </DialogFooter>
             </DialogContent>

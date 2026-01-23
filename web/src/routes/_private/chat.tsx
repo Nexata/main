@@ -11,7 +11,7 @@ import {
 	SelectTrigger,
 	SelectValue,
 } from '@/components/ui/select';
-import * as t from '@/paraglide/messages.js';
+import { 'chat.meta.title' as chat_meta_title } from '@/paraglide/messages.js';
 
 const MODELS = [
 	{ id: 'llama-3.3-70b-versatile', name: 'Llama 3.3 70B' },
@@ -35,7 +35,7 @@ interface UIMessage {
 
 export function NexataChat() {
 	useEffect(() => {
-		document.title = t['chat.meta.title']();
+		document.title = chat_meta_title();
 	}, []);
 
 	const [selectedModel, setSelectedModel] = useState(MODELS[0]?.id);

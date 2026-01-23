@@ -1,26 +1,25 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { motion } from "framer-motion";
+import { Pencil, Trash2, Settings } from "lucide-react";
 import {
   IoSunny,
   IoMoon,
-  IoSettings,
   IoMenu,
   IoAdd,
-  IoTrash,
-  IoCreate,
   IoCheckmark,
   IoClose,
 } from "react-icons/io5";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import * as m from "@/paraglide/messages.js";
 import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
 import { useNavigate } from "@tanstack/react-router";
-import { getMe, type Me } from "@/lib/user";
+import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
+import { "sidebar.new_chat" as sidebar_new_chat} from "@/paraglide/messages.js";
+import { TenantLogo } from "../tenant-logo/tenant-logo";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -71,33 +70,11 @@ export default function Sidebar() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // State for user info
-  const [me, setMe] = useState<Me | null>(null);
-  const [meLoading, setMeLoading] = useState(true);
+  // User info
+  const { data: me, isLoading: meLoading } = useMe();
 
-  // get user info
-  useEffect(() => {
-    let mounted = true;
-
-    getMe()
-      .then((user) => {
-        if (!mounted || !user) return;
-
-        setMe(user);
-        setMeLoading(false);
-
-        localStorage.setItem("userId", user.id);
-        localStorage.setItem("isAdmin", String(user.isAdmin));
-      })
-      .catch(() => {
-        setMeLoading(false);
-      });
-
-    return () => {
-      mounted = false;
-    };
-  }, []);
-
+  // Tenant info
+  const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
   return (
     <>
@@ -128,14 +105,10 @@ export default function Sidebar() {
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.4, ease: "easeInOut", delay: 0.15 }}
                 />
-                <motion.img
-                  src="/company_logo.png"
-                  alt="Empresa"
-                  className="h-7 w-auto object-contain opacity-80"
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ duration: 0.4, ease: "easeInOut", delay: 0.2 }}
+                <TenantLogo
+                  loading={tenantLoading}
+                  logoUrl={myTenant?.logoUrl}
+                  displayName={myTenant?.displayName}
                 />
               </div>
             )}
@@ -166,7 +139,7 @@ export default function Sidebar() {
               onClick={() => {}}
             >
               <IoAdd className="w-5 h-5" />
-              {m["sidebar.new_chat"]()}
+              {sidebar_new_chat()}
             </Button>
           )}
 
@@ -208,12 +181,12 @@ export default function Sidebar() {
                       <>
                         <span className="truncate">{chat.title}</span>
                         <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <IoCreate
-                            className="text-secondary-500 w-5 h-5 cursor-pointer"
+                          <Pencil
+                            className="text-secondary-500 w-4 h-4 cursor-pointer"
                             onClick={() => handleEditClick(chat.id)}
                           />
-                          <IoTrash
-                            className="text-error-500 w-5 h-5 cursor-pointer"
+                          <Trash2
+                            className="text-error-500 w-4 h-4 cursor-pointer"
                             onClick={() => handleDeleteClick(chat)}
                           />
                         </div>
@@ -240,21 +213,19 @@ export default function Sidebar() {
               {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
             </Button>
 
-
             <Button
               variant="outline"
               size="icon"
               onClick={() => navigate({ to: "/settings" })}
               className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
-              <IoSettings className="w-6 h-6" />
+              <Settings className="w-6 h-6" />
             </Button>
 
             <UserSection
-              me={me}
+              me={me ?? null}
               collapsed={isCollapsed}
               loading={meLoading}
-              onSave={(updated) => setMe(updated)}
             />
           </div>
         </div>
@@ -270,3 +241,5 @@ export default function Sidebar() {
     </>
   );
 }
+
+

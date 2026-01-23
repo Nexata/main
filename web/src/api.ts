@@ -45,33 +45,32 @@ type AuthHeaders = {
 
 export async function withAuthRetry<T>(
 	request: (headers: AuthHeaders) => Promise<{
-		data: T | null
-		error: ApiError | null
-	}>
+		data: T | null;
+		error: ApiError | null;
+	}>,
 ): Promise<T> {
 	const makeHeaders = (): AuthHeaders => {
-		const token = getAccessToken()
-		if (!token) throw new Error('No access token')
+		const token = getAccessToken();
+		if (!token) throw new Error('No access token');
 
 		return {
 			authorization: `Bearer ${token}`,
 			fingerprint: getFingerprint(),
-		}
-	}
+		};
+	};
 
-	let result = await request(makeHeaders())
+	let result = await request(makeHeaders());
 
-	if (!result.error && result.data) return result.data
+	if (!result.error && result.data) return result.data;
 
-	if (result.error?.status !== 401) throw result.error
+	if (result.error?.status !== 401) throw result.error;
 
-	await refreshAccessToken()
-	result = await request(makeHeaders())
+	await refreshAccessToken();
+	result = await request(makeHeaders());
 
-	if (result.error) throw result.error
+	if (result.error) throw result.error;
 
-	if (!result.data) throw new Error('No data returned')
+	if (!result.data) throw new Error('No data returned');
 
-	return result.data
+	return result.data;
 }
-

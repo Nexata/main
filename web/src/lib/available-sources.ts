@@ -19,7 +19,7 @@ export function credentialsBySource(
 ): DisplayCredential[] {
 	return credentials.filter(
 		(cred) =>
-			cred.provider === source.provider && cred.scopes.includes(source.scope),
+			cred.provider === source.provider && cred.scope.includes(source.scope),
 	);
 }
 

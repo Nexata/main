@@ -1,7 +1,6 @@
 "use client";
 import { useMemo, useRef, useState } from "react";
 import { Check, ChevronsUpDown } from "lucide-react";
-import * as m from "@/paraglide/messages.js";
 import { cn } from "@/lib/utils";
 import { getUsers, type Users } from "@/lib/user";
 import { Button } from "@/components/ui/button";
@@ -14,6 +13,12 @@ import {
   CommandItem,
   CommandList,
 } from "@/components/ui/command";
+import {
+    "user_input.no_results" as user_input_no_results,
+    "user_input.placeholder" as user_input_placeholder,
+    "user_input.search" as user_input_search,
+    "common.loading" as common_loading
+} from "@/paraglide/messages.js";
 
 type User = NonNullable<Users>[number];
 
@@ -77,7 +82,7 @@ export default function UserInput({
                             </div>
                         </div>
                     ) : (
-                        <span>{m["user_input.placeholder"]()}</span>
+                        <span>{user_input_placeholder()}</span>
                     )}
 
                     <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -87,17 +92,17 @@ export default function UserInput({
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0">
                 <Command>
                     <CommandInput
-                        placeholder={m["user_input.search"]()}
+                        placeholder={user_input_search()}
                         autoFocus
                     />
 
                     <CommandList>
                         {loading && (
-                            <div className="py-6 text-center text-sm text-muted-foreground">{m["common.loading"]()}</div>
+                            <div className="py-6 text-center text-sm text-muted-foreground">{common_loading()}</div>
                         )}
 
                         {!loading && (
-                            <CommandEmpty>{m["user_input.no_results"]()}</CommandEmpty>
+                            <CommandEmpty>{user_input_no_results()}</CommandEmpty>
                         )}
 
                         <CommandGroup>

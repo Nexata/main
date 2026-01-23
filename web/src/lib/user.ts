@@ -1,30 +1,92 @@
 import { apiClient, withAuthRetry } from '@/api';
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 
+// GetMe
 export async function getMe() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.user.me.get({
+		apiClient.api.user.me.info.get({
 			$headers: headers,
 		}),
 	);
 }
 export type Me = Awaited<ReturnType<typeof getMe>>;
 
+export function useMe() {
+	return useQuery<Me>({
+		queryKey: ["me"],
+		queryFn: getMe,
+		staleTime: Infinity,
+	});
+}
+
+// UpdateMe
 export async function updateMe(data: {
-	displayName?: string;
-	pfp?: File;
-}): Promise<NonNullable<Me>> {
-	await withAuthRetry((headers) => {
+  displayName?: string;
+  pfp?: File;
+}) {
+	return withAuthRetry((headers) => {
+		const body: {
+			displayName?: string;
+			pfp?: File;
+		} = {};
+
+		if (data.displayName !== undefined) body.displayName = data.displayName;
+		if (data.pfp !== undefined) body.pfp = data.pfp;
+
 		return apiClient.api.user.me.patch({
 			$headers: headers,
-			displayName: data.displayName,
-			pfp: data.pfp,
+			...body,
 		});
 	});
+}
 
-	const me = await getMe();
-	if (!me) throw new Error('User not found after update');
+export function useUpdateMe() {
+	const queryClient = useQueryClient();
 
-	return me;
+	return async (data: {
+		displayName?: string;
+		pfp?: File;
+	}) => {
+		await withAuthRetry((headers) => {
+		const body: {
+			displayName?: string;
+			pfp?: File;
+		} = {};
+
+		if (data.displayName !== undefined) body.displayName = data.displayName;
+		if (data.pfp !== undefined) body.pfp = data.pfp;
+
+		return apiClient.api.user.me.patch({
+			$headers: headers,
+			...body,
+		});
+		});
+
+		await queryClient.invalidateQueries({ queryKey: ["me"] });
+	};
+}
+
+// GetMyTenant
+export async function getMyTenant() {
+	return await withAuthRetry((headers) =>
+		apiClient.api.user.me.tenant.get({
+			$headers: headers,
+		}),
+	);
+}
+export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>[number];
+
+export function useMyTenant() {
+  return useQuery<
+    Awaited<ReturnType<typeof getMyTenant>>, 
+    Error,
+    MyTenant | null                     
+  >({
+    queryKey: ["my-tenant"],
+    queryFn: getMyTenant,
+    staleTime: Infinity,
+    select: (data) => data?.[0] ?? null,
+  });
 }
 
 export async function getUsers() {
@@ -34,5 +96,30 @@ export async function getUsers() {
 		}),
 	);
 }
-
 export type Users = Awaited<ReturnType<typeof getUsers>>;
+
+// DeleteMyDevice
+export async function deleteMyDevice(fingerprint: string) {
+  return withAuthRetry((headers) =>
+    apiClient.api.user.me.device[':fingerprint'].delete({
+      $headers: headers,
+    })
+  );
+}
+
+export function useDeleteMyDevice() {
+  const queryClient = useQueryClient();
+
+  return async (fingerprint: string) => {
+    await withAuthRetry((headers) =>
+    	apiClient.api.user.me.device[':fingerprint'].delete({
+			$headers: headers,
+		})
+    );
+
+    await queryClient.invalidateQueries({ queryKey: ["me"] });
+  };
+}
+
+
+
