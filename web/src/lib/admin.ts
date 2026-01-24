@@ -150,3 +150,29 @@ export function useDeleteUser() {
     await queryClient.invalidateQueries({ queryKey: ['admin', 'users'] });
   };
 }
+
+// Edit Tenant
+export type EditTenantInput = Partial<{
+  displayName: string;
+  logo: File;
+}>;
+
+export async function editTenant(data: EditTenantInput) {
+  return await withAuthRetry((headers) =>
+    apiClient.api.admin.tenant.patch({
+      $headers: headers,
+      ...data,
+    }),
+  );
+}
+
+export function useEditTenant() {
+  const queryClient = useQueryClient();
+
+  return async (data: EditTenantInput) => {
+    const res = await editTenant(data);
+    await queryClient.invalidateQueries({ queryKey: ['my-tenant'] });
+    
+    return res;
+  };
+}

@@ -75,7 +75,7 @@ import {
 } from '@/paraglide/messages.js';
 import { useMyTenant } from '@/lib/user';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import { useBillingMessages, useCreateUser, useDeleteUser, useEditUser, useUsers } from '@/lib/admin';
+import { useBillingMessages, useCreateUser, useDeleteUser, useEditTenant, useEditUser, useUsers } from '@/lib/admin';
 import UserSection from '@/components/user-section/user-section';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
@@ -165,14 +165,39 @@ function CompanyOverviewSection() {
 	const { data: billingMessages, isLoading: billingLoading } = useBillingMessages();
 	const used = billingMessages?.count ?? 0;
 	const total = billingMessages?.limit ?? 0;
+	const [editingTenant, setEditingTenant] = useState(false);
+	const [tenantDisplayName, setTenantDisplayName] = useState('');
+	const [tenantLogo, setTenantLogo] = useState<File | null>(null);
+	const editTenantFn = useEditTenant();
 
+	useEffect(() => {
+	if (myTenant) {
+		setTenantDisplayName(myTenant.displayName ?? '');
+		setTenantLogo(null);
+	}
+	}, [myTenant]);
 
 	return (
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-6">
 				<div className="flex items-center justify-between">
 					<div>
-						<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
+						<div className="flex items-center gap-2">
+							<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
+							<TooltipUi>
+								<TooltipTrigger>
+									<Button
+									size="icon"
+									variant="ghost"
+									className="cursor-pointer"
+									onClick={() => setEditingTenant((v) => !v)}
+									>
+										<Pencil className="h-4 w-4" />
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>Edit Tenant</TooltipContent>
+							</TooltipUi>
+						</div>
 						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
 					</div>
 
@@ -184,6 +209,83 @@ function CompanyOverviewSection() {
 				</div>
 
 				<Separator />
+
+				<AnimatePresence>
+					{editingTenant && (
+						<motion.div
+						initial={{ opacity: 0, height: 0 }}
+						animate={{ opacity: 1, height: 'auto' }}
+						exit={{ opacity: 0, height: 0 }}
+						transition={{ duration: 0.25 }}
+						className="overflow-hidden"
+						>
+							<div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
+								<div className="flex flex-col md:flex-row md:items-end gap-4">
+									<div className="flex flex-col gap-1">
+										<label className="text-sm font-medium">
+										Nombre de la Empresa
+										</label>
+										<Input
+										className="w-full md:w-64 h-8 text-sm"
+										value={tenantDisplayName}
+										onChange={(e) => setTenantDisplayName(e.target.value)}
+										/>
+									</div>
+
+									<div className="flex flex-col gap-1">
+										<label className="text-sm font-medium">
+										Logo de la Empresa
+										</label>
+										<Input
+										type="file"
+										accept="image/*"
+										className="w-56 h-8 text-sm"
+										onChange={(e) => setTenantLogo(e.target.files?.[0] ?? null)}
+										/>
+									</div>
+
+									{tenantLogo && (
+									<div className="self-center flex items-center justify-center">
+										<FilePreview
+										file={tenantLogo}
+										onRemove={() => setTenantLogo(null)}
+										/>
+									</div>
+									)}
+									
+									<div className="ml-auto flex items-end gap-2">
+										<Button
+										variant="ghost"
+										className="h-8 px-3 text-sm cursor-pointer"
+										onClick={() => {
+											setEditingTenant(false);
+											setTenantDisplayName(myTenant?.displayName ?? '');
+											setTenantLogo(null);
+										}}
+										>
+											{common_cancel()}
+										</Button>
+
+										<AsyncConfirmButton
+											className="h-8 px-3 text-sm"
+										onClick={async () => {
+											await editTenantFn({
+												displayName: tenantDisplayName,
+												logo: tenantLogo ?? undefined,
+											});
+											setEditingTenant(false);
+											setTenantLogo(null);
+										}}
+										>
+											{common_save_changes()}
+										</AsyncConfirmButton>
+									</div>
+
+								</div>
+							</div>
+						</motion.div>
+					)}
+				</AnimatePresence>
 
 				<div>
 					<div className="flex justify-between text-sm mb-2">
@@ -220,7 +322,7 @@ function CompanyOverviewSection() {
 						<Button
 							size="sm"
 							onClick={() => navigate({ to: '/billing' })}
-							className="cursor-pointer bg-emerald-500 hover:bg-emerald-600text-white"
+							className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white"
 						>
 							<CreditCard className="h-4 w-4 mr-2" />
 							{admin_company_overview_billing()}
@@ -229,7 +331,7 @@ function CompanyOverviewSection() {
 						{/* Upgrade */}
 						<Button
 							size="sm"
-							className="cursor-pointer bg-orange-500/90  hover:bg-orange-500  text-white"
+							className="cursor-pointer bg-orange-500/90  hover:bg-orange-500 text-white"
 						>
 							<TrendingUp className="h-4 w-4 mr-2" />
 							{admin_company_overview_upgrade_plan()}
