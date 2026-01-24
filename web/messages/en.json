@@ -171,16 +171,6 @@
 				"lines": "Lines"
 			}
 		},
-		"integrations": {
-			"title": "Integrations",
-			"description": "Manage the data sources that users are allowed to enable and connect when using Nexata.",
-			"configure": "Configure",
-			"close": "Close",
-			"enable": "Enable",
-			"disable": "Disable",
-			"manage_description": "Manage accounts and permissions for {name}.",
-			"delete_account": "Delete account"
-		},
 		"users": {
 			"title": "Users",
 			"description": "Manage the users that belong to your Nexata organization.",
@@ -188,10 +178,15 @@
 				"title": "Invite new user",
 				"placeholder": "email@company.com",
 				"send": "Send invitation",
-				"helper": "The user will receive an email to join your Nexata tenant."
+				"helper": "The user will receive an email to join your Nexata tenant.",
+				"adminWarning": "This user will have full access to all company information and settings.",
+  				"success": "Invitation sent successfully. When the user registers with this email, they will be automatically added to your company."
 			},
 			"actions": {
-				"remove": "Deactivate"
+				"edit": "Edit User",
+				"remove": "Delete User",
+				"display_name": "Username",
+				"img": "Profile Image"
 			},
 			"dialogs": {
 				"delete": {
@@ -199,18 +194,19 @@
 					"description": "The user \"{email}\" will be permanently deleted. This action cannot be undone and all associated data will be lost."
 				}
 			},
-			"details": {
-				"messages": "Messages used",
-				"created_at": "Created at",
-				"storage": "Storage used"
-			}
-		},
-		"dialogs": {
-			"confirm_action": {
-				"title": "Confirm action",
-				"description": "This action cannot be undone.",
-				"cancel": "Cancel",
-				"confirm": "Confirm"
+			"delete": {
+				"loading": {
+					"title": "Deleting user",
+					"description": "We are deleting the user. Please wait a moment."
+				},
+				"success": {
+					"title": "User deleted",
+					"description": "The user was successfully removed from your company."
+				},
+				"error": {
+					"title": "Error deleting user",
+					"description": "An error occurred while deleting the user. Please try again."
+				}
 			}
 		}
 	},

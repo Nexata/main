@@ -171,16 +171,6 @@
 				"lines": "Líneas"
 			}
 		},
-		"integrations": {
-			"title": "Integraciones",
-			"description": "Administrá las fuentes de datos que los usuarios pueden habilitar y conectar para utilizar Nexata.",
-			"configure": "Configurar",
-			"close": "Cerrar",
-			"enable": "Habilitar",
-			"disable": "Deshabilitar",
-			"manage_description": "Gestión de cuentas y permisos para {name}.",
-			"delete_account": "Eliminar cuenta"
-		},
 		"users": {
 			"title": "Usuarios",
 			"description": "Gestioná los usuarios que forman parte de tu empresa en Nexata.",
@@ -188,10 +178,15 @@
 				"title": "Invitar nuevo usuario",
 				"placeholder": "email@empresa.com",
 				"send": "Enviar invitación",
-				"helper": "El usuario recibirá un email para unirse a tu tenant de Nexata."
+				"helper": "El usuario recibirá un email para unirse a tu tenant de Nexata.",
+				"adminWarning": "Este usuario tendrá acceso completo a toda la información y configuración de la empresa.",
+  				"success": "Invitación enviada correctamente. Cuando el usuario se registre con este email, será agregado automáticamente a tu empresa."
 			},
 			"actions": {
-				"remove": "Dar de baja"
+				"edit": "Editar Usuario",
+				"remove": "Eliminar Usuario",
+				"display_name": "Nombre de Usuario",
+				"img": "Foto de Perfil"
 			},
 			"dialogs": {
 				"delete": {
@@ -199,18 +194,19 @@
 					"description": "El usuario \"{email}\" será eliminado permanentemente. Esta acción no se puede deshacer y se perderá toda su información."
 				}
 			},
-			"details": {
-				"messages": "Mensajes usados",
-				"created_at": "Fecha de creación",
-				"storage": "Espacio ocupado"
-			}
-		},
-		"dialogs": {
-			"confirm_action": {
-				"title": "Confirmar acción",
-				"description": "Esta acción no se puede deshacer.",
-				"cancel": "Cancelar",
-				"confirm": "Confirmar"
+			"delete": {
+				"loading": {
+					"title": "Eliminando usuario",
+					"description": "Estamos eliminando el usuario. Por favor, esperá un momento."
+				},
+				"success": {
+					"title": "Usuario eliminado",
+					"description": "El usuario fue eliminado correctamente de tu empresa."
+				},
+				"error": {
+					"title": "Error al eliminar usuario",
+					"description": "Ocurrió un error al eliminar el usuario. Intentá nuevamente."
+				}
 			}
 		}
 	},

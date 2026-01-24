@@ -1,8 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
 import { Tooltip as TooltipUi, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { ArrowLeft, CreditCard, Pencil, Settings, Trash, TrendingUp } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { AlertTriangle, ArrowLeft, CheckCircle2, CreditCard, Pencil, Settings, Trash, TrendingUp } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import {
 	Bar,
 	BarChart,
@@ -31,7 +31,6 @@ import {
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Separator } from '@/components/ui/separator';
-import * as m from '@/paraglide/messages.js';
 import {
 	'admin.company_overview.billing' as admin_company_overview_billing,
 	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
@@ -54,44 +53,40 @@ import {
 	'admin.users.invite.title' as admin_users_invite_title,
 	'admin.users.invite.helper' as admin_users_invite_helper,
 	'admin.users.invite.send' as admin_users_invite_send,
-	'admin.users.invite.placeholder' as admin_users_invite_placeholder
+	'admin.users.invite.placeholder' as admin_users_invite_placeholder,
+	'admin.users.actions.remove' as admin_users_actions_remove,
+	'admin.users.actions.edit' as admin_users_actions_edit,
+	'admin.users.dialogs.delete.title' as admin_users_dialogs_delete_title,
+	'admin.users.dialogs.delete.description' as admin_users_dialogs_delete_description,
+	'admin.users.invite.adminWarning' as admin_users_invite_adminWarning,
+	'admin.users.invite.success' as admin_users_invite_success,
+	'admin.users.actions.display_name' as admin_users_actions_display_name,
+	'admin.users.actions.img' as admin_users_actions_img,
+	'admin.users.delete.error.title' as admin_users_delete_error_title,
+	'admin.users.delete.error.description' as admin_users_delete_error_description,
+	'admin.users.delete.loading.title' as admin_users_delete_loading_title,
+	'admin.users.delete.loading.description' as admin_users_delete_loading_description,
+	'admin.users.delete.success.title' as admin_users_delete_success_title,
+	'admin.users.delete.success.description' as admin_users_delete_success_description,
+	'common.cancel' as common_cancel,
+	'common.confirm' as common_confirm,
+	'common.save_changes' as common_save_changes,
+	'common.loading' as common_loading
 } from '@/paraglide/messages.js';
 import { useMyTenant } from '@/lib/user';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import { useBillingMessages, useEditUser, useUsers } from '@/lib/admin';
+import { useBillingMessages, useCreateUser, useDeleteUser, useEditUser, useUsers } from '@/lib/admin';
 import UserSection from '@/components/user-section/user-section';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { infoToast } from '@/components/info-toast/info-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
 });
-
-/* -------------------------------------------------------------------------- */
-/*                                   Types                                    */
-/* -------------------------------------------------------------------------- */
-
-type DataSourceStatus = 'connected' | 'disconnected' | 'warning';
-
-type DataSource = {
-	id: string;
-	name: string;
-	status: DataSourceStatus;
-};
-
-type User = {
-	id: string;
-	email: string;
-	realTime: boolean;
-};
-
-type ModalType = 'deleteUser' | 'toggleRealTime' | 'deleteAccount' | null;
-
-type ModalState = {
-	type: ModalType;
-	user?: User;
-	source?: DataSource;
-};
 
 /* -------------------------------------------------------------------------- */
 /*                              Main Page                                     */
@@ -101,9 +96,7 @@ function AdminSettingsPage() {
 	useEffect(() => {
 		document.title = admin_meta_title();
 	}, []);
-
 	const navigate = useNavigate();
-	const [modal, setModal] = useState<ModalState>({ type: null });
 
 	return (
 		<motion.div
@@ -158,7 +151,6 @@ function AdminSettingsPage() {
 			<CompanyOverviewSection />
 			<UsageChartSection />
 			<UsersSection />
-			<ConfirmDialog modal={modal} setModal={setModal} />
 		</motion.div>
 	);
 }
@@ -407,9 +399,74 @@ function UsersSection() {
 	const [displayName, setDisplayName] = useState('');
 	const [file, setFile] = useState<File | null>(null);
 	const editUserFn = useEditUser();
+	const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+	const deleteUserFn = useDeleteUser();
+	const createUserFn = useCreateUser();
+	const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
+	const [inviteSuccess, setInviteSuccess] = useState(false);
+	const [showAdminWarning, setShowAdminWarning] = useState(false);
+	const userToDelete = deleteUserId ? users.find((u) => u.id === deleteUserId) : null;
+	const queryClient = useQueryClient();
 
 	// Ordenar admins primero
 	const sortedUsers = [...users].sort((a, b) => (b.isAdmin ? 1 : 0) - (a.isAdmin ? 1 : 0));
+
+	// Invite User
+	const inviteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+	const handleInviteUser = async () => {
+		if (!inviteEmail) return;
+
+		await createUserFn({
+			email: inviteEmail,
+			isAdmin: inviteIsAdmin,
+		});
+
+		setInviteEmail('');
+		setInviteIsAdmin(false);
+
+		setShowAdminWarning(false);
+		setInviteSuccess(true);
+
+		if (inviteTimeoutRef.current) clearTimeout(inviteTimeoutRef.current);
+
+		inviteTimeoutRef.current = setTimeout(() => {
+			setInviteSuccess(false);
+		}, 10_000);
+	};
+
+	// Delete User
+	async function handleDeleteUserWithToast(userId: string) {
+		setDeleteUserId(null);
+
+		const toastId = infoToast.loading({
+			title: admin_users_delete_loading_title(),
+			description: admin_users_delete_loading_description(),
+		});
+
+		try {
+			await deleteUserFn(userId);
+
+			infoToast.success(toastId, {
+				title: admin_users_delete_success_title(),
+				description: admin_users_delete_success_description(),
+			});
+
+			await queryClient.invalidateQueries({
+				queryKey: ['admin', 'users'],
+			});
+		} catch (_error) {
+			infoToast.error(toastId, {
+				title: admin_users_delete_error_title(),
+				description: admin_users_delete_error_description(),
+			});
+
+			await queryClient.invalidateQueries({
+				queryKey: ['admin', 'users'],
+			});
+		}
+	}
+
 
 	return (
 		<Card className="bg-[var(--sidebar)]">
@@ -434,15 +491,69 @@ function UsersSection() {
 						className="flex-1 h-9 rounded-md border border-border bg-background px-3 text-sm
 							focus:outline-none focus:ring-2 focus:ring-ring"
 						/>
-						<AsyncConfirmButton onClick={async () => { return; }}>{admin_users_invite_send()}</AsyncConfirmButton>
+						<div className="flex items-center gap-2">
+							<Checkbox
+								id="invite-admin"
+								className="cursor-pointer"
+								checked={inviteIsAdmin}
+								onCheckedChange={(v) => {
+								const checked = !!v;
+								setInviteIsAdmin(checked);
+								setShowAdminWarning(checked);
+								setInviteSuccess(false);
+								}}
+							/>
+
+							<Label htmlFor="invite-admin" className="text-xs font-medium cursor-pointer select-none">
+								Admin
+							</Label>
+						</div>
+
+						<AsyncConfirmButton onClick={handleInviteUser}>
+							{admin_users_invite_send()}
+						</AsyncConfirmButton>
 					</div>
 					<p className="text-xs text-muted-foreground">{admin_users_invite_helper()}</p>
+
+					<AnimatePresence mode="wait">
+						{showAdminWarning && !inviteSuccess && (
+							<motion.div
+							key="admin-warning"
+							initial={{ opacity: 0, y: -4, height: 0 }}
+							animate={{ opacity: 1, y: 0, height: "auto" }}
+							exit={{ opacity: 0, y: -4, height: 0 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+							className="overflow-hidden"
+							>
+							<div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
+								<AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+								<p className="text-xs text-amber-600 leading-snug">{admin_users_invite_adminWarning()}</p>
+							</div>
+							</motion.div>
+						)}
+
+						{inviteSuccess && (
+							<motion.div
+							key="invite-success"
+							initial={{ opacity: 0, y: -4, height: 0 }}
+							animate={{ opacity: 1, y: 0, height: "auto" }}
+							exit={{ opacity: 0, y: -4, height: 0 }}
+							transition={{ duration: 0.2, ease: "easeOut" }}
+							className="overflow-hidden"
+							>
+							<div className="flex items-start gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-2">
+								<CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+								<p className="text-xs text-emerald-700 leading-snug">{admin_users_invite_success()}</p>
+							</div>
+							</motion.div>
+						)}
+					</AnimatePresence>
 				</div>
 
 				{/* Users list */}
 				<div className="space-y-2">
 					{isLoading ? (
-						<p className="text-sm text-muted-foreground">Cargando usuarios...</p>
+						<p className="text-sm text-muted-foreground">{common_loading()}</p>
 					) : (
 						sortedUsers.map((user) => {
 							const meForUserSection = {
@@ -486,16 +597,21 @@ function UsersSection() {
 															<Pencil className="h-4 w-4" />
 														</Button>
 													</TooltipTrigger>
-													<TooltipContent>Editar usuario</TooltipContent>
+													<TooltipContent>{admin_users_actions_edit()}</TooltipContent>
 												</TooltipUi>
 
 												<TooltipUi>
 													<TooltipTrigger>
-														<Button size="icon" variant="ghost" className="cursor-pointer text-destructive">
+														<Button
+														size="icon"
+														variant="ghost"
+														className="cursor-pointer text-destructive"
+														onClick={() => setDeleteUserId(user.id)}
+														>
 															<Trash className="h-4 w-4" />
 														</Button>
 													</TooltipTrigger>
-													<TooltipContent>Eliminar usuario</TooltipContent>
+													<TooltipContent>{admin_users_actions_remove()}</TooltipContent>
 												</TooltipUi>
 											</div>
 										</div>
@@ -514,7 +630,7 @@ function UsersSection() {
 													<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 py-2 px-2">
 														<div className="flex flex-col md:flex-row md:items-start gap-4 flex-1">
 															<div className="flex flex-col gap-1">
-																<label className="text-sm font-medium">Nombre de usuario</label>
+																<label className="text-sm font-medium">{admin_users_actions_display_name()}</label>
 																<Input
 																className="w-full md:w-56 h-8 text-sm"
 																value={displayName}
@@ -523,7 +639,7 @@ function UsersSection() {
 															</div>
 
 															<div className="flex flex-col gap-1">
-																<label className="text-sm font-medium">Imagen de perfil</label>
+																<label className="text-sm font-medium">{admin_users_actions_img()}</label>
 																<div className="flex items-center gap-2">
 																	<Input
 																		type="file"
@@ -552,7 +668,7 @@ function UsersSection() {
 																setFile(null);
 															}}
 															>
-																Cancelar
+																{common_cancel()}
 															</Button>
 
 															<AsyncConfirmButton
@@ -563,7 +679,7 @@ function UsersSection() {
 																setFile(null);
 															}}
 															>
-																Guardar
+																{common_save_changes()}
 															</AsyncConfirmButton>
 														</div>
 													</div>
@@ -576,39 +692,63 @@ function UsersSection() {
 						})
 					)}
 				</div>
+
+				{userToDelete && (
+				<ConfirmDeleteAccountModal
+				open={!!deleteUserId}
+				email={userToDelete.email}
+				onOpenChange={(open) => { if (!open) setDeleteUserId(null); }}
+				onConfirm={() => { handleDeleteUserWithToast(userToDelete.id); }}
+				/>
+				)}
 			</CardContent>
 		</Card>
 	);
 }
 
-
-/* -------------------------------------------------------------------------- */
-/*                               ConfirmDialog                                 */
-/* -------------------------------------------------------------------------- */
-
-function ConfirmDialog({
-	modal,
-	setModal,
+function ConfirmDeleteAccountModal({
+	open,
+	onOpenChange,
+	onConfirm,
+	email
 }: {
-	modal: ModalState;
-	setModal: (m: ModalState) => void;
+	open: boolean;
+	onOpenChange: (v: boolean) => void;
+	onConfirm: () => void;
+	email: string;
 }) {
 	return (
-		<Dialog open={!!modal.type} onOpenChange={() => setModal({ type: null })}>
+		<Dialog open={open} onOpenChange={onOpenChange}>
 			<DialogContent>
 				<DialogHeader>
-					<DialogTitle>{m['admin.dialogs.confirm_action.title']()}</DialogTitle>
-					<DialogDescription>
-						{m['admin.dialogs.confirm_action.description']()}
+					<DialogTitle className="flex items-center gap-2">
+						<span className="flex h-8 w-8 items-center justify-center rounded-full">
+							<AlertTriangle className="h-4 w-4 text-destructive" />
+						</span>
+						{admin_users_dialogs_delete_title()}
+					</DialogTitle>
+					<DialogDescription className="pt-1">
+						{admin_users_dialogs_delete_description({
+							email: email,
+						})}
 					</DialogDescription>
 				</DialogHeader>
 
-				<DialogFooter>
-					<Button variant="outline" onClick={() => setModal({ type: null })}>
-						{m['admin.dialogs.confirm_action.cancel']()}
+				<DialogFooter className="flex justify-end gap-2">
+					<Button
+						variant="outline"
+						className="cursor-pointer"
+						onClick={() => onOpenChange(false)}
+					>
+						{common_cancel()}
 					</Button>
-					<Button onClick={() => setModal({ type: null })}>
-						{m['admin.dialogs.confirm_action.confirm']()}
+
+					<Button
+						variant="destructive"
+						className="cursor-pointer"
+						onClick={onConfirm}
+					>
+						{common_confirm()}
 					</Button>
 				</DialogFooter>
 			</DialogContent>
