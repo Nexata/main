@@ -1,12 +1,13 @@
 import { deepinfra } from '@ai-sdk/deepinfra';
 import { groq } from '@ai-sdk/groq';
 import type * as schema from '@api/schema';
-import { log, requireEnv } from '@api/utils/env';
+import { log, requireEnv, warnEnv } from '@api/utils/env';
 import { neon } from '@neondatabase/serverless';
 import { Redis } from '@upstash/redis';
 import { createFallback } from 'ai-fallback';
 import { upstashCache } from 'drizzle-orm/cache/upstash';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
+import { createTransport } from 'nodemailer';
 
 export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 export const NEXATA_SECRET = requireEnv('NEXATA_SECRET');
@@ -76,3 +77,13 @@ export const EMBEDDING_MODEL = deepinfra.embeddingModel('BAAI/bge-m3');
 export const EMBEDDING_DIMENSIONS = 1024;
 export const EMBEDDING_SIZE = 768;
 export const EMBEDDING_OVERLAP = 94;
+
+export const SMTP = createTransport({
+	host: requireEnv('SMTP_HOST'),
+	port: Number(warnEnv('SMTP_PORT', '587')),
+	auth: {
+		user: requireEnv('SMTP_USERNAME'),
+		pass: requireEnv('SMTP_PASSWORD'),
+	},
+	requireTLS: true,
+});
