@@ -72,6 +72,23 @@
 
 		"sources": {
 			"view_files": "Ver archivos"
+		},
+
+		"buy_messages_modal": {
+			"title": "Comprar mensajes adicionales",
+			"subtitle": "Agregá mensajes adicionales a tu cuenta de forma inmediata.",
+			"info": {
+				"line_1": "Los mensajes se acreditan automáticamente en tu cuenta una vez confirmada la compra. El consumo se factura junto con tu factura mensual al final del período.",
+				"line_2": "Ideal para picos de uso, campañas o necesidades puntuales sin cambiar tu plan actual."
+			},
+			"custom": {
+				"title": "Cantidad personalizada",
+				"input_label": "Cantidad de mensajes",
+				"input_placeholder": "Ej: 250",
+				"price_per_message": " por mensaje",
+				"helper": "El precio por mensaje para cantidades personalizadas puede ser levemente superior a los packs predefinidos.",
+				"buy_button": "Comprar"
+			}
 		}
 	},
 
@@ -161,7 +178,10 @@
 			"current_plan": "Plan actual",
 			"upgrade_plan": "Upgrade plan",
 			"buy_messages": "Comprar mensajes",
-			"billing": "Facturación y uso"
+			"billing": "Facturación y uso",
+			"edit": "Editar Empresa",
+			"tenant_name": "Nombre de la Empresa",
+			"tenant_logo": "Logo de la Empresa"
 		},
 		"usage": {
 			"title": "Uso de mensajes",

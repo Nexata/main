@@ -72,6 +72,23 @@
 
 		"sources": {
 			"view_files": "View files"
+		},
+
+		"buy_messages_modal": {
+			"title": "Buy additional messages",
+			"subtitle": "Add extra messages to your account instantly.",
+			"info": {
+				"line_1": "Messages are credited automatically to your account once the purchase is confirmed. Usage is billed together with your monthly invoice at the end of the period.",
+				"line_2": "Ideal for usage spikes, campaigns, or one-time needs without changing your current plan."
+			},
+			"custom": {
+				"title": "Custom amount",
+				"input_label": "Number of messages",
+				"input_placeholder": "e.g. 250",
+				"price_per_message": " per message",
+				"helper": "The price per message for custom amounts may be slightly higher than predefined packs.",
+				"buy_button": "Buy"
+			}
 		}
 	},
 
@@ -161,7 +178,10 @@
 			"current_plan": "Current plan",
 			"upgrade_plan": "Upgrade plan",
 			"buy_messages": "Buy messages",
-			"billing": "Billing & usage"
+			"billing": "Billing & usage",
+			"edit": "Edit Company",
+			"tenant_name": "Company Name",
+			"tenant_logo": "Company Logo"
 		},
 		"usage": {
 			"title": "Message usage",

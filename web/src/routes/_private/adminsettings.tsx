@@ -68,6 +68,9 @@ import {
 	'admin.users.delete.loading.description' as admin_users_delete_loading_description,
 	'admin.users.delete.success.title' as admin_users_delete_success_title,
 	'admin.users.delete.success.description' as admin_users_delete_success_description,
+	'admin.company_overview.edit' as admin_company_overview_edit,
+	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
+	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
 	'common.cancel' as common_cancel,
 	'common.confirm' as common_confirm,
 	'common.save_changes' as common_save_changes,
@@ -83,6 +86,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -169,6 +173,7 @@ function CompanyOverviewSection() {
 	const [tenantDisplayName, setTenantDisplayName] = useState('');
 	const [tenantLogo, setTenantLogo] = useState<File | null>(null);
 	const editTenantFn = useEditTenant();
+	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
 
 	useEffect(() => {
 	if (myTenant) {
@@ -195,7 +200,7 @@ function CompanyOverviewSection() {
 										<Pencil className="h-4 w-4" />
 									</Button>
 								</TooltipTrigger>
-								<TooltipContent>Edit Tenant</TooltipContent>
+								<TooltipContent>{admin_company_overview_edit()}</TooltipContent>
 							</TooltipUi>
 						</div>
 						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
@@ -222,9 +227,7 @@ function CompanyOverviewSection() {
 							<div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
 								<div className="flex flex-col md:flex-row md:items-end gap-4">
 									<div className="flex flex-col gap-1">
-										<label className="text-sm font-medium">
-										Nombre de la Empresa
-										</label>
+										<label className="text-sm font-medium">{admin_company_overview_tenant_name()}</label>
 										<Input
 										className="w-full md:w-64 h-8 text-sm"
 										value={tenantDisplayName}
@@ -233,9 +236,7 @@ function CompanyOverviewSection() {
 									</div>
 
 									<div className="flex flex-col gap-1">
-										<label className="text-sm font-medium">
-										Logo de la Empresa
-										</label>
+										<label className="text-sm font-medium">{admin_company_overview_tenant_logo()}</label>
 										<Input
 										type="file"
 										accept="image/*"
@@ -338,11 +339,21 @@ function CompanyOverviewSection() {
 						</Button>
 
 						{/* Buy messages */}
-						<Button size="sm" variant="outline" className="cursor-pointer">
+						<Button
+						size="sm"
+						variant="outline"
+						className="cursor-pointer"
+						onClick={() => setBuyMessagesOpen(true)}
+						>
 							{admin_company_overview_buy_messages()}
 						</Button>
 					</div>
 				</div>
+
+				<BuyMessagesModal
+				open={buyMessagesOpen}
+				onOpenChange={setBuyMessagesOpen}
+				/>
 			</CardContent>
 		</Card>
 	);
