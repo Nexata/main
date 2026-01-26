@@ -148,7 +148,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 					const threadId =
 						body.threadId ?? (await createThread(activeUser.id, body.prompt));
-					if (!body.threadId) throw new Error('THREAD_NOT_CREATED');
+					if (!threadId) throw new Error('THREAD_NOT_CREATED');
 
 					const messagesToAppend = [
 						fileSystemMessage,

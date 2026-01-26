@@ -62,7 +62,7 @@ export namespace File {
 				description:
 					"Filter by file's MIME type. Uses case-insensitive 'in' operator matching.",
 			}),
-			createdAt: Nullish(t.Date(), {
+			createdAt: Nullish(t.String({ format: 'date-time' }), {
 				description: 'Filter by greater-than-or-equal-to ingestion date.',
 			}),
 			threadId: Nullish(t.String({ format: 'uuid' }), {
@@ -210,7 +210,7 @@ export namespace File {
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
 					input.type ? ilike(file.type, `%${input.type}%`) : undefined,
-					input.createdAt ? gte(file.createdAt, input.createdAt) : undefined,
+					input.createdAt ? gte(file.createdAt, new Date(input.createdAt)) : undefined,
 					input.threadId ? eq(message.threadId, input.threadId) : undefined,
 					input.messageId ? eq(file.messageId, input.messageId) : undefined,
 				),
