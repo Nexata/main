@@ -61,6 +61,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					displayName: tenant.displayName,
 					logoUrl: tenant.logoUrl,
 					createdAt: tenant.createdAt,
+					hasApiAccess: tenant.hasApiAccess,
 				})
 				.from(tenant)
 				.where(eq(tenant.slug, activeUser.slug)),

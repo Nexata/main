@@ -17,8 +17,8 @@ export const requireEnv = (key: string): string =>
 		throw new Error(`${key} is not defined`);
 	})();
 
-export const warnEnv = (key: string): string => {
+export const warnEnv = (key: string, fb?: string): string | undefined => {
 	const value = process.env[key];
 	if (!value) log('warn', `${key} is not defined`);
-	return value ?? '';
+	return value ?? fb;
 };
