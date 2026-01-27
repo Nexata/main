@@ -14,8 +14,8 @@ import { HttpError } from 'elysia-logger';
 import { oauth2 } from 'elysia-oauth2';
 
 const GOOGLE_CLIENT_CREDENTIALS: Oauth2Credentials = [
-	warnEnv('GOOGLE_CLIENT_ID'),
-	warnEnv('GOOGLE_CLIENT_SECRET'),
+	warnEnv('GOOGLE_CLIENT_ID', ''),
+	warnEnv('GOOGLE_CLIENT_SECRET', ''),
 	getOauthCallback('google'),
 ];
 

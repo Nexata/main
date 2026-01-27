@@ -14,8 +14,8 @@ import { HttpError } from 'elysia-logger';
 import { oauth2 } from 'elysia-oauth2';
 
 const DROPBOX_CLIENT_CREDENTIALS: Oauth2Credentials = [
-	warnEnv('DROPBOX_APP_KEY'),
-	warnEnv('DROPBOX_APP_SECRET'),
+	warnEnv('DROPBOX_APP_KEY', ''),
+	warnEnv('DROPBOX_APP_SECRET', ''),
 	getOauthCallback('dropbox'),
 ];
 
