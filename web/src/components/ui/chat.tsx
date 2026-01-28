@@ -8,22 +8,33 @@ import {
   type ReactElement,
 } from "react"
 import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
+import type { UIMessage } from "ai"
 
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import { Button } from "@/components/ui/button"
-import { type Message } from "@/components/ui/chat-message"
 import { CopyButton } from "@/components/ui/copy-button"
 import { MessageInput } from "@/components/ui/message-input"
 import { MessageList } from "@/components/ui/message-list"
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions"
 
+function getMessageText(message: UIMessage): string {
+  return message.parts
+    .filter((p) => p.type === "text" || p.type === "reasoning")
+    .map((p) => {
+      if (p.type === "text") return p.text
+      if (p.type === "reasoning") return p.text
+      return ""
+    })
+    .join("")
+}
+
 interface ChatPropsBase {
   handleSubmit: (
     event?: { preventDefault?: () => void },
-    options?: { experimental_attachments?: FileList }
+    options?: { attachments?: FileList }
   ) => void
-  messages: Array<Message>
+  messages: UIMessage[]
   input: string
   className?: string
   handleInputChange: React.ChangeEventHandler<HTMLTextAreaElement>
@@ -72,124 +83,48 @@ export function Chat({
   const messagesRef = useRef(messages)
   messagesRef.current = messages
 
-  // Enhanced stop function that marks pending tool calls as cancelled
   const handleStop = useCallback(() => {
     stop?.()
-
-    if (!setMessages) return
-
-    const latestMessages = [...messagesRef.current]
-    const lastAssistantMessage = latestMessages.findLast(
-      (m) => m.role === "assistant"
-    )
-
-    if (!lastAssistantMessage) return
-
-    let needsUpdate = false
-    let updatedMessage = { ...lastAssistantMessage }
-
-    if (lastAssistantMessage.toolInvocations) {
-      const updatedToolInvocations = lastAssistantMessage.toolInvocations.map(
-        (toolInvocation) => {
-          if (toolInvocation.state === "call") {
-            needsUpdate = true
-            return {
-              ...toolInvocation,
-              state: "result",
-              result: {
-                content: "Tool execution was cancelled",
-                __cancelled: true, // Special marker to indicate cancellation
-              },
-            } as const
-          }
-          return toolInvocation
-        }
-      )
-
-      if (needsUpdate) {
-        updatedMessage = {
-          ...updatedMessage,
-          toolInvocations: updatedToolInvocations,
-        }
-      }
-    }
-
-    if (lastAssistantMessage.parts && lastAssistantMessage.parts.length > 0) {
-      const updatedParts = lastAssistantMessage.parts.map((part: any) => {
-        if (
-          part.type === "tool-invocation" &&
-          part.toolInvocation &&
-          part.toolInvocation.state === "call"
-        ) {
-          needsUpdate = true
-          return {
-            ...part,
-            toolInvocation: {
-              ...part.toolInvocation,
-              state: "result",
-              result: {
-                content: "Tool execution was cancelled",
-                __cancelled: true,
-              },
-            },
-          }
-        }
-        return part
-      })
-
-      if (needsUpdate) {
-        updatedMessage = {
-          ...updatedMessage,
-          parts: updatedParts,
-        }
-      }
-    }
-
-    if (needsUpdate) {
-      const messageIndex = latestMessages.findIndex(
-        (m) => m.id === lastAssistantMessage.id
-      )
-      if (messageIndex !== -1) {
-        latestMessages[messageIndex] = updatedMessage
-        setMessages(latestMessages)
-      }
-    }
-  }, [stop, setMessages, messagesRef])
+  }, [stop])
 
   const messageOptions = useCallback(
-    (message: Message) => ({
-      actions: onRateResponse ? (
-        <>
-          <div className="border-r pr-1">
-            <CopyButton
-              content={message.content}
-              copyMessage="Copied response to clipboard!"
-            />
-          </div>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6"
-            onClick={() => onRateResponse(message.id, "thumbs-up")}
-          >
-            <ThumbsUp className="h-4 w-4" />
-          </Button>
-          <Button
-            size="icon"
-            variant="ghost"
-            className="h-6 w-6"
-            onClick={() => onRateResponse(message.id, "thumbs-down")}
-          >
-            <ThumbsDown className="h-4 w-4" />
-          </Button>
-        </>
-      ) : (
-        <CopyButton
-          content={message.content}
-          copyMessage="Copied response to clipboard!"
-        />
-      ),
-    }),
+    (message: UIMessage) => {
+      const messageText = getMessageText(message)
+
+      return {
+        actions: onRateResponse ? (
+          <>
+            <div className="border-r pr-1">
+              <CopyButton
+                content={messageText}
+                copyMessage="Copied response to clipboard!"
+              />
+            </div>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => onRateResponse(message.id, "thumbs-up")}
+            >
+              <ThumbsUp className="h-4 w-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              className="h-6 w-6"
+              onClick={() => onRateResponse(message.id, "thumbs-down")}
+            >
+              <ThumbsDown className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <CopyButton
+            content={messageText}
+            copyMessage="Copied response to clipboard!"
+          />
+        ),
+      }
+    },
     [onRateResponse]
   )
 
@@ -242,7 +177,7 @@ export function ChatMessages({
   messages,
   children,
 }: React.PropsWithChildren<{
-  messages: Message[]
+  messages: UIMessage[]
 }>) {
   const {
     containerRef,
@@ -300,7 +235,7 @@ interface ChatFormProps {
   isPending: boolean
   handleSubmit: (
     event?: { preventDefault?: () => void },
-    options?: { experimental_attachments?: FileList }
+    options?: { attachments?: FileList }
   ) => void
   children: (props: {
     files: File[] | null
@@ -319,7 +254,7 @@ export const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
       }
 
       const fileList = createFileList(files)
-      handleSubmit(event, { experimental_attachments: fileList })
+      handleSubmit(event, { attachments: fileList })
       setFiles(null)
     }
 
