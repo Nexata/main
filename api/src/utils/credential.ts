@@ -83,14 +83,14 @@ export async function getCredentialsForUser(
 			email: string;
 			pfpUrl: string | null;
 			displayName: string | null;
-			isAdmin: boolean;
+			isTenantAdmin: boolean;
 		};
 		permissions: {
 			id: string;
 			displayName: string | null;
 			email: string;
 			pfpUrl: string | null;
-			isAdmin: boolean;
+			accessLevel: AccessLevel;
 		}[];
 		createdAt: Date;
 		accessToken: undefined;
@@ -120,12 +120,7 @@ export async function getCredentialsForUser(
 	const credentials = await db
 		.select()
 		.from(credentialAccess)
-		.where(
-			and(
-				eq(credentialAccess.userId, activeUser.id),
-				eq(credentialAccess.slug, activeUser.slug),
-			),
-		);
+		.where(and(eq(credentialAccess.userId, activeUser.id)));
 
 	if (!credentials.length) return [];
 
@@ -205,7 +200,6 @@ export async function getTokensForUser(
 				and(
 					eq(credentialAccess.id, credentialId),
 					eq(credentialAccess.userId, activeUser.id),
-					eq(credentialAccess.slug, activeUser.slug),
 					adminExpected
 						? and(
 								ne(credentialAccess.accessLevel, AccessLevel.READ),

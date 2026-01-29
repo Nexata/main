@@ -7,7 +7,7 @@ import {
 	sqlCase,
 	whenThen,
 } from '@api/utils/sql';
-import { and, eq, isNotNull, or, sql } from 'drizzle-orm';
+import { and, eq, isNotNull, not, or, sql } from 'drizzle-orm';
 import { alias, pgView } from 'drizzle-orm/pg-core';
 
 export enum AccessLevel {
@@ -40,23 +40,17 @@ export const decodeCredentialAccess = (entry: string) => {
 export const isAdminAccessLevel = (level: AccessLevel) =>
 	level === AccessLevel.TENANT_ADMIN || level === AccessLevel.ADMIN;
 
-const owner = alias(user, 'owner');
-const permUser = alias(user, 'perm_user');
-
+const [owner, permUser] = [alias(user, 'owner'), alias(user, 'perm_user')];
 export const credentialAccess = pgView('credential_access').as((qb) =>
 	qb
 		.select({
 			id: credential.id,
 			userId: aliasedColumn(user.id, 'user_id'),
-			slug: aliasedColumn(user.slug, 'slug'),
 			accessLevel: sqlCase<AccessLevel>(
 				sql`'global'`,
 				whenThen(eq(user.isAdmin, true), sql`'tenant-admin'`),
 				whenThen(
-					or(
-						eq(credential.userId, user.id),
-						eq(credentialPermission.isAdmin, true),
-					)!,
+					or(eq(owner.id, user.id), eq(credentialPermission.isAdmin, true))!,
 					sql`'admin'`,
 				),
 				whenThen(eq(credentialPermission.isAdmin, false), sql`'read'`),
@@ -70,7 +64,7 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 				email: owner.email,
 				pfpUrl: owner.pfpUrl,
 				displayName: owner.displayName,
-				isAdmin: owner.isAdmin,
+				isTenantAdmin: owner.isAdmin,
 			}).as('owned_by'),
 			permissions: coalesce(
 				jsonAgg(
@@ -79,9 +73,20 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 						displayName: permUser.displayName,
 						email: permUser.email,
 						pfpUrl: permUser.pfpUrl,
-						isAdmin: credentialPermission.isAdmin,
+						accessLevel: sqlCase<AccessLevel>(
+							sql`'global'`,
+							whenThen(eq(permUser.isAdmin, true), sql`'tenant-admin'`),
+							whenThen(
+								or(
+									eq(owner.id, permUser.id),
+									eq(credentialPermission.isAdmin, true),
+								)!,
+								sql`'admin'`,
+							),
+							whenThen(eq(credentialPermission.isAdmin, false), sql`'read'`),
+						),
 					}),
-					isNotNull(permUser.id),
+					and(isNotNull(permUser.id), not(eq(permUser.id, owner.id))),
 				),
 				sql`'[]'::json`,
 			).as('permissions'),
@@ -99,12 +104,21 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 				eq(credentialPermission.userId, user.id),
 			),
 		)
-		.leftJoin(permUser, eq(permUser.id, credentialPermission.userId))
+		.leftJoin(
+			permUser,
+			and(
+				eq(permUser.slug, user.slug),
+				or(
+					eq(permUser.id, credentialPermission.userId),
+					eq(permUser.isAdmin, true),
+				),
+			),
+		)
 		.where(
 			or(
 				eq(user.isAdmin, true),
-				eq(credential.userId, user.id),
-				isNotNull(credentialPermission.userId),
+				eq(owner.id, user.id),
+				isNotNull(permUser.id),
 				eq(credential.isGlobal, true),
 			),
 		)
