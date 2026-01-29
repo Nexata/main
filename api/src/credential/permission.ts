@@ -8,7 +8,7 @@ import {
 	user,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
-import { removeCachedCredentials } from '@api/utils/credential';
+import { invalidateCredentialCache } from '@api/utils/credential';
 import { boolOr } from '@api/utils/sql';
 import { and, eq, exists, or, type SQLWrapper, sql } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
@@ -77,7 +77,9 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 			)
 				throw HttpError.Forbidden();
 
-			await removeCachedCredentials(activeUser.slug, body.userId);
+			await invalidateCredentialCache(activeUser.slug, body.credentialId, [
+				body.userId,
+			]);
 
 			return db
 				.with(
@@ -117,7 +119,9 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 			)
 				throw HttpError.Forbidden();
 
-			await removeCachedCredentials(activeUser.slug, body.userId);
+			await invalidateCredentialCache(activeUser.slug, body.credentialId, [
+				body.userId,
+			]);
 
 			const [result] = await db.batch([
 				db

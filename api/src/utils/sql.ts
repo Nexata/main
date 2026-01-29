@@ -26,6 +26,9 @@ export type InferSQLType<
 			? InferredT
 			: never;
 
+export const aliasedColumn = <T extends TSQLObject>(col: T, alias: string) =>
+	sql<InferSQLType<T>>`${col}`.as(alias);
+
 type NonEmpty<T> = T extends null | undefined | [] ? never : T;
 export const coalesce = <T extends TSQLObject[]>(...values: T) => {
 	return sql<

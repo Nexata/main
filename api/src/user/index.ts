@@ -50,7 +50,17 @@ export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 	.get(
 		'/',
 		async ({ activeUser }) =>
-			db.select().from(user).where(eq(user.slug, activeUser.slug)),
+			db
+				.select({
+					id: user.id,
+					email: user.email,
+					displayName: user.displayName,
+					pfpUrl: user.pfpUrl,
+					isAdmin: user.isAdmin,
+					hasApiKey: isNotNull(user.apiKey) as SQL<boolean>,
+				})
+				.from(user)
+				.where(eq(user.slug, activeUser.slug)),
 		{
 			detail: { summary: 'List users' },
 		},

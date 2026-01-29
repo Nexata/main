@@ -210,7 +210,9 @@ export namespace File {
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
 					input.type ? ilike(file.type, `%${input.type}%`) : undefined,
-					input.createdAt ? gte(file.createdAt, new Date(input.createdAt)) : undefined,
+					input.createdAt
+						? gte(file.createdAt, new Date(input.createdAt))
+						: undefined,
 					input.threadId ? eq(message.threadId, input.threadId) : undefined,
 					input.messageId ? eq(file.messageId, input.messageId) : undefined,
 				),

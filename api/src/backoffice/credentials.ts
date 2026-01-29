@@ -36,7 +36,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 				if (!refresher) return;
 
 				await refresher(cred.id, {
-					persistenceSlug: cred.userSlug,
+					slug: cred.userSlug,
 					tokens: {
 						accessToken: cred.accessToken,
 						refreshToken: cred.refreshToken,

@@ -5,7 +5,7 @@ import { credential, OauthProvider } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import {
 	getTokensForUser,
-	removeCachedCredentials,
+	invalidateCredentialCache,
 	userHasCredential,
 } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
@@ -25,13 +25,12 @@ export namespace Dropbox {
 			activeUser,
 			credentialId,
 			adminExpected,
-			eq(credential.provider, OauthProvider.DROPBOX),
 		);
 
 		return fromTokens(at, rt);
 	};
 
-	export const fromTokens = (accessToken: string, refreshToken?: string) =>
+	export const fromTokens = (accessToken: string, refreshToken: string) =>
 		new DropboxClient({
 			accessToken,
 			refreshToken,
@@ -56,7 +55,7 @@ export namespace Dropbox {
 	export async function refreshTokens(
 		credentialId: string,
 		options?: {
-			persistenceSlug?: string;
+			slug?: string;
 			tokens?: { refreshToken: string; accessToken: string };
 		},
 	) {
@@ -97,17 +96,13 @@ export namespace Dropbox {
 
 		if (newTokens.accessToken === tokens.accessToken) return false;
 
-		if (options?.persistenceSlug)
+		if (options?.slug)
 			await Promise.all([
 				db
 					.update(credential)
 					.set(newTokens)
 					.where(eq(credential.id, credentialId)),
-				removeCachedCredentials(
-					options.persistenceSlug,
-					undefined,
-					credentialId,
-				),
+				invalidateCredentialCache(options.slug, credentialId),
 			]);
 
 		return true;
@@ -306,7 +301,7 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
 
 			return Dropbox.refreshTokens(credentialId, {
-				persistenceSlug: activeUser.slug,
+				slug: activeUser.slug,
 			});
 		},
 		{

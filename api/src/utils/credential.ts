@@ -1,53 +1,30 @@
 import { cache, db } from '@api/env';
-import type { OauthProvider, OauthScope } from '@api/schema';
-import { credential, credentialPermission, user } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
-import { boolOr, coalesce, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import {
-	and,
-	eq,
-	exists,
-	isNotNull,
-	or,
-	type SQLWrapper,
-	sql,
-} from 'drizzle-orm';
-import { alias } from 'drizzle-orm/pg-core';
+	AccessLevel,
+	allAccessLevelEntries,
+	credentialAccess,
+	encodeCredentialAccess,
+	type OauthProvider,
+	type OauthScope,
+} from '@api/schema';
+import type { JwtPayload } from '@api/utils/auth';
+import { and, eq, ne } from 'drizzle-orm';
 import { HttpError } from 'elysia-logger';
 
-export async function removeCachedCredentials(
-	slug: string,
-	uid?: string,
-	credentialId?: string,
-) {
-	if (uid)
-		return cache.del(
-			`credentials:${slug}:${uid}`,
-			...(credentialId
-				? [`t:${slug}:${uid}:${credentialId}`]
-				: await cache.keys(`t:${slug}:${uid}:*`)),
-		);
+const CACHE_TTL = 12 * 60 * 60;
 
-	if (credentialId) {
-		const k = [
-			...(await cache.keys(`credentials:${slug}:*`)),
-			...(await cache.keys(`t:${slug}:*:${credentialId}`)),
-		];
+const credentialCacheKey = (slug: string, credentialId: string) =>
+	`credential:${slug}:${credentialId}`;
 
-		return k.length && cache.del(...k);
-	}
-
-	const cachedCredentials = await cache.keys(`credentials:${slug}:*`);
-	const cachedAccessTokens = await cache.keys(`t:${slug}:*:*`);
-	const allKeys = [...cachedCredentials, ...cachedAccessTokens];
-	return allKeys.length && cache.del(...allKeys);
-}
+const userCredentialsSetKey = (slug: string, userId: string) =>
+	`user:${slug}:${userId}:credentials`;
 
 export type CachedCredential = {
+	id: string;
 	provider: OauthProvider;
 	scope: OauthScope;
 	accessToken: string;
-	refreshToken?: string;
+	refreshToken: string;
 	email: string;
 	ownedBy: {
 		id: string;
@@ -55,30 +32,33 @@ export type CachedCredential = {
 	};
 };
 
-export interface DisplayCredential {
-	id: string;
-	canAdmin: boolean;
-	provider: OauthProvider;
-	scope: OauthScope;
-	email: string;
-	isGlobal: boolean;
-	ownedBy: {
-		id: string;
-		email: string;
-		pfpUrl: string | null;
-		displayName: string | null;
-		isAdmin: boolean;
-	};
-	permissions: Array<{
-		id: string;
-		displayName: string | null;
-		email: string;
-		pfpUrl: string | null;
-		isAdminOfCredential: boolean;
-	}>;
-	accessToken: undefined;
-	refreshToken: undefined;
-	createdAt: Date;
+export async function invalidateCredentialCache(
+	slug: string,
+	credentialId: string,
+	affectedUserIds?: string[],
+) {
+	const credKey = credentialCacheKey(slug, credentialId);
+	const accessEntries = allAccessLevelEntries(credentialId);
+
+	const userKeys = affectedUserIds?.length
+		? affectedUserIds.map((uid) => userCredentialsSetKey(slug, uid))
+		: await cache.keys(`user:${slug}:*:credentials`);
+
+	return Promise.all([
+		cache.del(credKey),
+		...userKeys.map((key) => cache.srem(key, ...accessEntries)),
+	]);
+}
+
+export async function addCredentialToUserCache(
+	slug: string,
+	userId: string,
+	credentialId: string,
+	accessLevel: AccessLevel,
+) {
+	const setKey = userCredentialsSetKey(slug, userId);
+	const entry = encodeCredentialAccess(credentialId, accessLevel);
+	await cache.sadd(setKey, entry);
 }
 
 export async function getCredentialsForUser(
@@ -88,123 +68,102 @@ export async function getCredentialsForUser(
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
 	returnType: 'display',
-): Promise<DisplayCredential[]>;
+): Promise<
+	{
+		id: string;
+		userId: string;
+		slug: string;
+		accessLevel: AccessLevel;
+		provider: OauthProvider;
+		scope: OauthScope;
+		email: string;
+		isGlobal: boolean;
+		ownedBy: {
+			id: string;
+			email: string;
+			pfpUrl: string | null;
+			displayName: string | null;
+			isAdmin: boolean;
+		};
+		permissions: {
+			id: string;
+			displayName: string | null;
+			email: string;
+			pfpUrl: string | null;
+			isAdmin: boolean;
+		}[];
+		createdAt: Date;
+		accessToken: undefined;
+		refreshToken: undefined;
+	}[]
+>;
 export async function getCredentialsForUser(
 	activeUser: JwtPayload,
-	returnType: 'display' | 'usage' = 'display',
+	returnType: 'display' | 'usage',
 ) {
+	const setKey = userCredentialsSetKey(activeUser.slug, activeUser.id);
+
 	if (returnType === 'usage') {
-		const cached = await cache.get<CachedCredential[]>(
-			`credentials:${activeUser.slug}:${activeUser.id}`,
-		);
-		if (cached) return cached;
+		const cachedEntries = await cache.smembers(setKey);
+
+		if (cachedEntries.length) {
+			const cachedCredentials = await cache.mget<(CachedCredential | null)[]>(
+				...cachedEntries
+					.map((e) => e.split(':')[0]!)
+					.map((id) => credentialCacheKey(activeUser.slug, id)),
+			);
+
+			if (cachedCredentials.every(Boolean)) return cachedCredentials;
+		}
 	}
 
-	const credentialPermissionUser = alias(user, 'credential_permission_user');
 	const credentials = await db
-		.select({
-			id: credential.id,
-			canAdmin: activeUser.isAdmin
-				? sql<boolean>`true`
-				: coalesce(
-						or(
-							eq(credential.userId, activeUser.id),
-							boolOr(
-								and(
-									eq(credentialPermission.userId, activeUser.id),
-									eq(credentialPermission.isAdmin, true),
-								)!,
-							),
-						)!,
-						sql<boolean>`false`,
-					),
-			provider: credential.provider,
-			scope: credential.scope,
-			email: credential.email,
-			isGlobal: credential.isGlobal,
-			ownedBy: jsonBuildObject({
-				id: user.id,
-				email: user.email,
-				pfpUrl: user.pfpUrl,
-				displayName: user.displayName,
-				isAdmin: user.isAdmin,
-			}).as('owned_by'),
-			permissions: coalesce(
-				jsonAgg(
-					jsonBuildObject({
-						id: credentialPermissionUser.id,
-						displayName: credentialPermissionUser.displayName,
-						email: credentialPermissionUser.email,
-						pfpUrl: credentialPermissionUser.pfpUrl,
-						isAdminOfCredential: credentialPermission.isAdmin,
-					}),
-					isNotNull(credentialPermissionUser.id),
-				),
-				sql<[]>`'[]'::json`,
-			).as('permissions'),
-			accessToken: credential.accessToken,
-			refreshToken: credential.refreshToken,
-			createdAt: credential.createdAt,
-		})
-		.from(credential)
-		.innerJoin(user, eq(user.id, credential.userId))
-		.leftJoin(
-			credentialPermission,
-			eq(credentialPermission.credentialId, credential.id),
-		)
-		.leftJoin(
-			credentialPermissionUser,
-			and(
-				eq(credentialPermissionUser.id, credentialPermission.userId),
-				eq(credentialPermissionUser.isAdmin, false),
-			),
-		)
+		.select()
+		.from(credentialAccess)
 		.where(
 			and(
-				!activeUser.isAdmin
-					? or(
-							eq(credential.userId, activeUser.id),
-							and(
-								eq(credential.isGlobal, true),
-								eq(user.slug, activeUser.slug),
-							),
-							exists(
-								db
-									.select({ id: user.id })
-									.from(credentialPermission)
-									.where(
-										and(
-											eq(credentialPermission.credentialId, credential.id),
-											eq(credentialPermission.userId, activeUser.id),
-										),
-									),
-							),
-						)
-					: eq(user.slug, activeUser.slug),
+				eq(credentialAccess.userId, activeUser.id),
+				eq(credentialAccess.slug, activeUser.slug),
 			),
-		)
-		.groupBy(credential.id, user.id);
+		);
 
-	const usageCredentials = credentials.map(
-		(c) =>
-			({
-				provider: c.provider,
-				scope: c.scope,
-				email: c.email,
-				accessToken: c.accessToken,
-				refreshToken: c.refreshToken,
-				ownedBy: {
-					id: c.ownedBy.id,
-					email: c.ownedBy.email,
-				},
-			}) satisfies CachedCredential,
-	);
+	if (!credentials.length) return [];
 
-	await cache.set(
-		`credentials:${activeUser.slug}:${activeUser.id}`,
-		usageCredentials,
-		{ ex: 60 * 60 * 12 },
-	);
+	const forUsage: [CachedCredential, string][] = credentials.map((c) => [
+		{
+			id: c.id,
+			provider: c.provider,
+			scope: c.scope,
+			email: c.email,
+			accessToken: c.accessToken,
+			refreshToken: c.refreshToken,
+			ownedBy: {
+				id: c.ownedBy.id,
+				email: c.ownedBy.email,
+			},
+		},
+		encodeCredentialAccess(c.id, c.accessLevel),
+	]);
+
+	const [usageCredentials, userSetEntries] = [
+		forUsage.map((c) => c[0]),
+		forUsage.map((c) => c[1]),
+	];
+
+	if (usageCredentials.length) {
+		const cachePromises: Promise<unknown>[] = usageCredentials.map((c) =>
+			cache.set(credentialCacheKey(activeUser.slug, c.id), c, {
+				ex: CACHE_TTL,
+			}),
+		);
+
+		if (userSetEntries.length)
+			cachePromises.push(
+				cache.sadd(setKey, ...(userSetEntries as [string, ...string[]])),
+			);
+
+		await Promise.all(cachePromises);
+	}
 
 	return returnType === 'usage'
 		? usageCredentials
@@ -219,54 +178,52 @@ export async function getTokensForUser(
 	activeUser: JwtPayload,
 	credentialId: string,
 	adminExpected?: true,
-	...addedConditions: SQLWrapper[]
 ) {
-	const cached = await cache.get<{ at: string; rt: string }>(
-		`t:${activeUser.slug}:${activeUser.id}:${credentialId}`,
+	const setKey = userCredentialsSetKey(activeUser.slug, activeUser.id);
+	const membershipResults = await cache.smismember(
+		setKey,
+		allAccessLevelEntries(credentialId, adminExpected ?? false),
 	);
-	if (cached) return cached;
 
-	const t = (
+	if (membershipResults.some(Boolean)) {
+		const cached = await cache.get<CachedCredential>(
+			credentialCacheKey(activeUser.slug, credentialId),
+		);
+
+		if (cached) return { at: cached.accessToken, rt: cached.refreshToken };
+	}
+
+	const result = (
 		await db
-			.select({ at: credential.accessToken, rt: credential.refreshToken })
-			.from(credential)
-			.innerJoin(
-				user,
-				and(eq(user.id, credential.userId), eq(user.slug, activeUser.slug)),
-			)
+			.select({
+				accessLevel: credentialAccess.accessLevel,
+				accessToken: credentialAccess.accessToken,
+				refreshToken: credentialAccess.refreshToken,
+			})
+			.from(credentialAccess)
 			.where(
 				and(
-					...addedConditions,
-					eq(credential.id, credentialId),
-					!activeUser.isAdmin
-						? or(
-								eq(credential.userId, activeUser.id),
-								adminExpected && eq(credential.isGlobal, true),
-								exists(
-									db
-										.select({ id: user.id })
-										.from(credentialPermission)
-										.where(
-											and(
-												eq(credentialPermission.credentialId, credential.id),
-												eq(credentialPermission.userId, activeUser.id),
-												adminExpected && eq(credentialPermission.isAdmin, true),
-											),
-										),
-								),
+					eq(credentialAccess.id, credentialId),
+					eq(credentialAccess.userId, activeUser.id),
+					eq(credentialAccess.slug, activeUser.slug),
+					adminExpected
+						? and(
+								ne(credentialAccess.accessLevel, AccessLevel.READ),
+								ne(credentialAccess.accessLevel, AccessLevel.GLOBAL),
 							)
 						: undefined,
 				),
 			)
 	).at(0);
 
-	if (!t?.at) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
+	if (!result?.accessToken) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
 
-	await cache.set(`t:${activeUser.slug}:${activeUser.id}:${credentialId}`, t, {
-		ex: 60 * 60,
-	});
+	await cache.sadd(
+		setKey,
+		encodeCredentialAccess(credentialId, result.accessLevel),
+	);
 
-	return t;
+	return { at: result.accessToken, rt: result.refreshToken };
 }
 
 export async function userHasCredential(
@@ -274,7 +231,10 @@ export async function userHasCredential(
 	credentialId: string,
 	adminExpected?: true,
 ) {
-	return Boolean(
-		await getTokensForUser(activeUser, credentialId, adminExpected),
-	);
+	try {
+		await getTokensForUser(activeUser, credentialId, adminExpected);
+		return true;
+	} catch {
+		return false;
+	}
 }

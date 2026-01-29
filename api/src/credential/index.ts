@@ -10,7 +10,7 @@ import {
 } from '@api/schema';
 import {
 	getCredentialsForUser,
-	removeCachedCredentials,
+	invalidateCredentialCache,
 } from '@api/utils/credential';
 import { tObject } from '@api/utils/type';
 import { and, eq, exists, inArray, or } from 'drizzle-orm';
@@ -64,7 +64,7 @@ export const credentialRouter = new Elysia({
 						metadata: { credentialId: id },
 					}),
 				]),
-				removeCachedCredentials(activeUser.slug),
+				invalidateCredentialCache(activeUser.slug, id),
 			]);
 
 			return deletionResult;

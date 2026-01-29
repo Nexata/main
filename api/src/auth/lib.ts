@@ -1,5 +1,6 @@
 import { cache, db } from '@api/env';
 import {
+	AccessLevel,
 	credential,
 	credentialPermission,
 	device,
@@ -11,7 +12,7 @@ import {
 	trace,
 	user,
 } from '@api/schema';
-import { removeCachedCredentials } from '@api/utils/credential';
+import { addCredentialToUserCache } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { lowerEq } from '@api/utils/sql';
 import { Nullish } from '@api/utils/type';
@@ -196,25 +197,24 @@ export async function authorizeOauthCallback(
 		refreshTokenExpiresAt: metadata.refreshTokenExpiresAt!,
 	};
 
-	await removeCachedCredentials(u.slug);
+	const cred = (
+		await db
+			.insert(credential)
+			.values({
+				userId: u.id,
+				email: metadata.email,
+				provider: provider,
+				scope: q.scope,
+				...set,
+			})
+			.onConflictDoUpdate({
+				set,
+				target: [credential.provider, credential.email, credential.scope],
+			})
+			.returning({ id: credential.id, userId: credential.userId })
+	).at(0);
 
-	const credentialResult = await db
-		.insert(credential)
-		.values({
-			userId: u.id,
-			email: metadata.email,
-			provider: provider,
-			scope: q.scope,
-			...set,
-		})
-		.onConflictDoUpdate({
-			set,
-			target: [credential.provider, credential.email, credential.scope],
-		})
-		.returning({ id: credential.id, userId: credential.userId });
-
-	const cred = credentialResult.at(0);
-	if (!cred) throw HttpError.InternalServerError('CREDENTIAL_NOT_FOUND');
+	if (!cred) throw HttpError.InternalServerError('CREDENTIAL_NOT_UPSERTED');
 
 	if (cred.userId !== u.id)
 		await db
@@ -232,11 +232,14 @@ export async function authorizeOauthCallback(
 				set: { isAdmin: true },
 			});
 
-	await db.insert(trace).values({
-		userId: u.id,
-		type: TraceType.CREDENTIAL_ADDED,
-		metadata: { credentialId: cred.id },
-	});
+	await Promise.all([
+		db.insert(trace).values({
+			userId: u.id,
+			type: TraceType.CREDENTIAL_ADDED,
+			metadata: { credentialId: cred.id },
+		}),
+		addCredentialToUserCache(u.slug, u.id, cred.id, AccessLevel.ADMIN),
+	]);
 
 	return url ? redirect(url.href) : true;
 }
