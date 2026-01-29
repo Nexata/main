@@ -16,7 +16,7 @@ import {
 
 interface DeleteChatModalProps {
   open: boolean;
-  chatTitle?: string;
+  chatTitle?: string | null | undefined;
   onCancel: () => void;
   onConfirm: () => void;
 }

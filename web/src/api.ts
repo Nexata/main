@@ -8,6 +8,7 @@ import {
 } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
 
+export const API_BASE_URL = 'http://localhost:3000'
 export const apiClient = edenTreaty<App>('http://localhost:3000');
 
 export async function refreshAccessToken() {

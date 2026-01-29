@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Pencil, Trash2, Settings } from "lucide-react";
 import {
@@ -20,46 +20,88 @@ import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
 import { "sidebar.new_chat" as sidebar_new_chat} from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
+import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
+import { infoToast } from '@/components/info-toast/info-toast';
+import { useQueryClient } from '@tanstack/react-query';
 
 export default function Sidebar() {
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [chatToDelete, setChatToDelete] = useState<{
-    id: number;
-    title: string;
-  } | null>(null);
-  const [editingChatId, setEditingChatId] = useState<number | null>(null);
-  const [chats, setChats] = useState([
-    { id: 1, title: "Chat con Juan" },
-    { id: 2, title: "Proyecto Marketing" },
-    { id: 3, title: "Equipo Dev" },
-    { id: 4, title: "Ventas" },
-    { id: 5, title: "Soporte Técnico" },
-    { id: 6, title: "Soporte Técnico" },
-    { id: 7, title: "Soporte Técnico" },
-    { id: 8, title: "Soporte Técnico" },
-    { id: 9, title: "Soporte Técnico" },
-  ]);
 
+  const queryClient = useQueryClient();
+
+  // Search
+  const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  useEffect(() => {
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300); 
+
+    return () => clearTimeout(t);
+  }, [search]);
+
+  const { data: threads, isLoading: threadsLoading } = useThreads({search: debouncedSearch || undefined});
+
+  const deleteThreadFn = useDeleteThreadById();
+  const updateThreadFn = useUpdateThreadById();
+  const [chatToDelete, setChatToDelete] = useState<{
+    id: string;
+    title: string | null;
+  } | null>(null);
+  const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
-  const handleEditClick = (id: number) => {
+
+  const handleEditClick = (id: string) => {
     setEditingChatId(id);
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
-  const handleEditSave = (id: number, newTitle: string) => {
-    setChats(chats.map((chat) => (chat.id === id ? { ...chat, title: newTitle } : chat)));
-    setEditingChatId(null);
+  const handleEditSave = async (id: string, newTitle: string) => {
+    if (!newTitle.trim()) return;
+
+    try {
+      await updateThreadFn(id, { title: newTitle });
+      setEditingChatId(null);
+    } catch (error) {
+      console.error('Failed to update thread', error);
+    }
   };
 
-  const handleDeleteClick = (chat: { id: number; title: string }) =>
-    setChatToDelete(chat);
+  const handleDeleteClick = (chat: { id: string; title: string | null }) => setChatToDelete(chat);
 
-  const confirmDelete = () => {
-    if (chatToDelete) {
-      setChats(chats.filter((c) => c.id !== chatToDelete.id));
-      setChatToDelete(null);
+  const confirmDelete = async () => {
+    if (!chatToDelete) return;
+
+    setChatToDelete(null);
+
+    const toastId = infoToast.loading({
+      title: 'Deleting chat...',
+      description: 'Please wait while we delete the conversation.',
+    });
+
+    try {
+      await deleteThreadFn(chatToDelete.id);
+
+      infoToast.success(toastId, {
+        title: 'Chat deleted',
+        description: 'The conversation was deleted successfully.',
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ['chat-threads'],
+      });
+    } catch (error) {
+      infoToast.error(toastId, {
+        title: 'Failed to delete chat',
+        description: 'Something went wrong while deleting the conversation.',
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ['chat-threads'],
+      });
     }
   };
 
@@ -143,11 +185,23 @@ export default function Sidebar() {
             </Button>
           )}
 
+          {/* Search chats */}
+          {!isCollapsed && (
+            <div className="mb-3">
+              <Input
+                placeholder="Search chats..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="h-9 text-sm bg-transparent"
+              />
+            </div>
+          )}
+
           {/* Lista de chats */}
           {!isCollapsed && (
-            <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin">
+            <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin rounded-lg bg-muted/40 border border-border/50">
               <div className="flex flex-col gap-2">
-                {chats.map((chat) => (
+                {(threads && threads.length > 0 ? threads : [{ id: 'new', title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
                   <div
                     key={chat.id}
                     className="px-2 py-2 rounded-md flex justify-between items-center hover:bg-primary/10 cursor-pointer group"
@@ -156,7 +210,7 @@ export default function Sidebar() {
                       <div className="flex items-center w-full">
                         <Input
                           ref={inputRef}
-                          defaultValue={chat.title}
+                          defaultValue={chat.title ?? "New Chat"}
                           className="flex-1 bg-transparent border-b border-muted focus:border-primary"
                           onKeyDown={(e) => {
                             if (e.key === "Enter")
@@ -168,7 +222,7 @@ export default function Sidebar() {
                           <IoCheckmark
                             className="text-green-500 w-5 h-5 cursor-pointer"
                             onClick={() =>
-                              handleEditSave(chat.id, inputRef.current?.value || chat.title)
+                              handleEditSave(chat.id, inputRef.current?.value || chat.title || "New Chat")
                             }
                           />
                           <IoClose
