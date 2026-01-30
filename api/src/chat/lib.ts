@@ -193,7 +193,8 @@ export async function getThreadMessages(
 			),
 		)
 		.limit(op.limit ?? 100)
-		.orderBy(asc(message.createdAt));
+		.orderBy(asc(message.createdAt))
+		.groupBy(message.id);
 
 	if (!noncached?.length) throw HttpError.NotFound('THREAD_NOT_FOUND');
 
