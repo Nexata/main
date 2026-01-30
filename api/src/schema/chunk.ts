@@ -1,4 +1,4 @@
-import { file } from '@api/schema';
+import { file } from '@api/schema/file';
 import {
 	index,
 	integer,

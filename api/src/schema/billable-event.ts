@@ -1,4 +1,6 @@
-import { bill, tenant, user } from '@api/schema';
+import { bill } from '@api/schema/bill';
+import { tenant } from '@api/schema/tenant';
+import { user } from '@api/schema/user';
 import { desc, isNotNull, or } from 'drizzle-orm';
 import {
 	check,

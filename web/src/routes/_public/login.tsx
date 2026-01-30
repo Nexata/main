@@ -70,7 +70,7 @@ function LoginPage() {
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
 							onClick={async () => {
-								var url = await getGoogleLoginUrl()
+								var url = await getGoogleLoginUrl();
 								window.location.href = url;
 							}}
 						>

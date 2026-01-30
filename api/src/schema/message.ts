@@ -1,4 +1,4 @@
-import { thread } from '@api/schema';
+import { thread } from '@api/schema/thread';
 import { asc } from 'drizzle-orm';
 import {
 	boolean,

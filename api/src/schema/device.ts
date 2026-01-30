@@ -1,4 +1,4 @@
-import { user } from '@api/schema';
+import { user } from '@api/schema/user';
 import {
 	pgTable,
 	timestamp,

@@ -200,7 +200,7 @@
 				"send": "Enviar invitación",
 				"helper": "El usuario recibirá un email para unirse a tu tenant de Nexata.",
 				"adminWarning": "Este usuario tendrá acceso completo a toda la información y configuración de la empresa.",
-  				"success": "Invitación enviada correctamente. Cuando el usuario se registre con este email, será agregado automáticamente a tu empresa."
+				"success": "Invitación enviada correctamente. Cuando el usuario se registre con este email, será agregado automáticamente a tu empresa."
 			},
 			"actions": {
 				"edit": "Editar Usuario",

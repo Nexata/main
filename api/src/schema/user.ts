@@ -1,4 +1,4 @@
-import { tenant } from '@api/schema';
+import { tenant } from '@api/schema/tenant';
 import { lowerIndex } from '@api/utils/sql';
 import {
 	boolean,

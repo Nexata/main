@@ -8,7 +8,7 @@ import {
 } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
 
-export const API_BASE_URL = 'http://localhost:3000'
+export const API_BASE_URL = 'http://localhost:3000';
 export const apiClient = edenTreaty<App>('http://localhost:3000');
 
 export async function refreshAccessToken() {
@@ -77,7 +77,7 @@ export async function withAuthRetry<T>(
 		clearTokens();
 		throw err;
 	}
-	const refheaders = await makeHeaders()
+	const refheaders = await makeHeaders();
 	result = await request(refheaders);
 
 	if (result.error) throw result.error;

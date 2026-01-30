@@ -31,7 +31,6 @@ export async function getGoogleCredentialUrl(scope: string) {
 	)}&redirect=${encodeURIComponent(FRONTEND_CREDENTIAL_CALLBACK)}`;
 }
 
-
 export async function getDropboxCredentialUrl() {
 	const user = await getMe();
 	return `${API_URL}/api/auth/dropbox/?flow=credential&scope=dropbox&userId=${encodeURIComponent(

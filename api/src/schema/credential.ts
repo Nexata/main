@@ -1,4 +1,4 @@
-import { user } from '@api/schema';
+import { user } from '@api/schema/user';
 import { desc } from 'drizzle-orm';
 import { index } from 'drizzle-orm/gel-core';
 import {

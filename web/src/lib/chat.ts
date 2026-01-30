@@ -16,10 +16,10 @@ export async function getThreadById(
 	return withAuthRetry((headers) =>
 		apiClient.api.chat.thread[threadId]!.get({
 			$headers: headers,
-            $query: {
-                limit: params?.limit ?? 100
+			$query: {
+				limit: params?.limit ?? 100,
 			},
-		})
+		}),
 	);
 }
 
@@ -88,10 +88,11 @@ export function useDeleteThreadById() {
 	};
 }
 
-
 // List threads (desc)
-export async function listThreads(params?: { limit?: number; search?: string;})
-{
+export async function listThreads(params?: {
+	limit?: number;
+	search?: string;
+}) {
 	return withAuthRetry((headers) =>
 		apiClient.api.chat.thread.get({
 			$headers: headers,
@@ -105,10 +106,7 @@ export async function listThreads(params?: { limit?: number; search?: string;})
 
 export type Threads = Awaited<ReturnType<typeof listThreads>>;
 
-export function useThreads(params?: {
-	limit?: number;
-	search?: string;
-}) {
+export function useThreads(params?: { limit?: number; search?: string }) {
 	return useQuery<Threads>({
 		queryKey: ['chat-threads', params],
 		queryFn: () => listThreads(params),
@@ -122,7 +120,7 @@ export type ChatWithLLMInput = {
 	threadId?: string;
 	editedMessageId?: string;
 	languagePreference?: string;
-	files?: File[] | null
+	files?: File[] | null;
 };
 
 export async function chatWithLLM(data: ChatWithLLMInput) {

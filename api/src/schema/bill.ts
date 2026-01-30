@@ -1,4 +1,4 @@
-import { tenant } from '@api/schema';
+import { tenant } from '@api/schema/tenant';
 import { desc } from 'drizzle-orm';
 import {
 	boolean,

@@ -1,4 +1,5 @@
-import { file, user } from '@api/schema';
+import { file } from '@api/schema/file';
+import { user } from '@api/schema/user';
 import { isNotNull, or } from 'drizzle-orm';
 import { boolean, check, pgTable, uuid, varchar } from 'drizzle-orm/pg-core';
 

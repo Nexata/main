@@ -1,7 +1,16 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { AnimatePresence, motion } from 'framer-motion';
-import { Tooltip as TooltipUi, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { AlertTriangle, ArrowLeft, CheckCircle2, CreditCard, Pencil, Settings, Trash, TrendingUp } from 'lucide-react';
+import {
+	AlertTriangle,
+	ArrowLeft,
+	CheckCircle2,
+	CreditCard,
+	Pencil,
+	Settings,
+	Trash,
+	TrendingUp,
+} from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import {
 	Bar,
@@ -14,8 +23,12 @@ import {
 	YAxis,
 } from 'recharts';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
+import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
+import { infoToast } from '@/components/info-toast/info-toast';
+import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
 	Dialog,
 	DialogContent,
@@ -30,13 +43,34 @@ import {
 	DropdownMenuItem,
 	DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import { FilePreview } from '@/components/ui/file-preview';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { Separator } from '@/components/ui/separator';
+import {
+	TooltipContent,
+	TooltipTrigger,
+	Tooltip as TooltipUi,
+} from '@/components/ui/tooltip';
+import UserSection from '@/components/user-section/user-section';
+import {
+	useBillingMessages,
+	useCreateUser,
+	useDeleteUser,
+	useEditTenant,
+	useEditUser,
+	useUsers,
+} from '@/lib/admin';
+import { useMyTenant } from '@/lib/user';
 import {
 	'admin.company_overview.billing' as admin_company_overview_billing,
 	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
 	'admin.company_overview.current_plan' as admin_company_overview_current_plan,
 	'admin.company_overview.description' as admin_company_overview_description,
+	'admin.company_overview.edit' as admin_company_overview_edit,
 	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
+	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
+	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
 	'admin.company_overview.title' as admin_company_overview_title,
 	'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
 	'admin.header.back_to_chat' as admin_header_back_to_chat,
@@ -48,45 +82,31 @@ import {
 	'admin.usage.chart_type.lines' as admin_usage_chart_type_lines,
 	'admin.usage.description' as admin_usage_description,
 	'admin.usage.title' as admin_usage_title,
-	'admin.users.title' as admin_users_title,
-	'admin.users.description' as admin_users_description,
-	'admin.users.invite.title' as admin_users_invite_title,
-	'admin.users.invite.helper' as admin_users_invite_helper,
-	'admin.users.invite.send' as admin_users_invite_send,
-	'admin.users.invite.placeholder' as admin_users_invite_placeholder,
-	'admin.users.actions.remove' as admin_users_actions_remove,
-	'admin.users.actions.edit' as admin_users_actions_edit,
-	'admin.users.dialogs.delete.title' as admin_users_dialogs_delete_title,
-	'admin.users.dialogs.delete.description' as admin_users_dialogs_delete_description,
-	'admin.users.invite.adminWarning' as admin_users_invite_adminWarning,
-	'admin.users.invite.success' as admin_users_invite_success,
 	'admin.users.actions.display_name' as admin_users_actions_display_name,
+	'admin.users.actions.edit' as admin_users_actions_edit,
 	'admin.users.actions.img' as admin_users_actions_img,
-	'admin.users.delete.error.title' as admin_users_delete_error_title,
+	'admin.users.actions.remove' as admin_users_actions_remove,
 	'admin.users.delete.error.description' as admin_users_delete_error_description,
-	'admin.users.delete.loading.title' as admin_users_delete_loading_title,
+	'admin.users.delete.error.title' as admin_users_delete_error_title,
 	'admin.users.delete.loading.description' as admin_users_delete_loading_description,
-	'admin.users.delete.success.title' as admin_users_delete_success_title,
+	'admin.users.delete.loading.title' as admin_users_delete_loading_title,
 	'admin.users.delete.success.description' as admin_users_delete_success_description,
-	'admin.company_overview.edit' as admin_company_overview_edit,
-	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
-	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
+	'admin.users.delete.success.title' as admin_users_delete_success_title,
+	'admin.users.description' as admin_users_description,
+	'admin.users.dialogs.delete.description' as admin_users_dialogs_delete_description,
+	'admin.users.dialogs.delete.title' as admin_users_dialogs_delete_title,
+	'admin.users.invite.adminWarning' as admin_users_invite_adminWarning,
+	'admin.users.invite.helper' as admin_users_invite_helper,
+	'admin.users.invite.placeholder' as admin_users_invite_placeholder,
+	'admin.users.invite.send' as admin_users_invite_send,
+	'admin.users.invite.success' as admin_users_invite_success,
+	'admin.users.invite.title' as admin_users_invite_title,
+	'admin.users.title' as admin_users_title,
 	'common.cancel' as common_cancel,
 	'common.confirm' as common_confirm,
+	'common.loading' as common_loading,
 	'common.save_changes' as common_save_changes,
-	'common.loading' as common_loading
 } from '@/paraglide/messages.js';
-import { useMyTenant } from '@/lib/user';
-import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import { useBillingMessages, useCreateUser, useDeleteUser, useEditTenant, useEditUser, useUsers } from '@/lib/admin';
-import UserSection from '@/components/user-section/user-section';
-import { FilePreview } from '@/components/ui/file-preview';
-import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
-import { infoToast } from '@/components/info-toast/info-toast';
-import { useQueryClient } from '@tanstack/react-query';
-import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -166,7 +186,8 @@ function AdminSettingsPage() {
 function CompanyOverviewSection() {
 	const navigate = useNavigate();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-	const { data: billingMessages, isLoading: billingLoading } = useBillingMessages();
+	const { data: billingMessages, isLoading: billingLoading } =
+		useBillingMessages();
 	const used = billingMessages?.count ?? 0;
 	const total = billingMessages?.limit ?? 0;
 	const [editingTenant, setEditingTenant] = useState(false);
@@ -176,10 +197,10 @@ function CompanyOverviewSection() {
 	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
 
 	useEffect(() => {
-	if (myTenant) {
-		setTenantDisplayName(myTenant.displayName ?? '');
-		setTenantLogo(null);
-	}
+		if (myTenant) {
+			setTenantDisplayName(myTenant.displayName ?? '');
+			setTenantLogo(null);
+		}
 	}, [myTenant]);
 
 	return (
@@ -188,14 +209,16 @@ function CompanyOverviewSection() {
 				<div className="flex items-center justify-between">
 					<div>
 						<div className="flex items-center gap-2">
-							<h2 className="text-lg font-semibold">{admin_company_overview_title()}</h2>
+							<h2 className="text-lg font-semibold">
+								{admin_company_overview_title()}
+							</h2>
 							<TooltipUi>
 								<TooltipTrigger>
 									<Button
-									size="icon"
-									variant="ghost"
-									className="cursor-pointer"
-									onClick={() => setEditingTenant((v) => !v)}
+										size="icon"
+										variant="ghost"
+										className="cursor-pointer"
+										onClick={() => setEditingTenant((v) => !v)}
 									>
 										<Pencil className="h-4 w-4" />
 									</Button>
@@ -203,13 +226,15 @@ function CompanyOverviewSection() {
 								<TooltipContent>{admin_company_overview_edit()}</TooltipContent>
 							</TooltipUi>
 						</div>
-						<p className="text-sm text-muted-foreground">{admin_company_overview_description()}</p>
+						<p className="text-sm text-muted-foreground">
+							{admin_company_overview_description()}
+						</p>
 					</div>
 
 					<TenantLogo
-					loading={tenantLoading}
-					logoUrl={myTenant?.logoUrl}
-					displayName={myTenant?.displayName}
+						loading={tenantLoading}
+						logoUrl={myTenant?.logoUrl}
+						displayName={myTenant?.displayName}
 					/>
 				</div>
 
@@ -218,70 +243,75 @@ function CompanyOverviewSection() {
 				<AnimatePresence>
 					{editingTenant && (
 						<motion.div
-						initial={{ opacity: 0, height: 0 }}
-						animate={{ opacity: 1, height: 'auto' }}
-						exit={{ opacity: 0, height: 0 }}
-						transition={{ duration: 0.25 }}
-						className="overflow-hidden"
+							initial={{ opacity: 0, height: 0 }}
+							animate={{ opacity: 1, height: 'auto' }}
+							exit={{ opacity: 0, height: 0 }}
+							transition={{ duration: 0.25 }}
+							className="overflow-hidden"
 						>
 							<div className="rounded-xl border border-border bg-muted/30 p-4 space-y-4">
 								<div className="flex flex-col md:flex-row md:items-end gap-4">
 									<div className="flex flex-col gap-1">
-										<label className="text-sm font-medium">{admin_company_overview_tenant_name()}</label>
+										<label className="text-sm font-medium">
+											{admin_company_overview_tenant_name()}
+										</label>
 										<Input
-										className="w-full md:w-64 h-8 text-sm"
-										value={tenantDisplayName}
-										onChange={(e) => setTenantDisplayName(e.target.value)}
+											className="w-full md:w-64 h-8 text-sm"
+											value={tenantDisplayName}
+											onChange={(e) => setTenantDisplayName(e.target.value)}
 										/>
 									</div>
 
 									<div className="flex flex-col gap-1">
-										<label className="text-sm font-medium">{admin_company_overview_tenant_logo()}</label>
+										<label className="text-sm font-medium">
+											{admin_company_overview_tenant_logo()}
+										</label>
 										<Input
-										type="file"
-										accept="image/*"
-										className="w-56 h-8 text-sm"
-										onChange={(e) => setTenantLogo(e.target.files?.[0] ?? null)}
+											type="file"
+											accept="image/*"
+											className="w-56 h-8 text-sm"
+											onChange={(e) =>
+												setTenantLogo(e.target.files?.[0] ?? null)
+											}
 										/>
 									</div>
 
 									{tenantLogo && (
-									<div className="self-center flex items-center justify-center">
-										<FilePreview
-										file={tenantLogo}
-										onRemove={() => setTenantLogo(null)}
-										/>
-									</div>
+										<div className="self-center flex items-center justify-center">
+											<FilePreview
+												file={tenantLogo}
+												onRemove={() => setTenantLogo(null)}
+											/>
+										</div>
 									)}
-									
+
 									<div className="ml-auto flex items-end gap-2">
 										<Button
-										variant="ghost"
-										className="h-8 px-3 text-sm cursor-pointer"
-										onClick={() => {
-											setEditingTenant(false);
-											setTenantDisplayName(myTenant?.displayName ?? '');
-											setTenantLogo(null);
-										}}
+											variant="ghost"
+											className="h-8 px-3 text-sm cursor-pointer"
+											onClick={() => {
+												setEditingTenant(false);
+												setTenantDisplayName(myTenant?.displayName ?? '');
+												setTenantLogo(null);
+											}}
 										>
 											{common_cancel()}
 										</Button>
 
 										<AsyncConfirmButton
 											className="h-8 px-3 text-sm"
-										onClick={async () => {
-											await editTenantFn({
-												displayName: tenantDisplayName,
-												logo: tenantLogo ?? undefined,
-											});
-											setEditingTenant(false);
-											setTenantLogo(null);
-										}}
+											onClick={async () => {
+												await editTenantFn({
+													displayName: tenantDisplayName,
+													logo: tenantLogo ?? undefined,
+												});
+												setEditingTenant(false);
+												setTenantLogo(null);
+											}}
 										>
 											{common_save_changes()}
 										</AsyncConfirmButton>
 									</div>
-
 								</div>
 							</div>
 						</motion.div>
@@ -340,10 +370,10 @@ function CompanyOverviewSection() {
 
 						{/* Buy messages */}
 						<Button
-						size="sm"
-						variant="outline"
-						className="cursor-pointer"
-						onClick={() => setBuyMessagesOpen(true)}
+							size="sm"
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => setBuyMessagesOpen(true)}
 						>
 							{admin_company_overview_buy_messages()}
 						</Button>
@@ -351,8 +381,8 @@ function CompanyOverviewSection() {
 				</div>
 
 				<BuyMessagesModal
-				open={buyMessagesOpen}
-				onOpenChange={setBuyMessagesOpen}
+					open={buyMessagesOpen}
+					onOpenChange={setBuyMessagesOpen}
 				/>
 			</CardContent>
 		</Card>
@@ -518,11 +548,15 @@ function UsersSection() {
 	const [inviteIsAdmin, setInviteIsAdmin] = useState(false);
 	const [inviteSuccess, setInviteSuccess] = useState(false);
 	const [showAdminWarning, setShowAdminWarning] = useState(false);
-	const userToDelete = deleteUserId ? users.find((u) => u.id === deleteUserId) : null;
+	const userToDelete = deleteUserId
+		? users.find((u) => u.id === deleteUserId)
+		: null;
 	const queryClient = useQueryClient();
 
 	// Ordenar admins primero
-	const sortedUsers = [...users].sort((a, b) => (b.isAdmin ? 1 : 0) - (a.isAdmin ? 1 : 0));
+	const sortedUsers = [...users].sort(
+		(a, b) => (b.isAdmin ? 1 : 0) - (a.isAdmin ? 1 : 0),
+	);
 
 	// Invite User
 	const inviteTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -580,14 +614,15 @@ function UsersSection() {
 		}
 	}
 
-
 	return (
 		<Card className="bg-[var(--sidebar)]">
 			<CardContent className="p-6 space-y-6">
 				{/* Header */}
 				<div>
 					<h2 className="text-lg font-semibold">{admin_users_title()}</h2>
-					<p className="text-sm text-muted-foreground">{admin_users_description()}</p>
+					<p className="text-sm text-muted-foreground">
+						{admin_users_description()}
+					</p>
 				</div>
 
 				<Separator />
@@ -597,11 +632,11 @@ function UsersSection() {
 					<p className="text-sm font-medium">{admin_users_invite_title()}</p>
 					<div className="flex items-center gap-2">
 						<input
-						type="email"
-						placeholder={admin_users_invite_placeholder()}
-						value={inviteEmail}
-						onChange={(e) => setInviteEmail(e.target.value)}
-						className="flex-1 h-9 rounded-md border border-border bg-background px-3 text-sm
+							type="email"
+							placeholder={admin_users_invite_placeholder()}
+							value={inviteEmail}
+							onChange={(e) => setInviteEmail(e.target.value)}
+							className="flex-1 h-9 rounded-md border border-border bg-background px-3 text-sm
 							focus:outline-none focus:ring-2 focus:ring-ring"
 						/>
 						<div className="flex items-center gap-2">
@@ -610,14 +645,17 @@ function UsersSection() {
 								className="cursor-pointer"
 								checked={inviteIsAdmin}
 								onCheckedChange={(v) => {
-								const checked = !!v;
-								setInviteIsAdmin(checked);
-								setShowAdminWarning(checked);
-								setInviteSuccess(false);
+									const checked = !!v;
+									setInviteIsAdmin(checked);
+									setShowAdminWarning(checked);
+									setInviteSuccess(false);
 								}}
 							/>
 
-							<Label htmlFor="invite-admin" className="text-xs font-medium cursor-pointer select-none">
+							<Label
+								htmlFor="invite-admin"
+								className="text-xs font-medium cursor-pointer select-none"
+							>
 								Admin
 							</Label>
 						</div>
@@ -626,38 +664,44 @@ function UsersSection() {
 							{admin_users_invite_send()}
 						</AsyncConfirmButton>
 					</div>
-					<p className="text-xs text-muted-foreground">{admin_users_invite_helper()}</p>
+					<p className="text-xs text-muted-foreground">
+						{admin_users_invite_helper()}
+					</p>
 
 					<AnimatePresence mode="wait">
 						{showAdminWarning && !inviteSuccess && (
 							<motion.div
-							key="admin-warning"
-							initial={{ opacity: 0, y: -4, height: 0 }}
-							animate={{ opacity: 1, y: 0, height: "auto" }}
-							exit={{ opacity: 0, y: -4, height: 0 }}
-							transition={{ duration: 0.2, ease: "easeOut" }}
-							className="overflow-hidden"
+								key="admin-warning"
+								initial={{ opacity: 0, y: -4, height: 0 }}
+								animate={{ opacity: 1, y: 0, height: 'auto' }}
+								exit={{ opacity: 0, y: -4, height: 0 }}
+								transition={{ duration: 0.2, ease: 'easeOut' }}
+								className="overflow-hidden"
 							>
-							<div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
-								<AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
-								<p className="text-xs text-amber-600 leading-snug">{admin_users_invite_adminWarning()}</p>
-							</div>
+								<div className="flex items-center gap-2 rounded-md border border-amber-500/30 bg-amber-500/10 p-2">
+									<AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+									<p className="text-xs text-amber-600 leading-snug">
+										{admin_users_invite_adminWarning()}
+									</p>
+								</div>
 							</motion.div>
 						)}
 
 						{inviteSuccess && (
 							<motion.div
-							key="invite-success"
-							initial={{ opacity: 0, y: -4, height: 0 }}
-							animate={{ opacity: 1, y: 0, height: "auto" }}
-							exit={{ opacity: 0, y: -4, height: 0 }}
-							transition={{ duration: 0.2, ease: "easeOut" }}
-							className="overflow-hidden"
+								key="invite-success"
+								initial={{ opacity: 0, y: -4, height: 0 }}
+								animate={{ opacity: 1, y: 0, height: 'auto' }}
+								exit={{ opacity: 0, y: -4, height: 0 }}
+								transition={{ duration: 0.2, ease: 'easeOut' }}
+								className="overflow-hidden"
 							>
-							<div className="flex items-start gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-2">
-								<CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
-								<p className="text-xs text-emerald-700 leading-snug">{admin_users_invite_success()}</p>
-							</div>
+								<div className="flex items-start gap-2 rounded-md border border-emerald-500/20 bg-emerald-500/5 p-2">
+									<CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+									<p className="text-xs text-emerald-700 leading-snug">
+										{admin_users_invite_success()}
+									</p>
+								</div>
 							</motion.div>
 						)}
 					</AnimatePresence>
@@ -676,7 +720,7 @@ function UsersSection() {
 								pfpUrl: user.pfpUrl ?? null,
 								isAdmin: user.isAdmin,
 								hasApiKey: !!user.apiKey,
-								devices: [], 
+								devices: [],
 								messageCount: 0,
 							};
 
@@ -686,11 +730,11 @@ function UsersSection() {
 										<div className="flex items-center justify-between gap-2">
 											<div className="flex-1">
 												<UserSection
-												me={meForUserSection}
-												collapsed={false}
-												loading={false}
-												disableHoverScale
-												disableClick
+													me={meForUserSection}
+													collapsed={false}
+													loading={false}
+													disableHoverScale
+													disableClick
 												/>
 											</div>
 
@@ -698,33 +742,37 @@ function UsersSection() {
 												<TooltipUi>
 													<TooltipTrigger>
 														<Button
-														size="icon"
-														variant="ghost"
-														className="cursor-pointer"
-														onClick={() => {
-															setEditingUserId(user.id);
-															setDisplayName(user.displayName ?? '');
-															setFile(null);
-														}}
+															size="icon"
+															variant="ghost"
+															className="cursor-pointer"
+															onClick={() => {
+																setEditingUserId(user.id);
+																setDisplayName(user.displayName ?? '');
+																setFile(null);
+															}}
 														>
 															<Pencil className="h-4 w-4" />
 														</Button>
 													</TooltipTrigger>
-													<TooltipContent>{admin_users_actions_edit()}</TooltipContent>
+													<TooltipContent>
+														{admin_users_actions_edit()}
+													</TooltipContent>
 												</TooltipUi>
 
 												<TooltipUi>
 													<TooltipTrigger>
 														<Button
-														size="icon"
-														variant="ghost"
-														className="cursor-pointer text-destructive"
-														onClick={() => setDeleteUserId(user.id)}
+															size="icon"
+															variant="ghost"
+															className="cursor-pointer text-destructive"
+															onClick={() => setDeleteUserId(user.id)}
 														>
 															<Trash className="h-4 w-4" />
 														</Button>
 													</TooltipTrigger>
-													<TooltipContent>{admin_users_actions_remove()}</TooltipContent>
+													<TooltipContent>
+														{admin_users_actions_remove()}
+													</TooltipContent>
 												</TooltipUi>
 											</div>
 										</div>
@@ -732,40 +780,51 @@ function UsersSection() {
 										<AnimatePresence>
 											{editingUserId === user.id && (
 												<motion.div
-												initial={{ opacity: 0, height: 0 }}
-												animate={{ opacity: 1, height: 'auto' }}
-												exit={{ opacity: 0, height: 0 }}
-												transition={{ duration: 0.25 }}
-												className="overflow-hidden mt-2"
+													initial={{ opacity: 0, height: 0 }}
+													animate={{ opacity: 1, height: 'auto' }}
+													exit={{ opacity: 0, height: 0 }}
+													transition={{ duration: 0.25 }}
+													className="overflow-hidden mt-2"
 												>
 													<Separator className="my-2" />
 
 													<div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 py-2 px-2">
 														<div className="flex flex-col md:flex-row md:items-start gap-4 flex-1">
 															<div className="flex flex-col gap-1">
-																<label className="text-sm font-medium">{admin_users_actions_display_name()}</label>
+																<label className="text-sm font-medium">
+																	{admin_users_actions_display_name()}
+																</label>
 																<Input
-																className="w-full md:w-56 h-8 text-sm"
-																value={displayName}
-																onChange={(e) => setDisplayName(e.target.value)}
+																	className="w-full md:w-56 h-8 text-sm"
+																	value={displayName}
+																	onChange={(e) =>
+																		setDisplayName(e.target.value)
+																	}
 																/>
 															</div>
 
 															<div className="flex flex-col gap-1">
-																<label className="text-sm font-medium">{admin_users_actions_img()}</label>
+																<label className="text-sm font-medium">
+																	{admin_users_actions_img()}
+																</label>
 																<div className="flex items-center gap-2">
 																	<Input
 																		type="file"
 																		accept="image/*"
 																		className="w-48 h-8 text-sm"
-																		onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+																		onChange={(e) =>
+																			setFile(e.target.files?.[0] ?? null)
+																		}
 																	/>
 																</div>
 															</div>
 															{file && (
 																<div className="flex items-center justify-center">
 																	<div className="h-8">
-																		<FilePreview file={file} onRemove={() => setFile(null)} />
+																		<FilePreview
+																			file={file}
+																			onRemove={() => setFile(null)}
+																		/>
 																	</div>
 																</div>
 															)}
@@ -773,24 +832,27 @@ function UsersSection() {
 
 														<div className="flex items-center justify-end gap-2 pt-3 shrink-0">
 															<Button
-															variant="ghost"
-															className="h-8 px-3 text-sm"
-															onClick={() => {
-																setEditingUserId(null);
-																setDisplayName(user.displayName ?? '');
-																setFile(null);
-															}}
+																variant="ghost"
+																className="h-8 px-3 text-sm"
+																onClick={() => {
+																	setEditingUserId(null);
+																	setDisplayName(user.displayName ?? '');
+																	setFile(null);
+																}}
 															>
 																{common_cancel()}
 															</Button>
 
 															<AsyncConfirmButton
-															className="h-8 px-3 text-sm"
-															onClick={async () => {
-																await editUserFn(user.id, { displayName, pfp: file ?? undefined });
-																setEditingUserId(null);
-																setFile(null);
-															}}
+																className="h-8 px-3 text-sm"
+																onClick={async () => {
+																	await editUserFn(user.id, {
+																		displayName,
+																		pfp: file ?? undefined,
+																	});
+																	setEditingUserId(null);
+																	setFile(null);
+																}}
 															>
 																{common_save_changes()}
 															</AsyncConfirmButton>
@@ -807,12 +869,16 @@ function UsersSection() {
 				</div>
 
 				{userToDelete && (
-				<ConfirmDeleteAccountModal
-				open={!!deleteUserId}
-				email={userToDelete.email}
-				onOpenChange={(open) => { if (!open) setDeleteUserId(null); }}
-				onConfirm={() => { handleDeleteUserWithToast(userToDelete.id); }}
-				/>
+					<ConfirmDeleteAccountModal
+						open={!!deleteUserId}
+						email={userToDelete.email}
+						onOpenChange={(open) => {
+							if (!open) setDeleteUserId(null);
+						}}
+						onConfirm={() => {
+							handleDeleteUserWithToast(userToDelete.id);
+						}}
+					/>
 				)}
 			</CardContent>
 		</Card>
@@ -823,7 +889,7 @@ function ConfirmDeleteAccountModal({
 	open,
 	onOpenChange,
 	onConfirm,
-	email
+	email,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;

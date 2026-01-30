@@ -8,12 +8,13 @@ import {
 	Check,
 	Copy,
 	KeyRound,
+	LogOut,
 	Pencil,
 	RotateCw,
 	Trash2,
-	LogOut 
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { UAParser } from 'ua-parser-js';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -37,6 +38,8 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { clearTokens } from '@/lib/auth';
+import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
 import {
 	useCreateOrRegenerateApiKey,
 	useDeleteApiKey,
@@ -45,7 +48,6 @@ import {
 	useMe,
 	useUpdateMe,
 } from '@/lib/user';
-import { UAParser } from "ua-parser-js";
 import {
 	'common.cancel' as common_cancel,
 	'common.confirm' as common_confirm,
@@ -56,6 +58,18 @@ import {
 	'user.profile.api_keys.empty.title' as profile_api_keys_empty_title,
 	'user.profile.api_keys.section.subtitle' as profile_api_keys_section_subtitle,
 	'user.profile.api_keys.section.title' as profile_api_keys_section_title,
+	'user.profile.api_keys.toasts.delete.error_description' as profile_api_keys_toast_delete_error_description,
+	'user.profile.api_keys.toasts.delete.error_title' as profile_api_keys_toast_delete_error_title,
+	'user.profile.api_keys.toasts.delete.loading_description' as profile_api_keys_toast_delete_loading_description,
+	'user.profile.api_keys.toasts.delete.loading_title' as profile_api_keys_toast_delete_loading_title,
+	'user.profile.api_keys.toasts.delete.success_description' as profile_api_keys_toast_delete_success_description,
+	'user.profile.api_keys.toasts.delete.success_title' as profile_api_keys_toast_delete_success_title,
+	'user.profile.api_keys.toasts.generate.error_description' as profile_api_keys_toast_generate_error_description,
+	'user.profile.api_keys.toasts.generate.error_title' as profile_api_keys_toast_generate_error_title,
+	'user.profile.api_keys.toasts.generate.loading_description' as profile_api_keys_toast_generate_loading_description,
+	'user.profile.api_keys.toasts.generate.loading_title' as profile_api_keys_toast_generate_loading_title,
+	'user.profile.api_keys.toasts.generate.success_description' as profile_api_keys_toast_generate_success_description,
+	'user.profile.api_keys.toasts.generate.success_title' as profile_api_keys_toast_generate_success_title,
 	'user.profile.header.back_to_chat' as profile_back_to_chat,
 	'user.profile.edit.cancel' as profile_cancel,
 	'user.profile.danger_zone.subtitle' as profile_danger_zone_subtitle,
@@ -87,23 +101,9 @@ import {
 	'user.profile.delete_account.title' as user_profile_delete_account_title,
 	'user.profile.devices.delete' as user_profile_devices_delete,
 	'user.profile.edit.label' as user_profile_edit_label,
+	'user.profile.header.logout' as user_profile_header_logout,
 	'user.profile.info.messages_used' as user_profile_info_messages_used,
-	"user.profile.api_keys.toasts.generate.loading_title" as profile_api_keys_toast_generate_loading_title,
-	"user.profile.api_keys.toasts.generate.loading_description" as profile_api_keys_toast_generate_loading_description,
-	"user.profile.api_keys.toasts.generate.success_title" as profile_api_keys_toast_generate_success_title,
-	"user.profile.api_keys.toasts.generate.success_description" as profile_api_keys_toast_generate_success_description,
-	"user.profile.api_keys.toasts.generate.error_title" as profile_api_keys_toast_generate_error_title,
-	"user.profile.api_keys.toasts.generate.error_description" as profile_api_keys_toast_generate_error_description,
-	"user.profile.api_keys.toasts.delete.loading_title" as profile_api_keys_toast_delete_loading_title,
-	"user.profile.api_keys.toasts.delete.loading_description" as profile_api_keys_toast_delete_loading_description,
-	"user.profile.api_keys.toasts.delete.success_title" as profile_api_keys_toast_delete_success_title,
-	"user.profile.api_keys.toasts.delete.success_description" as profile_api_keys_toast_delete_success_description,
-	"user.profile.api_keys.toasts.delete.error_title" as profile_api_keys_toast_delete_error_title,
-	"user.profile.api_keys.toasts.delete.error_description" as profile_api_keys_toast_delete_error_description,
-	'user.profile.header.logout' as user_profile_header_logout
 } from '@/paraglide/messages.js';
-import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
-import { clearTokens } from '@/lib/auth';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
@@ -144,9 +144,12 @@ export default function ProfilePage() {
 	}
 
 	// Delete Device
-	async function handleDeleteDevice(fingerprint: string, isLogout: boolean = false) {
+	async function handleDeleteDevice(
+		fingerprint: string,
+		isLogout: boolean = false,
+	) {
 		const actualFingerprint = await getFingerprint();
-		if(!isLogout && fingerprint == actualFingerprint) {
+		if (!isLogout && fingerprint === actualFingerprint) {
 			await handleLogout();
 			return;
 		}
@@ -183,17 +186,16 @@ export default function ProfilePage() {
 			setApiKeyModalOpen(true);
 
 			infoToast.success(toastId, {
-			title: profile_api_keys_toast_generate_success_title(),
-			description: profile_api_keys_toast_generate_success_description(),
+				title: profile_api_keys_toast_generate_success_title(),
+				description: profile_api_keys_toast_generate_success_description(),
 			});
 		} catch (_error) {
 			infoToast.error(toastId, {
-			title: profile_api_keys_toast_generate_error_title(),
-			description: profile_api_keys_toast_generate_error_description(),
+				title: profile_api_keys_toast_generate_error_title(),
+				description: profile_api_keys_toast_generate_error_description(),
 			});
 		}
 	}
-
 
 	// DeleteApiKey
 	async function handleDeleteApiKey() {
@@ -206,36 +208,37 @@ export default function ProfilePage() {
 			await deleteApiKey();
 
 			infoToast.success(toastId, {
-			title: profile_api_keys_toast_delete_success_title(),
-			description: profile_api_keys_toast_delete_success_description(),
+				title: profile_api_keys_toast_delete_success_title(),
+				description: profile_api_keys_toast_delete_success_description(),
 			});
 
 			setDeleteApiKeyOpen(false);
 		} catch (_error) {
 			infoToast.error(toastId, {
-			title: profile_api_keys_toast_delete_error_title(),
-			description: profile_api_keys_toast_delete_error_description(),
+				title: profile_api_keys_toast_delete_error_title(),
+				description: profile_api_keys_toast_delete_error_description(),
 			});
 		}
 	}
 
 	// UserAgent Helper
 	function formatUserAgent(ua: string | null | undefined) {
-		if (!ua) return "Unknown device";
+		if (!ua) return 'Unknown device';
 
 		const parser = new UAParser(ua);
 		const { browser, os, cpu, device } = parser.getResult();
 
 		const parts = [
-			browser.name && browser.version ? `${browser.name} ${browser.version}` : browser.name,
+			browser.name && browser.version
+				? `${browser.name} ${browser.version}`
+				: browser.name,
 			os.name && os.version ? `${os.name} ${os.version}` : os.name,
-			device.type ?? "Desktop",
+			device.type ?? 'Desktop',
 			cpu.architecture,
 		];
 
-		return parts.filter(Boolean).join(" · ");
+		return parts.filter(Boolean).join(' · ');
 	}
-
 
 	// Handle LogOut
 	async function handleLogout() {
@@ -248,7 +251,7 @@ export default function ProfilePage() {
 			localStorage.clear();
 			sessionStorage.clear();
 			window.location.href = '/login';
-		} catch (e) {}
+		} catch (_e) {}
 	}
 
 	return (
@@ -270,12 +273,20 @@ export default function ProfilePage() {
 				</div>
 
 				<div className="flex items-center gap-2">
-					<Button className="cursor-pointer" variant="outline" onClick={() => navigate({ to: '/chat' })}>
+					<Button
+						className="cursor-pointer"
+						variant="outline"
+						onClick={() => navigate({ to: '/chat' })}
+					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
 						{profile_back_to_chat()}
 					</Button>
 
-					<Button className="cursor-pointer" variant="destructive" onClick={handleLogout}>
+					<Button
+						className="cursor-pointer"
+						variant="destructive"
+						onClick={handleLogout}
+					>
 						<LogOut className="h-4 w-4 mr-2" />
 						{user_profile_header_logout()}
 					</Button>
@@ -443,8 +454,12 @@ export default function ProfilePage() {
 								"
 								>
 									<div className="space-y-1 min-w-0">
-										<p className="text-sm font-medium truncate">{formatUserAgent(device.userAgent)}</p>
-										<p className="text-xs text-muted-foreground truncate">{device.userAgent}</p>
+										<p className="text-sm font-medium truncate">
+											{formatUserAgent(device.userAgent)}
+										</p>
+										<p className="text-xs text-muted-foreground truncate">
+											{device.userAgent}
+										</p>
 										<p className="text-xs text-muted-foreground">
 											{profile_devices_added_on()}{' '}
 											{new Date(device.createdAt).toLocaleDateString()}

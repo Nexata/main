@@ -1,4 +1,6 @@
-import { credential, credentialPermission, user } from '@api/schema';
+import { credential } from '@api/schema/credential';
+import { credentialPermission } from '@api/schema/credential-permission';
+import { user } from '@api/schema/user';
 import {
 	aliasedColumn,
 	coalesce,
