@@ -68,20 +68,21 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			let fileSystemMessage: PartialMessage | undefined;
 
 			if (body.files?.length) {
+				const fileIds = body.files.map(crypto.randomUUID);
+
 				const insertedFiles = await Promise.all(
-					body.files.map((f) =>
-						NexataFile.ingest({ userId: activeUser.id }, f),
+					body.files.map((f, i) =>
+						NexataFile.ingest({ id: fileIds[i], userId: activeUser.id }, f),
 					),
 				).then((files) =>
-					files.map((id, i) => ({
-						id,
+					files.map((fileIngestionResult, i) => ({
+						id: fileIngestionResult === 'OK' ? fileIds[i] : null,
+						fileIngestionResult,
 						name: body.files!.at(i)!.name,
 						type: body.files!.at(i)!.type,
 						size: body.files!.at(i)!.size,
 					})),
 				);
-
-				fileIds.push(...insertedFiles.map((file) => file.id));
 
 				fileSystemMessage = {
 					id: crypto.randomUUID(),
@@ -104,6 +105,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			};
 			threadMessages.push(userMessage);
 
+			// Thread ID handling: use existing or generate new ID
+			const threadId = body.threadId ?? crypto.randomUUID();
+
+			// Final streaming
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				system: BUILD_SYSTEM_PROMPT({
@@ -148,9 +153,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								),
 							);
 
-					const threadId =
-						body.threadId ?? (await createThread(activeUser.id, body.prompt));
-					if (!threadId) throw new Error('THREAD_NOT_CREATED');
+					if (!body.threadId)
+						await createThread(activeUser.id, body.prompt, threadId);
 
 					const messagesToAppend = [
 						fileSystemMessage,
@@ -194,19 +198,21 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					]);
 
 					// Update files with messageId if we have one
-					if (fileIds.length) {
+					if (fileIds.length)
 						await db
 							.update(file)
 							.set({ messageId: userMessage.id })
 							.where(
 								and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)),
 							);
-					}
 				},
 			});
 
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
+				messageMetadata: ({ part }) => {
+					if (part.type === 'start') return { threadId };
+				},
 			});
 		},
 		{

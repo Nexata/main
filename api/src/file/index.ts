@@ -233,7 +233,7 @@ export namespace NexataFile {
 		},
 		f: File,
 	): Promise<string> {
-		data.id = crypto.randomUUID();
+		data.id = data.id ?? crypto.randomUUID();
 
 		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId) {
 			const existing = (
