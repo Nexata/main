@@ -19,6 +19,7 @@
 		"@neondatabase/serverless": "^1.0.2",
 		"@sinclair/typebox": "^0.34.48",
 		"@toon-format/toon": "^2.1.0",
+		"@types/node": "^25.1.0",
 		"@types/nodemailer": "^7.0.9",
 		"@types/turndown": "^5.0.6",
 		"@upstash/redis": "^1.36.1",
