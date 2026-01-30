@@ -285,7 +285,7 @@ export namespace NexataFile {
 				db.insert(chunk).values(chunks),
 			]);
 
-			return data.id;
+			return 'OK';
 		} catch (error) {
 			await db.insert(trace).values({
 				userId: data.userId,

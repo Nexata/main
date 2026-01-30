@@ -43,6 +43,13 @@
       "when": 1769702797980,
       "tag": "20260129160637_dazzling_monster_badoon",
       "breakpoints": false
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1769733585938,
+      "tag": "20260130003945_tranquil_tyger_tiger",
+      "breakpoints": false
     }
   ]
 }
