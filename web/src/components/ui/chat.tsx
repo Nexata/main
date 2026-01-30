@@ -9,7 +9,6 @@ import {
 } from "react"
 import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
 import type { UIMessage } from "ai"
-
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import { Button } from "@/components/ui/button"
@@ -17,6 +16,7 @@ import { CopyButton } from "@/components/ui/copy-button"
 import { MessageInput } from "@/components/ui/message-input"
 import { MessageList } from "@/components/ui/message-list"
 import { PromptSuggestions } from "@/components/ui/prompt-suggestions"
+import { ChatThinkingIndicator } from "../chat-thinking/chat-thinking"
 
 function getMessageText(message: UIMessage): string {
   return message.parts
@@ -147,6 +147,12 @@ export function Chat({
             isTyping={isTyping}
             messageOptions={messageOptions}
           />
+
+          {isGenerating && (
+            <div className="px-2 py-1">
+              <ChatThinkingIndicator />
+            </div>
+          )}
         </ChatMessages>
       ) : null}
 
