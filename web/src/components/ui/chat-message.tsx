@@ -2,6 +2,7 @@ import React, { useMemo, useState } from "react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
 import { Ban, ChevronRight, Code2, Loader2, Terminal } from "lucide-react"
+import { useTypingText } from "@/hooks/use-typing-text"
 
 import { cn } from "@/lib/utils"
 import {
@@ -127,7 +128,8 @@ export interface Message {
   createdAt?: Date
   experimental_attachments?: Attachment[]
   toolInvocations?: ToolInvocation[]
-  parts?: MessagePart[]
+  parts?: MessagePart[],
+  reasoning?: string
 }
 
 export interface ChatMessageProps extends Message {
@@ -158,6 +160,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   }, [experimental_attachments])
 
   const isUser = role === "user"
+
+  const isAssistant = role === "assistant"
+
+  const typedContent = useTypingText(
+    content ?? "",
+    isAssistant,
+    12
+  )
 
   const formattedTime = createdAt?.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -208,7 +218,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             key={`text-${index}`}
           >
             <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-              <MarkdownRenderer>{part.text}</MarkdownRenderer>
+              <MarkdownRenderer>
+                {isAssistant ? typedContent : part.text}
+              </MarkdownRenderer>
+
+              {isAssistant && typedContent.length < part.text.length && (
+                <span className="ml-0.5 animate-pulse">▍</span>
+              )}
+
               {actions ? (
                 <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
                   {actions}
@@ -250,7 +267,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   return (
     <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
       <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-        <MarkdownRenderer>{content}</MarkdownRenderer>
+        <MarkdownRenderer>
+          {isAssistant ? typedContent : content}
+        </MarkdownRenderer>
+
+        {isAssistant && typedContent.length < content.length && (
+          <span className="ml-0.5 animate-pulse">▍</span>
+        )}
+
         {actions ? (
           <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
             {actions}
@@ -282,6 +306,14 @@ function dataUrlToUint8Array(data: string) {
 const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
   const [isOpen, setIsOpen] = useState(false)
 
+  const typedReasoning = useTypingText(
+    part.reasoning ?? "",
+    true,
+    8
+  )
+
+  const isStreaming = typedReasoning.length < part.reasoning.length
+
   return (
     <div className="mb-2 flex flex-col items-start sm:max-w-[70%]">
       <Collapsible
@@ -290,9 +322,20 @@ const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
         className="group w-full overflow-hidden rounded-lg border bg-muted/50"
       >
         <div className="flex items-center p-2">
-          <CollapsibleTrigger render={<button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground" />}><ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" /><span>Thinking</span></CollapsibleTrigger>
+          <CollapsibleTrigger
+            render={
+              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
+                <span>Thinking</span>
+                {isStreaming && (
+                  <Loader2 className="ml-1 h-3 w-3 animate-spin" />
+                )}
+              </button>
+            }
+          />
         </div>
-        <CollapsibleContent forceMount>
+
+        <CollapsibleContent>
           <motion.div
             initial={false}
             animate={isOpen ? "open" : "closed"}
@@ -304,8 +347,11 @@ const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
             className="border-t"
           >
             <div className="p-2">
-              <div className="whitespace-pre-wrap text-xs">
-                {part.reasoning}
+              <div className="whitespace-pre-wrap text-xs leading-relaxed">
+                {typedReasoning}
+                {isStreaming && (
+                  <span className="ml-0.5 animate-pulse">▍</span>
+                )}
               </div>
             </div>
           </motion.div>
@@ -314,6 +360,7 @@ const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
     </div>
   )
 }
+
 
 function ToolCall({
   toolInvocations,

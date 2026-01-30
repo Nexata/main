@@ -37,7 +37,7 @@ export default function Sidebar() {
   useEffect(() => {
     const t = setTimeout(() => {
       setDebouncedSearch(search.trim());
-    }, 300); 
+    }, 300);
 
     return () => clearTimeout(t);
   }, [search]);
@@ -126,9 +126,9 @@ export default function Sidebar() {
         initial={{ width: sidebarWidth }}
         transition={{ width: { type: "spring", stiffness: 300, damping: 30 } }}
       >
-        <div className="flex flex-col justify-between h-full p-4 bg-[var(--sidebar)] text-[var(--sidebar-foreground)] border-r border-[var(--sidebar-border)] shadow-md">
+        <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md">
           {/* Header */}
-          <div className="mb-4 min-h-[3rem] flex items-center w-full justify-between">
+          <div className="mb-4 min-h-12 flex items-center w-full justify-between">
             {!isCollapsed && (
               <div className="flex items-center gap-4">
                 <motion.img
@@ -177,7 +177,7 @@ export default function Sidebar() {
           {!isCollapsed && (
             <Button
               variant="outline"
-              className="w-full mb-4 flex items-center gap-2 cursor-pointer" 
+              className="w-full mb-4 flex items-center gap-2 cursor-pointer"
               onClick={() => {}}
             >
               <IoAdd className="w-5 h-5" />
@@ -199,12 +199,27 @@ export default function Sidebar() {
 
           {/* Lista de chats */}
           {!isCollapsed && (
-            <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin rounded-lg bg-muted/40 border border-border/50">
+            <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin">
               <div className="flex flex-col gap-2">
-                {(threads && threads.length > 0 ? threads : [{ id: 'new', title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
+                {threadsLoading && (
+                  <>
+                    {Array.from({ length: 5 }).map((_, i) => (
+                      <div
+                        key={i}
+                        className="px-2 py-2 rounded-md flex items-center"
+                      >
+                        <div className="flex-1 space-y-2">
+                          <div className="h-8 w-full bg-muted rounded animate-pulse" />
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
+                {!threadsLoading && (threads && threads.length > 0 ? threads : [{ id: 'new', title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
                   <div
                     key={chat.id}
-                    className="px-2 py-2 rounded-md flex justify-between items-center hover:bg-primary/10 cursor-pointer group"
+                    className="px-2 py-2 rounded-md flex justify-between items-center hover:bg-muted/50 cursor-pointer group"
                   >
                     {editingChatId === chat.id ? (
                       <div className="flex items-center w-full">
@@ -262,7 +277,7 @@ export default function Sidebar() {
               variant="outline"
               size="icon"
               onClick={toggleDarkMode}
-              className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
+              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
             >
               {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
             </Button>
@@ -271,7 +286,7 @@ export default function Sidebar() {
               variant="outline"
               size="icon"
               onClick={() => navigate({ to: "/settings" })}
-              className="w-10 h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
+              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
             >
               <Settings className="w-6 h-6" />
             </Button>
@@ -295,5 +310,3 @@ export default function Sidebar() {
     </>
   );
 }
-
-

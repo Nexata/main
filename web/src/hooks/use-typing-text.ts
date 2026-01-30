@@ -1,7 +1,24 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 
-export function useTypingText(fullText: string, isActive: boolean, speed = 12) {
+export function useTypingText(
+  fullText: string,
+  isActive: boolean,
+  speed = 10
+) {
   const [displayed, setDisplayed] = useState("")
+  const lastFullTextRef = useRef(fullText)
+
+  useEffect(() => {
+    // Si el texto completo crece (streaming), NO resetear
+    if (fullText.startsWith(lastFullTextRef.current)) {
+      lastFullTextRef.current = fullText
+      return
+    }
+
+    // Si cambia completamente (nuevo mensaje), resetear
+    lastFullTextRef.current = fullText
+    setDisplayed("")
+  }, [fullText])
 
   useEffect(() => {
     if (!isActive) {
@@ -9,20 +26,17 @@ export function useTypingText(fullText: string, isActive: boolean, speed = 12) {
       return
     }
 
-    let i = 0
-    setDisplayed("")
+    if (displayed.length >= fullText.length) return
 
     const interval = setInterval(() => {
-      i++
-      setDisplayed(fullText.slice(0, i))
-
-      if (i >= fullText.length) {
-        clearInterval(interval)
-      }
+      setDisplayed((prev) => {
+        const nextLength = prev.length + 1
+        return fullText.slice(0, nextLength)
+      })
     }, speed)
 
     return () => clearInterval(interval)
-  }, [fullText, isActive, speed])
+  }, [fullText, displayed, isActive, speed])
 
   return displayed
 }

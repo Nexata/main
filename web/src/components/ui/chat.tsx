@@ -78,7 +78,7 @@ export function Chat({
 }: ChatProps) {
   const lastMessage = messages.at(-1)
   const isEmpty = messages.length === 0
-  const isTyping = lastMessage?.role === "user"
+  const isUserTyping = lastMessage?.role === "user"
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -144,7 +144,7 @@ export function Chat({
         <ChatMessages messages={messages}>
           <MessageList
             messages={messages}
-            isTyping={isTyping}
+            isTyping={isUserTyping}
             messageOptions={messageOptions}
           />
 
@@ -158,7 +158,7 @@ export function Chat({
 
       <ChatForm
         className="mt-auto"
-        isPending={isGenerating || isTyping}
+        isPending={isGenerating || isUserTyping}
         handleSubmit={handleSubmit}
       >
         {({ files, setFiles }) => (

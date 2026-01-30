@@ -18,29 +18,33 @@ interface MessageListProps {
     | ((message: UIMessage) => AdditionalMessageOptions)
 }
 
-function extractTextFromParts(message: UIMessage): string {
-  if (!message.parts) return ""
+function extractParts(message: UIMessage) {
+  const reasoning =
+    message.parts
+      ?.filter((part) => part.type === "reasoning")
+      .map((part) => part.text)
+      .join("") ?? ""
 
-  return message.parts
-    .filter(
-      (part) => part.type === "text" || part.type === "reasoning"
-    )
-    .map((part) => {
-      if (part.type === "text") return part.text
-      if (part.type === "reasoning") return part.text
-      return ""
-    })
-    .join("")
+  const text =
+    message.parts
+      ?.filter((part) => part.type === "text")
+      .map((part) => part.text)
+      .join("") ?? ""
+
+  return { reasoning, text }
 }
 
 function uiMessageToMessage(message: UIMessage): Message {
+  const { reasoning, text } = extractParts(message)
+
   return {
     id: message.id,
     role:
       message.role === "user" || message.role === "assistant"
         ? message.role
         : "assistant",
-    content: extractTextFromParts(message),
+    content: text,
+    reasoning: reasoning || undefined,
   }
 }
 
@@ -57,7 +61,7 @@ export function MessageList({
 
         const additionalOptions =
           typeof messageOptions === "function"
-            ? messageOptions(uiMessage) 
+            ? messageOptions(uiMessage)
             : messageOptions
 
         return (
