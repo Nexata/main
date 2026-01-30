@@ -1,12 +1,12 @@
 import { credential } from '@api/schema/credential';
 import { externalDir } from '@api/schema/external-dir';
+import { FileHost, FileHostEnum } from '@api/schema/file-host';
 import { message } from '@api/schema/message';
 import { user } from '@api/schema/user';
 import { isNotNull } from 'drizzle-orm';
 import {
 	boolean,
 	jsonb,
-	pgEnum,
 	pgTable,
 	timestamp,
 	uniqueIndex,
@@ -14,17 +14,7 @@ import {
 	varchar,
 } from 'drizzle-orm/pg-core';
 
-export enum FileHost {
-	NEXATA = 'nexata',
-	DRIVE = 'drive',
-	ONE_DRIVE = 'one_drive',
-	DROPBOX = 'dropbox',
-}
-
-export const FileHostEnum = pgEnum(
-	'file_host',
-	Object.values(FileHost) as [FileHost],
-);
+export { FileHost, FileHostEnum };
 
 export const file = pgTable(
 	'file',

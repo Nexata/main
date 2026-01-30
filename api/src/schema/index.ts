@@ -6,6 +6,7 @@ export * from '@api/schema/credential-permission';
 export * from '@api/schema/device';
 export * from '@api/schema/external-dir';
 export * from '@api/schema/file';
+export * from '@api/schema/file-host';
 export * from '@api/schema/file-permission';
 export * from '@api/schema/message';
 export * from '@api/schema/tenant';

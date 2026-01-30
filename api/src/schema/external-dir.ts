@@ -1,5 +1,5 @@
 import { credential } from '@api/schema/credential';
-import { FileHostEnum } from '@api/schema/file';
+import { FileHostEnum } from '@api/schema/file-host';
 import {
 	boolean,
 	jsonb,
