@@ -1,11 +1,35 @@
-// TODO: ExternalDir schema,
-// with an id,
-// an externalId varchar not null,
-// credentialId: uuid().notNull().references(() => credential.id),
-// a name/title varchar not null,
-// a provider (filehost, enum from file.ts)
-// url varchar
-//  autosync bool default false
-// metadata: jsonb() optional,
-// createdAt default now
-// modifiedAt default now
+import { credential } from '@api/schema/credential';
+import { FileHostEnum } from '@api/schema/file';
+import {
+	boolean,
+	jsonb,
+	pgTable,
+	timestamp,
+	uniqueIndex,
+	uuid,
+	varchar,
+} from 'drizzle-orm/pg-core';
+
+export const externalDir = pgTable(
+	'external_dir',
+	{
+		id: uuid().primaryKey().defaultRandom(),
+		externalId: varchar().notNull(),
+		credentialId: uuid()
+			.notNull()
+			.references(() => credential.id, { onDelete: 'cascade' }),
+		name: varchar({ length: 512 }).notNull(),
+		provider: FileHostEnum().notNull(),
+		url: varchar(),
+		autoSync: boolean().notNull().default(false),
+		metadata: jsonb(),
+		modifiedAt: timestamp().notNull().defaultNow(),
+		createdAt: timestamp().notNull().defaultNow(),
+	},
+	(t) => [
+		uniqueIndex('external_dir_provider_external_id').on(
+			t.provider,
+			t.externalId,
+		),
+	],
+);

@@ -1,3 +1,6 @@
+import { Dropbox } from '@api/integration/dropbox';
+import { FileHost } from '@api/schema';
+
 export type NexataListDirEntry = {
 	id: string;
 	name: string;
@@ -12,4 +15,19 @@ export type NexataListDirEntry = {
 export type NexataListDir = {
 	cursor: string | null;
 	entries: NexataListDirEntry[];
+};
+
+export type IngestSelection = {
+	isDir: boolean;
+	id: string;
+};
+
+export type ProviderIngestor = (
+	userId: string,
+	credentialId: string,
+	selection: IngestSelection[],
+) => Promise<string>;
+
+export const providerIngestors: Partial<Record<FileHost, ProviderIngestor>> = {
+	[FileHost.DROPBOX]: Dropbox.ingestFromCredential,
 };

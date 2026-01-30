@@ -21,6 +21,33 @@ export enum SupportedMime {
 	PPTX = 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
 }
 
+const EXT_TO_MIME: Record<string, string> = {
+	md: SupportedMime.MD,
+	txt: 'text/plain',
+	json: SupportedMime.JSON,
+	pdf: SupportedMime.PDF,
+	xlsx: SupportedMime.XLSX,
+	xls: SupportedMime.XLS,
+	docx: SupportedMime.DOCX,
+	doc: SupportedMime.DOC,
+	rtf: SupportedMime.RTF,
+	odt: SupportedMime.ODT,
+	ods: SupportedMime.ODS,
+	odp: SupportedMime.ODP,
+	pptx: SupportedMime.PPTX,
+	png: 'image/png',
+	jpg: 'image/jpeg',
+	jpeg: 'image/jpeg',
+	gif: 'image/gif',
+	webp: 'image/webp',
+	svg: 'image/svg+xml',
+};
+
+export function getMimeTypeFromExt(filename: string): string {
+	const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+	return EXT_TO_MIME[ext] ?? 'unsupported';
+}
+
 export type FileLike =
 	| ArrayBuffer
 	| Int8Array

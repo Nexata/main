@@ -1,7 +1,21 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
-import type { NexataListDir } from '@api/integration/lib';
-import { credential, OauthProvider } from '@api/schema';
+import { NexataFile } from '@api/file';
+import { getMimeTypeFromExt } from '@api/file/lib/types';
+import type {
+	IngestSelection,
+	NexataListDir,
+	NexataListDirEntry,
+} from '@api/integration/lib';
+import {
+	credential,
+	externalDir,
+	FileHost,
+	file,
+	OauthProvider,
+	TraceType,
+	trace,
+} from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import {
 	getTokensForUser,
@@ -10,7 +24,7 @@ import {
 } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { Nullish, tObject } from '@api/utils/type';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { DropboxAuth, Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
@@ -232,21 +246,265 @@ export namespace Dropbox {
 		};
 	}
 
+	async function listAllFiles(
+		dpx: DropboxClient,
+		path: string,
+	): Promise<NexataListDirEntry[]> {
+		const initial = await listDir(dpx, { path, recursive: true, limit: 2000 });
+		const allEntries = initial.entries;
+		let cursor = initial.cursor;
+
+		while (cursor) {
+			const continued = await listDir(dpx, { cursor });
+			allEntries.push(...continued.entries);
+			cursor = continued.cursor;
+		}
+
+		return allEntries;
+	}
+
+	export async function downloadFile(
+		dpx: DropboxClient,
+		fileId: string,
+	): Promise<{
+		file: File;
+		id: string;
+		name: string;
+		path: string;
+		modifiedAt: Date;
+	}> {
+		const res = await dpx.filesDownload({ path: fileId });
+
+		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+
+		const result = res.result as typeof res.result & {
+			fileBinary?: Uint8Array;
+		};
+		if (!result.fileBinary) throw HttpError.Conflict('NO_FILE_CONTENT');
+
+		const mimeType = getMimeTypeFromExt(result.name);
+		if (mimeType === 'unsupported')
+			throw HttpError.Conflict('UNSUPPORTED_FILE_TYPE');
+
+		return {
+			file: new File([result.fileBinary.buffer], result.name, {
+				type: mimeType,
+			}),
+			id: result.id,
+			name: result.name,
+			path: result.path_display ?? result.path_lower ?? '',
+			modifiedAt: new Date(result.server_modified),
+		};
+	}
+
+	async function ingestFile(
+		dpx: DropboxClient,
+		userId: string,
+		credentialId: string,
+		entry: NexataListDirEntry,
+		externalDirId?: string,
+	): Promise<string> {
+		try {
+			const downloaded = await downloadFile(dpx, entry.id);
+
+			const result = await NexataFile.ingest(
+				{
+					userId,
+					provider: FileHost.DROPBOX,
+					externalDirId,
+					externalId: downloaded.id,
+					credentialId,
+					autoSync: true,
+					url: entry.url,
+					name: downloaded.name,
+					type: downloaded.file.type,
+					modifiedAt: downloaded.modifiedAt,
+				},
+				downloaded.file,
+			);
+
+			return result;
+		} catch (error) {
+			await db.insert(trace).values({
+				userId,
+				type: TraceType.INGEST_FAILED,
+				metadata: {
+					provider: FileHost.DROPBOX,
+					externalId: entry.id,
+					name: entry.name,
+					error: error instanceof Error ? error.message : 'UNKNOWN',
+				},
+			});
+
+			return 'FAILED';
+		}
+	}
+
+	async function ingestDirectory(
+		dpx: DropboxClient,
+		userId: string,
+		credentialId: string,
+		dirEntry: NexataListDirEntry,
+	): Promise<{ ok: number; unmodified: number; failed: number }> {
+		const stats = { ok: 0, unmodified: 0, failed: 0 };
+
+		const existing = (
+			await db
+				.select({ id: externalDir.id })
+				.from(externalDir)
+				.where(
+					and(
+						eq(externalDir.provider, FileHost.DROPBOX),
+						eq(externalDir.externalId, dirEntry.id),
+					),
+				)
+		).at(0);
+
+		const dirId =
+			existing?.id ??
+			(
+				await db
+					.insert(externalDir)
+					.values({
+						externalId: dirEntry.id,
+						credentialId,
+						name: dirEntry.name,
+						provider: FileHost.DROPBOX,
+						url: dirEntry.url,
+						modifiedAt: dirEntry.updatedAt ?? new Date(),
+					})
+					.returning({ id: externalDir.id })
+			).at(0)?.id;
+		if (!dirId) throw HttpError.InternalServerError('EXTERNAL_DIR_FAILED');
+
+		const allEntries = await listAllFiles(dpx, dirEntry.id);
+		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
+		const currentExternalIds = fileEntries.map((e) => e.id);
+
+		if (existing && currentExternalIds.length)
+			await db
+				.delete(file)
+				.where(
+					and(
+						eq(file.externalDirId, dirId),
+						eq(file.provider, FileHost.DROPBOX),
+						notInArray(file.externalId, currentExternalIds),
+					),
+				);
+
+		const results = await Promise.allSettled(
+			fileEntries.map((entry) =>
+				ingestFile(dpx, userId, credentialId, entry, dirId),
+			),
+		);
+
+		for (const result of results)
+			stats[
+				(result.status !== 'fulfilled'
+					? 'failed'
+					: result.value.toLowerCase()) as keyof typeof stats
+			]++;
+
+		return stats;
+	}
+
 	export async function ingest(
-		_dpx: DropboxClient,
-		_userId: string,
+		dpx: DropboxClient,
+		userId: string,
+		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
-		selection = selection.sort(({ isDir }) => (isDir ? -1 : 1));
+		const sorted = selection.sort(({ isDir }) => (isDir ? -1 : 1));
 
-		// TODO: If is not dir, download an ingest through File.ingest
-		// If it's dir:
-		// first check if the dir exists, if not create it
-		// then via API, iterate through all files of the dir until no cursor, getting their ids
-		// If the dir already existed, check if any file was deleted (we have the dir id and the existing file ids)
-		// If there are files deleted, let's remove them also on nexata.
-		// Then let's individually download all ids and send them to File.ingest
-		// If there are dirs in that dir, we will have to do this recursively.
+		const results = { ok: 0, unmodified: 0, failed: 0 };
+
+		for (const item of sorted) {
+			if (item.isDir) {
+				const dirInfo = await getDirInfo(dpx, item.id);
+				const stats = await ingestDirectory(dpx, userId, credentialId, dirInfo);
+				results.ok += stats.ok;
+				results.unmodified += stats.unmodified;
+				results.failed += stats.failed;
+			} else {
+				const fileInfo = await getFileInfo(dpx, item.id);
+				const result = await ingestFile(dpx, userId, credentialId, fileInfo);
+				results[result.toLowerCase() as keyof typeof results]++;
+			}
+		}
+
+		return results;
+	}
+
+	export async function ingestFromCredential(
+		userId: string,
+		credentialId: string,
+		selection: IngestSelection[],
+	): Promise<string> {
+		const tokens = (
+			await db
+				.select({
+					refreshToken: credential.refreshToken,
+					accessToken: credential.accessToken,
+				})
+				.from(credential)
+				.where(
+					and(
+						eq(credential.id, credentialId),
+						eq(credential.provider, OauthProvider.DROPBOX),
+					),
+				)
+		).at(0);
+
+		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+
+		const dpx = fromTokens(tokens.accessToken, tokens.refreshToken);
+		const results = await ingest(dpx, userId, credentialId, selection);
+
+		return !results.failed && results.ok
+			? 'OK'
+			: results.ok && results.failed
+				? 'PARTIAL'
+				: 'FAILED';
+	}
+
+	async function getDirInfo(
+		dpx: DropboxClient,
+		dirId: string,
+	): Promise<NexataListDirEntry> {
+		const res = await dpx.filesGetMetadata({ path: dirId });
+		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+
+		const e = res.result;
+		return {
+			// @ts-expect-error
+			id: e.id ?? e.path_lower,
+			name: e.name,
+			url: `https://www.dropbox.com/home${e.path_lower}`,
+			path: e.path_display,
+			ext: 'dir',
+		};
+	}
+
+	async function getFileInfo(
+		dpx: DropboxClient,
+		fileId: string,
+	): Promise<NexataListDirEntry> {
+		const res = await dpx.filesGetMetadata({ path: fileId });
+		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+
+		const e = res.result;
+		return {
+			// @ts-expect-error
+			id: e.id ?? e.path_lower,
+			name: e.name,
+			url: `https://www.dropbox.com/home${e.path_lower}`,
+			// @ts-expect-error
+			size: e.size ? e.size / (1024 * 1024) : undefined,
+			path: e.path_display,
+			ext: e.name.split('.').pop(),
+			// @ts-expect-error
+			updatedAt: e.server_modified ? new Date(e.server_modified) : undefined,
+		};
 	}
 }
 
@@ -311,22 +569,20 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	)
 	.post(
 		'/ingest',
-		async ({ activeUser, body }) => {
-			const dpx = await Dropbox.fromRequest(
-				activeUser,
+		async ({ activeUser, body }) =>
+			Dropbox.ingest(
+				await Dropbox.fromRequest(activeUser, body.credentialId, true),
+				activeUser.id,
 				body.credentialId,
-				true,
-			);
-
-			await Dropbox.ingest(dpx, activeUser.id, body.selection);
-		},
+				body.selection,
+			),
 		{
 			detail: { summary: 'Ingest from dropbox' },
 			body: tObject({
 				credentialId: t.String({ format: 'uuid' }),
 				selection: t.Array(
 					tObject({
-						id: t.String({ format: 'uuid' }),
+						id: t.String(),
 						isDir: t.Boolean({
 							description: 'Whether the item is a directory',
 						}),

@@ -7,6 +7,7 @@ import {
 	chunk,
 	credential,
 	credentialPermission,
+	externalDir,
 	FileHost,
 	file,
 	filePermission,
@@ -21,6 +22,7 @@ import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { embed } from 'ai';
+import { s3 } from 'bun';
 import {
 	and,
 	asc,
@@ -38,11 +40,12 @@ import {
 } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-typebox';
 import { Elysia, type Static, t } from 'elysia';
+import { HttpError } from 'elysia-logger';
 
 const _insertFile = createInsertSchema(file);
-const insertFile = t.Omit(_insertFile, ['createdAt', 'modifiedAt']);
+const insertFile = t.Omit(_insertFile, ['createdAt']);
 
-export namespace File {
+export namespace NexataFile {
 	export const [searchDescription, searchInput] = [
 		"Nexata tool to search for users's ingested files. This includes directly uploaded files and files vectorized from other sources (and ingested to the platform by the user).",
 		t.Object({
@@ -224,25 +227,35 @@ export namespace File {
 	}
 
 	export async function ingest(
-		data: Partial<Static<typeof insertFile>> & { userId: string },
+		data: Partial<Static<typeof insertFile>> & {
+			userId: string;
+			modifiedAt?: Date;
+		},
 		f: File,
-	) {
-		// TODO: Check if the file already exists (based on externalId + provider)
-		// if modifiedAt has not changed, return 'UNMODIFIED', no further actions
-		// Probably will need a new query with select and exists
-		// where file.modifiedAt is less than data.modifiedAt
-
-		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId)
-			await db
-				.delete(file)
-				.where(
-					and(
-						eq(file.provider, data.provider),
-						eq(file.externalId, data.externalId),
-					),
-				);
-
+	): Promise<string> {
 		data.id = crypto.randomUUID();
+
+		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId) {
+			const existing = (
+				await db
+					.select({ id: file.id, modifiedAt: file.modifiedAt })
+					.from(file)
+					.where(
+						and(
+							eq(file.provider, data.provider),
+							eq(file.externalId, data.externalId),
+						),
+					)
+			).at(0);
+
+			if (existing) {
+				if (data.modifiedAt && existing.modifiedAt >= data.modifiedAt)
+					return 'UNMODIFIED';
+
+				await db.delete(file).where(eq(file.id, existing.id));
+				data.id = existing.id;
+			}
+		}
 
 		try {
 			const result = await toStringChunks(
@@ -380,14 +393,181 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.post(
 		'/',
 		async ({ body: { files, metadata }, activeUser: { id: userId } }) =>
-			Promise.all(files.map((f) => File.ingest({ userId, metadata }, f))),
+			Promise.all(files.map((f) => NexataFile.ingest({ userId, metadata }, f))),
 		{
 			detail: { summary: 'Ingest files' },
 			body: tObject({ files: t.Files(), metadata: Nullish(t.String()) }),
 		},
 	)
-	// TODO: patch endpoint to change autoSync if the file is from fileHost other than NEXATA
-	// If its from nexata, we should allow to change name and metadata.
+	.patch(
+		'/:id',
+		async ({ params: { id }, body, activeUser }) => {
+			const existing = (
+				await db
+					.select({
+						id: file.id,
+						provider: file.provider,
+						userId: file.userId,
+						credentialId: file.credentialId,
+						externalDirId: file.externalDirId,
+					})
+					.from(file)
+					.innerJoin(user, eq(user.id, file.userId))
+					.where(
+						and(
+							eq(file.id, id),
+							activeUser.isAdmin
+								? eq(user.slug, activeUser.slug)
+								: or(
+										exists(
+											db
+												.select({ credentialId: credential.id })
+												.from(credential)
+												.where(
+													and(
+														eq(credential.id, file.credentialId),
+														or(
+															eq(credential.userId, activeUser.id),
+															exists(
+																db
+																	.select({
+																		userId: credentialPermission.userId,
+																	})
+																	.from(credentialPermission)
+																	.where(
+																		and(
+																			eq(
+																				credentialPermission.credentialId,
+																				credential.id,
+																			),
+																			eq(
+																				credentialPermission.userId,
+																				activeUser.id,
+																			),
+																			eq(credentialPermission.isAdmin, true),
+																		),
+																	),
+															),
+														),
+													),
+												),
+										),
+										eq(file.userId, activeUser.id),
+										exists(
+											db
+												.select({ id: filePermission.id })
+												.from(filePermission)
+												.where(
+													and(
+														eq(filePermission.fileId, file.id),
+														or(
+															eq(filePermission.userId, activeUser.id),
+															eq(filePermission.email, activeUser.email),
+														),
+														eq(filePermission.isAdmin, true),
+													),
+												),
+										),
+									),
+						),
+					)
+			).at(0);
+
+			if (!existing) throw HttpError.NotFound('FILE_NOT_FOUND');
+
+			const set =
+				'name' in body || 'metadata' in body
+					? {
+							name: body.name ?? undefined,
+							metadata: body.metadata ?? undefined,
+						}
+					: 'autoSync' in body || 'detachFromDir' in body
+						? {
+								autoSync: body.autoSync ?? undefined,
+								externalDirId: body.detachFromDir
+									? null
+									: existing.externalDirId,
+							}
+						: undefined;
+
+			if (!set) throw HttpError.BadRequest('INVALID_REQUEST');
+
+			return (
+				await db
+					.update(file)
+					.set(set)
+					.where(eq(file.id, id))
+					.returning({ id: file.id })
+			).at(0)?.id;
+		},
+		{
+			detail: { summary: 'Update file' },
+			params: tObject({ id: t.String({ format: 'uuid' }) }),
+			body: t.Union([
+				t.Object({
+					name: Nullish(t.String({ maxLength: 96 })),
+					metadata: Nullish(
+						t.Union([t.String(), t.Object({}, { additionalProperties: true })]),
+					),
+				}),
+				t.Object({
+					autoSync: Nullish(t.Boolean()),
+					detachFromDir: Nullish(t.Boolean(), {
+						description: 'Detach file from external directory',
+					}),
+				}),
+			]),
+		},
+	)
+	.patch(
+		'/dir/:id',
+		async ({ params: { id }, body, activeUser }) => {
+			const existing = (
+				await db
+					.select({
+						id: externalDir.id,
+						credentialId: externalDir.credentialId,
+					})
+					.from(externalDir)
+					.innerJoin(credential, eq(credential.id, externalDir.credentialId))
+					.where(
+						and(
+							eq(externalDir.id, id),
+							or(
+								eq(credential.userId, activeUser.id),
+								exists(
+									db
+										.select({ userId: credentialPermission.userId })
+										.from(credentialPermission)
+										.where(
+											and(
+												eq(credentialPermission.credentialId, credential.id),
+												eq(credentialPermission.userId, activeUser.id),
+												eq(credentialPermission.isAdmin, true),
+											),
+										),
+								),
+							),
+						),
+					)
+			).at(0);
+
+			if (!existing) throw HttpError.NotFound('EXTERNAL_DIR_NOT_FOUND');
+
+			return (
+				await db
+					.update(externalDir)
+					.set({ autoSync: body.autoSync })
+					.where(eq(externalDir.id, id))
+					.returning({ id: externalDir.id })
+			).at(0);
+		},
+		{
+			detail: { summary: 'Update external directory' },
+			params: tObject({ id: t.String({ format: 'uuid' }) }),
+			body: tObject({ autoSync: t.Boolean() }),
+		},
+	)
 	.delete(
 		'/',
 		async ({ body: { ids }, activeUser }) => {
@@ -464,7 +644,9 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 				.returning({ id: file.id, host: file.provider });
 
 			await Promise.allSettled(
-				deleted.filter(({ host }) => host === FileHost.NEXATA),
+				deleted
+					.filter(({ host }) => host === FileHost.NEXATA)
+					.map((f) => s3.delete(f.id)),
 			);
 
 			return deleted;
@@ -474,7 +656,58 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 			body: tObject({ ids: t.Array(t.String({ format: 'uuid' })) }),
 		},
 	)
-	.get('/', async ({ activeUser, query }) => File.search(activeUser, query), {
-		detail: { summary: 'Search files', description: File.searchDescription },
-		query: File.searchInput,
-	});
+	.delete(
+		'/dir/:id',
+		async ({ params: { id }, activeUser }) =>
+			db
+				.delete(externalDir)
+				.where(
+					and(
+						eq(externalDir.id, id),
+						exists(
+							db
+								.select({ id: credential.id })
+								.from(credential)
+								.where(
+									and(
+										eq(credential.id, externalDir.credentialId),
+										or(
+											eq(credential.userId, activeUser.id),
+											exists(
+												db
+													.select({ userId: credentialPermission.userId })
+													.from(credentialPermission)
+													.where(
+														and(
+															eq(
+																credentialPermission.credentialId,
+																credential.id,
+															),
+															eq(credentialPermission.userId, activeUser.id),
+															eq(credentialPermission.isAdmin, true),
+														),
+													),
+											),
+										),
+									),
+								),
+						),
+					),
+				)
+				.returning({ id: externalDir.id }),
+		{
+			detail: { summary: 'Delete external directory' },
+			params: tObject({ id: t.String({ format: 'uuid' }) }),
+		},
+	)
+	.get(
+		'/',
+		async ({ activeUser, query }) => NexataFile.search(activeUser, query),
+		{
+			detail: {
+				summary: 'Search files',
+				description: NexataFile.searchDescription,
+			},
+			query: NexataFile.searchInput,
+		},
+	);

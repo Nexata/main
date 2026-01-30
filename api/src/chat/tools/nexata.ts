@@ -1,4 +1,4 @@
-import { File } from '@api/file';
+import { NexataFile } from '@api/file';
 import { OauthProvider, OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
@@ -57,7 +57,10 @@ export namespace Nexata {
 		ctx: { activeUser: JwtPayload; threadId: string },
 		input: Static<typeof listFilesOnThreadInput>,
 	) {
-		return File.search(ctx.activeUser, { threadId: ctx.threadId, ...input });
+		return NexataFile.search(ctx.activeUser, {
+			threadId: ctx.threadId,
+			...input,
+		});
 	}
 
 	export const [listFilesOnMessageDescription, listFilesOnMessageInput] = [
@@ -73,6 +76,9 @@ export namespace Nexata {
 		ctx: { activeUser: JwtPayload; fileIds: string[] },
 		input: Static<typeof listFilesOnMessageInput>,
 	) {
-		return File.search(ctx.activeUser, { fileIds: ctx.fileIds, ...input });
+		return NexataFile.search(ctx.activeUser, {
+			fileIds: ctx.fileIds,
+			...input,
+		});
 	}
 }

@@ -8,7 +8,7 @@ import {
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
 import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
-import { File } from '@api/file';
+import { NexataFile } from '@api/file';
 import {
 	file,
 	type MessageRole,
@@ -69,7 +69,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 			if (body.files?.length) {
 				const insertedFiles = await Promise.all(
-					body.files.map((f) => File.ingest({ userId: activeUser.id }, f)),
+					body.files.map((f) =>
+						NexataFile.ingest({ userId: activeUser.id }, f),
+					),
 				).then((files) =>
 					files.map((id, i) => ({
 						id,

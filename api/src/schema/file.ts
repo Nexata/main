@@ -1,4 +1,7 @@
-import { credential, message, user } from '@api/schema';
+import { credential } from '@api/schema/credential';
+import { externalDir } from '@api/schema/external-dir';
+import { message } from '@api/schema/message';
+import { user } from '@api/schema/user';
 import { isNotNull } from 'drizzle-orm';
 import {
 	boolean,
@@ -32,8 +35,9 @@ export const file = pgTable(
 			.references(() => user.id, { onDelete: 'cascade' }),
 		provider: FileHostEnum().notNull().default(FileHost.NEXATA),
 		messageId: uuid().references(() => message.id, { onDelete: 'cascade' }),
-		// TODO: Change to extarnalDirId
-		externalParentId: varchar(),
+		externalDirId: uuid().references(() => externalDir.id, {
+			onDelete: 'cascade',
+		}),
 		externalId: varchar(),
 		credentialId: uuid().references(() => credential.id),
 		autoSync: boolean().notNull().default(false),
