@@ -4,7 +4,7 @@ import {
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
-import { Nullish, tObject } from '@api/utils/type';
+import { tObject } from '@api/utils/type';
 import { generateText, jsonSchema, Output } from 'ai';
 import { type Static, t } from 'elysia';
 import sharp from 'sharp';
@@ -25,17 +25,22 @@ const imageToTextOutput = tObject({
 		description:
 			"Whether the image has a semantic or logical value on it's own. This will decide whether the image should be included in the final RAG pipeline. i.e. logos, icons, separators, etc. do not have semantic value. Charts, graphs, tables, diagrams and even general pictures often have semantic value. If unsure, assume it has semantic value.",
 	}),
-	description: Nullish(
+	description: t.Union([
 		t.String({
 			maxLength: EMBEDDING_SIZE,
 			description:
 				'A large description of the image, emphasizing its key semantic features. This will be vectorized and used for semantic search.',
 		}),
-	),
-	ocr: Nullish(t.String({ minLength: 10 }), {
-		description:
-			'The text directly extracted from the image, if any. Use markdown syntax to format to represent text style in the image.',
-	}),
+		t.Null(),
+	]),
+	ocr: t.Union([
+		t.String({
+			minLength: 10,
+			description:
+				'The text directly extracted from the image, if any. Use markdown syntax to format to represent text style in the image.',
+		}),
+		t.Null(),
+	]),
 });
 
 export async function imgToChunks(
