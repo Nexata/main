@@ -46,7 +46,7 @@ export const feedback = pgTable(
 		status: FeedbackStatusEnum().notNull().default(FeedbackStatus.PENDING),
 		comment: varchar({ length: 1000 }).notNull(),
 		response: text(),
-		fileUrls: text().array().default(sqlArray([])),
+		fileUrls: text().array().default(sqlArray([], 'text')),
 		createdAt: timestamp().notNull().defaultNow(),
 		modifiedAt: timestamp(),
 	},

@@ -18,6 +18,7 @@ import {
 	user,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
+import { incrementEmbedUsage, incrementStorageUsage } from '@api/utils/billing';
 import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -229,6 +230,7 @@ export namespace NexataFile {
 	export async function ingest(
 		data: Partial<Static<typeof insertFile>> & {
 			userId: string;
+			slug: string;
 			modifiedAt?: Date;
 		},
 		f: File,
@@ -271,18 +273,27 @@ export namespace NexataFile {
 			if (!data.provider || data.provider === FileHost.NEXATA)
 				data.url = await uploadFile(data.id, f);
 
-			await db.batch([
-				db.insert(file).values({
-					...data,
-					name: data.name ?? f.name,
-					type: data.type ?? f.type,
-				}),
-				db.insert(billableEvent).values({
-					type: BillableEventType.EMBED,
-					consumption: ((result.tokenUsage ?? 0) + embeddingUsage).toString(),
-					userId: data.userId,
-				}),
-				db.insert(chunk).values(chunks),
+			const totalEmbedTokens = (result.tokenUsage ?? 0) + embeddingUsage;
+			const storageDeltaMB =
+				chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) /
+				(1024 * 1024);
+
+			await Promise.all([
+				incrementStorageUsage(data.slug, storageDeltaMB),
+				incrementEmbedUsage(data.slug, totalEmbedTokens),
+				db.batch([
+					db.insert(file).values({
+						...data,
+						name: data.name ?? f.name,
+						type: data.type ?? f.type,
+					}),
+					db.insert(billableEvent).values({
+						type: BillableEventType.EMBED,
+						consumption: totalEmbedTokens.toString(),
+						userId: data.userId,
+					}),
+					db.insert(chunk).values(chunks),
+				]),
 			]);
 
 			return 'OK';
@@ -392,8 +403,15 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.use(authPlugin())
 	.post(
 		'/',
-		async ({ body: { files, metadata }, activeUser: { id: userId } }) =>
-			Promise.all(files.map((f) => NexataFile.ingest({ userId, metadata }, f))),
+		async ({ body: { files, metadata }, activeUser }) =>
+			Promise.all(
+				files.map((f) =>
+					NexataFile.ingest(
+						{ userId: activeUser.id, slug: activeUser.slug, metadata },
+						f,
+					),
+				),
+			),
 		{
 			detail: { summary: 'Ingest files' },
 			body: tObject({ files: t.Files(), metadata: Nullish(t.String()) }),

@@ -17,6 +17,7 @@ import {
 	trace,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
+import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
 import {
 	getTokensForUser,
 	invalidateCredentialCache,
@@ -300,6 +301,7 @@ export namespace Dropbox {
 	async function ingestFile(
 		dpx: DropboxClient,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		entry: NexataListDirEntry,
 		externalDirId?: string,
@@ -310,6 +312,7 @@ export namespace Dropbox {
 			const result = await NexataFile.ingest(
 				{
 					userId,
+					slug,
 					provider: FileHost.DROPBOX,
 					externalDirId,
 					externalId: downloaded.id,
@@ -343,6 +346,7 @@ export namespace Dropbox {
 	async function ingestDirectory(
 		dpx: DropboxClient,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		dirEntry: NexataListDirEntry,
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
@@ -394,7 +398,7 @@ export namespace Dropbox {
 
 		const results = await Promise.allSettled(
 			fileEntries.map((entry) =>
-				ingestFile(dpx, userId, credentialId, entry, dirId),
+				ingestFile(dpx, userId, slug, credentialId, entry, dirId),
 			),
 		);
 
@@ -411,6 +415,7 @@ export namespace Dropbox {
 	export async function ingest(
 		dpx: DropboxClient,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
@@ -421,13 +426,25 @@ export namespace Dropbox {
 		for (const item of sorted) {
 			if (item.isDir) {
 				const dirInfo = await getDirInfo(dpx, item.id);
-				const stats = await ingestDirectory(dpx, userId, credentialId, dirInfo);
+				const stats = await ingestDirectory(
+					dpx,
+					userId,
+					slug,
+					credentialId,
+					dirInfo,
+				);
 				results.ok += stats.ok;
 				results.unmodified += stats.unmodified;
 				results.failed += stats.failed;
 			} else {
 				const fileInfo = await getFileInfo(dpx, item.id);
-				const result = await ingestFile(dpx, userId, credentialId, fileInfo);
+				const result = await ingestFile(
+					dpx,
+					userId,
+					slug,
+					credentialId,
+					fileInfo,
+				);
 				results[result.toLowerCase() as keyof typeof results]++;
 			}
 		}
@@ -437,6 +454,7 @@ export namespace Dropbox {
 
 	export async function ingestFromCredential(
 		userId: string,
+		slug: string,
 		credentialId: string,
 		selection: IngestSelection[],
 	): Promise<string> {
@@ -458,7 +476,7 @@ export namespace Dropbox {
 		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
 
 		const dpx = fromTokens(tokens.accessToken, tokens.refreshToken);
-		const results = await ingest(dpx, userId, credentialId, selection);
+		const results = await ingest(dpx, userId, slug, credentialId, selection);
 
 		return !results.failed && results.ok
 			? 'OK'
@@ -569,13 +587,26 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	)
 	.post(
 		'/ingest',
-		async ({ activeUser, body }) =>
-			Dropbox.ingest(
+		async ({ activeUser, body }) => {
+			const billingInfo = await getTenantBillingInfo(activeUser.slug);
+			const blockReason = await checkTenantCanIngest(
+				billingInfo,
+				activeUser.slug,
+			);
+			if (blockReason) {
+				if (blockReason === 'PAYMENT_REQUIRED')
+					throw new HttpError(402, blockReason);
+				throw HttpError.MethodNotAllowed(blockReason);
+			}
+
+			return Dropbox.ingest(
 				await Dropbox.fromRequest(activeUser, body.credentialId, true),
 				activeUser.id,
+				activeUser.slug,
 				body.credentialId,
 				body.selection,
-			),
+			);
+		},
 		{
 			detail: { summary: 'Ingest from dropbox' },
 			body: tObject({

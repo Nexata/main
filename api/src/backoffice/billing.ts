@@ -58,6 +58,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				.select({
 					slug: tenant.slug,
 					baseBill: tenant.baseBill,
+					usageBasedBilling: tenant.usageBasedBilling,
 					details: sql<Record<
 						string,
 						string
@@ -73,17 +74,35 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				)
 				.groupBy(tenant.slug);
 
+			const billsToInsert = billData.map((t) => ({
+				id: crypto.randomUUID(),
+				slug: t.slug,
+				usageBasedBilling: t.usageBasedBilling,
+				details: {
+					...(t.details ?? {}),
+					baseBill: t.baseBill,
+				},
+			}));
+
 			return Promise.all([
-				cache.del(...billData.map((t) => `tenant:${t.slug}:message-count`)),
+				cache.del(
+					...billData.flatMap((t) => [
+						`tenant:${t.slug}:message-count`,
+						`tenant:${t.slug}:embed-usage`,
+					]),
+				),
 				db.batch([
-					db.insert(bill).values(
-						billData.map((t) => ({
-							slug: t.slug,
-							details: {
-								...(t.details ?? {}),
-								baseBill: t.baseBill,
-							},
-						})),
+					db.insert(bill).values(billsToInsert),
+					...billsToInsert.map((b) =>
+						db
+							.update(billableEvent)
+							.set({ billId: b.id })
+							.where(
+								and(
+									eq(billableEvent.slug, b.slug),
+									isNull(billableEvent.billId),
+								),
+							),
 					),
 					db.delete(trace).where(eq(trace.type, TraceType.MESSAGE_SENT)),
 				]),

@@ -17,6 +17,7 @@ import {
 	thread,
 	trace,
 } from '@api/schema';
+import { checkTenantCanChat } from '@api/utils/billing';
 import { getMessageCount } from '@api/utils/chat';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -32,6 +33,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser }) => {
+			// Unpaid bill check (cached for 5 min)
+			const unpaidBlock = await checkTenantCanChat(activeUser.slug);
+			if (unpaidBlock) throw new HttpError(402, unpaidBlock);
+
 			// Message limit handling
 			const messageCountData = await getMessageCount(activeUser.slug);
 			if (messageCountData.count + 1 >= messageCountData.limit)
@@ -72,7 +77,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 				const insertedFiles = await Promise.all(
 					body.files.map((f, i) =>
-						NexataFile.ingest({ id: fileIds[i], userId: activeUser.id }, f),
+						NexataFile.ingest(
+							{ id: fileIds[i], userId: activeUser.id, slug: activeUser.slug },
+							f,
+						),
 					),
 				).then((files) =>
 					files.map((fileIngestionResult, i) => ({

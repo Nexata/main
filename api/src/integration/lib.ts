@@ -25,6 +25,7 @@ export type IngestSelection = {
 
 export type ProviderIngestor = (
 	userId: string,
+	slug: string,
 	credentialId: string,
 	selection: IngestSelection[],
 ) => Promise<string>;

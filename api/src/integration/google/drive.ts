@@ -19,6 +19,7 @@ import {
 	trace,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
+import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { Nullish, tObject } from '@api/utils/type';
 import { drive, type drive_v3 } from '@googleapis/drive';
@@ -451,6 +452,7 @@ export namespace Drive {
 	async function ingestFile(
 		drv: drive_v3.Drive,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		entry: NexataListDirEntry,
 		externalDirId?: string,
@@ -461,6 +463,7 @@ export namespace Drive {
 			const result = await NexataFile.ingest(
 				{
 					userId,
+					slug,
 					provider: FileHost.DRIVE,
 					externalDirId,
 					externalId: downloaded.id,
@@ -532,6 +535,7 @@ export namespace Drive {
 	async function ingestDirectory(
 		drv: drive_v3.Drive,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		dirEntry: NexataListDirEntry,
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
@@ -584,7 +588,7 @@ export namespace Drive {
 
 		const results = await Promise.allSettled(
 			fileEntries.map((entry) =>
-				ingestFile(drv, userId, credentialId, entry, dirId),
+				ingestFile(drv, userId, slug, credentialId, entry, dirId),
 			),
 		);
 
@@ -601,6 +605,7 @@ export namespace Drive {
 	export async function ingest(
 		drv: drive_v3.Drive,
 		userId: string,
+		slug: string,
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
@@ -611,13 +616,25 @@ export namespace Drive {
 		for (const item of sorted) {
 			if (item.isDir) {
 				const dirInfo = await getDirInfo(drv, item.id);
-				const stats = await ingestDirectory(drv, userId, credentialId, dirInfo);
+				const stats = await ingestDirectory(
+					drv,
+					userId,
+					slug,
+					credentialId,
+					dirInfo,
+				);
 				results.ok += stats.ok;
 				results.unmodified += stats.unmodified;
 				results.failed += stats.failed;
 			} else {
 				const fileInfo = await getFileInfo(drv, item.id);
-				const result = await ingestFile(drv, userId, credentialId, fileInfo);
+				const result = await ingestFile(
+					drv,
+					userId,
+					slug,
+					credentialId,
+					fileInfo,
+				);
 				results[result.toLowerCase() as keyof typeof results]++;
 			}
 		}
@@ -627,6 +644,7 @@ export namespace Drive {
 
 	export async function ingestFromCredential(
 		userId: string,
+		slug: string,
 		credentialId: string,
 		selection: IngestSelection[],
 	): Promise<string> {
@@ -649,7 +667,7 @@ export namespace Drive {
 		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
 
 		const drv = fromTokens(tokens.accessToken, tokens.refreshToken);
-		const results = await ingest(drv, userId, credentialId, selection);
+		const results = await ingest(drv, userId, slug, credentialId, selection);
 
 		return !results.failed && results.ok
 			? 'OK'
@@ -727,13 +745,26 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 	)
 	.post(
 		'/ingest',
-		async ({ activeUser, body }) =>
-			Drive.ingest(
+		async ({ activeUser, body }) => {
+			const billingInfo = await getTenantBillingInfo(activeUser.slug);
+			const blockReason = await checkTenantCanIngest(
+				billingInfo,
+				activeUser.slug,
+			);
+			if (blockReason) {
+				if (blockReason === 'PAYMENT_REQUIRED')
+					throw new HttpError(402, blockReason);
+				throw HttpError.MethodNotAllowed(blockReason);
+			}
+
+			return Drive.ingest(
 				await Drive.fromRequest(activeUser, body.credentialId, true),
 				activeUser.id,
+				activeUser.slug,
 				body.credentialId,
 				body.selection,
-			),
+			);
+		},
 		{
 			detail: { summary: 'Ingest from drive' },
 			body: tObject({

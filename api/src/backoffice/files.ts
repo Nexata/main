@@ -15,9 +15,11 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 					credentialId: externalDir.credentialId,
 					provider: externalDir.provider,
 					userId: credential.userId,
+					slug: user.slug,
 				})
 				.from(externalDir)
 				.innerJoin(credential, eq(credential.id, externalDir.credentialId))
+				.innerJoin(user, eq(user.id, credential.userId))
 				.where(eq(externalDir.autoSync, true)),
 			db
 				.select({
@@ -26,6 +28,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 					credentialId: file.credentialId,
 					provider: file.provider,
 					userId: file.userId,
+					slug: user.slug,
 				})
 				.from(file)
 				.innerJoin(user, eq(user.id, file.userId))
@@ -40,12 +43,15 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 
 		const results = await Promise.allSettled([
 			...dirsToSync.map((dir) =>
-				providerIngestors[dir.provider]!(dir.userId, dir.credentialId, [
-					{ isDir: true, id: dir.externalId },
-				]),
+				providerIngestors[dir.provider]!(
+					dir.userId,
+					dir.slug,
+					dir.credentialId,
+					[{ isDir: true, id: dir.externalId }],
+				),
 			),
 			...filesToSync.map((f) =>
-				providerIngestors[f.provider]!(f.userId, f.credentialId!, [
+				providerIngestors[f.provider]!(f.userId, f.slug, f.credentialId!, [
 					{ isDir: false, id: f.externalId! },
 				]),
 			),
