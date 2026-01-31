@@ -144,7 +144,7 @@ export namespace NexataFile {
 								metadata: chunk.metadata,
 								...(similarity ? { similarity } : {}),
 							}),
-							isNotNull(chunk.id),
+							{ filterWhere: isNotNull(chunk.id) },
 						).as('chunks')
 					: sql<[]>`'[]'::json`,
 			})

@@ -15,6 +15,12 @@ import { Elysia, type Static, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
 export namespace Gmail {
+	const createOauth2Client = () =>
+		new auth.OAuth2(
+			requireEnv('GOOGLE_CLIENT_ID'),
+			requireEnv('GOOGLE_CLIENT_SECRET'),
+		);
+
 	export const fromRequest = async (
 		activeUser: JwtPayload,
 		credentialId: string,
@@ -29,16 +35,10 @@ export namespace Gmail {
 		return fromTokens(at, rt);
 	};
 
-	export const fromTokens = (accessToken: string, refreshToken: string) => {
-		const oauth2Client = new auth.OAuth2(
-			requireEnv('GOOGLE_CLIENT_ID'),
-			requireEnv('GOOGLE_CLIENT_SECRET'),
-		);
-		oauth2Client.setCredentials({
-			access_token: accessToken,
-			refresh_token: refreshToken,
-		});
-		return gmail({ version: 'v1', auth: oauth2Client });
+	export const fromTokens = (access_token: string, refresh_token: string) => {
+		const auth = createOauth2Client();
+		auth.setCredentials({ access_token, refresh_token });
+		return gmail({ version: 'v1', auth });
 	};
 
 	export async function refreshTokens(
@@ -68,16 +68,22 @@ export namespace Gmail {
 
 		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
 
-		const oauth2Client = new auth.OAuth2(
-			requireEnv('GOOGLE_CLIENT_ID'),
-			requireEnv('GOOGLE_CLIENT_SECRET'),
-		);
-		oauth2Client.setCredentials({
+		const auth = createOauth2Client();
+		auth.setCredentials({
 			access_token: tokens.accessToken,
 			refresh_token: tokens.refreshToken,
 		});
 
-		const { credentials } = await oauth2Client.refreshAccessToken();
+		let credentials: typeof auth.credentials;
+		try {
+			const res = await auth.refreshAccessToken();
+			credentials = res.credentials;
+		} catch (e) {
+			// invalid_grant means refresh token is expired/revoked - user needs to re-authenticate
+			if (e instanceof Error && e.message.includes('invalid_grant'))
+				throw HttpError.Unauthorized('CREDENTIAL_EXPIRED');
+			throw e;
+		}
 
 		if (credentials.access_token === tokens.accessToken) return false;
 
@@ -87,7 +93,7 @@ export namespace Gmail {
 				? new Date(credentials.expiry_date)
 				: new Date(Date.now() + 3600 * 1000),
 			refreshToken: credentials.refresh_token ?? tokens.refreshToken,
-			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // Google refresh tokens don't expire
+			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // doesn't expire
 		};
 
 		if (options?.slug)
@@ -292,7 +298,6 @@ export namespace Gmail {
 
 		return {
 			nextPageToken: res.data.nextPageToken ?? null,
-			resultSizeEstimate: res.data.resultSizeEstimate ?? 0,
 			messages,
 		};
 	}
@@ -384,7 +389,7 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 		},
 		{
 			detail: {
-				summary: 'Search Gmail messages',
+				summary: 'Search gmail',
 				description: Gmail.searchDescription,
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
@@ -392,7 +397,7 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 		},
 	)
 	.get(
-		'/message/:credentialId',
+		'/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
 			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
@@ -403,7 +408,7 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 		},
 		{
 			detail: {
-				summary: 'Read Gmail message',
+				summary: 'Read gmail',
 				description: Gmail.readDescription,
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
@@ -423,7 +428,7 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 			return Gmail.refreshTokens(credentialId, { slug: activeUser.slug });
 		},
 		{
-			detail: { summary: 'Refresh Gmail credential' },
+			detail: { summary: 'Refresh gmail credential' },
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
 		},
 	);

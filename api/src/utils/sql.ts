@@ -73,9 +73,17 @@ export function jsonBuildObject<TObj extends Record<string, TSQLObject>>(
 	}>`json_build_object(${sql.join(chunks, sql.raw(', '))})`;
 }
 
-export function jsonAgg<T>(query: SQL<T>, filterWhere?: TSQLObject) {
-	const q = sql`json_agg(${query})`;
-	if (filterWhere) q.append(sql` filter (where ${filterWhere})`);
+export function jsonAgg<T>(
+	query: SQL<T>,
+	options?: { filterWhere?: TSQLObject; distinct?: boolean },
+) {
+	const q = options?.distinct
+		? sql`(jsonb_agg(distinct (${query})::jsonb) filter (where ${query} is not null))`
+		: sql`json_agg(${query})`;
+
+	if (options?.filterWhere && !options.distinct)
+		q.append(sql` filter (where ${options.filterWhere})`);
+
 	return q as SQL<T[]>;
 }
 

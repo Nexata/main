@@ -88,7 +88,12 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 							whenThen(eq(credentialPermission.isAdmin, false), sql`'read'`),
 						),
 					}),
-					and(isNotNull(permUser.id), not(eq(permUser.id, owner.id))),
+					{
+						filterWhere: and(
+							isNotNull(permUser.id),
+							not(eq(permUser.id, owner.id)),
+						),
+					},
 				),
 				sql`'[]'::json`,
 			).as('permissions'),

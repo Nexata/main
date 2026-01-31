@@ -5,7 +5,7 @@ import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
 import { s3 } from 'bun';
-import { and, count, eq, isNotNull, type SQL } from 'drizzle-orm';
+import { and, countDistinct, eq, isNotNull, type SQL } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
@@ -33,8 +33,9 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 								userAgent: device.userAgent,
 								createdAt: device.createdAt,
 							}),
+							{ distinct: true },
 						),
-						messageCount: count(trace.id),
+						messageCount: countDistinct(trace.id),
 					})
 					.from(user)
 					.leftJoin(device, eq(device.userId, user.id))

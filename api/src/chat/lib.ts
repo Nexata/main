@@ -176,7 +176,7 @@ export async function getThreadMessages(
 								name: file.name,
 								type: file.type,
 							}),
-							eq(file.messageId, message.id),
+							{ filterWhere: eq(file.messageId, message.id) },
 						).as('files'),
 					},
 		)

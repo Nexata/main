@@ -73,9 +73,12 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 
 					return {
 						email: idToken.email,
-						refreshTokenExpiresAt: data?.refresh_token_expires_in
-							? new Date(Date.now() + data.refresh_token_expires_in * 1000)
-							: undefined,
+						refreshTokenExpiresAt: new Date(
+							Date.now() +
+								(data?.refresh_token_expires_in
+									? data.refresh_token_expires_in * 1000
+									: 86400 * 7 * 1000),
+						),
 						name: idToken?.name,
 						pfpUrl: idToken?.picture,
 						userAgent: headers['user-agent'],
