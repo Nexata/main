@@ -157,7 +157,7 @@ export async function getThreadMessages(
 ) {
 	if (op.content === 'partial') {
 		const cached = await cache.get<PartialMessage[]>(threadId);
-		if (cached) return cached;
+		if (cached) return cached.filter((m) => m.content);
 	}
 
 	const noncached = await db
@@ -218,5 +218,5 @@ export async function getThreadMessages(
 			},
 		);
 
-	return noncached;
+	return noncached.filter((m) => m.content);
 }
