@@ -162,6 +162,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						...messages,
 					].filter((x) => typeof x !== 'undefined');
 
+					const baseDate = new Date();
 					const insertedMessages = await db
 						.with(
 							db.$with('trace').as(
@@ -174,11 +175,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						)
 						.insert(message)
 						.values(
-							messagesToAppend.map((m) => ({
+							messagesToAppend.map((m, i) => ({
 								id: 'id' in m && m.id ? m.id : crypto.randomUUID(),
 								threadId,
 								role: m.role as MessageRole,
 								content: m.content,
+								createdAt: new Date(baseDate.getTime() + i),
 							})),
 						)
 						.returning({ id: message.id, role: message.role });
