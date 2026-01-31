@@ -1,4 +1,5 @@
 import { Nexata } from '@api/chat/tools/nexata';
+import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { OauthScope } from '@api/schema';
@@ -73,6 +74,20 @@ export const getTools = async (
 			activeUser,
 			(au) => au,
 			async (au, input) => NexataFile.read(au, input),
+		),
+		NexataFeedbackList: toolify(
+			NexataFeedback.listDescription,
+			NexataFeedback.listInput,
+			activeUser,
+			(au) => au,
+			async (au, input) => NexataFeedback.list(au, input),
+		),
+		NexataFeedbackCreate: toolify(
+			NexataFeedback.createDescription,
+			NexataFeedback.createInput,
+			activeUser,
+			(au) => au,
+			async (au, input) => NexataFeedback.create(au, input),
 		),
 	};
 

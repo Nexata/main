@@ -11,7 +11,7 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 	.get(
 		'/:id',
 		async ({ params: { id }, query, activeUser: { slug } }) =>
-			await getThreadMessages(id, {
+			getThreadMessages(id, {
 				content: 'full',
 				slug,
 				limit: query.limit,

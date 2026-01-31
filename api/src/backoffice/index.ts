@@ -1,5 +1,6 @@
 import { billingRouter } from '@api/backoffice/billing';
 import { credentialsRouter } from '@api/backoffice/credentials';
+import { feedbackRouter } from '@api/backoffice/feedback';
 import { filesRouter } from '@api/backoffice/files';
 import { tenantRouter } from '@api/backoffice/tenant';
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
@@ -19,4 +20,5 @@ export const backofficeRouter = new Elysia({
 	.use(tenantRouter)
 	.use(billingRouter)
 	.use(credentialsRouter)
-	.use(filesRouter);
+	.use(filesRouter)
+	.use(feedbackRouter);
