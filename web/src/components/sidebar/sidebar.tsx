@@ -105,6 +105,15 @@ export default function Sidebar() {
     }
   };
 
+  const handleSelectChat = (threadId: string | null) => {
+    navigate({
+      to: '/chat',
+      search: {
+        threadId,
+      },
+    });
+  };
+
   const sidebarWidth = isCollapsed ? 60 : 250;
   const MotionDiv = motion.div;
   const { theme, setTheme } = useTheme();
@@ -178,7 +187,7 @@ export default function Sidebar() {
             <Button
               variant="outline"
               className="w-full mb-4 flex items-center gap-2 cursor-pointer"
-              onClick={() => {}}
+              onClick={() => handleSelectChat(null)}
             >
               <IoAdd className="w-5 h-5" />
               {sidebar_new_chat()}
@@ -216,12 +225,13 @@ export default function Sidebar() {
                   </>
                 )}
 
-                {!threadsLoading && (threads && threads.length > 0 ? threads : [{ id: 'new', title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
+                {!threadsLoading && (threads && threads.length > 0 ? threads : [{ id: null, title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
                   <div
                     key={chat.id}
+                    onClick={() => handleSelectChat(chat.id)}
                     className="px-2 py-2 rounded-md flex justify-between items-center hover:bg-muted/50 cursor-pointer group"
                   >
-                    {editingChatId === chat.id ? (
+                    {editingChatId !== null && editingChatId === chat.id ? (
                       <div className="flex items-center w-full">
                         <Input
                           ref={inputRef}
@@ -249,16 +259,25 @@ export default function Sidebar() {
                     ) : (
                       <>
                         <span className="truncate">{chat.title}</span>
-                        <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Pencil
-                            className="text-secondary-500 w-4 h-4 cursor-pointer"
-                            onClick={() => handleEditClick(chat.id)}
-                          />
-                          <Trash2
-                            className="text-error-500 w-4 h-4 cursor-pointer"
-                            onClick={() => handleDeleteClick(chat)}
-                          />
-                        </div>
+
+                        {chat.id !== null && (
+                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Pencil
+                              className="text-secondary-500 w-4 h-4 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleEditClick(chat.id);
+                              }}
+                            />
+                            <Trash2
+                              className="text-error-500 w-4 h-4 cursor-pointer"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteClick(chat);
+                              }}
+                            />
+                          </div>
+                        )}
                       </>
                     )}
                   </div>

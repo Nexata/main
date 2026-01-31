@@ -5,7 +5,10 @@ import { getFingerprint } from '@/lib/fingerprint';
 
 const baseFetch = globalThis.fetch;
 
-export function createAuthenticatedChatTransport(threadId?: string | null) {
+export function createAuthenticatedChatTransport(
+	threadId?: string | null,
+	onThreadId?: (id: string) => void,
+) {
 	const customFetchImpl = async (
 		input: RequestInfo | URL,
 		init?: RequestInit,
@@ -45,10 +48,50 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 					languagePreference: undefined,
 				};
 
-				return baseFetch(url, {
+				const response = await baseFetch(url, {
 					...init,
 					body: JSON.stringify(adaptedPayload),
 				});
+
+
+				try {
+					const clone = response.clone();
+					const reader = clone.body?.getReader();
+
+					if (!reader) return response;
+
+					const decoder = new TextDecoder();
+					let buffer = '';
+
+					while (true) {
+						const { done, value } = await reader.read();
+						if (done) break;
+
+						buffer += decoder.decode(value, { stream: true });
+
+						const lines = buffer.split('\n');
+						buffer = lines.pop() ?? '';
+
+						for (const line of lines) {
+							if (!line.startsWith('data:')) continue;
+
+							const json = line.replace('data:', '').trim();
+							if (json === '[DONE]') continue;
+
+							try {
+								const event = JSON.parse(json);
+								if (event.type === 'start' && event.messageMetadata?.threadId)
+									onThreadId?.(event.messageMetadata.threadId);
+							} catch {
+								// ignoramos chunks incompletos
+							}
+						}
+					}
+				} catch (err) {
+					console.error('[Chat Debug] Failed to parse stream', err);
+				}
+
+				return response;
 			} catch (err) {
 				console.error('[Chat Adapter] Failed to adapt payload', err);
 				return baseFetch(url, init);
