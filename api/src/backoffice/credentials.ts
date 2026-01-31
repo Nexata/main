@@ -1,13 +1,13 @@
 import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
-import { Gmail } from '@api/integration/gmail';
+import { Google } from '@api/integration/google';
 import { credential, OauthProvider, user } from '@api/schema';
 import { eq, lte, or } from 'drizzle-orm';
 import Elysia from 'elysia';
 
 const providerRefreshers: Record<string, typeof Dropbox.refreshTokens> = {
 	[OauthProvider.DROPBOX]: Dropbox.refreshTokens,
-	[OauthProvider.GOOGLE]: Gmail.refreshTokens,
+	[OauthProvider.GOOGLE]: Google.refreshTokens,
 };
 
 export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(

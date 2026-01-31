@@ -1,26 +1,13 @@
 import { authPlugin } from '@api/auth';
-import { db } from '@api/env';
-import { credential, OauthProvider, OauthScope } from '@api/schema';
+import { Google } from '@api/integration/google/lib';
 import type { JwtPayload } from '@api/utils/auth';
-import {
-	getTokensForUser,
-	invalidateCredentialCache,
-	userHasCredential,
-} from '@api/utils/credential';
-import { requireEnv } from '@api/utils/env';
+import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { Nullish, tObject } from '@api/utils/type';
-import { auth, gmail, type gmail_v1 } from '@googleapis/gmail';
-import { and, eq } from 'drizzle-orm';
+import { gmail, type gmail_v1 } from '@googleapis/gmail';
 import { Elysia, type Static, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
 
 export namespace Gmail {
-	const createOauth2Client = () =>
-		new auth.OAuth2(
-			requireEnv('GOOGLE_CLIENT_ID'),
-			requireEnv('GOOGLE_CLIENT_SECRET'),
-		);
-
 	export const fromRequest = async (
 		activeUser: JwtPayload,
 		credentialId: string,
@@ -36,77 +23,10 @@ export namespace Gmail {
 	};
 
 	export const fromTokens = (access_token: string, refresh_token: string) => {
-		const auth = createOauth2Client();
+		const auth = Google.createOAuth2Client();
 		auth.setCredentials({ access_token, refresh_token });
 		return gmail({ version: 'v1', auth });
 	};
-
-	export async function refreshTokens(
-		credentialId: string,
-		options?: {
-			slug?: string;
-			tokens?: { refreshToken: string; accessToken: string };
-		},
-	) {
-		const tokens =
-			options?.tokens ??
-			(
-				await db
-					.select({
-						refreshToken: credential.refreshToken,
-						accessToken: credential.accessToken,
-					})
-					.from(credential)
-					.where(
-						and(
-							eq(credential.id, credentialId),
-							eq(credential.provider, OauthProvider.GOOGLE),
-							eq(credential.scope, OauthScope.GMAIL),
-						),
-					)
-			).at(0);
-
-		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
-
-		const auth = createOauth2Client();
-		auth.setCredentials({
-			access_token: tokens.accessToken,
-			refresh_token: tokens.refreshToken,
-		});
-
-		let credentials: typeof auth.credentials;
-		try {
-			const res = await auth.refreshAccessToken();
-			credentials = res.credentials;
-		} catch (e) {
-			// invalid_grant means refresh token is expired/revoked - user needs to re-authenticate
-			if (e instanceof Error && e.message.includes('invalid_grant'))
-				throw HttpError.Unauthorized('CREDENTIAL_EXPIRED');
-			throw e;
-		}
-
-		if (credentials.access_token === tokens.accessToken) return false;
-
-		const newTokens = {
-			accessToken: credentials.access_token!,
-			accessTokenExpiresAt: credentials.expiry_date
-				? new Date(credentials.expiry_date)
-				: new Date(Date.now() + 3600 * 1000),
-			refreshToken: credentials.refresh_token ?? tokens.refreshToken,
-			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // doesn't expire
-		};
-
-		if (options?.slug)
-			await Promise.all([
-				db
-					.update(credential)
-					.set(newTokens)
-					.where(eq(credential.id, credentialId)),
-				invalidateCredentialCache(options.slug, credentialId),
-			]);
-
-		return true;
-	}
 
 	function getHeader(
 		headers: gmail_v1.Schema$MessagePartHeader[] | undefined,
@@ -267,7 +187,6 @@ export namespace Gmail {
 
 		const messageIds = res.data.messages ?? [];
 
-		// Fetch metadata for each message to provide useful preview data
 		const messages = await Promise.all(
 			messageIds.map(async (msg) => {
 				const detail = await client.users.messages.get({
@@ -413,22 +332,5 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
 			query: Gmail.readInput,
-		},
-	)
-	.put(
-		'/refresh/:credentialId',
-		async ({ params: { credentialId }, activeUser }) => {
-			const hasPermission = await userHasCredential(
-				activeUser,
-				credentialId,
-				true,
-			);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
-
-			return Gmail.refreshTokens(credentialId, { slug: activeUser.slug });
-		},
-		{
-			detail: { summary: 'Refresh gmail credential' },
-			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
 		},
 	);

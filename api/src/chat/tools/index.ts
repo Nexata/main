@@ -2,7 +2,7 @@ import { Nexata } from '@api/chat/tools/nexata';
 import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
-import { Gmail } from '@api/integration/gmail';
+import { Calendar, Gmail } from '@api/integration/google';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
@@ -174,6 +174,47 @@ export const getTools = async (
 						Gmail.fromTokens(c.accessToken, c.refreshToken),
 					),
 				async (client, input) => Gmail.read(client, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const calendarCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.CALENDAR,
+	);
+	if (calendarCredentials.length)
+		tools = {
+			...tools,
+			CalendarList: toolify(
+				Calendar.listDescription,
+				Calendar.listInput,
+				calendarCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Calendar.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (client, input) => Calendar.list(client, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			CalendarEvents: toolify(
+				Calendar.eventsDescription,
+				Calendar.eventsInput,
+				calendarCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Calendar.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (client, input) => Calendar.events(client, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			CalendarRead: toolify(
+				Calendar.readDescription,
+				Calendar.readInput,
+				calendarCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Calendar.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (client, input) => Calendar.read(client, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};

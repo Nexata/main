@@ -1,6 +1,6 @@
 import { authPlugin } from '@api/auth';
 import { dropboxRouter } from '@api/integration/dropbox';
-import { gmailRouter } from '@api/integration/gmail';
+import { googleRouter } from '@api/integration/google';
 import { Elysia } from 'elysia';
 
 export const integrationRouter = new Elysia({
@@ -9,4 +9,4 @@ export const integrationRouter = new Elysia({
 })
 	.use(authPlugin())
 	.use(dropboxRouter)
-	.use(gmailRouter);
+	.use(googleRouter);
