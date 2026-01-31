@@ -20,7 +20,7 @@ export namespace NexataFeedback {
 			type: Nullish(t.Enum(FeedbackType), {
 				description: 'Filter by feedback type',
 			}),
-			cursor: Nullish(t.Date(), {
+			cursor: Nullish(t.String({ format: 'date-time' }), {
 				description:
 					'Cursor for pagination. Use the modifiedAt (or createdAt if null) of the last item from previous page.',
 			}),
@@ -59,7 +59,7 @@ export namespace NexataFeedback {
 						: eq(feedback.userId, activeUser.id),
 					input.status ? eq(feedback.status, input.status) : undefined,
 					input.type ? eq(feedback.type, input.type) : undefined,
-					input.cursor ? lt(cursorExpr, input.cursor) : undefined,
+					input.cursor ? lt(cursorExpr, new Date(input.cursor)) : undefined,
 				),
 			)
 			.orderBy(desc(cursorExpr))

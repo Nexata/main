@@ -2,7 +2,7 @@ import { Nexata } from '@api/chat/tools/nexata';
 import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
-import { Calendar, Gmail } from '@api/integration/google';
+import { Calendar, Drive, Gmail } from '@api/integration/google';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
@@ -144,6 +144,36 @@ export const getTools = async (
 						Dropbox.fromTokens(c.accessToken, c.refreshToken),
 					),
 				async (dpx, input) => Dropbox.listDir(dpx, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const driveCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.DRIVE,
+	);
+	if (driveCredentials.length)
+		tools = {
+			...tools,
+			DriveSearch: toolify(
+				Drive.searchDescription,
+				Drive.searchInput,
+				driveCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Drive.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (drv, input) => Drive.search(drv, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			DriveListDir: toolify(
+				Drive.listDirDescription,
+				Drive.listDirInput,
+				driveCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Drive.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (drv, input) => Drive.listDir(drv, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};

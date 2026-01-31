@@ -1,4 +1,5 @@
 import { Dropbox } from '@api/integration/dropbox';
+import { Drive } from '@api/integration/google/drive';
 import { FileHost } from '@api/schema';
 
 export type NexataListDirEntry = {
@@ -30,4 +31,5 @@ export type ProviderIngestor = (
 
 export const providerIngestors: Partial<Record<FileHost, ProviderIngestor>> = {
 	[FileHost.DROPBOX]: Dropbox.ingestFromCredential,
+	[FileHost.DRIVE]: Drive.ingestFromCredential,
 };
