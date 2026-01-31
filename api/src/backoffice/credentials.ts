@@ -1,17 +1,19 @@
 import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
+import { Gmail } from '@api/integration/gmail';
 import { credential, OauthProvider, user } from '@api/schema';
 import { eq, lte, or } from 'drizzle-orm';
 import Elysia from 'elysia';
 
 const providerRefreshers: Record<string, typeof Dropbox.refreshTokens> = {
 	[OauthProvider.DROPBOX]: Dropbox.refreshTokens,
+	[OauthProvider.GOOGLE]: Gmail.refreshTokens,
 };
 
 export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 	'/refresh',
 	async () => {
-		const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000);
+		const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
 
 		const credentialsToRefresh = await db
 			.select({
@@ -25,8 +27,8 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 			.innerJoin(user, eq(user.id, credential.userId))
 			.where(
 				or(
-					lte(credential.accessTokenExpiresAt, fourHoursFromNow),
-					lte(credential.refreshTokenExpiresAt, fourHoursFromNow),
+					lte(credential.accessTokenExpiresAt, oneHourFromNow),
+					lte(credential.refreshTokenExpiresAt, oneHourFromNow),
 				),
 			);
 
@@ -53,9 +55,9 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 	{
 		detail: {
 			summary: 'Refresh credentials',
-			// NOTE: Cron job, scheduled to run once every 4 hours
+			// NOTE: Cron job, scheduled to run once every 1 hour
 			description:
-				'Refreshes tokens that will expire in the next 4 hours. Expected to run cronologically every 4 hours.',
+				'Refreshes tokens that will expire in the next 1 hour. Expected to run cronologically every 1 hour.',
 		},
 	},
 );

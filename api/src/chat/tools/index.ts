@@ -2,6 +2,7 @@ import { Nexata } from '@api/chat/tools/nexata';
 import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
+import { Gmail } from '@api/integration/gmail';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
@@ -143,6 +144,36 @@ export const getTools = async (
 						Dropbox.fromTokens(c.accessToken, c.refreshToken),
 					),
 				async (dpx, input) => Dropbox.listDir(dpx, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const gmailCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.GMAIL,
+	);
+	if (gmailCredentials.length)
+		tools = {
+			...tools,
+			GmailSearch: toolify(
+				Gmail.searchDescription,
+				Gmail.searchInput,
+				gmailCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Gmail.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (client, input) => Gmail.search(client, input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			GmailRead: toolify(
+				Gmail.readDescription,
+				Gmail.readInput,
+				gmailCredentials,
+				(credentials) =>
+					credentials.map((c) =>
+						Gmail.fromTokens(c.accessToken, c.refreshToken),
+					),
+				async (client, input) => Gmail.read(client, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
