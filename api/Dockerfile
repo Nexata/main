@@ -21,7 +21,7 @@ FROM alpine
 WORKDIR /app
 COPY --from=build /app/server .
 
-# SHARP FIX @ALPINE
+# SHARP FIX w/ALPINE
 RUN apk add --no-cache libc6-compat vips-cpp
 COPY --from=build /app/node_modules/sharp ./node_modules/sharp
 
