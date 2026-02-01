@@ -1,7 +1,6 @@
 FROM oven/bun AS build
 
 WORKDIR /app
-ENV NODE_ENV=production
 
 COPY tsconfig.json package.json bun.lock ./
 RUN bun install
