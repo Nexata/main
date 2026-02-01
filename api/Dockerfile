@@ -10,21 +10,24 @@ COPY ./src ./src
 COPY ./migrations ./migrations
 RUN bun build \
 	--compile \
-	--external sharp \
 	--minify-whitespace \
 	--minify-syntax \
 	--outfile server \
 	src/index.ts
 
+# SHARP FIX:
 # FROM gcr.io/distroless/base
-FROM alpine
-WORKDIR /app
-COPY --from=build /app/server .
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y --no-install-recommends \
+	libvips42 libglib2.0-0 \
+	&& rm -rf /var/lib/apt/lists/*
 
-# SHARP FIX w/ALPINE
-RUN apk add --no-cache libc6-compat vips-cpp
+WORKDIR /app
+
+COPY --from=build /app/server ./server
+COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/node_modules/sharp ./node_modules/sharp
 
 ENV NODE_ENV=production
-EXPOSE ${PORT:-8080}
+EXPOSE 8080
 CMD ["./server"]
