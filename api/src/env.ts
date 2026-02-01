@@ -9,7 +9,7 @@ import { upstashCache } from 'drizzle-orm/cache/upstash';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { createTransport } from 'nodemailer';
 
-export const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+export const IS_PRODUCTION = warnEnv('NODE_ENV', 'production') === 'production';
 export const NEXATA_SECRET = requireEnv('NEXATA_SECRET');
 
 const CACHE_CREDENTIALS = {
