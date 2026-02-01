@@ -1,15 +1,15 @@
-FROM oven/bun AS build
+FROM oven/bun:1.3.3 AS build
 
 WORKDIR /app
 
 COPY tsconfig.json package.json bun.lock ./
 RUN bun install
-RUN bun pm untrusted
 
 COPY ./src ./src
 COPY ./migrations ./migrations
 RUN bun build \
 	--compile \
+	--external sharp \
 	--minify-whitespace \
 	--minify-syntax \
 	--outfile server \
@@ -26,7 +26,7 @@ WORKDIR /app
 
 COPY --from=build /app/server ./server
 COPY --from=build /app/package.json ./package.json
-COPY --from=build /app/node_modules/sharp ./node_modules/sharp
+COPY --from=build /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
 EXPOSE 8080
