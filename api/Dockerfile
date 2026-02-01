@@ -18,6 +18,7 @@ RUN bun build \
 FROM gcr.io/distroless/base
 WORKDIR /app
 COPY --from=build /app/server server
+
 ENV NODE_ENV=production
-CMD ["./server"]
 EXPOSE ${PORT:-8080}
+CMD ["./server"]
