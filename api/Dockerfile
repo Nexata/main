@@ -20,4 +20,4 @@ WORKDIR /app
 COPY --from=build /app/server server
 ENV NODE_ENV=production
 CMD ["./server"]
-EXPOSE ${PORT:-3000}
+EXPOSE ${PORT:-8080}
