@@ -8,8 +8,9 @@ import {
 } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
 
-export const API_BASE_URL = 'http://localhost:3000';
-export const apiClient = edenTreaty<App>('http://localhost:3000');
+export const API_BASE_URL = import.meta.env.VITE_API_URL ?? "";
+
+export const apiClient = edenTreaty<App>(API_BASE_URL);
 
 export async function refreshAccessToken() {
 	const refreshToken = getRefreshToken();
@@ -17,7 +18,7 @@ export async function refreshAccessToken() {
 
 	const fingerprint = await getFingerprint();
 
-	const response = await fetch('http://localhost:3000/api/auth/refresh-token', {
+	const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
 		method: 'POST',
 		headers: {
 			'Content-Type': 'application/json',

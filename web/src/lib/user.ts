@@ -6,7 +6,7 @@ import { clearFingerprint } from './fingerprint';
 // GetMe
 export async function getMe() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.user.me.info.get({
+		apiClient.user.me.info.get({
 			$headers: headers,
 		}),
 	);
@@ -32,7 +32,7 @@ export async function updateMe(data: { displayName?: string; pfp?: File }) {
 		if (data.displayName !== undefined) body.displayName = data.displayName;
 		if (data.pfp !== undefined) body.pfp = data.pfp;
 
-		return apiClient.api.user.me.patch({
+		return apiClient.user.me.patch({
 			$headers: headers,
 			...body,
 		});
@@ -52,7 +52,7 @@ export function useUpdateMe() {
 			if (data.displayName !== undefined) body.displayName = data.displayName;
 			if (data.pfp !== undefined) body.pfp = data.pfp;
 
-			return apiClient.api.user.me.patch({
+			return apiClient.user.me.patch({
 				$headers: headers,
 				...body,
 			});
@@ -65,7 +65,7 @@ export function useUpdateMe() {
 // GetMyTenant
 export async function getMyTenant() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.user.me.tenant.get({
+		apiClient.user.me.tenant.get({
 			$headers: headers,
 		}),
 	);
@@ -87,7 +87,7 @@ export function useMyTenant() {
 
 export async function getUsers() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.user.get({
+		apiClient.user.get({
 			$headers: headers,
 		}),
 	);
@@ -97,7 +97,7 @@ export type Users = Awaited<ReturnType<typeof getUsers>>;
 // DeleteMe
 export async function deleteMe() {
 	return withAuthRetry((headers) =>
-		apiClient.api.user.me.delete({
+		apiClient.user.me.delete({
 			$headers: headers,
 		}),
 	);
@@ -108,7 +108,7 @@ export function useDeleteMe() {
 
 	return async () => {
 		await withAuthRetry((headers) =>
-			apiClient.api.user.me.delete({
+			apiClient.user.me.delete({
 				$headers: headers,
 			}),
 		);
@@ -126,7 +126,7 @@ export function useDeleteMe() {
 // DeleteMyDevice
 export async function deleteMyDevice(fingerprint: string) {
 	return withAuthRetry((headers) =>
-		apiClient.api.user.me.device[fingerprint]!.delete({
+		apiClient.user.me.device[fingerprint]!.delete({
 			$headers: headers,
 		}),
 	);
@@ -137,7 +137,7 @@ export function useDeleteMyDevice() {
 
 	return async (fingerprint: string) => {
 		await withAuthRetry((headers) =>
-			apiClient.api.user.me.device[fingerprint]!.delete({
+			apiClient.user.me.device[fingerprint]!.delete({
 				$headers: headers,
 			}),
 		);
@@ -149,7 +149,7 @@ export function useDeleteMyDevice() {
 // Create or Regenerate API Key
 export async function createOrRegenerateApiKey() {
 	return withAuthRetry((headers) =>
-		apiClient.api.user.me['api-key'].put({
+		apiClient.user.me['api-key'].put({
 			$headers: headers,
 		}),
 	);
@@ -161,7 +161,7 @@ export function useCreateOrRegenerateApiKey() {
 
 	return async () => {
 		const res = (await withAuthRetry((headers) =>
-			apiClient.api.user.me['api-key'].put({
+			apiClient.user.me['api-key'].put({
 				$headers: headers,
 			}),
 		)) as ApiKey;
@@ -174,7 +174,7 @@ export function useCreateOrRegenerateApiKey() {
 // Delete API Key
 export async function deleteApiKey() {
 	return withAuthRetry((headers) =>
-		apiClient.api.user.me['api-key'].delete({
+		apiClient.user.me['api-key'].delete({
 			$headers: headers,
 		}),
 	);
@@ -185,7 +185,7 @@ export function useDeleteApiKey() {
 
 	return async () => {
 		await withAuthRetry((headers) =>
-			apiClient.api.user.me['api-key'].delete({
+			apiClient.user.me['api-key'].delete({
 				$headers: headers,
 			}),
 		);

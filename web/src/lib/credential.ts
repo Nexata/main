@@ -2,7 +2,7 @@ import { apiClient, withAuthRetry } from '@/api';
 
 export async function listCredentials() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.credential.get({
+		apiClient.credential.get({
 			$headers: headers,
 		}),
 	);
@@ -16,7 +16,7 @@ export async function updateCredentialPermission(data: {
 	isAdmin: boolean;
 }): Promise<void> {
 	await withAuthRetry((headers) =>
-		apiClient.api.credential.permission.put({
+		apiClient.credential.permission.put({
 			$headers: {
 				...headers,
 			},
@@ -32,7 +32,7 @@ export async function deleteCredentialPermission(data: {
 	userId: string;
 }): Promise<void> {
 	await withAuthRetry((headers) =>
-		apiClient.api.credential.permission.delete({
+		apiClient.credential.permission.delete({
 			$headers: {
 				...headers,
 			},
@@ -46,7 +46,7 @@ export async function deleteCredentialById(
 	credentialId: string,
 ): Promise<void> {
 	await withAuthRetry((headers) =>
-		apiClient.api.credential[credentialId]!.delete({
+		apiClient.credential[credentialId]!.delete({
 			$headers: headers,
 		}),
 	);

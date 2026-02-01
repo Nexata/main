@@ -14,7 +14,7 @@ export async function getThreadById(
 	params?: { limit?: number },
 ) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat.thread[threadId]!.get({
+		apiClient.chat.thread[threadId]!.get({
 			$headers: headers,
 			$query: {
 				limit: params?.limit ?? 100,
@@ -45,7 +45,7 @@ export async function updateThreadById(
 	data: { title: string },
 ) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat.thread[threadId]!.patch({
+		apiClient.chat.thread[threadId]!.patch({
 			$headers: headers,
 			title: data.title,
 		}),
@@ -70,7 +70,7 @@ export function useUpdateThreadById() {
 // Delete thread by ID
 export async function deleteThreadById(threadId: string) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat.thread[threadId]!.delete({
+		apiClient.chat.thread[threadId]!.delete({
 			$headers: headers,
 		}),
 	);
@@ -94,7 +94,7 @@ export async function listThreads(params?: {
 	search?: string;
 }) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat.thread.get({
+		apiClient.chat.thread.get({
 			$headers: headers,
 			$query: {
 				limit: params?.limit ?? 100,
@@ -125,7 +125,7 @@ export type ChatWithLLMInput = {
 
 export async function chatWithLLM(data: ChatWithLLMInput) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat.post({
+		apiClient.chat.post({
 			$headers: headers,
 			...data,
 		}),
@@ -157,7 +157,7 @@ export function useChatWithLLM() {
 // Branch off message by ID
 export async function branchOffMessage(messageId: string) {
 	return withAuthRetry((headers) =>
-		apiClient.api.chat['branch-off'][messageId]!.put({
+		apiClient.chat['branch-off'][messageId]!.put({
 			$headers: headers,
 		}),
 	);

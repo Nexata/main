@@ -4,7 +4,7 @@ import { apiClient, withAuthRetry } from '@/api';
 // Messages Consumption
 export async function getBillingMessages() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.billing.messages.get({
+		apiClient.admin.billing.messages.get({
 			$headers: headers,
 		}),
 	);
@@ -23,7 +23,7 @@ export function useBillingMessages() {
 // Embeddings Consumption
 export async function getBillingEmbeds() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.billing.embeds.get({
+		apiClient.admin.billing.embeds.get({
 			$headers: headers,
 		}),
 	);
@@ -42,7 +42,7 @@ export function useBillingEmbeds() {
 // Storage Consumption
 export async function getBillingStorage() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.billing.storage.get({
+		apiClient.admin.billing.storage.get({
 			$headers: headers,
 		}),
 	);
@@ -61,7 +61,7 @@ export function useBillingStorage() {
 // List Users
 export async function getUsers() {
 	return await withAuthRetry((headers) =>
-		apiClient.api.user.get({
+		apiClient.user.get({
 			$headers: headers,
 		}),
 	);
@@ -89,7 +89,7 @@ export type CreateUserInput = {
 
 export async function createUser(data: CreateUserInput) {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.user.post({
+		apiClient.admin.user.post({
 			$headers: headers,
 			...data,
 		}),
@@ -116,7 +116,7 @@ export type EditUserInput = Partial<{
 
 export async function editUser(userId: string, data: EditUserInput) {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.user[userId]!.patch({
+		apiClient.admin.user[userId]!.patch({
 			$headers: headers,
 			...data,
 		}),
@@ -136,7 +136,7 @@ export function useEditUser() {
 // Delete User
 export async function deleteUser(userId: string) {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.user[userId]!.delete({
+		apiClient.admin.user[userId]!.delete({
 			$headers: headers,
 		}),
 	);
@@ -159,7 +159,7 @@ export type EditTenantInput = Partial<{
 
 export async function editTenant(data: EditTenantInput) {
 	return await withAuthRetry((headers) =>
-		apiClient.api.admin.tenant.patch({
+		apiClient.admin.tenant.patch({
 			$headers: headers,
 			...data,
 		}),
