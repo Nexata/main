@@ -2,7 +2,7 @@ import { describe, expect, it } from 'bun:test';
 import { app } from '@api';
 import { treaty } from '@elysiajs/eden';
 
-export const { api } = treaty(app);
+export const api = treaty(app);
 
 describe('Health', () => {
 	it('Returns a valid response', async () => {
