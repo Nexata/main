@@ -22,11 +22,7 @@ WORKDIR /app
 COPY --from=build /app/server .
 
 # SHARP FIX @ALPINE
-RUN apk add --no-cache \
-	libvips \
-	libvips-cpp \
-	gcompat \
-	libstdc++
+RUN apk add --no-cache libc6-compat vips-cpp
 COPY --from=build /app/node_modules/sharp ./node_modules/sharp
 
 ENV NODE_ENV=production
