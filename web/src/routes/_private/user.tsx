@@ -799,14 +799,14 @@ function ConfirmDeleteApiKeyModal({
 
 				<DialogFooter className="flex justify-end gap-2 cursor-pointer">
 					<Button variant="outline" onClick={() => onOpenChange(false)}>
-						{common_cancel()}
+						<span>{common_cancel()}</span>
 					</Button>
 					<Button
 						className="cursor-pointer"
 						variant="destructive"
 						onClick={onConfirm}
 					>
-						{common_confirm()}
+						<span>{common_confirm()}</span>
 					</Button>
 				</DialogFooter>
 			</DialogContent>

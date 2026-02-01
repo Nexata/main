@@ -46,7 +46,9 @@ interface ChatPropsBase {
   ) => void
   setMessages?: (messages: any[]) => void
   transcribeAudio?: (blob: Blob) => Promise<string>
-  suggestionsLabel?: string
+  suggestionsLabel?: string,
+  isLoadingThread?: boolean,
+  hasUserSentMessage?: boolean
 }
 
 interface ChatPropsWithoutSuggestions extends ChatPropsBase {
@@ -68,17 +70,26 @@ export function Chat({
   handleInputChange,
   stop,
   isGenerating,
+  isLoadingThread,
   append,
   suggestions,
   className,
   onRateResponse,
   setMessages,
   transcribeAudio,
-  suggestionsLabel
+  suggestionsLabel,
+  hasUserSentMessage
 }: ChatProps) {
   const lastMessage = messages.at(-1)
-  const isEmpty = messages.length === 0
-  const isUserTyping = lastMessage?.role === "user"
+  const isIdleEmptyChat =
+    messages.length === 0 &&
+    !isLoadingThread &&
+    !isGenerating &&
+    !hasUserSentMessage;
+  const isUserTyping =
+    !isLoadingThread &&
+    !isGenerating &&
+    lastMessage?.role === "user";
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -130,7 +141,7 @@ export function Chat({
 
   return (
     <ChatContainer className={className}>
-      {isEmpty && append && suggestions ? (
+      {isIdleEmptyChat && append && suggestions ? (
         <div className="flex flex-1 items-center justify-center">
           <PromptSuggestions
             label={suggestionsLabel ?? "Try these prompts ✨"}
@@ -140,15 +151,19 @@ export function Chat({
         </div>
       ) : null}
 
-      {messages.length > 0 ? (
+      {isLoadingThread ? (
+        <ChatMessages messages={[]}>
+          <ChatMessagesSkeleton />
+        </ChatMessages>
+      ) : messages.length > 0 ? (
         <ChatMessages messages={messages}>
           <MessageList
             messages={messages}
-            isTyping={isUserTyping}
+            isTyping={!isLoadingThread && isUserTyping}
             messageOptions={messageOptions}
           />
 
-          {isGenerating && (
+          {!isLoadingThread && isGenerating && (
             <div className="px-2 py-1">
               <ChatThinkingIndicator />
             </div>
@@ -158,7 +173,7 @@ export function Chat({
 
       <ChatForm
         className="mt-auto"
-        isPending={isGenerating || isUserTyping}
+        isPending={isLoadingThread || isGenerating || isUserTyping}
         handleSubmit={handleSubmit}
       >
         {({ files, setFiles }) => (
@@ -279,4 +294,82 @@ function createFileList(files: File[] | FileList): FileList {
     dataTransfer.items.add(file)
   }
   return dataTransfer.files
+}
+
+export function ChatMessagesSkeleton() {
+  return (
+    <div className="flex flex-col gap-6 px-4 py-6 animate-pulse">
+      {/* Assistant message — título + párrafo */}
+      <div className="flex justify-start">
+        <div className="w-[75%] space-y-3">
+          {/* Title */}
+          <div className="h-6 w-[60%] rounded-md bg-muted" />
+
+          {/* Paragraph */}
+          <div className="h-6 w-full rounded-md bg-muted" />
+          <div className="h-6 w-[92%] rounded-md bg-muted" />
+          <div className="h-6 w-[70%] rounded-md bg-muted" />
+        </div>
+      </div>
+
+      {/* Assistant message — fake table / list */}
+      <div className="flex justify-start">
+        <div className="w-[70%] space-y-3">
+          {/* Section header */}
+          <div className="h-6 w-[45%] rounded-md bg-muted" />
+
+          {/* Rows */}
+          <div className="flex gap-3">
+            <div className="h-6 w-[30%] rounded-md bg-muted" />
+            <div className="h-6 w-[60%] rounded-md bg-muted" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-6 w-[25%] rounded-md bg-muted" />
+            <div className="h-6 w-[55%] rounded-md bg-muted" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-6 w-[35%] rounded-md bg-muted" />
+            <div className="h-6 w-[50%] rounded-md bg-muted" />
+          </div>
+        </div>
+      </div>
+
+      {/* User message — burbuja */}
+      <div className="flex justify-end">
+        <div className="w-[45%] space-y-3 rounded-2xl bg-muted p-4">
+          <div className="h-6 w-full rounded bg-background/60" />
+          <div className="h-6 w-[75%] rounded bg-background/60" />
+        </div>
+      </div>
+
+      {/* Assistant message — bullets / emojis */}
+      <div className="flex justify-start">
+        <div className="w-[65%] space-y-3">
+          {/* Bullet header */}
+          <div className="h-6 w-[50%] rounded-md bg-muted" />
+
+          {/* Bullet rows */}
+          <div className="flex gap-3">
+            <div className="h-6 w-6 rounded-full bg-muted" />
+            <div className="h-6 w-[70%] rounded-md bg-muted" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-6 w-6 rounded-full bg-muted" />
+            <div className="h-6 w-[60%] rounded-md bg-muted" />
+          </div>
+          <div className="flex gap-3">
+            <div className="h-6 w-6 rounded-full bg-muted" />
+            <div className="h-6 w-[50%] rounded-md bg-muted" />
+          </div>
+        </div>
+      </div>
+
+      {/* User short reply */}
+      <div className="flex justify-end">
+        <div className="w-[30%] rounded-2xl bg-muted p-4">
+          <div className="h-6 w-full rounded bg-background/60" />
+        </div>
+      </div>
+    </div>
+  )
 }
