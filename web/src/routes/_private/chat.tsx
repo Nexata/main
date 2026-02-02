@@ -74,6 +74,9 @@ export function NexataChat() {
           id: m.id,
           role: m.role as 'user' | 'assistant' | 'system',
           createdAt: m.createdAt,
+          metadata: {
+            hydrated: true,
+          },
           parts: [
             {
               type: 'text',
@@ -119,6 +122,7 @@ export function NexataChat() {
  	// Flags
   const isLoadingThreadUI = hadThreadOnMount.current && threadLoading && status !== 'streaming';
   const isThinkingUI = status === 'streaming';
+  const isHydratingThread = hadThreadOnMount.current && threadLoading && !hasUserSentMessage.current;
 
   // Enviar Mensaje
 	const handleSubmit = async (
@@ -154,7 +158,8 @@ export function NexataChat() {
           hasUserSentMessage={hasUserSentMessage.current}
           suggestionsLabel="Que pinta hoy amigo? Pregunta si te da la nafta gato."
           suggestions={[]}
-          append={() => {}}
+          append={() => { }}
+          isHydratingThread={isHydratingThread}
         />
 
 				{error && (

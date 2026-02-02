@@ -48,7 +48,8 @@ interface ChatPropsBase {
   transcribeAudio?: (blob: Blob) => Promise<string>
   suggestionsLabel?: string,
   isLoadingThread?: boolean,
-  hasUserSentMessage?: boolean
+  hasUserSentMessage?: boolean,
+  isHydratingThread?: boolean
 }
 
 interface ChatPropsWithoutSuggestions extends ChatPropsBase {
@@ -78,7 +79,8 @@ export function Chat({
   setMessages,
   transcribeAudio,
   suggestionsLabel,
-  hasUserSentMessage
+  hasUserSentMessage,
+  isHydratingThread,
 }: ChatProps) {
   const lastMessage = messages.at(-1)
   const isIdleEmptyChat =
@@ -89,6 +91,7 @@ export function Chat({
   const isUserTyping =
     !isLoadingThread &&
     !isGenerating &&
+    !isHydratingThread &&
     lastMessage?.role === "user";
 
   const messagesRef = useRef(messages)
@@ -159,11 +162,11 @@ export function Chat({
         <ChatMessages messages={messages}>
           <MessageList
             messages={messages}
-            isTyping={!isLoadingThread && isUserTyping}
+            isTyping={!isLoadingThread && !isHydratingThread && isUserTyping}
             messageOptions={messageOptions}
           />
 
-          {!isLoadingThread && isGenerating && (
+          {!isLoadingThread && !isHydratingThread && isGenerating && (
             <div className="px-2 py-1">
               <ChatThinkingIndicator />
             </div>

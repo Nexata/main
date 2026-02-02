@@ -13,6 +13,10 @@ import {
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 
+/* -------------------------------------------------------------------------- */
+/*                                   Styles                                    */
+/* -------------------------------------------------------------------------- */
+
 const chatBubbleVariants = cva(
   "group/message relative break-words rounded-lg p-3 text-sm sm:max-w-[70%]",
   {
@@ -29,31 +33,19 @@ const chatBubbleVariants = cva(
       },
     },
     compoundVariants: [
-      {
-        isUser: true,
-        animation: "slide",
-        class: "slide-in-from-right",
-      },
-      {
-        isUser: false,
-        animation: "slide",
-        class: "slide-in-from-left",
-      },
-      {
-        isUser: true,
-        animation: "scale",
-        class: "origin-bottom-right",
-      },
-      {
-        isUser: false,
-        animation: "scale",
-        class: "origin-bottom-left",
-      },
+      { isUser: true, animation: "slide", class: "slide-in-from-right" },
+      { isUser: false, animation: "slide", class: "slide-in-from-left" },
+      { isUser: true, animation: "scale", class: "origin-bottom-right" },
+      { isUser: false, animation: "scale", class: "origin-bottom-left" },
     ],
   }
 )
 
 type Animation = VariantProps<typeof chatBubbleVariants>["animation"]
+
+/* -------------------------------------------------------------------------- */
+/*                                    Types                                    */
+/* -------------------------------------------------------------------------- */
 
 interface Attachment {
   name?: string
@@ -82,54 +74,15 @@ interface ToolResult {
 
 type ToolInvocation = PartialToolCall | ToolCall | ToolResult
 
-interface ReasoningPart {
-  type: "reasoning"
-  reasoning: string
-}
-
-interface ToolInvocationPart {
-  type: "tool-invocation"
-  toolInvocation: ToolInvocation
-}
-
-interface TextPart {
-  type: "text"
-  text: string
-}
-
-// For compatibility with AI SDK types, not used
-interface SourcePart {
-  type: "source"
-  source?: any
-}
-
-interface FilePart {
-  type: "file"
-  mimeType: string
-  data: string
-}
-
-interface StepStartPart {
-  type: "step-start"
-}
-
-type MessagePart =
-  | TextPart
-  | ReasoningPart
-  | ToolInvocationPart
-  | SourcePart
-  | FilePart
-  | StepStartPart
-
 export interface Message {
   id: string
   role: "user" | "assistant" | (string & {})
   content: string
+  reasoning?: string
   createdAt?: Date
   experimental_attachments?: Attachment[]
   toolInvocations?: ToolInvocation[]
-  parts?: MessagePart[],
-  reasoning?: string
+  hydrated?: boolean
 }
 
 export interface ChatMessageProps extends Message {
@@ -138,151 +91,87 @@ export interface ChatMessageProps extends Message {
   actions?: React.ReactNode
 }
 
+/* -------------------------------------------------------------------------- */
+/*                               ChatMessage                                   */
+/* -------------------------------------------------------------------------- */
+
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   role,
   content,
+  reasoning,
   createdAt,
+  hydrated,
   showTimeStamp = false,
   animation = "scale",
   actions,
   experimental_attachments,
   toolInvocations,
-  parts,
 }) => {
-  const files = useMemo(() => {
-    return experimental_attachments?.map((attachment) => {
-      const dataArray = dataUrlToUint8Array(attachment.url)
-      const file = new File([dataArray], attachment.name ?? "Unknown", {
-        type: attachment.contentType,
-      })
-      return file
-    })
-  }, [experimental_attachments])
-
   const isUser = role === "user"
-
   const isAssistant = role === "assistant"
+
+  const shouldAnimateTyping = isAssistant && !hydrated
 
   const typedContent = useTypingText(
     content ?? "",
-    isAssistant,
-    12
+    shouldAnimateTyping,
+    18
   )
+
+  const visibleContent = shouldAnimateTyping ? typedContent : content
+
+  const files = useMemo(() => {
+    return experimental_attachments?.map((attachment) => {
+      const dataArray = dataUrlToUint8Array(attachment.url)
+      return new File([dataArray], attachment.name ?? "Unknown", {
+        type: attachment.contentType,
+      })
+    })
+  }, [experimental_attachments])
 
   const formattedTime = createdAt?.toLocaleTimeString("en-US", {
     hour: "2-digit",
     minute: "2-digit",
   })
 
-  if (isUser) {
-    return (
-      <div
-        className={cn("flex flex-col", isUser ? "items-end" : "items-start")}
-      >
-        {files ? (
-          <div className="mb-1 flex flex-wrap gap-2">
-            {files.map((file, index) => {
-              return <FilePreview file={file} key={index} />
-            })}
-          </div>
-        ) : null}
-
-        <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-          <MarkdownRenderer>{content}</MarkdownRenderer>
-        </div>
-
-        {showTimeStamp && createdAt ? (
-          <time
-            dateTime={createdAt.toISOString()}
-            className={cn(
-              "mt-1 block px-1 text-xs opacity-50",
-              animation !== "none" && "duration-500 animate-in fade-in-0"
-            )}
-          >
-            {formattedTime}
-          </time>
-        ) : null}
-      </div>
-    )
-  }
-
-  if (parts && parts.length > 0) {
-    return parts.map((part, index) => {
-      if (part.type === "text") {
-        return (
-          <div
-            className={cn(
-              "flex flex-col",
-              isUser ? "items-end" : "items-start"
-            )}
-            key={`text-${index}`}
-          >
-            <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-              <MarkdownRenderer>
-                {isAssistant ? typedContent : part.text}
-              </MarkdownRenderer>
-
-              {isAssistant && typedContent.length < part.text.length && (
-                <span className="ml-0.5 animate-pulse">▍</span>
-              )}
-
-              {actions ? (
-                <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
-                  {actions}
-                </div>
-              ) : null}
-            </div>
-
-            {showTimeStamp && createdAt ? (
-              <time
-                dateTime={createdAt.toISOString()}
-                className={cn(
-                  "mt-1 block px-1 text-xs opacity-50",
-                  animation !== "none" && "duration-500 animate-in fade-in-0"
-                )}
-              >
-                {formattedTime}
-              </time>
-            ) : null}
-          </div>
-        )
-      } else if (part.type === "reasoning") {
-        return <ReasoningBlock key={`reasoning-${index}`} part={part} />
-      } else if (part.type === "tool-invocation") {
-        return (
-          <ToolCall
-            key={`tool-${index}`}
-            toolInvocations={[part.toolInvocation]}
-          />
-        )
-      }
-      return null
-    })
-  }
-
-  if (toolInvocations && toolInvocations.length > 0) {
-    return <ToolCall toolInvocations={toolInvocations} />
-  }
-
   return (
     <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
+      {/* Attachments */}
+      {files?.length ? (
+        <div className="mb-1 flex flex-wrap gap-2">
+          {files.map((file, index) => (
+            <FilePreview file={file} key={index} />
+          ))}
+        </div>
+      ) : null}
+
+      {/* Message bubble */}
       <div className={cn(chatBubbleVariants({ isUser, animation }))}>
         <MarkdownRenderer>
-          {isAssistant ? typedContent : content}
+          {visibleContent}
         </MarkdownRenderer>
 
-        {isAssistant && typedContent.length < content.length && (
+        {shouldAnimateTyping && typedContent.length < content.length && (
           <span className="ml-0.5 animate-pulse">▍</span>
         )}
 
-        {actions ? (
+        {actions && (
           <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
             {actions}
           </div>
-        ) : null}
+        )}
       </div>
 
-      {showTimeStamp && createdAt ? (
+      {/* Reasoning */}
+      {isAssistant && reasoning && (<ReasoningBlock reasoning={reasoning} hydrated={hydrated} />)}
+
+      {/* Tool calls */}
+      {toolInvocations?.length ? (
+        <ToolCall toolInvocations={toolInvocations} />
+      ) : null}
+
+      {/* Timestamp */}
+      {showTimeStamp && createdAt && (
         <time
           dateTime={createdAt.toISOString()}
           className={cn(
@@ -292,27 +181,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         >
           {formattedTime}
         </time>
-      ) : null}
+      )}
     </div>
   )
 }
 
-function dataUrlToUint8Array(data: string) {
-  const base64 = data.split(",")[1]
-  const buf = Buffer.from(base64, "base64")
-  return new Uint8Array(buf)
-}
+/* -------------------------------------------------------------------------- */
+/*                               ReasoningBlock                                */
+/* -------------------------------------------------------------------------- */
 
-const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
+const ReasoningBlock = ({ reasoning, hydrated }: { reasoning: string, hydrated?: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
 
+  const shouldAnimate = !hydrated
   const typedReasoning = useTypingText(
-    part.reasoning ?? "",
-    true,
-    8
+    reasoning,
+    shouldAnimate,
+    10
   )
-
-  const isStreaming = typedReasoning.length < part.reasoning.length
+  const visibleReasoning = shouldAnimate ? typedReasoning : reasoning
+  const isStreaming = typedReasoning.length < reasoning.length
 
   return (
     <div className="mb-2 flex flex-col items-start sm:max-w-[70%]">
@@ -346,13 +234,11 @@ const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
             transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
             className="border-t"
           >
-            <div className="p-2">
-              <div className="whitespace-pre-wrap text-xs leading-relaxed">
-                {typedReasoning}
-                {isStreaming && (
-                  <span className="ml-0.5 animate-pulse">▍</span>
-                )}
-              </div>
+            <div className="p-2 whitespace-pre-wrap text-xs leading-relaxed">
+              {visibleReasoning}
+              {shouldAnimate && typedReasoning.length < reasoning.length && (
+                <span className="ml-0.5 animate-pulse">▍</span>
+              )}
             </div>
           </motion.div>
         </CollapsibleContent>
@@ -361,6 +247,9 @@ const ReasoningBlock = ({ part }: { part: ReasoningPart }) => {
   )
 }
 
+/* -------------------------------------------------------------------------- */
+/*                                 ToolCall                                   */
+/* -------------------------------------------------------------------------- */
 
 function ToolCall({
   toolInvocations,
@@ -436,10 +325,18 @@ function ToolCall({
                 </pre>
               </div>
             )
-          default:
-            return null
         }
       })}
     </div>
   )
+}
+
+/* -------------------------------------------------------------------------- */
+/*                                   Utils                                     */
+/* -------------------------------------------------------------------------- */
+
+function dataUrlToUint8Array(data: string) {
+  const base64 = data.split(",")[1]
+  const buf = Buffer.from(base64, "base64")
+  return new Uint8Array(buf)
 }

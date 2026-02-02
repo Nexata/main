@@ -18,7 +18,7 @@ export function createAuthenticatedChatTransport(
 				? `${API_BASE_URL}${input}`
 				: input;
 
-		if (typeof input === 'string' && input === '/api/chat' && init?.body) {
+		if (typeof input === 'string' && input === '/chat' && init?.body) {
 			try {
 				const originalPayload = JSON.parse(init.body as string);
 
@@ -103,7 +103,7 @@ export function createAuthenticatedChatTransport(
 
 	const customFetch = Object.assign(customFetchImpl, baseFetch) as typeof fetch;
 	return new DefaultChatTransport({
-		api: '/api/chat',
+		api: '/chat',
 		headers: async () => {
 			const token = getAccessToken();
 			const fingerprint = await getFingerprint();

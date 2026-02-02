@@ -45,6 +45,7 @@ function uiMessageToMessage(message: UIMessage): Message {
         : "assistant",
     content: text,
     reasoning: reasoning || undefined,
+    hydrated: message.metadata?.hydrated === true,
   }
 }
 
