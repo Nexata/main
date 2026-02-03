@@ -114,12 +114,11 @@ export function CredentialDetailsRow({
                             </div>
 
                             {/* Permissions */}
-                            {canManage && (
-                                <CredentialPermissions
-                                    credential={credential}
-                                    onCredentialsUpdate={onCredentialsUpdate}
-                                />
-                            )}
+                            <CredentialPermissions
+                              credential={credential}
+                              canManage={canManage}
+                              onCredentialsUpdate={onCredentialsUpdate}
+                            />
                         </div>
                     </motion.div>
                 )}

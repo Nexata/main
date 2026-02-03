@@ -26,17 +26,18 @@ import { AccessLevelBadge } from "./access-level-badge"
 
 type Props = {
   credential: CredentialItem
+  canManage: boolean
   onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>
 }
 
 export function CredentialPermissions({
   credential,
+  canManage,
   onCredentialsUpdate,
 }: Props) {
     const [selectedUser, setSelectedUser] = useState<string | undefined>()
     const [isAdminPermission, setIsAdminPermission] = useState(false)
     const { data: me } = useMe()
-    const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
     // Utility to generate a color from a string
     function stringToColor(str: string) {
@@ -111,8 +112,6 @@ export function CredentialPermissions({
         }
     }
 
-    if (!canManage) return null
-
     return (
         <div className="pt-4 border-t space-y-3">
             <div>
@@ -121,34 +120,39 @@ export function CredentialPermissions({
             </div>
 
             {/* Add permission */}
-            <div className="flex items-center gap-2">
+            {canManage && (
+              <div className="flex items-center gap-2">
                 <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                        <UserInput value={selectedUser} onChange={setSelectedUser} />
-                        <div className="flex items-center gap-2">
-                            <Checkbox
-                                id="admin-permission"
-                                className="cursor-pointer"
-                                checked={isAdminPermission}
-                                onCheckedChange={(checked) => setIsAdminPermission(checked === true)}
-                            />
-                            <Label htmlFor="admin-permission" className="text-xs text-muted-foreground">Admin</Label>
-                        </div>
+                  <div className="flex items-center gap-3">
+                    <UserInput value={selectedUser} onChange={setSelectedUser} />
+                    <div className="flex items-center gap-2">
+                      <Checkbox
+                        id="admin-permission"
+                        className="cursor-pointer"
+                        checked={isAdminPermission}
+                        onCheckedChange={(checked) => setIsAdminPermission(checked === true)}
+                      />
+                      <Label htmlFor="admin-permission" className="text-xs text-muted-foreground">
+                        Admin
+                      </Label>
                     </div>
+                  </div>
                 </div>
 
                 <AsyncConfirmButton
-                    size="sm"
-                    variant="outline"
-                    className={cn("cursor-pointer",
-                        (!selectedUser || isUserAlreadyInCredential(selectedUser)) &&
-                        "opacity-50 cursor-not-allowed pointer-events-none"
-                    )}
-                    onClick={handleAddPermission}
+                  size="sm"
+                  variant="outline"
+                  className={cn(
+                    "cursor-pointer",
+                    (!selectedUser || isUserAlreadyInCredential(selectedUser)) &&
+                      "opacity-50 cursor-not-allowed pointer-events-none"
+                  )}
+                  onClick={handleAddPermission}
                 >
-                    {components_credentials_permissions_add()}
+                  {components_credentials_permissions_add()}
                 </AsyncConfirmButton>
-            </div>
+              </div>
+            )}
 
             {/* Permissions list */}
             <div className="space-y-2">
@@ -182,14 +186,16 @@ export function CredentialPermissions({
                         </div>
 
                         <div className="flex items-center gap-2">
+                          {canManage && (
                             <Button
-                                size="sm"
-                                variant="destructive"
-                                className="cursor-pointer"
-                                onClick={() => handleDeletePermission(user.id)}
+                              size="sm"
+                              variant="destructive"
+                              className="cursor-pointer"
+                              onClick={() => handleDeletePermission(user.id)}
                             >
-                                {common_delete()}
+                              {common_delete()}
                             </Button>
+                          )}
                         </div>
                     </div>
                 ))}
