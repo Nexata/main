@@ -2,14 +2,13 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import UserInput from "@/components/user-input/user-input"
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
-import { deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
+import { canManageCredential, deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
 import { infoToast } from "@/components/info-toast/info-toast"
-import type { DisplayCredential } from "@api/utils/credential"
+import type { CredentialItem } from '@/lib/credential';
 import { useState } from "react"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
     "components.credentials.permissions.remove.toast.error.description" as components_credentials_permissions_remove_toast_error_description,
-    "components.credentials.permissions.admin_badge" as components_credentials_permissions_admin_badge,
     "common.delete" as common_delete,
     "components.credentials.permissions.add" as components_credentials_permissions_add,
     "components.credentials.permissions.title" as components_credentials_permissions_title,
@@ -23,10 +22,11 @@ import {
 import { useMe } from "@/lib/user"
 import { Checkbox } from "../ui/checkbox"
 import { Label } from "../ui/label"
+import { AccessLevelBadge } from "./access-level-badge"
 
 type Props = {
-  credential: DisplayCredential
-  onCredentialsUpdate: React.Dispatch<React.SetStateAction<DisplayCredential[] | null>>
+  credential: CredentialItem
+  onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>
 }
 
 export function CredentialPermissions({
@@ -36,7 +36,7 @@ export function CredentialPermissions({
     const [selectedUser, setSelectedUser] = useState<string | undefined>()
     const [isAdminPermission, setIsAdminPermission] = useState(false)
     const { data: me } = useMe()
-    const canManageCredential = me?.isAdmin || credential.canAdmin === true
+    const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
     // Utility to generate a color from a string
     function stringToColor(str: string) {
@@ -100,7 +100,7 @@ export function CredentialPermissions({
                 title: components_credentials_permissions_remove_toast_success_title(),
                 description: components_credentials_permissions_remove_toast_success_description()
             })
-        } 
+        }
         catch (error) {
             console.error(error)
 
@@ -111,7 +111,7 @@ export function CredentialPermissions({
         }
     }
 
-    if (!canManageCredential) return null
+    if (!canManage) return null
 
     return (
         <div className="pt-4 border-t space-y-3">
@@ -167,18 +167,21 @@ export function CredentialPermissions({
                             </Avatar>
 
                             <div className="flex flex-col min-w-0">
-                                <span className="text-sm truncate">{user.displayName ?? user.email}</span>
-                                <span className="text-xs text-muted-foreground truncate">{user.email}</span>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <span className="text-sm truncate">
+                                  {user.displayName ?? user.email}
+                                </span>
+                                <span className="shrink-0">
+                                  <AccessLevelBadge level={credential.accessLevel} />
+                                </span>
+                              </div>
+                              <span className="text-xs text-muted-foreground truncate">
+                                {user.email}
+                              </span>
                             </div>
                         </div>
 
                         <div className="flex items-center gap-2">
-                            {user.isAdminOfCredential && (
-                                <span className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">
-                                    {components_credentials_permissions_admin_badge()}
-                                </span>
-                            )}
-
                             <Button
                                 size="sm"
                                 variant="destructive"

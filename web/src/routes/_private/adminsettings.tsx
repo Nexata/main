@@ -204,7 +204,7 @@ function CompanyOverviewSection() {
 	}, [myTenant]);
 
 	return (
-		<Card className="bg-[var(--sidebar)]">
+		<Card className="bg-sidebar">
 			<CardContent className="p-6 space-y-6">
 				<div className="flex items-center justify-between">
 					<div>
@@ -349,15 +349,15 @@ function CompanyOverviewSection() {
 					</div>
 
 					<div className="flex gap-2">
-						{/* Billing */}
-						<Button
+						{/* Billing Comentado hasta que habilitemos Pay as You Go*/}
+						{/*<Button
 							size="sm"
 							onClick={() => navigate({ to: '/billing' })}
 							className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white"
 						>
 							<CreditCard className="h-4 w-4 mr-2" />
 							{admin_company_overview_billing()}
-						</Button>
+						</Button>*/}
 
 						{/* Upgrade */}
 						<Button

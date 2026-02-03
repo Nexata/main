@@ -1,4 +1,5 @@
-import type { DisplayCredential } from '@api/utils/credential';
+import type { CredentialItem } from '@/lib/credential';
+import { canManageCredential } from '@/lib/credential';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
@@ -44,9 +45,7 @@ function SettingsPage() {
 	}, []);
 	const navigate = useNavigate();
 
-	const [credentials, setCredentials] = useState<DisplayCredential[] | null>(
-		null,
-	);
+	const [credentials, setCredentials] = useState<CredentialItem[] | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [deleteModal, setDeleteModal] = useState<{
 		credentialId: string | null;
@@ -58,7 +57,8 @@ function SettingsPage() {
 		async function loadCredentials() {
 			try {
 				setLoading(true);
-				const data = await listCredentials();
+        const data = await listCredentials();
+				console.log('[SettingsPage] Credentials from API:', data);
 				if (mounted) setCredentials(data);
 			} catch (err) {
 				console.error(err);
@@ -127,7 +127,7 @@ function SettingsPage() {
 
 						<Button
 							variant="outline"
-							onClick={() => navigate({ to: '/chat' })}
+              onClick={() => navigate({ to: '/chat', search: { threadId: null } })}
 							className="gap-2 cursor-pointer"
 						>
 							<ArrowLeft className="h-4 w-4" />
@@ -167,11 +167,9 @@ function SettingsPage() {
 // --------------------------------------------------------------------------------
 
 type DataSourcesSectionProps = {
-	credentials: DisplayCredential[];
+	credentials: CredentialItem[];
 	loading: boolean;
-	onCredentialsUpdate: React.Dispatch<
-		React.SetStateAction<DisplayCredential[] | null>
-	>;
+	onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>;
 	onRequestDelete: (id: string) => void;
 };
 
@@ -187,11 +185,10 @@ export function DataSourcesSection({
 		string | null
 	>(null);
 
-	const canManageCredential = (cred: DisplayCredential) =>
-		me?.isAdmin || cred.canAdmin === true;
+	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
 	return (
-		<Card className="bg-[var(--sidebar)]">
+		<Card className="bg-sidebar">
 			<CardContent className="p-6 space-y-4">
 				<div>
 					<h2 className="text-lg font-semibold">{settings_sources_title()}</h2>
@@ -222,7 +219,7 @@ export function DataSourcesSection({
 										expandedCredentialId === id ? null : id,
 									)
 								}
-								canManageCredential={canManageCredential}
+								canManageCredential={canManage}
 								onDeleteCredential={onRequestDelete}
 								onCredentialsUpdate={onCredentialsUpdate}
 							/>
@@ -239,11 +236,9 @@ export function DataSourcesSection({
 // --------------------------------------------------------------------------------
 
 type StorageSectionProps = {
-	credentials: DisplayCredential[];
+	credentials: CredentialItem[];
 	loading: boolean;
-	onCredentialsUpdate: React.Dispatch<
-		React.SetStateAction<DisplayCredential[] | null>
-	>;
+	onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>;
 	onRequestDelete: (id: string) => void;
 };
 
@@ -255,15 +250,12 @@ export function StorageSection({
 }: StorageSectionProps) {
 	const [openSourceId, setOpenSourceId] = useState<string | null>(null);
 	const { data: me } = useMe();
-	const [expandedCredentialId, setExpandedCredentialId] = useState<
-		string | null
-	>(null);
+	const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null);
 
-	const canManageCredential = (cred: DisplayCredential) =>
-		me?.isAdmin || cred.canAdmin === true;
+	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
 	return (
-		<Card className="bg-[var(--sidebar)]">
+		<Card className="bg-sidebar">
 			<CardContent className="p-6 space-y-4">
 				<div>
 					<h2 className="text-lg font-semibold">{settings_storage_title()}</h2>
@@ -294,7 +286,7 @@ export function StorageSection({
 										expandedCredentialId === id ? null : id,
 									)
 								}
-								canManageCredential={canManageCredential}
+								canManageCredential={canManage}
 								onDeleteCredential={onRequestDelete}
 								onCredentialsUpdate={onCredentialsUpdate}
 							/>

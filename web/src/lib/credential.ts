@@ -8,7 +8,8 @@ export async function listCredentials() {
 	);
 }
 
-export type Credential = Awaited<ReturnType<typeof listCredentials>>;
+export type CredentialsResponse = Awaited<ReturnType<typeof listCredentials>>;
+export type CredentialItem = CredentialsResponse[number];
 
 export async function updateCredentialPermission(data: {
 	credentialId: string;
@@ -50,4 +51,15 @@ export async function deleteCredentialById(
 			$headers: headers,
 		}),
 	);
+}
+
+export function canManageCredential(
+  cred: CredentialItem,
+  me?: { isAdmin?: boolean }
+) {
+  return (
+    me?.isAdmin === true ||
+    cred.accessLevel === 'admin' ||
+    cred.accessLevel === 'tenant-admin'
+  );
 }

@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion"
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CredentialPermissions } from "@/components/credentials/credential-permissions"
-import type { DisplayCredential } from "@api/utils/credential"
+import type { CredentialItem } from '@/lib/credential';
 import {
     "common.expand" as common_expand,
     "common.account" as common_account,
@@ -10,14 +10,15 @@ import {
     "common.created_at" as common_created_at,
     "common.collapse" as common_collapse
 } from "@/paraglide/messages.js"
+import { AccessLevelBadge } from "./access-level-badge";
 
 type Props = {
-  credential: DisplayCredential
+  credential: CredentialItem
   expanded: boolean
   onToggle: () => void
   canManage: boolean
   onDelete: (id: string) => void
-  onCredentialsUpdate: React.Dispatch<React.SetStateAction<DisplayCredential[] | null>>
+  onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>
 }
 
 export function CredentialDetailsRow({
@@ -37,7 +38,7 @@ export function CredentialDetailsRow({
     }
 
     return (
-        <div className="rounded-md border border-border bg-[var(--card)] overflow-hidden">
+        <div className="rounded-md border border-border bg-card overflow-hidden">
             {/* Row */}
             <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors gap-2">
                 {/* Owner */}
@@ -58,7 +59,15 @@ export function CredentialDetailsRow({
                         </div>
                     )}
 
-                    <span className="text-sm font-medium truncate">{credential.ownedBy.displayName ?? credential.ownedBy.email}</span>
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span className="text-sm font-medium truncate">
+                        {credential.ownedBy.displayName ?? credential.ownedBy.email}
+                      </span>
+
+                      <span className="shrink-0">
+                        <AccessLevelBadge level={credential.accessLevel} />
+                      </span>
+                    </div>
                 </div>
 
                 {/* Actions */}

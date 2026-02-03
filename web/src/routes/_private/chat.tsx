@@ -8,6 +8,8 @@ import { Chat } from '@/components/ui/chat';
 import { useThreadById } from '@/lib/chat';
 import { createAuthenticatedChatTransport } from '@/lib/chat-transport';
 import { 'chat.meta.title' as chat_meta_title } from '@/paraglide/messages.js';
+import { useRandomWelcome } from '@/hooks/use-random-welcome';
+import { useMe } from '@/lib/user';
 
 export const Route = createFileRoute('/_private/chat')({
 	component: NexataChat,
@@ -143,6 +145,11 @@ export function NexataChat() {
 		});
   };
 
+	// Random Welcome
+	const { data: me } = useMe();
+	const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
+  const welcomeText = useRandomWelcome(userName);
+
 	return (
 		<div className="flex flex-col h-full w-full min-h-0">
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -156,7 +163,7 @@ export function NexataChat() {
           stop={stop}
           isLoadingThread={isLoadingThreadUI}
           hasUserSentMessage={hasUserSentMessage.current}
-          suggestionsLabel="Que pinta hoy amigo? Pregunta si te da la nafta gato."
+          suggestionsLabel={welcomeText}
           suggestions={[]}
           append={() => { }}
           isHydratingThread={isHydratingThread}

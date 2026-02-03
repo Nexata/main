@@ -8,7 +8,7 @@ export type SourceConfig = {
 	name: string;
 	icon: string;
 	scope: OauthScope;
-	connect: () => string;
+	connect: () => Promise<string>;
 	kind: 'dynamic' | 'storage';
 	getFileTree?: (credentialId: string) => Promise<unknown>;
 };
@@ -48,7 +48,7 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 		name: 'Outlook',
 		icon: '/datasource_icons/outlook.png',
 		scope: OauthScope.OUTLOOK,
-		connect: () => '',
+    connect: async () => '',
 		kind: 'dynamic',
 	},
 	{
@@ -57,7 +57,7 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 		name: 'Outlook Calendar',
 		icon: '/datasource_icons/ocalendar.png',
 		scope: OauthScope.OUTLOOK_CALENDAR,
-		connect: () => '',
+		connect: async () => '',
 		kind: 'dynamic',
 	},
 ];
@@ -93,7 +93,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		name: 'OneDrive',
 		icon: '/datasource_icons/onedrive.png',
 		scope: OauthScope.ONE_DRIVE,
-		connect: () => '',
+		connect: async () => '',
 		kind: 'storage',
 		getFileTree: async (_credentialId) => {
 			return [];
