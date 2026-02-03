@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import UserInput from "@/components/user-input/user-input"
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
-import { canManageCredential, deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
+import { deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
 import { infoToast } from "@/components/info-toast/info-toast"
 import type { CredentialItem } from '@/lib/credential';
 import { useState } from "react"
@@ -17,7 +17,8 @@ import {
     "components.credentials.permissions.remove.toast.success.title" as components_credentials_permissions_remove_toast_success_title,
     "components.credentials.permissions.remove.toast.success.description" as components_credentials_permissions_remove_toast_success_description,
     "components.credentials.permissions.remove.toast.loading.title" as components_credentials_permissions_remove_toast_loading_title,
-    "components.credentials.permissions.remove.toast.loading.description" as components_credentials_permissions_remove_toast_loading_description
+  "components.credentials.permissions.remove.toast.loading.description" as components_credentials_permissions_remove_toast_loading_description,
+  "components.credentials.permissions.no_manage_description" as components_credentials_permissions_no_manage_description
 } from "@/paraglide/messages.js"
 import { useMe } from "@/lib/user"
 import { Checkbox } from "../ui/checkbox"
@@ -116,7 +117,7 @@ export function CredentialPermissions({
         <div className="pt-4 border-t space-y-3">
             <div>
                 <h4 className="text-sm font-medium">{components_credentials_permissions_title()}</h4>
-                <p className="text-xs text-muted-foreground">{components_credentials_permissions_description()}</p>
+                <p className="text-xs text-muted-foreground">{canManage ? components_credentials_permissions_description() : components_credentials_permissions_no_manage_description()}</p>
             </div>
 
             {/* Add permission */}

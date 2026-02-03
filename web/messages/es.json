@@ -36,6 +36,7 @@
 			"permissions": {
 				"title": "Permisos de la credencial",
 				"description": "Administrá qué usuarios pueden acceder y utilizar esta credencial.",
+				"no_manage_description": "Revisa qué usuarios pueden acceder y utilizar esta credencial.",
 				"add": "Agregar",
 				"tenat_admin": "Administrador del Tenant",
 				"read_only": "Solo Lectura",

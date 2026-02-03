@@ -36,6 +36,7 @@
 			"permissions": {
 				"title": "Credential permissions",
 				"description": "Manage which users can access and use this credential.",
+				"no_manage_description": "Check which users can access and use this credential.",
 				"add": "Add",
 				"tenat_admin": "Tenant Admin",
 				"read_only": "Read Only",
