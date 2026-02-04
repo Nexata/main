@@ -6,8 +6,6 @@ import { tObject } from '@api/utils/type';
 import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
-// NOTE: Payments; mp and stripe
-
 export const billingRouter = new Elysia({ prefix: '/billing' })
 	.use(authPlugin({ admin: true }))
 	.get(

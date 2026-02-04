@@ -1,9 +1,47 @@
-import { cache, db } from '@api/env';
+import { cache, db, LIGHT_MODEL } from '@api/env';
 import { file, message, thread, user } from '@api/schema';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
-import type { ModelMessage } from 'ai';
+import {
+	generateText,
+	type ModelMessage,
+	type StreamTextTransform,
+	type TextStreamPart,
+	type ToolSet,
+} from 'ai';
 import { and, asc, eq, exists, lt } from 'drizzle-orm';
 import { HttpError } from 'elysia-logger';
+
+const truncateTitle = (prompt: string) =>
+	((x: string) => (x.length >= 28 ? `${x.slice(0, 25)}...` : x))(
+		prompt.charAt(0).toUpperCase() + prompt.slice(1),
+	);
+
+export async function generateThreadTitle(
+	prompt: string,
+	languagePreference?: string,
+) {
+	return generateText({
+		model: LIGHT_MODEL,
+		system: `Generate a concise, descriptive title (max 50 characters) for a chat conversation based on the user's first message. Output only the title, no quotes or extra text.${languagePreference ? ` Respond in ${languagePreference}.` : ''}`,
+		prompt,
+		maxOutputTokens: 16,
+	})
+		.then((res) => res.text.trim())
+		.catch(() => truncateTitle(prompt));
+}
+
+export const redactReasoningTransform =
+	<T extends ToolSet>(): StreamTextTransform<T> =>
+	() =>
+		new TransformStream<TextStreamPart<T>, TextStreamPart<T>>({
+			transform(part, controller) {
+				if (part.type === 'reasoning-delta') {
+					controller.enqueue({ ...part, text: '' });
+				} else {
+					controller.enqueue(part);
+				}
+			},
+		});
 
 export const BUILD_SYSTEM_PROMPT = (requestInfo: object) =>
 	`
@@ -156,6 +194,7 @@ export async function createThread(
 	userId: string,
 	prompt: string,
 	id?: string,
+	title?: string,
 ) {
 	const result = (
 		await db
@@ -163,9 +202,7 @@ export async function createThread(
 			.values({
 				id: id ?? crypto.randomUUID(),
 				userId,
-				title: ((x: string) => (x.length >= 28 ? `${x.slice(0, 25)}...` : x))(
-					prompt.charAt(0).toUpperCase() + prompt.slice(1),
-				),
+				title: title ?? truncateTitle(prompt),
 			})
 			.returning({ id: thread.id })
 	).at(0)?.id;

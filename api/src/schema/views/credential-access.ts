@@ -125,7 +125,10 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 			or(
 				eq(user.isAdmin, true),
 				eq(owner.id, user.id),
-				isNotNull(permUser.id),
+				and(
+					isNotNull(permUser.id),
+					eq(permUser.id, credentialPermission.userId),
+				),
 				eq(credential.isGlobal, true),
 			),
 		)

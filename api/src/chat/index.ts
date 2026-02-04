@@ -2,8 +2,10 @@ import { authPlugin } from '@api/auth';
 import {
 	BUILD_SYSTEM_PROMPT,
 	createThread,
+	generateThreadTitle,
 	getThreadMessages,
 	type PartialMessage,
+	redactReasoningTransform,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
@@ -33,13 +35,16 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser }) => {
-			// Unpaid bill check (cached for 5 min)
-			const unpaidBlock = await checkTenantCanChat(activeUser.slug);
-			if (unpaidBlock) throw new HttpError(402, unpaidBlock);
+			// Message limit and payment handling
+			const [unpaidBlock, messageCountData] = await Promise.all([
+				checkTenantCanChat(activeUser.slug),
+				getMessageCount(activeUser.slug),
+			]);
 
-			// Message limit handling
-			const messageCountData = await getMessageCount(activeUser.slug);
-			if (messageCountData.count + 1 >= messageCountData.limit)
+			const creditsToUse = body.extraReason ? 2 : 1;
+
+			if (unpaidBlock) throw new HttpError(402, unpaidBlock);
+			if (messageCountData.count + creditsToUse > messageCountData.limit)
 				throw HttpError.MethodNotAllowed('MESSAGE_LIMIT_REACHED');
 
 			// Initial history retrieval: if threadId provided
@@ -116,6 +121,14 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			// Thread ID handling: use existing or generate new ID
 			const threadId = body.threadId ?? crypto.randomUUID();
 
+			// Generate thread title for new threads
+			const threadTitle = body.threadId
+				? undefined
+				: await generateThreadTitle(
+						body.prompt,
+						body.languagePreference ?? undefined,
+					);
+
 			// Final streaming
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
@@ -125,12 +138,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				stopWhen: stepCountIs(20),
 				tools: await getTools(activeUser, body.threadId, fileIds),
-				providerOptions: {
-					groq: {
-						reasoningEffort: body.extraReason ? undefined : 'high',
-						reasoningFormat: body.extraReason ? undefined : 'hidden',
-					},
-				},
+				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(
 					(m) =>
 						({
@@ -162,7 +170,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							);
 
 					if (!body.threadId)
-						await createThread(activeUser.id, body.prompt, threadId);
+						await createThread(
+							activeUser.id,
+							body.prompt,
+							threadId,
+							threadTitle,
+						);
 
 					const messagesToAppend = [
 						fileSystemMessage,
@@ -177,7 +190,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								db.insert(trace).values({
 									userId: activeUser.id,
 									type: TraceType.MESSAGE_SENT,
-									metadata: { threadId: body.threadId },
+									metadata: {
+										threadId: body.threadId,
+										extraReason: body.extraReason,
+									},
 								}),
 							),
 						)
@@ -201,7 +217,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							`tenant:${activeUser.slug}:message-count`,
 							{
 								limit: messageCountData.limit,
-								count: messageCountData.count + 1,
+								count: messageCountData.count + creditsToUse,
 							},
 							{ ex: 60 * 60 },
 						),
@@ -221,7 +237,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
 				messageMetadata: ({ part }) => {
-					if (part.type === 'start') return { threadId };
+					if (part.type === 'start') return { threadId, threadTitle };
 				},
 			});
 		},

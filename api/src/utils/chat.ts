@@ -1,7 +1,7 @@
 import { cache, db } from '@api/env';
 import { TraceType, tenant, trace, user } from '@api/schema';
-import { coalesce } from '@api/utils/sql';
-import { and, count, eq, sql } from 'drizzle-orm';
+import { coalesce, sqlCase, whenThen } from '@api/utils/sql';
+import { and, eq, sql, sum } from 'drizzle-orm';
 
 export async function getMessageCount(
 	slug: string,
@@ -15,7 +15,15 @@ export async function getMessageCount(
 		await db
 			.select({
 				limit: tenant.messageLimit,
-				count: coalesce(count(trace.id), sql<number>`0`),
+				count: coalesce(
+					sum(
+						sqlCase(
+							1,
+							whenThen(sql`${trace.metadata}->>'extraReason' = 'true'`, 2),
+						),
+					),
+					sql<number>`0`,
+				),
 			})
 			.from(tenant)
 			.innerJoin(user, eq(user.slug, tenant.slug))

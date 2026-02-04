@@ -45,7 +45,7 @@ export async function getTenantBillingInfo(
 			embedLimit: 2 * 1024 * 250_000,
 		};
 
-	await cache.set(TENANT_BILLING_KEY(slug), result, { ex: 60 * 60 }); // 1 hour
+	await cache.set(TENANT_BILLING_KEY(slug), result, { ex: 60 * 60 });
 	return result;
 }
 
@@ -65,7 +65,7 @@ export async function getStorageUsage(slug: string): Promise<number> {
 	).at(0);
 
 	const usage = Number(result?.consumption ?? 0);
-	await cache.set(STORAGE_KEY(slug), usage, { ex: 12 * 60 * 60 }); // 12 hours
+	await cache.set(STORAGE_KEY(slug), usage, { ex: 12 * 60 * 60 });
 	return usage;
 }
 
@@ -88,7 +88,7 @@ export async function getEmbedUsage(slug: string): Promise<number> {
 	).at(0);
 
 	const usage = Number(result?.consumption ?? 0);
-	await cache.set(EMBED_KEY(slug), usage, { ex: 60 * 60 }); // 1 hour
+	await cache.set(EMBED_KEY(slug), usage, { ex: 60 * 60 });
 	return usage;
 }
 
@@ -128,7 +128,7 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	).at(0);
 
 	const unpaid = latestBill ? !latestBill.paid : false;
-	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 5 * 60 }); // 5 minutes
+	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 60 * 60 });
 	return unpaid;
 }
 

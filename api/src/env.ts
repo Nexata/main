@@ -53,14 +53,18 @@ export const FALLBACK_BEHAVIOR: {
 
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	// NOTE: once groq is being paid, put deepinfra first
-	models: [groq('openai/gpt-oss-120b'), deepinfra('openai/gpt-oss-120b')],
+	models: [deepinfra('deepseek-ai/DeepSeek-V3.2'), groq('openai/gpt-oss-120b')],
+});
+
+export const LIGHT_MODEL = createFallback({
+	...FALLBACK_BEHAVIOR,
+	models: [deepinfra('zai-org/GLM-4.7-Flash'), groq('openai/gpt-oss-20b')],
 });
 
 export const REASONING_MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
 	models: [
-		deepinfra('deepseek-ai/DeepSeek-V3.2'),
+		deepinfra('moonshotai/Kimi-K2.5'),
 		groq('moonshotai/kimi-k2-instruct-0905'),
 	],
 });
