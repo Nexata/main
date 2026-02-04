@@ -23,6 +23,8 @@ import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { useSearch } from "@tanstack/react-router";
+import { cn } from "@/lib/utils";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -33,6 +35,10 @@ export default function Sidebar() {
   // Search
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+
+  // Get ThredId
+  const searchTan = useSearch({ from: "/_private/chat" });
+  const activeThreadId = searchTan.threadId ?? null;
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -75,6 +81,7 @@ export default function Sidebar() {
   const confirmDelete = async () => {
     if (!chatToDelete) return;
 
+    const deletedThreadId = chatToDelete.id;
     setChatToDelete(null);
 
     const toastId = infoToast.loading({
@@ -83,12 +90,21 @@ export default function Sidebar() {
     });
 
     try {
-      await deleteThreadFn(chatToDelete.id);
+      await deleteThreadFn(deletedThreadId);
 
       infoToast.success(toastId, {
         title: 'Chat deleted',
         description: 'The conversation was deleted successfully.',
       });
+
+      // 🔥 SI BORRÓ EL CHAT ACTIVO → VOLVER A NEW CHAT
+      if (deletedThreadId === activeThreadId) {
+        navigate({
+          to: "/chat",
+          search: { threadId: null },
+          replace: true,
+        });
+      }
 
       await queryClient.invalidateQueries({
         queryKey: ['chat-threads'],
@@ -229,7 +245,10 @@ export default function Sidebar() {
                   <div
                     key={chat.id}
                     onClick={() => handleSelectChat(chat.id)}
-                    className="px-2 py-2 rounded-md flex justify-between items-center hover:bg-muted/50 cursor-pointer group"
+                    className={cn(
+                      "px-2 py-2 rounded-md flex justify-between items-center cursor-pointer group transition-colors",
+                      chat.id === activeThreadId ? "bg-muted text-foreground" : "hover:bg-muted/50"
+                    )}
                   >
                     {editingChatId !== null && editingChatId === chat.id ? (
                       <div className="flex items-center w-full">
