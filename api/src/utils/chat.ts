@@ -1,6 +1,6 @@
 import { cache, db } from '@api/env';
 import { TraceType, tenant, trace, user } from '@api/schema';
-import { coalesce, sqlCase, whenThen } from '@api/utils/sql';
+import { coalesce } from '@api/utils/sql';
 import { and, eq, sql, sum } from 'drizzle-orm';
 
 export async function getMessageCount(
@@ -17,10 +17,7 @@ export async function getMessageCount(
 				limit: tenant.messageLimit,
 				count: coalesce(
 					sum(
-						sqlCase(
-							1,
-							whenThen(sql`${trace.metadata}->>'extraReason' = 'true'`, 2),
-						),
+						sql<number>`case when ${trace.metadata}->>'extraReason' = 'true' then 2 else 1 end`,
 					),
 					sql<number>`0`,
 				),
