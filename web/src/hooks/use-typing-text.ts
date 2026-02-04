@@ -3,7 +3,7 @@ import { useEffect, useRef, useState } from "react"
 export function useTypingText(
   fullText: string,
   isActive: boolean,
-  speed = 26
+  speed = 22
 ) {
   const [displayed, setDisplayed] = useState("")
   const lastFullTextRef = useRef(fullText)

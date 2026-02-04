@@ -10,6 +10,7 @@ import { createAuthenticatedChatTransport } from '@/lib/chat-transport';
 import { 'chat.meta.title' as chat_meta_title } from '@/paraglide/messages.js';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import { useMe } from '@/lib/user';
+import { useChatUIStore } from '@/lib/chat.store';
 
 export const Route = createFileRoute('/_private/chat')({
 	component: NexataChat,
@@ -27,9 +28,14 @@ export function NexataChat() {
 	const navigate = useNavigate();
 
 	// Active Thred
-	const [activeThreadId, setActiveThreadId] = useState<string | null>(search.threadId,);
-	useEffect(() => {
-		setActiveThreadId(search.threadId);
+  const [activeThreadId, setActiveThreadId] = useState<string | null>(search.threadId);
+
+ 	// Avisar ThredId + Title
+	const setGlobalActiveThreadId = useChatUIStore((s) => s.setActiveThreadId);
+
+  useEffect(() => {
+    setActiveThreadId(search.threadId);
+		setGlobalActiveThreadId(search.threadId);
   }, [search.threadId]);
 
 	// Flags Auxiliares
@@ -44,7 +50,8 @@ export function NexataChat() {
 			transport: createAuthenticatedChatTransport(
 				activeThreadId,
 				(newThreadId) => {
-					setActiveThreadId(newThreadId);
+          setActiveThreadId(newThreadId);
+					setGlobalActiveThreadId(newThreadId);
 
 					navigate({
 						to: '/chat',
@@ -54,70 +61,59 @@ export function NexataChat() {
 				},
 			),
 		});
-	}, [activeThreadId, navigate]);
+  }, [activeThreadId, navigate]);
 
-	const initialMessages = useMemo<UIMessage[]>(() => {
+	type UIParts = UIMessage["parts"];
+
+  function normalizeParts(content: unknown): UIParts {
+    if (!content) return [];
+
+    if (Array.isArray(content)) return content as UIParts;
+    if (typeof content === "string")  return [{ type: "text", text: content }];
+
+    return [];
+  }
+
+  const initialMessages = useMemo<UIMessage[]>(() => {
     if (!threadMessages || !activeThreadId) return [];
 
     return threadMessages
-      .filter((m) => m.role !== 'tool')
-      .map((m) => {
-        let text = '';
-
-        if (Array.isArray(m.content)) {
-          text = m.content
-            .filter((p) => p.type === 'text' && typeof p.text === 'string')
-            .map((p) => p.text)
-            .join('')
-            .trim();
-        }
-
-        return {
-          id: m.id,
-          role: m.role as 'user' | 'assistant' | 'system',
-          createdAt: m.createdAt,
-          metadata: {
-            hydrated: true,
-          },
-          parts: [
-            {
-              type: 'text',
-              text,
-            },
-          ],
-        };
-      })
-      .filter(
-        (m) =>
-          m.parts.length > 0 &&
-          m.parts.some((p) => p.type === 'text' && p.text.trim().length > 0,),
-      );
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => ({
+        id: m.id,
+        role: m.role,
+        createdAt: m.createdAt,
+        metadata: { hydrated: true },
+        parts: normalizeParts(m.content),
+      }));
   }, [threadMessages, activeThreadId]);
 
 	// Creacion del Chat
-	const { messages, sendMessage, status, stop, error, setMessages } = useChat({
-		chat,
-  });
+	const { messages, sendMessage, status, stop, error, setMessages } = useChat({chat});
 
 	// Input
   const [input, setInput] = useState('');
   const hasUserSentMessage = useRef(false);
 
 	// Hidratacion Effect
-	useEffect(() => {
+	const hasHydrated = useRef(false);
+
+  useEffect(() => {
+    if (hasHydrated.current) return;
     if (!hadThreadOnMount.current) return;
     if (!activeThreadId) return;
     if (!initialMessages.length) return;
+    if (status === "streaming") return;
 
-    stop?.();
     setMessages(initialMessages);
-  }, [activeThreadId, initialMessages, setMessages, stop]);
-
+    hasHydrated.current = true;
+  }, [activeThreadId, initialMessages, status, setMessages]);
 
 	// Revisar thred activo
 	useEffect(() => {
 		if (!activeThreadId) {
-			setMessages([]);
+      setMessages([]);
+			setGlobalActiveThreadId(null);
 		}
 	}, [activeThreadId, setMessages]);
 
@@ -133,15 +129,20 @@ export function NexataChat() {
 	) => {
 		event?.preventDefault?.();
 
-    if (!input.trim()) return;
+		const hasText = input.trim().length > 0;
+    const hasFiles = options?.attachments && options.attachments.length > 0;
+
+    if (!hasText && !hasFiles) return;
 
 		hasUserSentMessage.current = true;
 		const actualInput = input;
-		setInput('');
+    setInput('');
+
+    const files = options?.attachments;
 
 		await sendMessage({
 			text: actualInput,
-			files: options?.attachments,
+			files
 		});
   };
 

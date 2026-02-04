@@ -23,8 +23,9 @@ import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
-import { useSearch } from "@tanstack/react-router";
 import { cn } from "@/lib/utils";
+import { useChatUIStore } from '@/lib/chat.store';
+import { useTypingText } from '@/hooks/use-typing-text';
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -36,9 +37,10 @@ export default function Sidebar() {
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // Get ThredId
-  const searchTan = useSearch({ from: "/_private/chat" });
-  const activeThreadId = searchTan.threadId ?? null;
+  // Get active thread only if /chat is active
+  const activeThreadId = useChatUIStore((s) => s.activeThreadId);
+  // New Thred Title
+  const optimisticThreads = useChatUIStore((s) => s.optimisticThreads);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -48,7 +50,25 @@ export default function Sidebar() {
     return () => clearTimeout(t);
   }, [search]);
 
-  const { data: threads, isLoading: threadsLoading } = useThreads({search: debouncedSearch || undefined});
+  const { data: threads, isLoading: threadsLoading } = useThreads({ search: debouncedSearch || undefined });
+
+  // Add new Thread Title
+  const mergedThreads = [
+    ...Object.values(optimisticThreads),
+    ...(threads ?? []),
+  ].filter((t, index, self) => index === self.findIndex((x) => x.id === t.id));
+
+  useEffect(() => {
+    if (!threads) return;
+
+    const { removeOptimisticThread } = useChatUIStore.getState();
+
+    threads.forEach((t) => {
+      if (t.id) {
+        removeOptimisticThread(t.id);
+      }
+    });
+  }, [threads]);
 
   const deleteThreadFn = useDeleteThreadById();
   const updateThreadFn = useUpdateThreadById();
@@ -97,13 +117,14 @@ export default function Sidebar() {
         description: 'The conversation was deleted successfully.',
       });
 
-      // 🔥 SI BORRÓ EL CHAT ACTIVO → VOLVER A NEW CHAT
       if (deletedThreadId === activeThreadId) {
         navigate({
           to: "/chat",
           search: { threadId: null },
           replace: true,
         });
+
+        useChatUIStore.getState().setActiveThreadId(null);
       }
 
       await queryClient.invalidateQueries({
@@ -241,7 +262,7 @@ export default function Sidebar() {
                   </>
                 )}
 
-                {!threadsLoading && (threads && threads.length > 0 ? threads : [{ id: null, title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
+                {!threadsLoading && ((mergedThreads.length > 0 ? mergedThreads : [{ id: null, title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
                   <div
                     key={chat.id}
                     onClick={() => handleSelectChat(chat.id)}
@@ -277,7 +298,10 @@ export default function Sidebar() {
                       </div>
                     ) : (
                       <>
-                        <span className="truncate">{chat.title}</span>
+                        <ThreadTitle
+                          title={chat.title ?? "New Chat"}
+                          isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
+                        />
 
                         {chat.id !== null && (
                           <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -300,16 +324,14 @@ export default function Sidebar() {
                       </>
                     )}
                   </div>
-                ))}
+                )))}
               </div>
             </div>
           )}
 
           {/* Menú inferior */}
           <div
-            className={`flex flex-col gap-4 transition-all duration-300 ${
-              isCollapsed ? "items-center" : "items-stretch"
-            }`}
+            className={`flex flex-col gap-4 transition-all duration-300 ${isCollapsed ? "items-center" : "items-stretch"}`}
           >
             <Button
               variant="outline"
@@ -346,5 +368,21 @@ export default function Sidebar() {
         onConfirm={confirmDelete}
       />
     </>
+  );
+}
+
+function ThreadTitle({
+  title,
+  isTyping,
+}: {
+  title: string;
+  isTyping: boolean;
+}) {
+  const animated = useTypingText(title, isTyping);
+
+  return (
+    <span className="truncate">
+      {isTyping ? animated : title}
+    </span>
   );
 }

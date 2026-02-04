@@ -115,7 +115,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const typedContent = useTypingText(
     content ?? "",
     shouldAnimateTyping,
-    18
+    22
   )
 
   const visibleContent = shouldAnimateTyping ? typedContent : content

@@ -2,120 +2,181 @@ import { DefaultChatTransport } from 'ai';
 import { API_BASE_URL } from '@/api';
 import { getAccessToken } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
+import { useChatUIStore } from './chat.store';
 
 const baseFetch = globalThis.fetch;
 
+function cleanObject<T extends Record<string, any>>(obj: T): Partial<T> {
+  return Object.fromEntries(
+    Object.entries(obj).filter(([, v]) => v !== undefined),
+  ) as Partial<T>;
+}
+
 export function createAuthenticatedChatTransport(
-	threadId?: string | null,
-	onThreadId?: (id: string) => void,
+  threadId?: string | null,
+  onThreadId?: (id: string) => void,
 ) {
-	const customFetchImpl = async (
-		input: RequestInfo | URL,
-		init?: RequestInit,
-	): Promise<Response> => {
-		const url =
-			typeof input === 'string' && input.startsWith('/')
-				? `${API_BASE_URL}${input}`
-				: input;
+  const customFetchImpl = async (
+    input: RequestInfo | URL,
+    init?: RequestInit,
+  ): Promise<Response> => {
+    const url =
+      typeof input === 'string' && input.startsWith('/')
+        ? `${API_BASE_URL}${input}`
+        : input;
 
-		if (typeof input === 'string' && input === '/chat' && init?.body) {
-			try {
-				const originalPayload = JSON.parse(init.body as string);
+    if (typeof input === 'string' && input === '/chat' && init?.body) {
+      try {
+        const originalPayload = JSON.parse(init.body as string);
+        const lastMessage = originalPayload.messages?.at(-1);
 
-				const lastMessage = originalPayload.messages?.at(-1);
+        const prompt =
+          lastMessage?.parts
+            ?.filter((p: any) => p.type === 'text')
+            .map((p: any) => p.text)
+            .join('\n') ?? '';
 
-				const prompt =
-					lastMessage?.parts
-						?.filter((p: any) => p.type === 'text')
-						.map((p: any) => p.text)
-						.join('\n') ?? '';
+        const fileParts =
+          lastMessage?.parts?.filter((p: any) => p.type === 'file') ?? [];
 
-				const files =
-					lastMessage?.parts
-						?.filter((p: any) => p.type === 'file')
-						.map((f: any) => ({
-							mediaType: f.mediaType,
-							filename: f.filename,
-							url: f.url,
-						})) ?? [];
+        const hasFiles = fileParts.length > 0;
 
-				const adaptedPayload = {
-					prompt,
-					files,
-					extraReason: originalPayload.extraReason ?? false,
-					threadId: threadId,
-					editedMessageId: undefined,
-					languagePreference: undefined,
-				};
+        const finalThreadId =
+          originalPayload.threadId ?? threadId ?? undefined;
 
-				const response = await baseFetch(url, {
-					...init,
-					body: JSON.stringify(adaptedPayload),
-				});
+        const extraReason = originalPayload.extraReason ?? false;
+        const languagePreference = originalPayload.languagePreference;
 
+        // ===== CON ARCHIVOS =====
+        if (hasFiles) {
+          const formData = new FormData();
 
-				try {
-					const clone = response.clone();
-					const reader = clone.body?.getReader();
+          formData.append('prompt', prompt);
+          formData.append('extraReason', String(extraReason));
 
-					if (!reader) return response;
+          if (finalThreadId) formData.append('threadId', finalThreadId);
+          if (originalPayload.editedMessageId) {
+            formData.append(
+              'editedMessageId',
+              originalPayload.editedMessageId,
+            );
+          }
+          if (languagePreference) {
+            formData.append('languagePreference', languagePreference);
+          }
 
-					const decoder = new TextDecoder();
-					let buffer = '';
+          for (const part of fileParts) {
+            formData.append('files', part.file);
+          }
 
-					while (true) {
-						const { done, value } = await reader.read();
-						if (done) break;
+          return baseFetch(url, {
+            ...init,
+            body: formData,
+            headers: {
+              authorization: (init.headers as any)?.authorization,
+              fingerprint: (init.headers as any)?.fingerprint,
+            },
+          });
+        }
 
-						buffer += decoder.decode(value, { stream: true });
+        // ===== SIN ARCHIVOS =====
+        const adaptedPayload = cleanObject({
+          prompt,
+          extraReason,
+          threadId: finalThreadId,
+          editedMessageId: originalPayload.editedMessageId,
+          languagePreference,
+        });
 
-						const lines = buffer.split('\n');
-						buffer = lines.pop() ?? '';
+        const response = await baseFetch(url, {
+          ...init,
+          body: JSON.stringify(adaptedPayload),
+          headers: {
+            ...(init.headers ?? {}),
+            'content-type': 'application/json',
+          },
+        });
 
-						for (const line of lines) {
-							if (!line.startsWith('data:')) continue;
+        // ---- stream parsing ----
+        try {
+          const clone = response.clone();
+          const reader = clone.body?.getReader();
+          if (!reader) return response;
 
-							const json = line.replace('data:', '').trim();
-							if (json === '[DONE]') continue;
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-							try {
-								const event = JSON.parse(json);
-								if (event.type === 'start' && event.messageMetadata?.threadId)
-									onThreadId?.(event.messageMetadata.threadId);
-							} catch {
-								// ignoramos chunks incompletos
-							}
-						}
-					}
-				} catch (err) {
-					console.error('[Chat Debug] Failed to parse stream', err);
-				}
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
 
-				return response;
-			} catch (err) {
-				console.error('[Chat Adapter] Failed to adapt payload', err);
-				return baseFetch(url, init);
-			}
-		}
+            buffer += decoder.decode(value, { stream: true });
 
-		return baseFetch(url, init);
-	};
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
 
-	const customFetch = Object.assign(customFetchImpl, baseFetch) as typeof fetch;
-	return new DefaultChatTransport({
-		api: '/chat',
-		headers: async () => {
-			const token = getAccessToken();
-			const fingerprint = await getFingerprint();
+            for (const line of lines) {
+              if (!line.startsWith('data:')) continue;
 
-			return { authorization: token ? `Bearer ${token}` : '', fingerprint };
-		},
-		body: {
-			threadId: threadId,
-			extraReason: false,
-			editedMessageId: undefined,
-			languagePreference: undefined,
-		},
-		fetch: customFetch,
-	});
+              const json = line.replace('data:', '').trim();
+              if (json === '[DONE]') continue;
+
+              try {
+                const event = JSON.parse(json);
+                if (event.type === 'start' && event.messageMetadata?.threadId) {
+                  const { threadId, threadTitle } = event.messageMetadata;
+                  onThreadId?.(threadId);
+
+                  if (threadTitle) {
+                    const { upsertOptimisticThread, setActiveThreadId } = useChatUIStore.getState();
+
+                    setActiveThreadId(threadId);
+
+                    upsertOptimisticThread({
+                      id: threadId,
+                      title: threadTitle,
+                      isTyping: true,
+                    });
+                  }
+                }
+
+              } catch {
+                // chunk incompleto
+              }
+            }
+          }
+        } catch (err) {
+          console.error('[Chat Debug] Failed to parse stream', err);
+        }
+
+        return response;
+      } catch (err) {
+        console.error('[Chat Adapter] Failed to adapt payload', err);
+        return baseFetch(url, init);
+      }
+    }
+
+    return baseFetch(url, init);
+  };
+
+  const customFetch = Object.assign(customFetchImpl, baseFetch) as typeof fetch;
+
+  return new DefaultChatTransport({
+    api: '/chat',
+    headers: async () => {
+      const token = getAccessToken();
+      const fingerprint = await getFingerprint();
+      return {
+        authorization: token ? `Bearer ${token}` : '',
+        fingerprint,
+      };
+    },
+    body: {
+      threadId,
+      extraReason: false,
+      editedMessageId: undefined,
+      languagePreference: undefined,
+    },
+    fetch: customFetch,
+  });
 }

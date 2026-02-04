@@ -94,6 +94,8 @@ export function Chat({
     !isHydratingThread &&
     lastMessage?.role === "user";
 
+  const hasStreamingAssistant = isGenerating && lastMessage?.role === "assistant"
+
   const messagesRef = useRef(messages)
   messagesRef.current = messages
 
