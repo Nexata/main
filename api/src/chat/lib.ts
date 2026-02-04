@@ -11,8 +11,8 @@ import {
 import { and, asc, eq, exists, lt } from 'drizzle-orm';
 import { HttpError } from 'elysia-logger';
 
-const truncateTitle = (prompt: string) =>
-	((x: string) => (x.length >= 28 ? `${x.slice(0, 25)}...` : x))(
+const truncateTitle = (prompt: string, length = 50) =>
+	((x: string) => (x.length >= length ? `${x.slice(0, length - 3)}...` : x))(
 		prompt.charAt(0).toUpperCase() + prompt.slice(1),
 	);
 
@@ -24,9 +24,8 @@ export async function generateThreadTitle(
 		model: LIGHT_MODEL,
 		system: `Generate a concise, descriptive title (max 50 characters) for a chat conversation based on the user's first message. Output only the title, no quotes or extra text.${languagePreference ? ` Respond in ${languagePreference}.` : ''}`,
 		prompt,
-		maxOutputTokens: 16,
 	})
-		.then((res) => res.text.trim())
+		.then((res) => truncateTitle(res.text.trim()))
 		.catch(() => truncateTitle(prompt));
 }
 
