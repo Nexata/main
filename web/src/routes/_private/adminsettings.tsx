@@ -825,10 +825,20 @@ function UsersSection() {
 															variant="ghost"
 															className="cursor-pointer"
 															onClick={() => {
-																setEditingUserId(user.id);
-																setDisplayName(user.displayName ?? '');
-																setFile(null);
-															}}
+                                setEditingUserId((current) => {
+                                  const isSameUser = current === user.id;
+
+                                  if (isSameUser) {
+                                    setDisplayName('');
+                                    setFile(null);
+                                    return null;
+                                  }
+
+                                  setDisplayName(user.displayName ?? '');
+                                  setFile(null);
+                                  return user.id;
+                                });
+                              }}
 														>
 															<Pencil className="h-4 w-4" />
 														</Button>
