@@ -194,6 +194,8 @@
 			"title": "General information",
 			"description": "Overview of your account status, current plan, and message usage.",
 			"message_balance": "Message balance",
+			"embeddings_balance": "Embeddings balance",
+			"storage_balance": "Storage balance",
 			"current_plan": "Current plan",
 			"upgrade_plan": "Upgrade plan",
 			"buy_messages": "Buy messages",

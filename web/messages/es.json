@@ -193,7 +193,9 @@
 		"company_overview": {
 			"title": "Información general",
 			"description": "Resumen del estado actual de tu cuenta, plan activo y consumo de mensajes.",
-			"message_balance": "Saldo de mensajes",
+			"message_balance": "Saldo de Mensajes",
+			"embeddings_balance": "Saldo de Embeddings",
+			"storage_balance": "Saldo de Storage",
 			"current_plan": "Plan actual",
 			"upgrade_plan": "Upgrade plan",
 			"buy_messages": "Comprar mensajes",
