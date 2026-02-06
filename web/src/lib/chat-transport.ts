@@ -119,7 +119,7 @@ export function createAuthenticatedChatTransport(
               if (!line.startsWith('data:')) continue;
 
               const json = line.replace('data:', '').trim();
-              if (json === '[DONE]') continue;
+              // if (json === '[DONE]') continue;
 
               try {
                 const event = JSON.parse(json);

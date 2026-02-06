@@ -6,20 +6,53 @@ export type OptimisticThread = {
   isTyping: boolean;
 };
 
+export type ChatSessionStatus =
+  | 'idle'        // chat listo, sin streaming
+  | 'new'         // chat nuevo, sin threadId todavía
+  | 'hydrating'  // cargando mensajes existentes
+  | 'streaming'; // AI escribiendo
+
 type ChatUIState = {
   activeThreadId: string | null;
+  status: ChatSessionStatus;
   optimisticThreads: Record<string, OptimisticThread>;
   setActiveThreadId: (id: string | null) => void;
   upsertOptimisticThread: (thread: OptimisticThread) => void;
   removeOptimisticThread: (threadId: string) => void;
+  startNewChat: () => void;
+  hydrateChat: (threadId: string) => void;
+  setStreaming: (threadId: string) => void;
+  finishStreaming: () => void;
 };
 
 export const useChatUIStore = create<ChatUIState>((set) => ({
   activeThreadId: null,
+  status: 'idle',
   optimisticThreads: {},
-
-  setActiveThreadId: (id) => set({ activeThreadId: id }),
-
+  startNewChat: () =>
+    set({
+      activeThreadId: null,
+      status: 'new',
+    }),
+  hydrateChat: (threadId) =>
+    set({
+      activeThreadId: threadId,
+      status: 'hydrating',
+    }),
+  setStreaming: (threadId) =>
+    set({
+      activeThreadId: threadId,
+      status: 'streaming',
+    }),
+  finishStreaming: () =>
+    set((s) => ({
+      status: s.activeThreadId ? 'idle' : 'new',
+    })),
+  setActiveThreadId: (id) =>
+    set((s) => ({
+      activeThreadId: id,
+      status: s.status === 'new' ? 'idle' : s.status,
+    })),
   upsertOptimisticThread: (thread) =>
     set((state) => ({
       optimisticThreads: {
@@ -27,7 +60,6 @@ export const useChatUIStore = create<ChatUIState>((set) => ({
         [thread.id]: thread,
       },
     })),
-
   removeOptimisticThread: (threadId) =>
     set((state) => {
       const next = { ...state.optimisticThreads };

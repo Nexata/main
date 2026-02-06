@@ -5,14 +5,13 @@ import {
   type ChatMessageProps,
   type Message,
 } from "@/components/ui/chat-message"
-import { TypingIndicator } from "@/components/ui/typing-indicator"
 
 type AdditionalMessageOptions = Omit<ChatMessageProps, keyof Message>
 
 interface MessageListProps {
   messages: UIMessage[]
   showTimeStamps?: boolean
-  isTyping?: boolean
+  disableTypingAnimation?: boolean
   messageOptions?:
     | AdditionalMessageOptions
     | ((message: UIMessage) => AdditionalMessageOptions)
@@ -45,14 +44,13 @@ function uiMessageToMessage(message: UIMessage): Message {
         : "assistant",
     content: text,
     reasoning: reasoning || undefined,
-    hydrated: message.metadata?.hydrated === true,
   }
 }
 
 export function MessageList({
   messages,
   showTimeStamps = true,
-  isTyping = false,
+  disableTypingAnimation = false,
   messageOptions,
 }: MessageListProps) {
   return (
@@ -69,13 +67,12 @@ export function MessageList({
           <ChatMessage
             key={message.id ?? index}
             showTimeStamp={showTimeStamps}
+            disableTypingAnimation={disableTypingAnimation}
             {...message}
             {...additionalOptions}
           />
         )
       })}
-
-      {isTyping && <TypingIndicator />}
     </div>
   )
 }

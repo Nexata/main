@@ -16,10 +16,7 @@ export default function CallbackPage() {
 
 		if (accessToken && refreshToken) {
 			saveTokens(accessToken, refreshToken);
-      navigate({
-          to: '/chat',
-          search: {threadId: null},
-        });
+      navigate({ to: '/chat' });
 		} else {
 			navigate({ to: '/login' });
 		}

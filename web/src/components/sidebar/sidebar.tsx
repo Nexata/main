@@ -33,6 +33,9 @@ export default function Sidebar() {
 
   const queryClient = useQueryClient();
 
+  // Chat Status
+  const { startNewChat, hydrateChat } = useChatUIStore();
+
   // Search
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
@@ -118,13 +121,8 @@ export default function Sidebar() {
       });
 
       if (deletedThreadId === activeThreadId) {
-        navigate({
-          to: "/chat",
-          search: { threadId: null },
-          replace: true,
-        });
-
-        useChatUIStore.getState().setActiveThreadId(null);
+        useChatUIStore.getState().startNewChat();
+        navigate({ to: '/chat' });
       }
 
       await queryClient.invalidateQueries({
@@ -143,12 +141,10 @@ export default function Sidebar() {
   };
 
   const handleSelectChat = (threadId: string | null) => {
-    navigate({
-      to: '/chat',
-      search: {
-        threadId,
-      },
-    });
+    if (!threadId) startNewChat();
+    else hydrateChat(threadId);
+
+    navigate({ to: '/chat' });
   };
 
   const sidebarWidth = isCollapsed ? 60 : 250;

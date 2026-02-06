@@ -165,7 +165,7 @@ function AdminSettingsPage() {
 
 					<Button
 						variant="outline"
-						onClick={() => navigate({ to: '/chat', search: { threadId: null} })}
+						onClick={() => navigate({ to: '/chat' })}
 						className="cursor-pointer hover:bg-muted transition-colors"
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
