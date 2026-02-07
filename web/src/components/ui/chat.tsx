@@ -47,7 +47,8 @@ interface ChatPropsBase {
   transcribeAudio?: (blob: Blob) => Promise<string>
   welcomeLabel?: string,
   isHydratingThread?: boolean,
-  isNewChat?: boolean
+  isNewChat?: boolean,
+  isUserLoading?: boolean
 }
 
 export function Chat({
@@ -63,7 +64,8 @@ export function Chat({
   transcribeAudio,
   welcomeLabel,
   isHydratingThread,
-  isNewChat
+  isNewChat,
+  isUserLoading
 }: ChatPropsBase) {
 
   // Status Flags
@@ -124,7 +126,7 @@ export function Chat({
 
   return (
     <ChatContainer className={className}>
-      {showWelcome && (<ChatWelcome label={welcomeLabel}/>)}
+      {showWelcome && (<ChatWelcome label={welcomeLabel} isLoading={isUserLoading}/>)}
       {showWelcomeSkeleton && (<ChatWelcome isLoading/>)}
 
       {isHydrating && (
@@ -365,8 +367,7 @@ export function ChatWelcome({ label, isLoading }: ChatWelcomeProps) {
     <div className="flex flex-1 items-center justify-center px-4">
       {isLoading ? (
         <div className="animate-pulse">
-          {/* Skeleton simple: línea horizontal del tamaño del título */}
-          <div className="h-7 w-72 rounded-md bg-muted" />
+          <div className="h-10 w-130 rounded-md bg-muted" />
         </div>
       ) : (
         <h2

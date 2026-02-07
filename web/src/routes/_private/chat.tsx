@@ -121,9 +121,15 @@ export function NexataChat() {
   };
 
   // Welcome / empty state
-  const { data: me } = useMe();
+  const { data: me, isLoading: isMeLoading } = useMe()
   const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
   const welcomeText = useRandomWelcome(userName);
+
+  useEffect(() => {
+    if (activeThreadId === null && status === 'idle') {
+      useChatUIStore.getState().startNewChat()
+    }
+  }, [activeThreadId, status])
 
   return (
     <div className="flex flex-col h-full w-full min-h-0">
@@ -139,6 +145,7 @@ export function NexataChat() {
           isHydratingThread={isHydrating}
           isNewChat={isNewChat}
           welcomeLabel={welcomeText}
+          isUserLoading={isMeLoading}
         />
 
         {error && (
