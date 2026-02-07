@@ -13,8 +13,7 @@ function cleanObject<T extends Record<string, any>>(obj: T): Partial<T> {
 }
 
 export function createAuthenticatedChatTransport(
-  threadId?: string | null,
-  onThreadId?: (id: string) => void,
+  threadId?: string | null
 ) {
   const customFetchImpl = async (
     input: RequestInfo | URL,
@@ -99,52 +98,46 @@ export function createAuthenticatedChatTransport(
 
         // ---- stream parsing ----
         try {
-          const clone = response.clone();
-          const reader = clone.body?.getReader();
-          if (!reader) return response;
+          const clone = response.clone()
+          const reader = clone.body?.getReader()
+          if (!reader) return response
 
-          const decoder = new TextDecoder();
-          let buffer = '';
+          const decoder = new TextDecoder()
+          let buffer = ''
 
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
+          reader.read().then(({ value }) => {
+            if (!value) return
 
-            buffer += decoder.decode(value, { stream: true });
-
-            const lines = buffer.split('\n');
-            buffer = lines.pop() ?? '';
+            buffer += decoder.decode(value, { stream: true })
+            const lines = buffer.split('\n')
+            buffer = lines.pop() ?? ''
 
             for (const line of lines) {
-              if (!line.startsWith('data:')) continue;
-
-              const json = line.replace('data:', '').trim();
-              // if (json === '[DONE]') continue;
+              if (!line.startsWith('data:')) continue
 
               try {
-                const event = JSON.parse(json);
+                const json = line.replace('data:', '').trim()
+                if (json === '[DONE]') return
+
+                const event = JSON.parse(json)
+
                 if (event.type === 'start' && event.messageMetadata?.threadId) {
-                  const { threadId, threadTitle } = event.messageMetadata;
-                  onThreadId?.(threadId);
+                  const { threadId, threadTitle } = event.messageMetadata
+                  const store = useChatUIStore.getState()
+
+                  store.setActiveThreadId(threadId)
 
                   if (threadTitle) {
-                    const { upsertOptimisticThread, setActiveThreadId } = useChatUIStore.getState();
-
-                    setActiveThreadId(threadId);
-
-                    upsertOptimisticThread({
+                    store.upsertOptimisticThread({
                       id: threadId,
                       title: threadTitle,
                       isTyping: true,
-                    });
+                    })
                   }
                 }
-
-              } catch {
-                // chunk incompleto
-              }
+              } catch {}
             }
-          }
+          })
         } catch (err) {
           console.error('[Chat Debug] Failed to parse stream', err);
         }

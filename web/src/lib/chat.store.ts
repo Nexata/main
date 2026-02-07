@@ -35,10 +35,10 @@ export const useChatUIStore = create<ChatUIState>((set) => ({
       status: 'new',
     }),
   hydrateChat: (threadId) =>
-    set({
+    set((s) => ({
       activeThreadId: threadId,
-      status: 'hydrating',
-    }),
+      status: s.status === 'streaming' ? s.status : 'hydrating',
+    })),
   setStreaming: (threadId) =>
     set({
       activeThreadId: threadId,
@@ -51,7 +51,7 @@ export const useChatUIStore = create<ChatUIState>((set) => ({
   setActiveThreadId: (id) =>
     set((s) => ({
       activeThreadId: id,
-      status: s.status === 'new' ? 'idle' : s.status,
+      // status: s.status === 'new' ? 'idle' : s.status,
     })),
   upsertOptimisticThread: (thread) =>
     set((state) => ({

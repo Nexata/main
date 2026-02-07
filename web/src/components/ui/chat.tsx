@@ -75,6 +75,8 @@ export function Chat({
   const showWelcomeSkeleton = isNewChat && isHydrating && messages.length === 0
 
   const lastMessage = messages.at(-1)
+  const assistantHasText = lastMessage?.role === 'assistant' && lastMessage.parts?.some(p => p.type === 'text' && p.text.length > 0)
+  const showThinking = isStreaming && !assistantHasText
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -143,7 +145,7 @@ export function Chat({
             messageOptions={messageOptions}
           />
 
-          {isStreaming && (
+          {showThinking && (
             <div className="px-2 py-1">
               <ChatThinkingIndicator />
             </div>

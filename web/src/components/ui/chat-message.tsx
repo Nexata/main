@@ -117,7 +117,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const typedContent = useTypingText(
     content ?? "",
     shouldAnimateTyping,
-    30
+    6
   )
 
   const visibleContent = shouldAnimateTyping ? typedContent : content
@@ -199,7 +199,7 @@ const ReasoningBlock = ({ reasoning, disableTypingAnimation }: { reasoning: stri
   const typedReasoning = useTypingText(
     reasoning,
     shouldAnimate,
-    18
+    6
   )
   const visibleReasoning = shouldAnimate ? typedReasoning : reasoning
   const isStreaming = typedReasoning.length < reasoning.length

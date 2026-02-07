@@ -67,16 +67,8 @@ export function NexataChat() {
 
   // Chat engine
   const chat = useMemo(
-    () =>
-      new AIChat({
-        transport: createAuthenticatedChatTransport(
-          activeThreadId,
-          (newThreadId) => {
-            hydrateChat(newThreadId);
-          },
-        ),
-      }),
-    [activeThreadId, hydrateChat],
+    () => new AIChat({ transport: createAuthenticatedChatTransport(activeThreadId) }),
+    [activeThreadId]
   );
 
   const {

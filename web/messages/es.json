@@ -119,7 +119,8 @@
 	},
 	"chat": {
 		"meta": {
-			"title": "Nexata | Chat"
+			"title": "Nexata | Chat",
+			"thinking": "Pensando"
 		},
   	 "suggestions": {
       "welcome_1": "Hola {name}, ¿en qué puedo ayudarte hoy?",
