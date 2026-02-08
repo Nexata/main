@@ -88,7 +88,8 @@ export interface Message {
 export interface ChatMessageProps extends Message {
   showTimeStamp?: boolean
   animation?: Animation
-  actions?: React.ReactNode
+  actions?: React.ReactNode,
+  disableTypingAnimation?: boolean
 }
 
 /* -------------------------------------------------------------------------- */
@@ -106,16 +107,17 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   actions,
   experimental_attachments,
   toolInvocations,
+  disableTypingAnimation
 }) => {
   const isUser = role === "user"
   const isAssistant = role === "assistant"
 
-  const shouldAnimateTyping = isAssistant && !hydrated
+  const shouldAnimateTyping = isAssistant && !disableTypingAnimation
 
   const typedContent = useTypingText(
     content ?? "",
     shouldAnimateTyping,
-    18
+    6
   )
 
   const visibleContent = shouldAnimateTyping ? typedContent : content
@@ -163,7 +165,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       </div>
 
       {/* Reasoning */}
-      {isAssistant && reasoning && (<ReasoningBlock reasoning={reasoning} hydrated={hydrated} />)}
+      {isAssistant && reasoning && (<ReasoningBlock reasoning={reasoning} disableTypingAnimation={hydrated} />)}
 
       {/* Tool calls */}
       {toolInvocations?.length ? (
@@ -190,14 +192,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 /*                               ReasoningBlock                                */
 /* -------------------------------------------------------------------------- */
 
-const ReasoningBlock = ({ reasoning, hydrated }: { reasoning: string, hydrated?: boolean }) => {
+const ReasoningBlock = ({ reasoning, disableTypingAnimation }: { reasoning: string, disableTypingAnimation?: boolean }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const shouldAnimate = !hydrated
+  const shouldAnimate = !disableTypingAnimation
   const typedReasoning = useTypingText(
     reasoning,
     shouldAnimate,
-    10
+    6
   )
   const visibleReasoning = shouldAnimate ? typedReasoning : reasoning
   const isStreaming = typedReasoning.length < reasoning.length

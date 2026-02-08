@@ -15,7 +15,6 @@ import { Button } from "@/components/ui/button"
 import { CopyButton } from "@/components/ui/copy-button"
 import { MessageInput } from "@/components/ui/message-input"
 import { MessageList } from "@/components/ui/message-list"
-import { PromptSuggestions } from "@/components/ui/prompt-suggestions"
 import { ChatThinkingIndicator } from "../chat-thinking/chat-thinking"
 
 function getMessageText(message: UIMessage): string {
@@ -46,23 +45,11 @@ interface ChatPropsBase {
   ) => void
   setMessages?: (messages: any[]) => void
   transcribeAudio?: (blob: Blob) => Promise<string>
-  suggestionsLabel?: string,
-  isLoadingThread?: boolean,
-  hasUserSentMessage?: boolean,
-  isHydratingThread?: boolean
+  welcomeLabel?: string,
+  isHydratingThread?: boolean,
+  isNewChat?: boolean,
+  isUserLoading?: boolean
 }
-
-interface ChatPropsWithoutSuggestions extends ChatPropsBase {
-  append?: never
-  suggestions?: never
-}
-
-interface ChatPropsWithSuggestions extends ChatPropsBase {
-  append: (message: { role: "user"; content: string }) => void
-  suggestions: string[]
-}
-
-type ChatProps = ChatPropsWithoutSuggestions | ChatPropsWithSuggestions
 
 export function Chat({
   messages,
@@ -71,28 +58,25 @@ export function Chat({
   handleInputChange,
   stop,
   isGenerating,
-  isLoadingThread,
-  append,
-  suggestions,
   className,
   onRateResponse,
   setMessages,
   transcribeAudio,
-  suggestionsLabel,
-  hasUserSentMessage,
+  welcomeLabel,
   isHydratingThread,
-}: ChatProps) {
+  isNewChat,
+  isUserLoading
+}: ChatPropsBase) {
+
+  // Status Flags
+  const isHydrating = isHydratingThread === true
+  const isStreaming = isGenerating === true
+  const showWelcome = isNewChat && !isHydrating && !isStreaming && messages.length === 0
+  const showWelcomeSkeleton = isNewChat && isHydrating && messages.length === 0
+
   const lastMessage = messages.at(-1)
-  const isIdleEmptyChat =
-    messages.length === 0 &&
-    !isLoadingThread &&
-    !isGenerating &&
-    !hasUserSentMessage;
-  const isUserTyping =
-    !isLoadingThread &&
-    !isGenerating &&
-    !isHydratingThread &&
-    lastMessage?.role === "user";
+  const assistantHasText = lastMessage?.role === 'assistant' && lastMessage.parts?.some(p => p.type === 'text' && p.text.length > 0)
+  const showThinking = isStreaming && !assistantHasText
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
@@ -144,39 +128,34 @@ export function Chat({
 
   return (
     <ChatContainer className={className}>
-      {isIdleEmptyChat && append && suggestions ? (
-        <div className="flex flex-1 items-center justify-center">
-          <PromptSuggestions
-            label={suggestionsLabel ?? "Try these prompts ✨"}
-            append={append}
-            suggestions={suggestions}
-          />
-        </div>
-      ) : null}
+      {showWelcome && (<ChatWelcome label={welcomeLabel} isLoading={isUserLoading}/>)}
+      {showWelcomeSkeleton && (<ChatWelcome isLoading/>)}
 
-      {isLoadingThread ? (
+      {isHydrating && (
         <ChatMessages messages={[]}>
           <ChatMessagesSkeleton />
         </ChatMessages>
-      ) : messages.length > 0 ? (
+      )}
+
+      {!isHydrating && messages.length > 0 && (
         <ChatMessages messages={messages}>
           <MessageList
             messages={messages}
-            isTyping={!isLoadingThread && !isHydratingThread && isUserTyping}
+            disableTypingAnimation={!isStreaming && lastMessage?.role !== "user"}
             messageOptions={messageOptions}
           />
 
-          {!isLoadingThread && !isHydratingThread && isGenerating && (
+          {showThinking && (
             <div className="px-2 py-1">
               <ChatThinkingIndicator />
             </div>
           )}
         </ChatMessages>
-      ) : null}
+      )}
 
       <ChatForm
         className="mt-auto"
-        isPending={isLoadingThread || isGenerating || isUserTyping}
+        isPending={isHydrating || isStreaming}
         handleSubmit={handleSubmit}
       >
         {({ files, setFiles }) => (
@@ -218,12 +197,12 @@ export function ChatMessages({
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
     >
-      <div className="max-w-full [grid-column:1/1] [grid-row:1/1]">
+      <div className="max-w-full col-[1/1] row-[1/1]">
         {children}
       </div>
 
       {!shouldAutoScroll && (
-        <div className="pointer-events-none flex flex-1 items-end justify-end [grid-column:1/1] [grid-row:1/1]">
+        <div className="pointer-events-none flex flex-1 items-end justify-end col-[1/1] row-[1/1]">
           <div className="sticky bottom-0 left-0 flex w-full justify-end">
             <Button
               onClick={scrollToBottom}
@@ -373,6 +352,39 @@ export function ChatMessagesSkeleton() {
           <div className="h-6 w-full rounded bg-background/60" />
         </div>
       </div>
+    </div>
+  )
+}
+
+// CHAT WELCOME
+interface ChatWelcomeProps {
+  label?: string
+  isLoading?: boolean
+}
+
+export function ChatWelcome({ label, isLoading }: ChatWelcomeProps) {
+  if (!label && !isLoading) return null
+
+  return (
+    <div className="flex flex-1 items-center justify-center px-4">
+      {isLoading ? (
+        <div className="animate-pulse">
+          <div className="h-10 w-130 rounded-md bg-muted" />
+        </div>
+      ) : (
+        <h2
+          className="
+            text-2xl md:text-3xl
+            font-semibold
+            tracking-tight
+            text-center
+            text-black dark:text-white
+            transition-colors
+          "
+        >
+          {label}
+        </h2>
+      )}
     </div>
   )
 }
