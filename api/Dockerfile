@@ -9,8 +9,7 @@ COPY ./src ./src
 RUN bun build \
 	--compile \
 	--external sharp \
-	--minify-whitespace \
-	--minify-syntax \
+	--minify \
 	--outfile server \
 	src/index.ts
 
@@ -28,5 +27,4 @@ COPY --from=build /app/package.json ./package.json
 COPY --from=build /app/node_modules ./node_modules
 
 ENV NODE_ENV=production
-EXPOSE 8080
 CMD ["./server"]

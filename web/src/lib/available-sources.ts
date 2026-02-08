@@ -1,6 +1,8 @@
-import { OauthProvider, OauthScope } from '@api/schema/credential';
-import type { DisplayCredential } from '@api/utils/credential';
+import type { CredentialItem } from '@/lib/credential';
 import { getDropboxCredentialUrl, getGoogleCredentialUrl } from '@/lib/oauth';
+
+type OauthProvider = `${CredentialItem['provider']}`;
+type OauthScope = `${CredentialItem['scope']}`;
 
 export type SourceConfig = {
 	id: string;
@@ -15,8 +17,8 @@ export type SourceConfig = {
 
 export function credentialsBySource(
 	source: SourceConfig,
-	credentials: DisplayCredential[],
-): DisplayCredential[] {
+	credentials: CredentialItem[],
+): CredentialItem[] {
 	return credentials.filter(
 		(cred) =>
 			cred.provider === source.provider && cred.scope.includes(source.scope),
@@ -26,37 +28,37 @@ export function credentialsBySource(
 export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 	{
 		id: 'gmail',
-		provider: OauthProvider.GOOGLE,
+		provider: 'google',
 		name: 'Gmail',
 		icon: '/datasource_icons/gmail.png',
-		scope: OauthScope.GMAIL,
+		scope: 'gmail',
 		connect: () => getGoogleCredentialUrl('gmail'),
 		kind: 'dynamic',
 	},
 	{
 		id: 'gcalendar',
-		provider: OauthProvider.GOOGLE,
+		provider: 'google',
 		name: 'Google Calendar',
 		icon: '/datasource_icons/gcalendar.png',
-		scope: OauthScope.CALENDAR,
+		scope: 'calendar',
 		connect: () => getGoogleCredentialUrl('calendar'),
 		kind: 'dynamic',
 	},
 	{
 		id: 'outlook',
-		provider: OauthProvider.MICROSOFT,
+		provider: 'microsoft',
 		name: 'Outlook',
 		icon: '/datasource_icons/outlook.png',
-		scope: OauthScope.OUTLOOK,
-    connect: async () => '',
+		scope: 'outlook',
+		connect: async () => '',
 		kind: 'dynamic',
 	},
 	{
 		id: 'outlook_calendar',
-		provider: OauthProvider.MICROSOFT,
+		provider: 'microsoft',
 		name: 'Outlook Calendar',
 		icon: '/datasource_icons/ocalendar.png',
-		scope: OauthScope.OUTLOOK_CALENDAR,
+		scope: 'outlook_calendar',
 		connect: async () => '',
 		kind: 'dynamic',
 	},
@@ -65,10 +67,10 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 	{
 		id: 'drive',
-		provider: OauthProvider.GOOGLE,
+		provider: 'google',
 		name: 'Google Drive',
 		icon: '/datasource_icons/gdrive.png',
-		scope: OauthScope.DRIVE,
+		scope: 'drive',
 		connect: () => getGoogleCredentialUrl('drive'),
 		kind: 'storage',
 		getFileTree: async (_credentialId) => {
@@ -77,10 +79,10 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 	},
 	{
 		id: 'dropbox',
-		provider: OauthProvider.DROPBOX,
+		provider: 'dropbox',
 		name: 'Dropbox',
 		icon: '/datasource_icons/dropbox.png',
-		scope: OauthScope.DROPBOX,
+		scope: 'dropbox',
 		connect: () => getDropboxCredentialUrl(),
 		kind: 'storage',
 		getFileTree: async (_credentialId) => {
@@ -89,10 +91,10 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 	},
 	{
 		id: 'onedrive',
-		provider: OauthProvider.MICROSOFT,
+		provider: 'microsoft',
 		name: 'OneDrive',
 		icon: '/datasource_icons/onedrive.png',
-		scope: OauthScope.ONE_DRIVE,
+		scope: 'onedrive',
 		connect: async () => '',
 		kind: 'storage',
 		getFileTree: async (_credentialId) => {

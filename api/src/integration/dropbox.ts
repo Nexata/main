@@ -288,7 +288,7 @@ export namespace Dropbox {
 			throw HttpError.Conflict('UNSUPPORTED_FILE_TYPE');
 
 		return {
-			file: new File([result.fileBinary.buffer], result.name, {
+			file: new File([result.fileBinary.buffer as ArrayBuffer], result.name, {
 				type: mimeType,
 			}),
 			id: result.id,
