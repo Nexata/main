@@ -12,9 +12,7 @@ function cleanObject<T extends Record<string, any>>(obj: T): Partial<T> {
   ) as Partial<T>;
 }
 
-export function createAuthenticatedChatTransport(
-  threadId?: string | null
-) {
+export function createAuthenticatedChatTransport(threadId?: string | null) {
   const customFetchImpl = async (
     input: RequestInfo | URL,
     init?: RequestInit,
@@ -43,26 +41,21 @@ export function createAuthenticatedChatTransport(
         const finalThreadId =
           originalPayload.threadId ?? threadId ?? undefined;
 
-        const extraReason = originalPayload.extraReason ?? false;
-        const languagePreference = originalPayload.languagePreference;
+        const adaptedPayload = cleanObject({
+          prompt,
+          extraReason: originalPayload.extraReason ?? false,
+          threadId: finalThreadId,
+          editedMessageId: originalPayload.editedMessageId,
+          languagePreference: originalPayload.languagePreference,
+        });
 
         // ===== CON ARCHIVOS =====
         if (hasFiles) {
           const formData = new FormData();
 
-          formData.append('prompt', prompt);
-          formData.append('extraReason', String(extraReason));
-
-          if (finalThreadId) formData.append('threadId', finalThreadId);
-          if (originalPayload.editedMessageId) {
-            formData.append(
-              'editedMessageId',
-              originalPayload.editedMessageId,
-            );
-          }
-          if (languagePreference) {
-            formData.append('languagePreference', languagePreference);
-          }
+          Object.entries(adaptedPayload).forEach(([k, v]) => {
+            if (v !== undefined) formData.append(k, String(v));
+          });
 
           for (const part of fileParts) {
             formData.append('files', part.file);
@@ -79,14 +72,6 @@ export function createAuthenticatedChatTransport(
         }
 
         // ===== SIN ARCHIVOS =====
-        const adaptedPayload = cleanObject({
-          prompt,
-          extraReason,
-          threadId: finalThreadId,
-          editedMessageId: originalPayload.editedMessageId,
-          languagePreference,
-        });
-
         const response = await baseFetch(url, {
           ...init,
           body: JSON.stringify(adaptedPayload),
@@ -96,55 +81,58 @@ export function createAuthenticatedChatTransport(
           },
         });
 
-        // ---- stream parsing ----
-        try {
-          const clone = response.clone()
-          const reader = clone.body?.getReader()
-          if (!reader) return response
+        // ===== STREAM DUPLICATION =====
+        if (!response.body) return response;
 
-          const decoder = new TextDecoder()
-          let buffer = ''
+        const [sdkStream, sideStream] = response.body.tee();
 
-          reader.read().then(({ value }) => {
-            if (!value) return
+        // Rama paralela: lógica de negocio
+        (async () => {
+          const reader = sideStream.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
 
-            buffer += decoder.decode(value, { stream: true })
-            const lines = buffer.split('\n')
-            buffer = lines.pop() ?? ''
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop() ?? '';
 
             for (const line of lines) {
-              if (!line.startsWith('data:')) continue
+              if (!line.startsWith('data:')) continue;
 
               try {
-                const json = line.replace('data:', '').trim()
-                if (json === '[DONE]') return
+                const json = line.replace('data:', '').trim();
+                if (json === '[DONE]') return;
 
-                const event = JSON.parse(json)
+                const event = JSON.parse(json);
 
-                if (event.type === 'start' && event.messageMetadata?.threadId) {
-                  const { threadId, threadTitle } = event.messageMetadata
-                  const store = useChatUIStore.getState()
+                if (event.type === 'start' && event.messageMetadata?.threadId && originalPayload.threadId == null)
+                {
+                  const { threadId, threadTitle } = event.messageMetadata;
+                  const store = useChatUIStore.getState();
 
-                  store.setActiveThreadId(threadId)
+                  store.setActiveThreadId(threadId);
 
-                  if (threadTitle) {
-                    store.upsertOptimisticThread({
-                      id: threadId,
-                      title: threadTitle,
-                      isTyping: true,
-                    })
-                  }
+                  store.upsertOptimisticThread({
+                    id: threadId,
+                    title: threadTitle ?? 'New chat',
+                    isTyping: true,
+                  });
                 }
-              } catch {}
+              } catch {
+                // ignore malformed chunks
+              }
             }
-          })
-        } catch (err) {
-          console.error('[Chat Debug] Failed to parse stream', err);
-        }
+          }
+        })();
 
-        return response;
+        // Devolvemos el stream intacto al SDK
+        return new Response(sdkStream, response);
       } catch (err) {
-        console.error('[Chat Adapter] Failed to adapt payload', err);
+        console.error('[Chat Transport] Payload adaptation failed', err);
         return baseFetch(url, init);
       }
     }
@@ -156,6 +144,7 @@ export function createAuthenticatedChatTransport(
 
   return new DefaultChatTransport({
     api: '/chat',
+    fetch: customFetch,
     headers: async () => {
       const token = getAccessToken();
       const fingerprint = await getFingerprint();
@@ -170,6 +159,5 @@ export function createAuthenticatedChatTransport(
       editedMessageId: undefined,
       languagePreference: undefined,
     },
-    fetch: customFetch,
   });
 }
