@@ -12,6 +12,11 @@ COPY messages/ messages/
 COPY public/ public/
 COPY src/ src/
 
+ARG VITE_API_URL
+ARG VITE_FRONT_URL
+ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_FRONT_URL=$VITE_FRONT_URL
+
 # Type check: RUN bun tsc -b
 RUN bunx --bun vite build
 
