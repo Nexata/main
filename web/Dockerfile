@@ -18,7 +18,7 @@ ENV VITE_API_URL=$VITE_API_URL
 ENV VITE_FRONT_URL=$VITE_FRONT_URL
 
 # Type check: RUN bun tsc -b
-RUN bunx --bun vite build
+RUN bun run build
 
 FROM nginx:alpine
 COPY nginx.conf /etc/nginx/conf.d/default.conf
