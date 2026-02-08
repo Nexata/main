@@ -78,6 +78,6 @@ export const app = new Elysia()
 		}),
 		{ detail: { summary: 'Health check' } },
 	)
-	.listen(process.env.PORT ?? 3000);
+	.listen(process.env.PORT ?? 8080);
 
 export type App = typeof app;
