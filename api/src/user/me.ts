@@ -116,7 +116,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 						),
 					)
 					.returning({ id: device.id }),
-				cache.del(`device:${user.id}:${fingerprint}`),
+				cache.del(`device:${activeUser.id}:${fingerprint}`),
 			]),
 		{
 			detail: { summary: 'Delete device' },
