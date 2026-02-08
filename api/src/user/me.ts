@@ -80,7 +80,8 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					...body,
 					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
 				})
-				.where(eq(user.id, id)),
+				.where(eq(user.id, id))
+				.returning({ id: user.id }),
 		{
 			detail: { summary: 'Update me' },
 			body: t.Composite([
