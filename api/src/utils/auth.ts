@@ -1,5 +1,6 @@
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
 import { user } from '@api/schema';
+import { tObject } from '@api/utils/type';
 import { jwt } from '@elysiajs/jwt';
 import { createSelectSchema } from 'drizzle-typebox';
 import { Elysia, type Static, t } from 'elysia';
@@ -23,7 +24,7 @@ export const jwtPlugin = new Elysia()
 		jwt({
 			name: 'refreshJwt',
 			exp: '30d',
-			secret: `${NEXATA_SECRET}_refresh_${NEXATA_SECRET}`,
-			schema: jwtPayload,
+			secret: `${NEXATA_SECRET}_refresh_${[...NEXATA_SECRET].reverse().join('')}`,
+			schema: tObject({ id: t.String() }),
 		}),
 	);

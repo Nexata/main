@@ -4,7 +4,7 @@ import { device, Language, TraceType, tenant, trace, user } from '@api/schema';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
-import { s3 } from 'bun';
+import { password, s3 } from 'bun';
 import { and, countDistinct, eq, isNotNull, type SQL } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
@@ -140,7 +140,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 			const rawApiKey = (crypto.randomUUID() + crypto.randomUUID())
 				.replace(/-/g, '')
 				.toUpperCase();
-			const hashedApiKey = await Bun.password.hash(rawApiKey);
+			const hashedApiKey = await password.hash(rawApiKey);
 
 			await Promise.all([
 				db

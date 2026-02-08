@@ -4,6 +4,7 @@ import { cache, db } from '@api/env';
 import { device, user } from '@api/schema';
 import { type JwtPayload, jwtPlugin } from '@api/utils/auth';
 import { tObject } from '@api/utils/type';
+import { password } from 'bun';
 import { and, eq, exists, isNotNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import { HttpError } from 'elysia-logger';
@@ -51,7 +52,7 @@ export const authPlugin =
 
 					if (!u) throw HttpError.NotFound();
 
-					if (!(await Bun.password.verify(u.apiKey!, clientSecret)))
+					if (!(await password.verify(u.apiKey!, clientSecret)))
 						throw HttpError.Unauthorized();
 
 					const activeUser = { ...u, apiKey: null };
@@ -148,7 +149,7 @@ export const authRouter = new Elysia({
 			if (!u) throw HttpError.Forbidden();
 			const [accessToken, refreshToken] = await Promise.all([
 				jwt.sign({ ...u, apiKey: null }),
-				refreshJwt.sign({ ...u, apiKey: null }),
+				refreshJwt.sign({ id: u.id }),
 			]);
 
 			await db
