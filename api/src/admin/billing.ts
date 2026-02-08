@@ -16,42 +16,48 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	.get(
 		'/embeds',
 		async ({ activeUser }) =>
-			db
-				.select({ consumption: sum(billableEvent.consumption) })
-				.from(billableEvent)
-				.where(
-					and(
-						eq(billableEvent.type, BillableEventType.EMBED),
-						eq(billableEvent.slug, activeUser.slug),
-						isNull(billableEvent.billId),
-					),
-				),
+			(
+				await db
+					.select({ consumption: sum(billableEvent.consumption) })
+					.from(billableEvent)
+					.where(
+						and(
+							eq(billableEvent.type, BillableEventType.EMBED),
+							eq(billableEvent.slug, activeUser.slug),
+							isNull(billableEvent.billId),
+						),
+					)
+			)[0]!.consumption,
 		{ detail: { summary: 'Read embeddings consumption' } },
 	)
 	.get(
 		'/storage',
 		async ({ activeUser }) =>
-			db
-				.select({ consumption: sum(billableEvent.consumption) })
-				.from(billableEvent)
-				.where(
-					and(
-						eq(billableEvent.type, BillableEventType.STORAGE),
-						eq(billableEvent.slug, activeUser.slug),
-						isNull(billableEvent.billId),
-					),
-				),
+			(
+				await db
+					.select({ consumption: sum(billableEvent.consumption) })
+					.from(billableEvent)
+					.where(
+						and(
+							eq(billableEvent.type, BillableEventType.STORAGE),
+							eq(billableEvent.slug, activeUser.slug),
+							isNull(billableEvent.billId),
+						),
+					)
+			)[0]!.consumption,
 		{ detail: { summary: 'Read storage consumption' } },
 	)
 	.get(
 		'/last-bill',
 		async ({ activeUser }) =>
-			db
-				.select()
-				.from(bill)
-				.where(eq(bill.slug, activeUser.slug))
-				.orderBy(desc(bill.createdAt))
-				.limit(1),
+			(
+				await db
+					.select()
+					.from(bill)
+					.where(eq(bill.slug, activeUser.slug))
+					.orderBy(desc(bill.createdAt))
+					.limit(1)
+			)[0]!,
 		{ detail: { summary: 'Read last bill' } },
 	)
 	.put(

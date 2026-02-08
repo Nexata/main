@@ -1,0 +1,10 @@
+{
+	"subject": "Your feedback has been updated",
+	"greeting": "Hi",
+	"body": "Your feedback submission has been updated with a new response.",
+	"responseLabel": "Response",
+	"originalCommentLabel": "Your original comment",
+	"statusLabel": "Status",
+	"closing": "Thank you for your feedback!",
+	"teamSignature": "The Nexata Team"
+}

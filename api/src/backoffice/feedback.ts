@@ -1,5 +1,6 @@
 import { db } from '@api/env';
 import { FeedbackStatus, FeedbackType, feedback, user } from '@api/schema';
+import { sendTemplateMail, Template } from '@api/utils/mail';
 import { S3_ACCESS_URL } from '@api/utils/s3';
 import { coalesce } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -60,14 +61,25 @@ export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 		async ({ params: { id }, body }) => {
 			const existing = (
 				await db
-					.select({ id: feedback.id })
+					.select({
+						id: feedback.id,
+						status: feedback.status,
+						comment: feedback.comment,
+						response: feedback.response,
+						user: {
+							email: user.email,
+							displayName: user.displayName,
+							language: user.language,
+						},
+					})
 					.from(feedback)
+					.innerJoin(user, eq(user.id, feedback.userId))
 					.where(eq(feedback.id, id))
 			).at(0);
 
 			if (!existing) throw HttpError.NotFound('FEEDBACK_NOT_FOUND');
 
-			return (
+			const result = (
 				await db
 					.update(feedback)
 					.set({
@@ -78,6 +90,20 @@ export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 					.where(eq(feedback.id, id))
 					.returning({ id: feedback.id })
 			).at(0);
+
+			await sendTemplateMail({
+				to: existing.user.email,
+				template: Template.FEEDBACK_UPDATED,
+				data: {
+					displayName: existing.user.displayName ?? existing.user.email,
+					status: body.status ?? existing.status,
+					comment: existing.comment,
+					response: body.response ?? existing.response,
+				},
+				language: existing.user.language,
+			});
+
+			return result;
 		},
 		{
 			detail: { summary: 'Update feedback status/response' },

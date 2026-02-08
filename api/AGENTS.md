@@ -363,3 +363,56 @@ and(
 - File implementation: `src/file/index.ts`
 - Credential implementation: `src/credential/index.ts`, `src/credential/permission.ts`
 - Helper functions: `src/utils/credential.ts` (getCredentialsForUser, getTokensForUser)
+
+### Email / Mailing (Handlebars + i18n)
+
+Nexata uses Handlebars templates with per-locale JSON files for multilingual email support.
+
+#### File Structure
+```
+src/
+  locales/
+    en/                     # English locale
+      template-name.json    # Translatable strings + subject
+    es/                     # Spanish locale
+      template-name.json
+  templates/
+    template-name.hbs       # Handlebars HTML template
+  utils/
+    mail.ts                 # compileTemplate, sendMail, sendTemplateMail
+```
+
+#### Template Enum
+All templates are registered in the `Template` enum in `src/utils/mail.ts`. Add new entries when creating new templates.
+
+#### Locale JSON Format
+Each locale file must include a `subject` key (used as the email subject by `sendTemplateMail`) and any other translatable strings referenced via `{{t.key}}` in the `.hbs` template:
+```json
+{
+  "subject": "Email subject line",
+  "greeting": "Hello",
+  "body": "Translatable body text"
+}
+```
+
+#### Usage
+```typescript
+import { sendTemplateMail, Template } from '@api/utils/mail';
+
+await sendTemplateMail({
+  to: user.email,
+  template: Template.FEEDBACK_UPDATED,
+  data: { displayName: 'Alice', status: 'solved' },
+  language: user.language,
+});
+```
+
+- `compileTemplate(template, data, language)` — Compiles an `.hbs` template with locale strings and data, returns HTML string. Can be used independently for non-email purposes.
+- `sendMail({ to, subject, html })` — Low-level mail sender via SMTP. From is always `"Nexata" <noreply@nexata.app>`.
+- `sendTemplateMail({ to, template, data, language? })` — Orchestrates `compileTemplate` + `sendMail`, extracting the subject from the locale JSON.
+
+#### Language Preference
+- The `Language` enum (`en`, `es`) is stored on the `user` table as a `language` column (default: `en`).
+- Language is embedded in the JWT payload automatically (via `createSelectSchema(user)`) and accessible as `activeUser.language`.
+- Users update their language via `PATCH /user/me`.
+- The chat endpoint falls back to `activeUser.language` when `body.languagePreference` is null.

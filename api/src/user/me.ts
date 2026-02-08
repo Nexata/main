@@ -1,6 +1,6 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
-import { device, TraceType, tenant, trace, user } from '@api/schema';
+import { device, Language, TraceType, tenant, trace, user } from '@api/schema';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
@@ -25,6 +25,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 						displayName: user.displayName,
 						pfpUrl: user.pfpUrl,
 						isAdmin: user.isAdmin,
+						language: user.language,
 						hasApiKey: isNotNull(user.apiKey) as SQL<boolean>,
 						devices: jsonAgg(
 							jsonBuildObject({
@@ -86,6 +87,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 				t.Pick(updateUser, ['displayName']),
 				t.Object({
 					pfp: t.Optional(t.File({ format: 'image/*', maxSize: '4m' })),
+					language: t.Optional(t.Enum(Language)),
 				}),
 			]),
 		},

@@ -6,7 +6,6 @@ COPY tsconfig.json package.json bun.lock ./
 RUN bun install
 
 COPY ./src ./src
-COPY ./migrations ./migrations
 RUN bun build \
 	--compile \
 	--external sharp \

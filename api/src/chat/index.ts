@@ -121,20 +121,19 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			// Thread ID handling: use existing or generate new ID
 			const threadId = body.threadId ?? crypto.randomUUID();
 
+			const languagePreference = body.languagePreference ?? activeUser.language;
+
 			// Generate thread title for new threads
 			const threadTitle = body.threadId
 				? undefined
-				: await generateThreadTitle(
-						body.prompt,
-						body.languagePreference ?? undefined,
-					);
+				: await generateThreadTitle(body.prompt, languagePreference);
 
 			// Final streaming
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				system: BUILD_SYSTEM_PROMPT({
 					...activeUser,
-					languagePreference: body.languagePreference,
+					languagePreference,
 				}),
 				stopWhen: stepCountIs(20),
 				tools: await getTools(activeUser, body.threadId, fileIds),
