@@ -89,6 +89,11 @@ export function NexataChat() {
     finishStreaming();
   }, [isHydrating, hydratedMessages, setMessages, finishStreaming]);
 
+  // Volver al estado inicial una vez termina el Streaming
+  useEffect(() => {
+    if (chatStatus === 'ready' || chatStatus === 'error') finishStreaming()
+  }, [chatStatus, finishStreaming])
+
   // Input / submit
   const [input, setInput] = useState('');
 
