@@ -14,38 +14,51 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{ detail: { summary: 'Read messages consumption' } },
 	)
 	.get(
-		'/embeds',
-		async ({ activeUser }) =>
-			(
-				await db
-					.select({ consumption: sum(billableEvent.consumption) })
+		'/usage',
+		async ({ activeUser }) => {
+			const [consumption, limits] = await Promise.all([
+				db
+					.select({
+						type: billableEvent.type,
+						consumption: sum(billableEvent.consumption),
+					})
 					.from(billableEvent)
 					.where(
 						and(
-							eq(billableEvent.type, BillableEventType.EMBED),
 							eq(billableEvent.slug, activeUser.slug),
 							isNull(billableEvent.billId),
 						),
 					)
-			)[0]!.consumption,
-		{ detail: { summary: 'Read embeddings consumption' } },
-	)
-	.get(
-		'/storage',
-		async ({ activeUser }) =>
-			(
-				await db
-					.select({ consumption: sum(billableEvent.consumption) })
-					.from(billableEvent)
-					.where(
-						and(
-							eq(billableEvent.type, BillableEventType.STORAGE),
-							eq(billableEvent.slug, activeUser.slug),
-							isNull(billableEvent.billId),
-						),
-					)
-			)[0]!.consumption,
-		{ detail: { summary: 'Read storage consumption' } },
+					.groupBy(billableEvent.type),
+				db
+					.select({
+						storageLimit: tenant.storageLimit,
+						embedLimit: tenant.embedLimit,
+						usageBasedBilling: tenant.usageBasedBilling,
+					})
+					.from(tenant)
+					.where(eq(tenant.slug, activeUser.slug)),
+			]);
+
+			const embeds = Number(
+				consumption.find((c) => c.type === BillableEventType.EMBED)
+					?.consumption ?? 0,
+			);
+
+			const storage = Number(
+				consumption.find((c) => c.type === BillableEventType.STORAGE)
+					?.consumption ?? 0,
+			);
+
+			const { storageLimit, embedLimit, usageBasedBilling } = limits.at(0)!;
+
+			return {
+				embeds: { used: embeds, limit: embedLimit },
+				storage: { used: storage, limit: storageLimit },
+				usageBasedBilling,
+			};
+		},
+		{ detail: { summary: 'Read usage consumption and limits' } },
 	)
 	.get(
 		'/last-bill',
