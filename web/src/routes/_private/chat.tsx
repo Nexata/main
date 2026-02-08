@@ -66,10 +66,7 @@ export function NexataChat() {
 
 
   // Chat engine
-  const chat = useMemo(
-    () => new AIChat({ transport: createAuthenticatedChatTransport(activeThreadId) }),
-    [activeThreadId]
-  );
+  const chat = useMemo(() => new AIChat({ transport: createAuthenticatedChatTransport() }), [])
 
   const {
     messages,
@@ -114,7 +111,14 @@ export function NexataChat() {
     setInput('');
     setStreaming(activeThreadId ?? '');
 
-    await sendMessage({ text, files });
+    await sendMessage(
+      { text, files },
+      {
+        body: {
+          threadId: activeThreadId ?? undefined,
+        },
+      }
+    );
   };
 
   // Welcome / empty state
@@ -123,10 +127,10 @@ export function NexataChat() {
   const welcomeText = useRandomWelcome(userName);
 
   useEffect(() => {
-    if (activeThreadId === null && status === 'idle') {
-      useChatUIStore.getState().startNewChat()
+    if (status === 'new') {
+      setMessages([]);
     }
-  }, [activeThreadId, status])
+  }, [status, setMessages]);
 
   return (
     <div className="flex flex-col h-full w-full min-h-0">
