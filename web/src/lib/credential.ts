@@ -54,12 +54,12 @@ export async function deleteCredentialById(
 }
 
 export function canManageCredential(
-  cred: CredentialItem,
-  me?: { isAdmin?: boolean }
+	cred: CredentialItem,
+	me?: { isAdmin?: boolean },
 ) {
-  return (
-    me?.isAdmin === true ||
-    cred.accessLevel === 'admin' ||
-    cred.accessLevel === 'tenant-admin'
-  );
+	return (
+		me?.isAdmin === true ||
+		cred.accessLevel === 'admin' ||
+		cred.accessLevel === 'tenant-admin'
+	);
 }

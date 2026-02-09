@@ -122,23 +122,23 @@
 			"title": "Nexata | Chat",
 			"thinking": "Pensando"
 		},
-  	 "suggestions": {
-      "welcome_1": "Hola {name}, ¿en qué puedo ayudarte hoy?",
-      "welcome_2": "Bienvenido {name}. ¿Qué consulta querés resolver?",
-      "welcome_3": "Listo cuando quieras, {name}. ¿Qué necesitás analizar?",
-      "welcome_4": "Hola {name}. Podés comenzar con cualquier pregunta o tarea.",
-      "welcome_5": "¿Sobre qué tema te gustaría trabajar hoy, {name}?",
-      "welcome_6": "Estoy listo para ayudarte, {name}. ¿Cómo empezamos?",
-      "welcome_7": "Hola {name}. Decime qué necesitás y lo vemos juntos.",
-      "welcome_8": "¿Qué información estás buscando hoy, {name}?",
-      "welcome_9": "Podés comenzar cuando quieras, {name}.",
-      "welcome_10": "Hola {name}. ¿En qué puedo asistirte?",
-      "welcome_11": "Empecemos cuando quieras, {name}. ¿Qué tenés en mente?",
-      "welcome_12": "¿Qué tarea o consulta querés resolver hoy, {name}?",
-      "welcome_13": "Hola {name}. Estoy disponible para ayudarte.",
-      "welcome_14": "¿Cómo puedo colaborar hoy, {name}?",
-      "welcome_15": "Cuando quieras, {name}. ¿Por dónde empezamos?"
-    }
+		"suggestions": {
+			"welcome_1": "Hola {name}, ¿en qué puedo ayudarte hoy?",
+			"welcome_2": "Bienvenido {name}. ¿Qué consulta querés resolver?",
+			"welcome_3": "Listo cuando quieras, {name}. ¿Qué necesitás analizar?",
+			"welcome_4": "Hola {name}. Podés comenzar con cualquier pregunta o tarea.",
+			"welcome_5": "¿Sobre qué tema te gustaría trabajar hoy, {name}?",
+			"welcome_6": "Estoy listo para ayudarte, {name}. ¿Cómo empezamos?",
+			"welcome_7": "Hola {name}. Decime qué necesitás y lo vemos juntos.",
+			"welcome_8": "¿Qué información estás buscando hoy, {name}?",
+			"welcome_9": "Podés comenzar cuando quieras, {name}.",
+			"welcome_10": "Hola {name}. ¿En qué puedo asistirte?",
+			"welcome_11": "Empecemos cuando quieras, {name}. ¿Qué tenés en mente?",
+			"welcome_12": "¿Qué tarea o consulta querés resolver hoy, {name}?",
+			"welcome_13": "Hola {name}. Estoy disponible para ayudarte.",
+			"welcome_14": "¿Cómo puedo colaborar hoy, {name}?",
+			"welcome_15": "Cuando quieras, {name}. ¿Por dónde empezamos?"
+		}
 	},
 	"settings": {
 		"meta": {
