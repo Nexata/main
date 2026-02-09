@@ -1,6 +1,6 @@
 import { SMTP, SRC_DIR } from '@api/env';
 import { Language } from '@api/schema';
-import { log } from '@api/utils/env';
+import { loadLocale } from '@api/utils/locale';
 import Handlebars from 'handlebars';
 
 export enum Template {
@@ -8,22 +8,7 @@ export enum Template {
 }
 
 const TEMPLATES_DIR = `${SRC_DIR}/templates`;
-const LOCALES_DIR = `${SRC_DIR}/locales`;
 const FROM = '"Nexata" <noreply@nexata.app>';
-
-async function loadLocale(
-	template: Template,
-	language: Language,
-): Promise<Record<string, string>> {
-	const path = `${LOCALES_DIR}/${language}/${template}.json`;
-	const fallbackPath = `${LOCALES_DIR}/${Language.EN}/${template}.json`;
-
-	const file = Bun.file(path);
-	if (await file.exists()) return file.json();
-
-	log('warn', `Locale ${language}/${template} not found, falling back to en`);
-	return Bun.file(fallbackPath).json();
-}
 
 export async function compileTemplate(
 	template: Template,

@@ -1,11 +1,12 @@
 import { authPlugin } from '@api/auth';
 import { Google } from '@api/integration/google/lib';
+import type { Language } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { calendar, type calendar_v3 } from '@googleapis/calendar';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export namespace Calendar {
 	export const fromRequest = async (
@@ -46,7 +47,8 @@ export namespace Calendar {
 			showHidden: input.showHidden ?? false,
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const calendars =
 			res.data.items?.map((cal) => ({
@@ -170,7 +172,8 @@ export namespace Calendar {
 						orderBy: 'startTime',
 					});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const events = res.data.items?.map(formatEventSummary) ?? [];
 
@@ -202,7 +205,8 @@ export namespace Calendar {
 			eventId: input.eventId,
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const event = res.data;
 
@@ -263,7 +267,12 @@ export const calendarRouter = new Elysia({ prefix: '/calendar' })
 		'/list/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Calendar.list(
 				await Calendar.fromRequest(activeUser, credentialId),
 				query,
@@ -282,7 +291,12 @@ export const calendarRouter = new Elysia({ prefix: '/calendar' })
 		'/events/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Calendar.events(
 				await Calendar.fromRequest(activeUser, credentialId),
 				query,
@@ -301,7 +315,12 @@ export const calendarRouter = new Elysia({ prefix: '/calendar' })
 		'/event/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Calendar.read(
 				await Calendar.fromRequest(activeUser, credentialId),
 				query,

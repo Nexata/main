@@ -21,13 +21,13 @@ import {
 } from '@api/schema';
 import { checkTenantCanChat } from '@api/utils/billing';
 import { getMessageCount } from '@api/utils/chat';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { encode } from '@toon-format/toon';
 import { type ModelMessage, stepCountIs, streamText } from 'ai';
 import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.use(authPlugin())
@@ -43,9 +43,18 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 			const creditsToUse = body.extraReason ? 2 : 1;
 
-			if (unpaidBlock) throw new HttpError(402, unpaidBlock);
+			if (unpaidBlock)
+				throw httpError(
+					HttpCode.PAYMENT_REQUIRED,
+					ErrorCode.PAYMENT_REQUIRED,
+					activeUser.language,
+				);
 			if (messageCountData.count + creditsToUse > messageCountData.limit)
-				throw HttpError.MethodNotAllowed('MESSAGE_LIMIT_REACHED');
+				throw httpError(
+					HttpCode.METHOD_NOT_ALLOWED,
+					ErrorCode.MESSAGE_LIMIT_REACHED,
+					activeUser.language,
+				);
 
 			// Initial history retrieval: if threadId provided
 			const threadMessages = body.threadId
@@ -54,6 +63,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						slug: activeUser.slug,
 						userId: activeUser.id,
 						avoidCaching: true,
+						language: activeUser.language,
 					})
 				: [];
 
@@ -68,7 +78,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					editedMessageIndex !== -1 && threadMessages[editedMessageIndex]!;
 
 				if (!editedMessage || editedMessage.role !== 'user')
-					throw HttpError.NotFound('EDITED_MESSAGE_NOT_FOUND');
+					throw httpError(
+						HttpCode.NOT_FOUND,
+						ErrorCode.EDITED_MESSAGE_NOT_FOUND,
+						activeUser.language,
+					);
 
 				threadMessages.splice(0, editedMessageIndex + 1);
 			}
@@ -174,6 +188,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							body.prompt,
 							threadId,
 							threadTitle,
+							activeUser.language,
 						);
 
 					const messagesToAppend = [
@@ -295,7 +310,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					.returning({ id: thread.id })
 			).at(0)?.id;
 			if (!newThreadId)
-				throw HttpError.InternalServerError('THREAD_CREATION_FAILED');
+				throw httpError(
+					HttpCode.INTERNAL_SERVER_ERROR,
+					ErrorCode.THREAD_CREATION_FAILED,
+					activeUser.language,
+				);
 
 			const messagesToCopy = db.$with('messages_to_copy').as(
 				db

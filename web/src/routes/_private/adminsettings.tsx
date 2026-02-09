@@ -5,7 +5,6 @@ import {
 	AlertTriangle,
 	ArrowLeft,
 	CheckCircle2,
-	CreditCard,
 	MessageSquarePlus,
 	Pencil,
 	Settings,
@@ -30,7 +29,6 @@ import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
-import { UpgradePlanModal } from "@/components/upgrade-plan/upgrade-plan";
 import {
 	Dialog,
 	DialogContent,
@@ -54,6 +52,7 @@ import {
 	TooltipTrigger,
 	Tooltip as TooltipUi,
 } from '@/components/ui/tooltip';
+import { UpgradePlanModal } from '@/components/upgrade-plan/upgrade-plan';
 import UserSection from '@/components/user-section/user-section';
 import {
 	useBillingMessages,
@@ -65,14 +64,13 @@ import {
 } from '@/lib/admin';
 import { useMyTenant } from '@/lib/user';
 import {
-	'admin.company_overview.billing' as admin_company_overview_billing,
 	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
 	'admin.company_overview.current_plan' as admin_company_overview_current_plan,
 	'admin.company_overview.description' as admin_company_overview_description,
 	'admin.company_overview.edit' as admin_company_overview_edit,
-  'admin.company_overview.message_balance' as admin_company_overview_message_balance,
-  'admin.company_overview.storage_balance' as admin_company_overview_storage_balance,
-  'admin.company_overview.embeddings_balance' as admin_company_overview_embeddings_balance,
+	'admin.company_overview.embeddings_balance' as admin_company_overview_embeddings_balance,
+	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
+	'admin.company_overview.storage_balance' as admin_company_overview_storage_balance,
 	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
 	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
 	'admin.company_overview.title' as admin_company_overview_title,
@@ -188,28 +186,28 @@ function AdminSettingsPage() {
 /* -------------------------------------------------------------------------- */
 
 function CompanyOverviewSection() {
-	const navigate = useNavigate();
+	const _navigate = useNavigate();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-	const { data: billingMessages, isLoading: billingLoading } = useBillingMessages();
+	const { data: billingMessages, isLoading: billingLoading } =
+		useBillingMessages();
 	const used = billingMessages?.count ?? 0;
 	const total = billingMessages?.limit ?? 0;
 	const [editingTenant, setEditingTenant] = useState(false);
 	const [tenantDisplayName, setTenantDisplayName] = useState('');
 	const [tenantLogo, setTenantLogo] = useState<File | null>(null);
 	const editTenantFn = useEditTenant();
-  const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
-  const [upgradePlanOpen, setUpgradePlanOpen] = useState(false);
+	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
+	const [upgradePlanOpen, setUpgradePlanOpen] = useState(false);
 
-  const mockEmbeddings = {
-    count: 420_000,
-    limit: 1_000_000,
-  };
+	const mockEmbeddings = {
+		count: 420_000,
+		limit: 1_000_000,
+	};
 
-  const mockStorage = {
-    count: 3_200,
-    limit: 10_000,
-  };
-
+	const mockStorage = {
+		count: 3_200,
+		limit: 10_000,
+	};
 
 	useEffect(() => {
 		if (myTenant) {
@@ -334,31 +332,30 @@ function CompanyOverviewSection() {
 				</AnimatePresence>
 
 				<div className="space-y-4">
-  				<UsageBar
-            label={admin_company_overview_message_balance()}
-            used={used}
-            total={total}
-            colorClass="bg-primary"
-            loading={billingLoading}
-          />
+					<UsageBar
+						label={admin_company_overview_message_balance()}
+						used={used}
+						total={total}
+						colorClass="bg-primary"
+						loading={billingLoading}
+					/>
 
-          <UsageBar
-            label={admin_company_overview_embeddings_balance()}
-            used={mockEmbeddings.count}
-            total={mockEmbeddings.limit}
-            colorClass="bg-indigo-500"
-            loading={false}
-          />
+					<UsageBar
+						label={admin_company_overview_embeddings_balance()}
+						used={mockEmbeddings.count}
+						total={mockEmbeddings.limit}
+						colorClass="bg-indigo-500"
+						loading={false}
+					/>
 
-          <UsageBar
-            label={admin_company_overview_storage_balance()}
-            used={mockStorage.count}
-            total={mockStorage.limit}
-            colorClass="bg-emerald-500"
-            loading={false}
-          />
-        </div>
-
+					<UsageBar
+						label={admin_company_overview_storage_balance()}
+						used={mockStorage.count}
+						total={mockStorage.limit}
+						colorClass="bg-emerald-500"
+						loading={false}
+					/>
+				</div>
 
 				{/* Plan + actions */}
 				<div className="flex items-center justify-between">
@@ -384,88 +381,88 @@ function CompanyOverviewSection() {
 
 						{/* Upgrade */}
 						<Button
-            size="sm"
-            className="cursor-pointer bg-orange-500/90 hover:bg-orange-500 text-white"
-            onClick={() => setUpgradePlanOpen(true)}
-            >
-              <TrendingUp className="h-4 w-4 mr-2" />
-              {admin_company_overview_upgrade_plan()}
-            </Button>
-
+							size="sm"
+							className="cursor-pointer bg-orange-500/90 hover:bg-orange-500 text-white"
+							onClick={() => setUpgradePlanOpen(true)}
+						>
+							<TrendingUp className="h-4 w-4 mr-2" />
+							{admin_company_overview_upgrade_plan()}
+						</Button>
 
 						{/* Buy messages */}
 						<Button
-						size="sm"
-						variant="outline"
-						className="cursor-pointer"
-						onClick={() => setBuyMessagesOpen(true)}
-            >
-              <MessageSquarePlus className="mr-2 h-4 w-4" />
+							size="sm"
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => setBuyMessagesOpen(true)}
+						>
+							<MessageSquarePlus className="mr-2 h-4 w-4" />
 							{admin_company_overview_buy_messages()}
 						</Button>
 					</div>
 				</div>
 
 				<BuyMessagesModal
-				open={buyMessagesOpen}
-				onOpenChange={setBuyMessagesOpen}
-        />
+					open={buyMessagesOpen}
+					onOpenChange={setBuyMessagesOpen}
+				/>
 
-        <UpgradePlanModal
-        open={upgradePlanOpen}
-        onOpenChange={setUpgradePlanOpen}
-        />
+				<UpgradePlanModal
+					open={upgradePlanOpen}
+					onOpenChange={setUpgradePlanOpen}
+				/>
 			</CardContent>
 		</Card>
 	);
 }
 
 function UsageBar({
-  label,
-  used,
-  total,
-  colorClass,
-  loading = false,
+	label,
+	used,
+	total,
+	colorClass,
+	loading = false,
 }: {
-  label: string;
-  used: number;
-  total: number;
-  colorClass: string;
-  loading?: boolean;
+	label: string;
+	used: number;
+	total: number;
+	colorClass: string;
+	loading?: boolean;
 }) {
-  const percentage = !loading && total > 0 ? Math.min((used / total) * 100, 100) : 0;
-  const textColorClass = colorClass.replace("bg-", "text-");
+	const percentage =
+		!loading && total > 0 ? Math.min((used / total) * 100, 100) : 0;
+	const textColorClass = colorClass.replace('bg-', 'text-');
 
-  return (
-    <div className="space-y-2">
-      {/* Header */}
-      <div className="flex justify-between text-sm">
-        <span>{label}</span>
+	return (
+		<div className="space-y-2">
+			{/* Header */}
+			<div className="flex justify-between text-sm">
+				<span>{label}</span>
 
-        {loading ? (
-          <div className="h-4 w-20 rounded bg-muted animate-pulse" />
-        ) : (
-          <span className={`font-medium ${textColorClass}`}>
-            {used} / {total}
-          </span>
-        )}
-      </div>
+				{loading ? (
+					<div className="h-4 w-20 rounded bg-muted animate-pulse" />
+				) : (
+					<span className={`font-medium ${textColorClass}`}>
+						{used} / {total}
+					</span>
+				)}
+			</div>
 
-      {/* Bar */}
-      <div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
-        {loading ? (
-          <div className="h-full w-full bg-muted animate-pulse" />
-        ) : (
-          <motion.div
-            initial={{ width: 0 }}
-            animate={{ width: `${percentage}%` }}
-            transition={{ duration: 0.6, ease: 'easeOut' }}
-            className={`h-full rounded-full ${colorClass}`}
-          />
-        )}
-      </div>
-    </div>
-  );
+			{/* Bar */}
+			<div className="h-3.5 rounded-full bg-muted/60 overflow-hidden">
+				{loading ? (
+					<div className="h-full w-full bg-muted animate-pulse" />
+				) : (
+					<motion.div
+						initial={{ width: 0 }}
+						animate={{ width: `${percentage}%` }}
+						transition={{ duration: 0.6, ease: 'easeOut' }}
+						className={`h-full rounded-full ${colorClass}`}
+					/>
+				)}
+			</div>
+		</div>
+	);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -825,20 +822,20 @@ function UsersSection() {
 															variant="ghost"
 															className="cursor-pointer"
 															onClick={() => {
-                                setEditingUserId((current) => {
-                                  const isSameUser = current === user.id;
+																setEditingUserId((current) => {
+																	const isSameUser = current === user.id;
 
-                                  if (isSameUser) {
-                                    setDisplayName('');
-                                    setFile(null);
-                                    return null;
-                                  }
+																	if (isSameUser) {
+																		setDisplayName('');
+																		setFile(null);
+																		return null;
+																	}
 
-                                  setDisplayName(user.displayName ?? '');
-                                  setFile(null);
-                                  return user.id;
-                                });
-                              }}
+																	setDisplayName(user.displayName ?? '');
+																	setFile(null);
+																	return user.id;
+																});
+															}}
 														>
 															<Pencil className="h-4 w-4" />
 														</Button>

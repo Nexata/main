@@ -9,8 +9,8 @@ import {
 import { OauthProvider, realOauthScopes } from '@api/schema';
 import { jwtPlugin } from '@api/utils/auth';
 import { warnEnv } from '@api/utils/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Elysia } from 'elysia';
-import { HttpError } from 'elysia-logger';
 import { oauth2 } from 'elysia-oauth2';
 
 const DROPBOX_CLIENT_CREDENTIALS: Oauth2Credentials = [
@@ -44,7 +44,7 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 		'/',
 		async ({ oauth2, query }) =>
 			createOauthRedirect(query, async (q) => {
-				if (!q) throw HttpError.BadRequest('NO_SCOPES');
+				if (!q) throw httpError(HttpCode.BAD_REQUEST, ErrorCode.NO_SCOPES);
 
 				const url = oauth2.createURL('Dropbox', [
 					'account_info.read',
@@ -78,7 +78,10 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 					family_name?: string;
 				}) => {
 					if (!idToken.email)
-						throw HttpError.PreconditionFailed('EMAIL_NOT_FOUND');
+						throw httpError(
+							HttpCode.PRECONDITION_FAILED,
+							ErrorCode.EMAIL_NOT_FOUND,
+						);
 
 					return {
 						email: idToken.email,

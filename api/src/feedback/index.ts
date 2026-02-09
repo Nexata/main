@@ -2,13 +2,13 @@ import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { FeedbackStatus, FeedbackType, feedback, user } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { S3_ACCESS_URL } from '@api/utils/s3';
 import { coalesce } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { s3 } from 'bun';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export namespace NexataFeedback {
 	export const [listDescription, listInput] = [
@@ -151,7 +151,12 @@ export const feedbackRouter = new Elysia({
 					.where(and(eq(feedback.id, id), eq(feedback.userId, activeUser.id)))
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('FEEDBACK_NOT_FOUND');
+			if (!existing)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.FEEDBACK_NOT_FOUND,
+					activeUser.language,
+				);
 
 			let updatedFileUrls = existing.fileUrls ?? [];
 
@@ -225,7 +230,12 @@ export const feedbackRouter = new Elysia({
 					)
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('FEEDBACK_NOT_FOUND');
+			if (!existing)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.FEEDBACK_NOT_FOUND,
+					activeUser.language,
+				);
 
 			await Promise.all([
 				db.delete(feedback).where(eq(feedback.id, id)),

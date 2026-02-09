@@ -122,23 +122,23 @@
 			"title": "Nexata | Chat",
 			"thinking": "Thinking"
 		},
-  	 "suggestions": {
-      "welcome_1": "Hello {name}, how can I help you today?",
-      "welcome_2": "Welcome {name}. What would you like to work on?",
-      "welcome_3": "Ready when you are, {name}. What do you need?",
-      "welcome_4": "Hello {name}. Feel free to start with any question or task.",
-      "welcome_5": "What would you like to focus on today, {name}?",
-      "welcome_6": "I'm here to help, {name}. How should we begin?",
-      "welcome_7": "Hello {name}. Let me know what you need.",
-      "welcome_8": "What information are you looking for today, {name}?",
-      "welcome_9": "You can start whenever you're ready, {name}.",
-      "welcome_10": "Hello {name}. How can I assist you?",
-      "welcome_11": "Let's get started, {name}. What's on your mind?",
-      "welcome_12": "What task or question would you like to address today, {name}?",
-      "welcome_13": "Hello {name}. I'm available to assist you.",
-      "welcome_14": "How can I support you today, {name}?",
-      "welcome_15": "Whenever you're ready, {name}. Where should we start?"
-    }
+		"suggestions": {
+			"welcome_1": "Hello {name}, how can I help you today?",
+			"welcome_2": "Welcome {name}. What would you like to work on?",
+			"welcome_3": "Ready when you are, {name}. What do you need?",
+			"welcome_4": "Hello {name}. Feel free to start with any question or task.",
+			"welcome_5": "What would you like to focus on today, {name}?",
+			"welcome_6": "I'm here to help, {name}. How should we begin?",
+			"welcome_7": "Hello {name}. Let me know what you need.",
+			"welcome_8": "What information are you looking for today, {name}?",
+			"welcome_9": "You can start whenever you're ready, {name}.",
+			"welcome_10": "Hello {name}. How can I assist you?",
+			"welcome_11": "Let's get started, {name}. What's on your mind?",
+			"welcome_12": "What task or question would you like to address today, {name}?",
+			"welcome_13": "Hello {name}. I'm available to assist you.",
+			"welcome_14": "How can I support you today, {name}?",
+			"welcome_15": "Whenever you're ready, {name}. Where should we start?"
+		}
 	},
 	"settings": {
 		"meta": {

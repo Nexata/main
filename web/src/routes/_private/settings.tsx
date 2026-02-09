@@ -1,5 +1,3 @@
-import type { CredentialItem } from '@/lib/credential';
-import { canManageCredential } from '@/lib/credential';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
@@ -15,7 +13,12 @@ import {
 	DINAMIC_DATA_SOURCES,
 	STORAGE_DATA_SOURCES,
 } from '@/lib/available-sources';
-import { deleteCredentialById, listCredentials } from '@/lib/credential';
+import type { CredentialItem } from '@/lib/credential';
+import {
+	canManageCredential,
+	deleteCredentialById,
+	listCredentials,
+} from '@/lib/credential';
 import { useMe } from '@/lib/user';
 import {
 	'common.error' as common_error,
@@ -57,7 +60,7 @@ function SettingsPage() {
 		async function loadCredentials() {
 			try {
 				setLoading(true);
-        const data = await listCredentials();
+				const data = await listCredentials();
 				console.log('[SettingsPage] Credentials from API:', data);
 				if (mounted) setCredentials(data);
 			} catch (err) {
@@ -127,7 +130,7 @@ function SettingsPage() {
 
 						<Button
 							variant="outline"
-              onClick={() => navigate({ to: '/chat'})}
+							onClick={() => navigate({ to: '/chat' })}
 							className="gap-2 cursor-pointer"
 						>
 							<ArrowLeft className="h-4 w-4" />
@@ -169,7 +172,9 @@ function SettingsPage() {
 type DataSourcesSectionProps = {
 	credentials: CredentialItem[];
 	loading: boolean;
-	onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>;
+	onCredentialsUpdate: React.Dispatch<
+		React.SetStateAction<CredentialItem[] | null>
+	>;
 	onRequestDelete: (id: string) => void;
 };
 
@@ -238,7 +243,9 @@ export function DataSourcesSection({
 type StorageSectionProps = {
 	credentials: CredentialItem[];
 	loading: boolean;
-	onCredentialsUpdate: React.Dispatch<React.SetStateAction<CredentialItem[] | null>>;
+	onCredentialsUpdate: React.Dispatch<
+		React.SetStateAction<CredentialItem[] | null>
+	>;
 	onRequestDelete: (id: string) => void;
 };
 
@@ -250,7 +257,9 @@ export function StorageSection({
 }: StorageSectionProps) {
 	const [openSourceId, setOpenSourceId] = useState<string | null>(null);
 	const { data: me } = useMe();
-	const [expandedCredentialId, setExpandedCredentialId] = useState<string | null>(null);
+	const [expandedCredentialId, setExpandedCredentialId] = useState<
+		string | null
+	>(null);
 
 	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 

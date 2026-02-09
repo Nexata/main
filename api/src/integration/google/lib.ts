@@ -1,10 +1,10 @@
 import { db } from '@api/env';
-import { credential } from '@api/schema';
+import { credential, type Language } from '@api/schema';
 import { invalidateCredentialCache } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { auth } from '@googleapis/gmail';
 import { eq } from 'drizzle-orm';
-import { HttpError } from 'elysia-logger';
 import type { OAuth2Client } from 'google-auth-library';
 
 export namespace Google {
@@ -18,6 +18,7 @@ export namespace Google {
 		credentialId: string,
 		options?: {
 			slug?: string;
+			language?: Language;
 			tokens?: { refreshToken: string; accessToken: string };
 		},
 	) {
@@ -33,7 +34,12 @@ export namespace Google {
 					.where(eq(credential.id, credentialId))
 			).at(0);
 
-		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+		if (!tokens)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.CREDENTIAL_LOST,
+				options?.language,
+			);
 
 		const oauth2Client = createOAuth2Client();
 		oauth2Client.setCredentials({
@@ -47,7 +53,11 @@ export namespace Google {
 			credentials = res.credentials;
 		} catch (e) {
 			if (e instanceof Error && e.message.includes('invalid_grant'))
-				throw HttpError.Unauthorized('CREDENTIAL_EXPIRED');
+				throw httpError(
+					HttpCode.UNAUTHORIZED,
+					ErrorCode.CREDENTIAL_EXPIRED,
+					options?.language,
+				);
 			throw e;
 		}
 

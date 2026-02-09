@@ -1,6 +1,7 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
 import { device, Language, TraceType, tenant, trace, user } from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
@@ -8,7 +9,6 @@ import { password, s3 } from 'bun';
 import { and, countDistinct, eq, isNotNull, type SQL } from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 const updateUser = createUpdateSchema(user);
 
@@ -80,7 +80,8 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					...body,
 					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
 				})
-				.where(eq(user.id, id)),
+				.where(eq(user.id, id))
+				.returning({ id: user.id }),
 		{
 			detail: { summary: 'Update me' },
 			body: t.Composite([
@@ -135,7 +136,11 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 			).at(0);
 
 			if (!tenantData?.hasApiAccess)
-				throw HttpError.Forbidden('API_ACCESS_NOT_ENABLED');
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.API_ACCESS_NOT_ENABLED,
+					activeUser.language,
+				);
 
 			const rawApiKey = (crypto.randomUUID() + crypto.randomUUID())
 				.replace(/-/g, '')

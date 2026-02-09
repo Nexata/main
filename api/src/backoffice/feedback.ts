@@ -1,5 +1,12 @@
 import { db } from '@api/env';
-import { FeedbackStatus, FeedbackType, feedback, user } from '@api/schema';
+import {
+	FeedbackStatus,
+	FeedbackType,
+	feedback,
+	tenant,
+	user,
+} from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { S3_ACCESS_URL } from '@api/utils/s3';
 import { coalesce } from '@api/utils/sql';
@@ -7,7 +14,6 @@ import { Nullish, tObject } from '@api/utils/type';
 import { s3 } from 'bun';
 import { and, desc, eq, lt } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 	.get(
@@ -69,15 +75,21 @@ export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 						user: {
 							email: user.email,
 							displayName: user.displayName,
+							pfpUrl: user.pfpUrl,
 							language: user.language,
+						},
+						tenant: {
+							logoUrl: tenant.logoUrl,
 						},
 					})
 					.from(feedback)
 					.innerJoin(user, eq(user.id, feedback.userId))
+					.innerJoin(tenant, eq(tenant.slug, user.slug))
 					.where(eq(feedback.id, id))
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('FEEDBACK_NOT_FOUND');
+			if (!existing)
+				throw httpError(HttpCode.NOT_FOUND, ErrorCode.FEEDBACK_NOT_FOUND);
 
 			const result = (
 				await db
@@ -91,14 +103,19 @@ export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 					.returning({ id: feedback.id })
 			).at(0);
 
+			const resolvedStatus = body.status ?? existing.status;
+
 			await sendTemplateMail({
 				to: existing.user.email,
 				template: Template.FEEDBACK_UPDATED,
 				data: {
 					displayName: existing.user.displayName ?? existing.user.email,
-					status: body.status ?? existing.status,
+					statusKey: `status_${resolvedStatus}`,
+					isSolved: resolvedStatus === FeedbackStatus.SOLVED,
 					comment: existing.comment,
 					response: body.response ?? existing.response,
+					logoUrl: existing.tenant.logoUrl,
+					pfpUrl: existing.user.pfpUrl,
 				},
 				language: existing.user.language,
 			});
@@ -127,7 +144,8 @@ export const feedbackRouter = new Elysia({ prefix: '/feedback' })
 					.where(eq(feedback.id, id))
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('FEEDBACK_NOT_FOUND');
+			if (!existing)
+				throw httpError(HttpCode.NOT_FOUND, ErrorCode.FEEDBACK_NOT_FOUND);
 
 			return Promise.allSettled([
 				db.delete(feedback).where(eq(feedback.id, id)),

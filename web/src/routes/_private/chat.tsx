@@ -6,159 +6,158 @@ import type { UIMessage } from 'ai';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Chat } from '@/components/ui/chat';
-import { useThreadById } from '@/lib/chat';
-import { createAuthenticatedChatTransport } from '@/lib/chat-transport';
-import { 'chat.meta.title' as chat_meta_title } from '@/paraglide/messages.js';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
-import { useMe } from '@/lib/user';
+import { useThreadById } from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
+import { createAuthenticatedChatTransport } from '@/lib/chat-transport';
+import { useMe } from '@/lib/user';
+import { 'chat.meta.title' as chat_meta_title } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/chat')({
-  component: NexataChat,
+	component: NexataChat,
 });
 
 export function NexataChat() {
-  useEffect(() => {
-    document.title = chat_meta_title();
-  }, []);
+	useEffect(() => {
+		document.title = chat_meta_title();
+	}, []);
 
-  // Store (fuente única de estado UI)
-  const {
-    activeThreadId,
-    status,
-    hydrateChat,
-    setStreaming,
-    finishStreaming,
-  } = useChatUIStore();
+	// Store (fuente única de estado UI)
+	const { activeThreadId, status, hydrateChat, setStreaming, finishStreaming } =
+		useChatUIStore();
 
-  const isNewChat = status === 'new';
-  const isHydrating = status === 'hydrating';
-  const isStreaming = status === 'streaming';
+	const isNewChat = status === 'new';
+	const isHydrating = status === 'hydrating';
+	const isStreaming = status === 'streaming';
 
-  // Hidratación de thread
-  const shouldLoadThread = isHydrating && !!activeThreadId;
-  const { data: threadMessages } = useThreadById(shouldLoadThread ? activeThreadId : null);
+	// Hidratación de thread
+	const shouldLoadThread = isHydrating && !!activeThreadId;
+	const { data: threadMessages } = useThreadById(
+		shouldLoadThread ? activeThreadId : null,
+	);
 
-  type UIParts = UIMessage['parts'];
+	type UIParts = UIMessage['parts'];
 
-  const normalizeParts = (content: unknown): UIParts => {
-    if (!content) return [];
-    if (Array.isArray(content)) return content as UIParts;
-    if (typeof content === 'string') {
-      return [{ type: 'text', text: content }];
-    }
-    return [];
-  };
+	const normalizeParts = (content: unknown): UIParts => {
+		if (!content) return [];
+		if (Array.isArray(content)) return content as UIParts;
+		if (typeof content === 'string') {
+			return [{ type: 'text', text: content }];
+		}
+		return [];
+	};
 
-  const hydratedMessages = useMemo<UIMessage[]>(() => {
-    if (!threadMessages) return [];
+	const hydratedMessages = useMemo<UIMessage[]>(() => {
+		if (!threadMessages) return [];
 
-    return threadMessages
-      .filter((m) => m.role === 'user' || m.role === 'assistant')
-      .map((m) => ({
-        id: m.id,
-        role: m.role,
-        createdAt: m.createdAt,
-        metadata: { hydrated: true },
-        parts: normalizeParts(m.content),
-      }));
-  }, [threadMessages]);
+		return threadMessages
+			.filter((m) => m.role === 'user' || m.role === 'assistant')
+			.map((m) => ({
+				id: m.id,
+				role: m.role,
+				createdAt: m.createdAt,
+				metadata: { hydrated: true },
+				parts: normalizeParts(m.content),
+			}));
+	}, [threadMessages, normalizeParts]);
 
+	// Chat engine
+	const chat = useMemo(
+		() => new AIChat({ transport: createAuthenticatedChatTransport() }),
+		[],
+	);
 
-  // Chat engine
-  const chat = useMemo(() => new AIChat({ transport: createAuthenticatedChatTransport() }), [])
+	const {
+		messages,
+		sendMessage,
+		stop,
+		error,
+		setMessages,
+		status: chatStatus,
+	} = useChat({ chat });
 
-  const {
-    messages,
-    sendMessage,
-    stop,
-    error,
-    setMessages,
-    status: chatStatus
-  } = useChat({ chat });
+	// Aplicar hidratación al motor de chat
+	useEffect(() => {
+		if (!isHydrating) return;
+		if (!hydratedMessages.length) return;
 
-  // Aplicar hidratación al motor de chat
-  useEffect(() => {
-    if (!isHydrating) return;
-    if (!hydratedMessages.length) return;
+		setMessages(hydratedMessages);
+		finishStreaming();
+	}, [isHydrating, hydratedMessages, setMessages, finishStreaming]);
 
-    setMessages(hydratedMessages);
-    finishStreaming();
-  }, [isHydrating, hydratedMessages, setMessages, finishStreaming]);
+	// Volver al estado inicial una vez termina el Streaming
+	useEffect(() => {
+		if (chatStatus === 'ready' || chatStatus === 'error') finishStreaming();
+	}, [chatStatus, finishStreaming]);
 
-  // Volver al estado inicial una vez termina el Streaming
-  useEffect(() => {
-    if (chatStatus === 'ready' || chatStatus === 'error') finishStreaming()
-  }, [chatStatus, finishStreaming])
+	// Input / submit
+	const [input, setInput] = useState('');
 
-  // Input / submit
-  const [input, setInput] = useState('');
+	const handleSubmit = async (
+		event?: { preventDefault?: () => void },
+		options?: { attachments?: FileList },
+	) => {
+		event?.preventDefault?.();
 
-  const handleSubmit = async (
-    event?: { preventDefault?: () => void },
-    options?: { attachments?: FileList },
-  ) => {
-    event?.preventDefault?.();
+		const hasText = input.trim().length > 0;
+		const hasFiles = options?.attachments?.length;
 
-    const hasText = input.trim().length > 0;
-    const hasFiles = options?.attachments?.length;
+		if (!hasText && !hasFiles) return;
 
-    if (!hasText && !hasFiles) return;
+		const text = input;
+		const files = options?.attachments;
 
-    const text = input;
-    const files = options?.attachments;
+		setInput('');
+		setStreaming(activeThreadId ?? '');
 
-    setInput('');
-    setStreaming(activeThreadId ?? '');
+		await sendMessage(
+			{ text, files },
+			{
+				body: {
+					threadId: activeThreadId ?? undefined,
+				},
+			},
+		);
+	};
 
-    await sendMessage(
-      { text, files },
-      {
-        body: {
-          threadId: activeThreadId ?? undefined,
-        },
-      }
-    );
-  };
+	// Welcome / empty state
+	const { data: me, isLoading: isMeLoading } = useMe();
+	const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
+	const welcomeText = useRandomWelcome(userName);
 
-  // Welcome / empty state
-  const { data: me, isLoading: isMeLoading } = useMe()
-  const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
-  const welcomeText = useRandomWelcome(userName);
+	useEffect(() => {
+		if (status === 'new') {
+			setMessages([]);
+		}
+	}, [status, setMessages]);
 
-  useEffect(() => {
-    if (status === 'new') {
-      setMessages([]);
-    }
-  }, [status, setMessages]);
+	return (
+		<div className="flex flex-col h-full w-full min-h-0">
+			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+				<Chat
+					className="flex-1 min-h-0"
+					messages={messages}
+					input={input}
+					handleInputChange={(e) => setInput(e.target.value)}
+					handleSubmit={handleSubmit}
+					stop={stop}
+					isGenerating={isStreaming}
+					isHydratingThread={isHydrating}
+					isNewChat={isNewChat}
+					welcomeLabel={welcomeText}
+					isUserLoading={isMeLoading}
+				/>
 
-  return (
-    <div className="flex flex-col h-full w-full min-h-0">
-      <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-        <Chat
-          className="flex-1 min-h-0"
-          messages={messages}
-          input={input}
-          handleInputChange={(e) => setInput(e.target.value)}
-          handleSubmit={handleSubmit}
-          stop={stop}
-          isGenerating={isStreaming}
-          isHydratingThread={isHydrating}
-          isNewChat={isNewChat}
-          welcomeLabel={welcomeText}
-          isUserLoading={isMeLoading}
-        />
+				{error && (
+					<div className="text-xs text-red-500 text-center mt-1">
+						Error: {error.message}
+					</div>
+				)}
 
-        {error && (
-          <div className="text-xs text-red-500 text-center mt-1">
-            Error: {error.message}
-          </div>
-        )}
-
-        <div className="text-xs mt-1 w-full text-center text-muted-foreground">
-          Nexata&apos;s Chat ®
-        </div>
-      </div>
-    </div>
-  );
+				<div className="text-xs mt-1 w-full text-center text-muted-foreground">
+					Nexata&apos;s Chat ®
+				</div>
+			</div>
+		</div>
+	);
 }

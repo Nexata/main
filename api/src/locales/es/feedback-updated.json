@@ -6,5 +6,9 @@
 	"originalCommentLabel": "Tu comentario original",
 	"statusLabel": "Estado",
 	"closing": "¡Gracias por tu feedback!",
-	"teamSignature": "El equipo de Nexata"
+	"teamSignature": "El equipo de Nexata",
+	"status_pending": "Pendiente",
+	"status_in_review": "En revisión",
+	"status_wontfix": "No se arreglará",
+	"status_solved": "Resuelto"
 }

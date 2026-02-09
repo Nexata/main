@@ -12,6 +12,7 @@ import {
 	externalDir,
 	FileHost,
 	file,
+	type Language,
 	OauthProvider,
 	TraceType,
 	trace,
@@ -24,11 +25,11 @@ import {
 	userHasCredential,
 } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { DropboxAuth, Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export namespace Dropbox {
 	export const fromRequest = async (
@@ -71,6 +72,7 @@ export namespace Dropbox {
 		credentialId: string,
 		options?: {
 			slug?: string;
+			language?: Language;
 			tokens?: { refreshToken: string; accessToken: string };
 		},
 	) {
@@ -91,7 +93,12 @@ export namespace Dropbox {
 					)
 			).at(0);
 
-		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+		if (!tokens)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.CREDENTIAL_LOST,
+				options?.language,
+			);
 
 		const auth = new DropboxAuth({
 			accessToken: tokens.accessToken,
@@ -169,7 +176,8 @@ export namespace Dropbox {
 					},
 				}));
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		return {
 			cursor: res.result.has_more ? (res.result.cursor ?? null) : null,
@@ -228,7 +236,8 @@ export namespace Dropbox {
 					include_non_downloadable_files: false,
 				}));
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		return {
 			cursor: res.result.has_more ? res.result.cursor : null,
@@ -276,16 +285,18 @@ export namespace Dropbox {
 	}> {
 		const res = await dpx.filesDownload({ path: fileId });
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const result = res.result as typeof res.result & {
 			fileBinary?: Uint8Array;
 		};
-		if (!result.fileBinary) throw HttpError.Conflict('NO_FILE_CONTENT');
+		if (!result.fileBinary)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_CONTENT);
 
 		const mimeType = getMimeTypeFromExt(result.name);
 		if (mimeType === 'unsupported')
-			throw HttpError.Conflict('UNSUPPORTED_FILE_TYPE');
+			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
 
 		return {
 			file: new File([result.fileBinary.buffer as ArrayBuffer], result.name, {
@@ -379,7 +390,11 @@ export namespace Dropbox {
 					})
 					.returning({ id: externalDir.id })
 			).at(0)?.id;
-		if (!dirId) throw HttpError.InternalServerError('EXTERNAL_DIR_FAILED');
+		if (!dirId)
+			throw httpError(
+				HttpCode.INTERNAL_SERVER_ERROR,
+				ErrorCode.EXTERNAL_DIR_FAILED,
+			);
 
 		const allEntries = await listAllFiles(dpx, dirEntry.id);
 		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
@@ -473,7 +488,7 @@ export namespace Dropbox {
 				)
 		).at(0);
 
-		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+		if (!tokens) throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST);
 
 		const dpx = fromTokens(tokens.accessToken, tokens.refreshToken);
 		const results = await ingest(dpx, userId, slug, credentialId, selection);
@@ -490,7 +505,8 @@ export namespace Dropbox {
 		dirId: string,
 	): Promise<NexataListDirEntry> {
 		const res = await dpx.filesGetMetadata({ path: dirId });
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const e = res.result;
 		return {
@@ -508,7 +524,8 @@ export namespace Dropbox {
 		fileId: string,
 	): Promise<NexataListDirEntry> {
 		const res = await dpx.filesGetMetadata({ path: fileId });
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const e = res.result;
 		return {
@@ -532,7 +549,12 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 		'/search/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Dropbox.search(
 				await Dropbox.fromRequest(activeUser, credentialId),
 				query,
@@ -551,7 +573,12 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 		'/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Dropbox.listDir(
 				await Dropbox.fromRequest(activeUser, credentialId),
 				query,
@@ -574,10 +601,16 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 				credentialId,
 				true,
 			);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 
 			return Dropbox.refreshTokens(credentialId, {
 				slug: activeUser.slug,
+				language: activeUser.language as Language,
 			});
 		},
 		{
@@ -594,9 +627,18 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 				activeUser.slug,
 			);
 			if (blockReason) {
+				const lang = activeUser.language as Language;
 				if (blockReason === 'PAYMENT_REQUIRED')
-					throw new HttpError(402, blockReason);
-				throw HttpError.MethodNotAllowed(blockReason);
+					throw httpError(
+						HttpCode.PAYMENT_REQUIRED,
+						ErrorCode.PAYMENT_REQUIRED,
+						lang,
+					);
+				throw httpError(
+					HttpCode.METHOD_NOT_ALLOWED,
+					ErrorCode[blockReason as keyof typeof ErrorCode],
+					lang,
+				);
 			}
 
 			return Dropbox.ingest(

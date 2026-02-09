@@ -14,11 +14,11 @@ import {
 } from '@api/schema';
 import { addCredentialToUserCache } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { lowerEq } from '@api/utils/sql';
 import { Nullish } from '@api/utils/type';
 import { and, eq } from 'drizzle-orm';
 import { redirect, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 import { decodeIdToken, type OAuth2Tokens } from 'elysia-oauth2';
 
 export type Oauth2Credentials = [
@@ -80,7 +80,7 @@ export async function createOauthRedirect(
 	const url = await urlFunc(query.flow === 'credential' && query);
 
 	const state = url.searchParams.get('state');
-	if (!state) throw HttpError.Conflict('STATE_NOT_FOUND');
+	if (!state) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
 
 	await cache.set(state, query, { ex: 3600 });
 	return redirect(url.href);
@@ -106,16 +106,16 @@ export async function authorizeOauthCallback(
 	}>,
 ) {
 	const q = await cache.getdel<OauthExtendedState>(query.state);
-	if (!q) throw HttpError.Conflict('STATE_NOT_FOUND');
+	if (!q) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
 
 	if (
 		q.flow === 'credential' &&
 		realOauthScopes[q.scope].some((s) => !tokens.scopes().includes(s))
 	)
-		throw HttpError.Conflict('SCOPE_MISMATCH');
+		throw httpError(HttpCode.CONFLICT, ErrorCode.SCOPE_MISMATCH);
 
 	if (q.flow === 'credential' && !tokens.hasRefreshToken())
-		throw HttpError.Conflict('NO_REFRESH_TOKEN');
+		throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN);
 
 	const metadata = await metadataFunc(
 		await Promise.resolve()
@@ -126,7 +126,7 @@ export async function authorizeOauthCallback(
 	);
 
 	if (q.flow === 'credential' && !metadata.refreshTokenExpiresAt)
-		throw HttpError.Conflict('NO_REFRESH_TOKEN_EXPIRATION');
+		throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN_EXPIRATION);
 
 	const u = (
 		await db
@@ -142,7 +142,7 @@ export async function authorizeOauthCallback(
 			)
 	).at(0);
 
-	if (!u?.id) throw HttpError.Forbidden('USER_NOT_FOUND');
+	if (!u?.id) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
 
 	if ((!u.displayName && metadata.name) || (!u.pfpUrl && metadata.pfpUrl)) {
 		await db
@@ -214,7 +214,11 @@ export async function authorizeOauthCallback(
 			.returning({ id: credential.id, userId: credential.userId })
 	).at(0);
 
-	if (!cred) throw HttpError.InternalServerError('CREDENTIAL_NOT_UPSERTED');
+	if (!cred)
+		throw httpError(
+			HttpCode.INTERNAL_SERVER_ERROR,
+			ErrorCode.CREDENTIAL_NOT_UPSERTED,
+		);
 
 	if (cred.userId !== u.id)
 		await db

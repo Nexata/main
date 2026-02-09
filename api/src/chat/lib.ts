@@ -1,5 +1,6 @@
 import { cache, db, LIGHT_MODEL } from '@api/env';
-import { file, message, thread, user } from '@api/schema';
+import { file, type Language, message, thread, user } from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import {
 	generateText,
@@ -9,7 +10,6 @@ import {
 	type ToolSet,
 } from 'ai';
 import { and, asc, eq, exists, lt } from 'drizzle-orm';
-import { HttpError } from 'elysia-logger';
 
 const truncateTitle = (prompt: string, length = 50) =>
 	((x: string) => (x.length >= length ? `${x.slice(0, length - 3)}...` : x))(
@@ -194,6 +194,7 @@ export async function createThread(
 	prompt: string,
 	id?: string,
 	title?: string,
+	language?: Language,
 ) {
 	const result = (
 		await db
@@ -206,7 +207,12 @@ export async function createThread(
 			.returning({ id: thread.id })
 	).at(0)?.id;
 
-	if (!result) throw HttpError.InternalServerError('THREAD_NOT_CREATED');
+	if (!result)
+		throw httpError(
+			HttpCode.INTERNAL_SERVER_ERROR,
+			ErrorCode.THREAD_NOT_CREATED,
+			language,
+		);
 	return result;
 }
 
@@ -218,6 +224,7 @@ export type getThreadMessagesOptions = {
 	messageId?: string;
 	cursor?: Date | null;
 	avoidCaching?: true;
+	language?: Language;
 };
 
 export type PartialMessage = ModelMessage & { id: string };
@@ -289,7 +296,12 @@ export async function getThreadMessages(
 		.orderBy(asc(message.createdAt))
 		.groupBy(message.id);
 
-	if (!noncached?.length) throw HttpError.NotFound('THREAD_NOT_FOUND');
+	if (!noncached?.length)
+		throw httpError(
+			HttpCode.NOT_FOUND,
+			ErrorCode.THREAD_NOT_FOUND,
+			op.language,
+		);
 
 	if (!op.avoidCaching)
 		await cache.set<PartialMessage[]>(

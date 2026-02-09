@@ -3,11 +3,11 @@ import { googleRouter } from '@api/auth/google';
 import { cache, db } from '@api/env';
 import { device, user } from '@api/schema';
 import { type JwtPayload, jwtPlugin } from '@api/utils/auth';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
 import { password } from 'bun';
 import { and, eq, exists, isNotNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export const authPlugin =
 	(options: { admin?: boolean; apiAllowed?: boolean } = {}) =>
@@ -28,7 +28,8 @@ export const authPlugin =
 			})
 			.resolve(async ({ headers, jwt }) => {
 				if ('clientId' in headers) {
-					if (!options.apiAllowed) throw HttpError.Forbidden();
+					if (!options.apiAllowed)
+						throw httpError(HttpCode.FORBIDDEN, ErrorCode.API_NOT_ALLOWED);
 
 					const { clientId, clientSecret } = headers as {
 						clientId: string;
@@ -50,10 +51,13 @@ export const authPlugin =
 							.where(and(eq(user.id, clientId), isNotNull(user.apiKey)))
 					).at(0);
 
-					if (!u) throw HttpError.NotFound();
+					if (!u) throw httpError(HttpCode.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
 
 					if (!(await password.verify(u.apiKey!, clientSecret)))
-						throw HttpError.Unauthorized();
+						throw httpError(
+							HttpCode.UNAUTHORIZED,
+							ErrorCode.INVALID_CREDENTIALS,
+						);
 
 					const activeUser = { ...u, apiKey: null };
 					await cache.set(
@@ -75,7 +79,7 @@ export const authPlugin =
 				const payload = await jwt.verify(at);
 
 				if (!at || !payload || (options.admin && !payload.isAdmin))
-					throw HttpError.Unauthorized();
+					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);
 
 				const cachedToken = await cache.get<string>(
 					`device:${payload.id}:${fingerprint}`,
@@ -95,7 +99,8 @@ export const authPlugin =
 							)
 					).at(0)?.accessToken;
 
-				if (savedToken !== at) throw HttpError.Unauthorized();
+				if (savedToken !== at)
+					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_DEVICE);
 
 				if (!cachedToken)
 					await cache.set(`device:${payload.id}:${fingerprint}`, at, {
@@ -121,7 +126,8 @@ export const authRouter = new Elysia({
 			jwt,
 		}) => {
 			const payload = await refreshJwt.verify(token);
-			if (!payload) throw HttpError.Unauthorized();
+			if (!payload)
+				throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_REFRESH_TOKEN);
 
 			const u = (
 				await db
@@ -146,7 +152,7 @@ export const authRouter = new Elysia({
 					)
 			).at(0);
 
-			if (!u) throw HttpError.Forbidden();
+			if (!u) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
 			const [accessToken, refreshToken] = await Promise.all([
 				jwt.sign({ ...u, apiKey: null }),
 				refreshJwt.sign({ id: u.id }),

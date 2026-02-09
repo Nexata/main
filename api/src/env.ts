@@ -2,7 +2,7 @@ import { deepinfra } from '@ai-sdk/deepinfra';
 import { groq } from '@ai-sdk/groq';
 import type * as schema from '@api/schema';
 import { log, requireEnv, warnEnv } from '@api/utils/env';
-import { neon } from '@neondatabase/serverless';
+import { neon, neonConfig } from '@neondatabase/serverless';
 import { Redis } from '@upstash/redis';
 import { createFallback } from 'ai-fallback';
 import { upstashCache } from 'drizzle-orm/cache/upstash';
@@ -12,6 +12,11 @@ import { createTransport } from 'nodemailer';
 export const IS_PRODUCTION = warnEnv('NODE_ENV', 'production') === 'production';
 export const SRC_DIR = import.meta.dir;
 export const NEXATA_SECRET = requireEnv('NEXATA_SECRET');
+
+if (!IS_PRODUCTION && process.env.NEON_PROXY_URL) {
+	const proxyUrl = process.env.NEON_PROXY_URL;
+	neonConfig.fetchEndpoint = (_host) => `${proxyUrl}/sql`;
+}
 
 const CACHE_CREDENTIALS = {
 	url: requireEnv('UPSTASH_REDIS_REST_URL'),

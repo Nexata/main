@@ -1,11 +1,12 @@
 import { authPlugin } from '@api/auth';
 import { Google } from '@api/integration/google/lib';
+import type { Language } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { gmail, type gmail_v1 } from '@googleapis/gmail';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export namespace Gmail {
 	export const fromRequest = async (
@@ -183,7 +184,8 @@ export namespace Gmail {
 						maxResults: input.maxResults ?? 50,
 					});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const messageIds = res.data.messages ?? [];
 
@@ -254,7 +256,8 @@ export namespace Gmail {
 			format: format.toUpperCase() as 'FULL' | 'METADATA' | 'MINIMAL',
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const data = res.data;
 		const headers = data.payload?.headers;
@@ -300,7 +303,12 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 		'/search/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Gmail.search(
 				await Gmail.fromRequest(activeUser, credentialId),
 				query,
@@ -319,7 +327,12 @@ export const gmailRouter = new Elysia({ prefix: '/gmail' })
 		'/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Gmail.read(
 				await Gmail.fromRequest(activeUser, credentialId),
 				query,

@@ -13,6 +13,7 @@ import {
 	externalDir,
 	FileHost,
 	file,
+	type Language,
 	OauthProvider,
 	OauthScope,
 	TraceType,
@@ -21,11 +22,11 @@ import {
 import type { JwtPayload } from '@api/utils/auth';
 import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { drive, type drive_v3 } from '@googleapis/drive';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
@@ -250,7 +251,8 @@ export namespace Drive {
 						fields: `nextPageToken, files(${FILE_FIELDS})`,
 					});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		return {
 			cursor: res.data.nextPageToken ?? null,
@@ -295,7 +297,8 @@ export namespace Drive {
 				fields: `nextPageToken, files(${FILE_FIELDS})`,
 			});
 
-			if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+			if (res.status !== 200)
+				throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 			return {
 				cursor: res.data.nextPageToken ?? null,
@@ -321,7 +324,8 @@ export namespace Drive {
 				: {}),
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		let entries = (res.data.files ?? []).map(mapFileToEntry);
 
@@ -368,7 +372,8 @@ export namespace Drive {
 				fields: `nextPageToken, files(${FILE_FIELDS})`,
 			});
 
-			if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+			if (res.status !== 200)
+				throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 			const entries = (res.data.files ?? []).map(mapFileToEntry);
 			allEntries.push(...entries);
@@ -400,10 +405,11 @@ export namespace Drive {
 			fields: 'id, name, mimeType, size, modifiedTime, parents',
 		});
 
-		if (metadata.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (metadata.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		const { mimeType, name } = metadata.data;
-		if (!name) throw HttpError.Conflict('NO_FILE_NAME');
+		if (!name) throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_NAME);
 
 		const isGoogleDoc = mimeType?.startsWith('application/vnd.google-apps.');
 		const exportInfo =
@@ -426,7 +432,7 @@ export namespace Drive {
 			if (finalName === `.${exportInfo.ext}`)
 				finalName = `${name}.${exportInfo.ext}`;
 		} else if (isGoogleDoc) {
-			throw HttpError.Conflict('UNSUPPORTED_FILE_TYPE');
+			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
 		} else {
 			const res = await drv.files.get(
 				{ fileId, alt: 'media' },
@@ -438,7 +444,7 @@ export namespace Drive {
 		}
 
 		if (finalMime === 'unsupported')
-			throw HttpError.Conflict('UNSUPPORTED_FILE_TYPE');
+			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
 
 		return {
 			file: new File([fileContent], finalName, { type: finalMime }),
@@ -503,7 +509,8 @@ export namespace Drive {
 			fields: 'id, name, mimeType, webViewLink, modifiedTime',
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		return {
 			id: res.data.id!,
@@ -527,7 +534,8 @@ export namespace Drive {
 			fields: FILE_FIELDS,
 		});
 
-		if (res.status !== 200) throw HttpError.Conflict('EXTERNAL_ERROR');
+		if (res.status !== 200)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
 		return mapFileToEntry(res.data);
 	}
@@ -569,7 +577,11 @@ export namespace Drive {
 					.returning({ id: externalDir.id })
 			).at(0)?.id;
 
-		if (!dirId) throw HttpError.InternalServerError('EXTERNAL_DIR_FAILED');
+		if (!dirId)
+			throw httpError(
+				HttpCode.INTERNAL_SERVER_ERROR,
+				ErrorCode.EXTERNAL_DIR_FAILED,
+			);
 
 		const allEntries = await listAllFiles(drv, dirEntry.id);
 		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
@@ -664,7 +676,7 @@ export namespace Drive {
 				)
 		).at(0);
 
-		if (!tokens) throw HttpError.NotFound('CREDENTIAL_LOST');
+		if (!tokens) throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST);
 
 		const drv = fromTokens(tokens.accessToken, tokens.refreshToken);
 		const results = await ingest(drv, userId, slug, credentialId, selection);
@@ -678,7 +690,7 @@ export namespace Drive {
 
 	export async function refreshTokens(
 		credentialId: string,
-		options?: { slug?: string },
+		options?: { slug?: string; language?: Language },
 	) {
 		return Google.refreshTokens(credentialId, options);
 	}
@@ -690,7 +702,12 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 		'/search/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Drive.search(
 				await Drive.fromRequest(activeUser, credentialId),
 				query,
@@ -709,7 +726,12 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 		'/:credentialId',
 		async ({ params: { credentialId }, query, activeUser }) => {
 			const hasPermission = await userHasCredential(activeUser, credentialId);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 			return Drive.listDir(
 				await Drive.fromRequest(activeUser, credentialId),
 				query,
@@ -732,10 +754,16 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 				credentialId,
 				true,
 			);
-			if (!hasPermission) throw HttpError.Forbidden('NO_CREDENTIAL_PERMISSION');
+			if (!hasPermission)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
 
 			return Drive.refreshTokens(credentialId, {
 				slug: activeUser.slug,
+				language: activeUser.language as Language,
 			});
 		},
 		{
@@ -752,9 +780,18 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 				activeUser.slug,
 			);
 			if (blockReason) {
+				const lang = activeUser.language as Language;
 				if (blockReason === 'PAYMENT_REQUIRED')
-					throw new HttpError(402, blockReason);
-				throw HttpError.MethodNotAllowed(blockReason);
+					throw httpError(
+						HttpCode.PAYMENT_REQUIRED,
+						ErrorCode.PAYMENT_REQUIRED,
+						lang,
+					);
+				throw httpError(
+					HttpCode.METHOD_NOT_ALLOWED,
+					ErrorCode[blockReason as keyof typeof ErrorCode],
+					lang,
+				);
 			}
 
 			return Drive.ingest(
