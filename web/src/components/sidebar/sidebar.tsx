@@ -27,6 +27,7 @@ import { cn } from "@/lib/utils";
 import { useChatUIStore } from '@/lib/chat.store';
 import { useTypingText } from '@/hooks/use-typing-text';
 import { useSyncLocale } from "@/hooks/use-sync-language";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -374,12 +375,28 @@ function ThreadTitle({
 }: {
   title: string;
   isTyping: boolean;
-}) {
+  }) {
+  function truncateText(text: string, max = 32) {
+    if (text.length <= max) return text;
+    return text.slice(0, max - 1) + "…";
+  }
+
   const animated = useTypingText(title, isTyping);
+  const visibleText = isTyping ? animated : truncateText(title, 22);
 
   return (
-    <span className="truncate">
-      {isTyping ? animated : title}
-    </span>
+    <TooltipProvider>
+      <Tooltip>
+        <TooltipTrigger>
+          <span className="truncate cursor-pointer">
+            {visibleText}
+          </span>
+        </TooltipTrigger>
+
+        <TooltipContent side="bottom" align="start" sideOffset={10} className="max-w-xs">
+          {title}
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
   );
 }
