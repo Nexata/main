@@ -6,6 +6,8 @@ import { Calendar, Drive, Gmail } from '@api/integration/google';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
+import * as Sentry from '@sentry/bun';
+import { Value } from '@sinclair/typebox/value';
 import { encode } from '@toon-format/toon';
 import { jsonSchema, type ToolSet, tool } from 'ai';
 import type { Static, TSchema } from 'elysia';
@@ -31,19 +33,30 @@ const toolify = <
 		inputSchema: jsonSchema<Static<TInput>>(inputSchema),
 		// @ts-expect-error
 		execute: async (input) => {
-			const ctxs = wrapper(context);
+			const inputValidationErrors = [...Value.Errors(inputSchema, input)];
+			if (inputValidationErrors.length) return { inputValidationErrors };
 
-			if (!Array.isArray(ctxs))
+			try {
+				const ctxs = wrapper(context);
+
+				if (!Array.isArray(ctxs))
+					return mold
+						? mold(await execute(ctxs, input), context, 0)
+						: await execute(ctxs, input);
+
+				const res = await Promise.all(ctxs.map((ctx) => execute(ctx, input)));
 				return mold
-					? mold(await execute(ctxs, input), context, 0)
-					: await execute(ctxs, input);
-
-			const res = await Promise.all(ctxs.map((ctx) => execute(ctx, input)));
-			return mold
-				? res.length === 1
-					? mold(res[0]!, context, 0)
-					: res.map((output, i) => mold(output, context, i))
-				: res;
+					? res.length === 1
+						? mold(res[0]!, context, 0)
+						: res.map((output, i) => mold(output, context, i))
+					: res;
+			} catch (error) {
+				Sentry.captureException(error, {
+					tags: { source: 'tool' },
+					extra: { input },
+				});
+				throw error;
+			}
 		},
 	});
 
