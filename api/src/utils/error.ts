@@ -1,5 +1,6 @@
+import enError from '@api/locales/en/error.json' with { type: 'json' };
+import esError from '@api/locales/es/error.json' with { type: 'json' };
 import { Language } from '@api/schema';
-import { loadLocale } from '@api/utils/locale';
 import { HttpError } from 'elysia-logger';
 
 export enum HttpCode {
@@ -65,18 +66,17 @@ export enum ErrorCode {
 	EMBED_LIMIT_REACHED = 'EMBED_LIMIT_REACHED',
 }
 
-const errorLocales = new Map<Language, Record<string, string>>();
-
-for (const lang of Object.values(Language)) {
-	loadLocale('error', lang).then((data) => errorLocales.set(lang, data));
-}
+const errorLocales: Record<Language, Record<string, string>> = {
+	[Language.EN]: enError,
+	[Language.ES]: esError,
+};
 
 export function httpError(
 	code: HttpCode,
 	error: ErrorCode,
 	language: Language = Language.EN,
 ): HttpError {
-	const locale = errorLocales.get(language) ?? errorLocales.get(Language.EN)!;
+	const locale = errorLocales[language] ?? errorLocales[Language.EN];
 	const text = locale[error] ?? error;
 
 	return new HttpError(code, { code: error, text });
