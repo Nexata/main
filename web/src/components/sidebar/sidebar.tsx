@@ -26,11 +26,12 @@ import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
 import { useChatUIStore } from '@/lib/chat.store';
 import { useTypingText } from '@/hooks/use-typing-text';
+import { useSyncLocale } from "@/hooks/use-sync-language";
 
 export default function Sidebar() {
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false);
-
+  useSyncLocale();
   const queryClient = useQueryClient();
 
   // Chat Status

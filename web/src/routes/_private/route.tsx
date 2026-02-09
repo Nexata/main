@@ -29,7 +29,7 @@ function PrivateLayout() {
 		<div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
 			<Sidebar />
 
-			<div className="flex-1 overflow-hidden relative bg-[var(--background)] text-[var(--foreground)]">
+			<div className="flex-1 overflow-hidden relative bg-background text-foreground">
 				<AnimatePresence mode="wait">
 					<motion.div
 						key={currentMatch?.id}
