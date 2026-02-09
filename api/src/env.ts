@@ -10,7 +10,6 @@ import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { createTransport } from 'nodemailer';
 
 export const IS_PRODUCTION = warnEnv('NODE_ENV', 'production') === 'production';
-export const SRC_DIR = import.meta.dir;
 export const NEXATA_SECRET = requireEnv('NEXATA_SECRET');
 
 if (!IS_PRODUCTION && process.env.NEON_PROXY_URL) {

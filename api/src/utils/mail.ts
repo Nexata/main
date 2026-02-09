@@ -1,24 +1,53 @@
-import { SMTP, SRC_DIR } from '@api/env';
+import { SMTP } from '@api/env';
+import enFeedbackUpdated from '@api/locales/en/feedback-updated.json' with {
+	type: 'json',
+};
+import esFeedbackUpdated from '@api/locales/es/feedback-updated.json' with {
+	type: 'json',
+};
 import { Language } from '@api/schema';
-import { loadLocale } from '@api/utils/locale';
+import feedbackUpdatedHbs from '@api/templates/feedback-updated.hbs' with {
+	type: 'text',
+};
 import Handlebars from 'handlebars';
 
 export enum Template {
 	FEEDBACK_UPDATED = 'feedback-updated',
 }
 
-const TEMPLATES_DIR = `${SRC_DIR}/templates`;
 const FROM = '"Nexata" <noreply@nexata.app>';
 
-export async function compileTemplate(
+const templateSources: Record<Template, string> = {
+	[Template.FEEDBACK_UPDATED]: feedbackUpdatedHbs,
+};
+
+const templateLocales: Record<
+	Template,
+	Record<Language, Record<string, string>>
+> = {
+	[Template.FEEDBACK_UPDATED]: {
+		[Language.EN]: enFeedbackUpdated,
+		[Language.ES]: esFeedbackUpdated,
+	},
+};
+
+function getLocale(
+	template: Template,
+	language: Language,
+): Record<string, string> {
+	return (
+		templateLocales[template][language] ??
+		templateLocales[template][Language.EN]
+	);
+}
+
+export function compileTemplate(
 	template: Template,
 	data: Record<string, unknown>,
 	language: Language = Language.EN,
-): Promise<string> {
-	const [source, locale] = await Promise.all([
-		Bun.file(`${TEMPLATES_DIR}/${template}.hbs`).text(),
-		loadLocale(template, language),
-	]);
+): string {
+	const source = templateSources[template];
+	const locale = getLocale(template, language);
 
 	const compiled = Handlebars.compile(source);
 	return compiled({ t: locale, ...data });
@@ -44,17 +73,12 @@ export async function sendTemplateMail(options: {
 	language?: Language;
 }): Promise<void> {
 	const language = options.language ?? Language.EN;
-
-	const [source, locale] = await Promise.all([
-		Bun.file(`${TEMPLATES_DIR}/${options.template}.hbs`).text(),
-		loadLocale(options.template, language),
-	]);
+	const locale = getLocale(options.template, language);
 
 	if (!locale.subject)
 		throw new Error(`Missing subject in locale for ${options.template}`);
 
-	const compiled = Handlebars.compile(source);
-	const html = compiled({ t: locale, ...options.data });
+	const html = compileTemplate(options.template, options.data, language);
 
 	await sendMail({
 		to: options.to,
