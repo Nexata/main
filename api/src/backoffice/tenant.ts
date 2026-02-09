@@ -1,10 +1,10 @@
 import { cache, db } from '@api/env';
 import { tenant, user } from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
 import { and, eq, isNotNull } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 const [insertTenant, updateTenant] = [
 	createInsertSchema(tenant),
@@ -68,7 +68,8 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 				.where(eq(tenant.slug, slug))
 				.limit(1);
 
-			if (!currentTenant[0]) throw HttpError.NotFound('TENANT_NOT_FOUND');
+			if (!currentTenant[0])
+				throw httpError(HttpCode.NOT_FOUND, ErrorCode.TENANT_NOT_FOUND);
 
 			const newValue = !currentTenant[0].hasApiAccess;
 			await db

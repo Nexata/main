@@ -10,17 +10,26 @@ import {
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
 import { docToChunks } from '@api/file/lib/word';
-import type { chunk } from '@api/schema';
+import type { chunk, Language } from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { embedMany } from 'ai';
-import { HttpError } from 'elysia-logger';
 
-export async function toStringChunks(f: FileLike, type: string, meta?: object) {
+export async function toStringChunks(
+	f: FileLike,
+	type: string,
+	meta?: object,
+	language?: Language,
+) {
 	const fixedMimeType = Object.values(SupportedMime).find((mime) =>
 		type.startsWith(mime),
 	);
 
 	if (!fixedMimeType)
-		throw HttpError.UnprocessableEntity(`UNSUPPORTED_MIME_TYPE: ${type}`);
+		throw httpError(
+			HttpCode.UNPROCESSABLE_ENTITY,
+			ErrorCode.UNSUPPORTED_MIME_TYPE,
+			language,
+		);
 
 	return (
 		{

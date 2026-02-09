@@ -4,12 +4,13 @@ import {
 	allAccessLevelEntries,
 	credentialAccess,
 	encodeCredentialAccess,
+	type Language,
 	type OauthProvider,
 	type OauthScope,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { and, eq, ne } from 'drizzle-orm';
-import { HttpError } from 'elysia-logger';
 
 const CACHE_TTL = 12 * 60 * 60;
 
@@ -210,7 +211,12 @@ export async function getTokensForUser(
 			)
 	).at(0);
 
-	if (!result?.accessToken) throw HttpError.Forbidden('NO_CREDENTIAL_FOUND');
+	if (!result?.accessToken)
+		throw httpError(
+			HttpCode.FORBIDDEN,
+			ErrorCode.NO_CREDENTIAL_FOUND,
+			activeUser.language as Language,
+		);
 
 	await cache.sadd(
 		setKey,

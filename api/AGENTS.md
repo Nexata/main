@@ -76,15 +76,30 @@ No test scripts are currently configured in package.json. Run individual tests u
 - Use `.resolve(async ({ ... }) => ({ ... }))` for resolved context (middleware)
 
 ### Error Handling and Logging
-- Throw HTTP errors using `HttpError` from `elysia-logger`:
+- **Never use `HttpError` directly** — always use `httpError()` from `@api/utils/error`
+- Import pattern:
   ```typescript
-  throw HttpError.Unauthorized()
-  throw HttpError.Forbidden()
-  throw HttpError.BadRequest('message')
-  throw HttpError.NotFound()
-  throw HttpError.Conflict('message')
-  throw HttpError.InternalServerError('message')
+  import { ErrorCode, HttpCode, httpError } from '@api/utils/error'
   ```
+- `httpError()` **returns** an `HttpError` instance — call sites must **throw** it:
+  ```typescript
+  throw httpError(HttpCode.NotFound, ErrorCode.THREAD_NOT_FOUND, activeUser.language as Language)
+  throw httpError(HttpCode.Forbidden, ErrorCode.NO_CREDENTIAL_FOUND)
+  ```
+- The error response body is `{ code: string, text: string }` where `text` is a localized message
+- **Language sourcing by context:**
+  - Router handlers with `activeUser`: use `activeUser.language as Language`
+  - Utility/namespace functions: accept optional `language?: Language` parameter
+  - Auth/backoffice routes (no user context): omit language (defaults to English)
+- **Adding new error codes:**
+  1. Add the code to the `ErrorCode` enum in `src/utils/error.ts`
+  2. Add English translation in `src/locales/en/error.json`
+  3. Add Spanish translation in `src/locales/es/error.json`
+- **Dynamic error code resolution** (e.g. `blockReason` from ingest):
+  ```typescript
+  throw httpError(HttpCode.PreconditionFailed, ErrorCode[blockReason as keyof typeof ErrorCode], language)
+  ```
+- Available `HttpCode` values: `BadRequest` (400), `Unauthorized` (401), `PaymentRequired` (402), `Forbidden` (403), `NotFound` (404), `MethodNotAllowed` (405), `Conflict` (409), `PreconditionFailed` (412), `UnprocessableEntity` (422), `InternalServerError` (500)
 - Use the `log` function from `@api/utils/env`:
   ```typescript
   log('error', 'message')

@@ -9,11 +9,11 @@ import {
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { invalidateCredentialCache } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { boolOr } from '@api/utils/sql';
 import { and, eq, exists, or, type SQLWrapper, sql } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 const [selectCredentialPermission, insertCredentialPermission] = [
 	createSelectSchema(credentialPermission),
@@ -75,7 +75,11 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 					)
 				).at(0)?.isAdmin
 			)
-				throw HttpError.Forbidden();
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language,
+				);
 
 			await invalidateCredentialCache(activeUser.slug, body.credentialId, [
 				body.userId,
@@ -117,7 +121,11 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 			if (
 				!(await isCredentialAdmin(activeUser, body.credentialId)).at(0)?.isAdmin
 			)
-				throw HttpError.Forbidden();
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language,
+				);
 
 			await invalidateCredentialCache(activeUser.slug, body.credentialId, [
 				body.userId,

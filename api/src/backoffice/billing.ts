@@ -10,9 +10,9 @@ import {
 	trace,
 	user,
 } from '@api/schema';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { Elysia } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
 	.put(
@@ -29,7 +29,10 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				.groupBy(user.slug);
 
 			if (!storageByTenant.length)
-				throw HttpError.PreconditionFailed('NO_STORAGE_USED');
+				throw httpError(
+					HttpCode.PRECONDITION_FAILED,
+					ErrorCode.NO_STORAGE_USED,
+				);
 
 			return db
 				.insert(billableEvent)

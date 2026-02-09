@@ -4,9 +4,9 @@ import { feedbackRouter } from '@api/backoffice/feedback';
 import { filesRouter } from '@api/backoffice/files';
 import { tenantRouter } from '@api/backoffice/tenant';
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
 import { Elysia, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 export const backofficeRouter = new Elysia({
 	prefix: '/backoffice',
@@ -15,7 +15,7 @@ export const backofficeRouter = new Elysia({
 	.guard({ headers: tObject({ authorization: t.String() }) })
 	.derive(({ headers: { authorization } }) => {
 		if (IS_PRODUCTION && authorization !== NEXATA_SECRET)
-			throw HttpError.NotFound();
+			throw httpError(HttpCode.NOT_FOUND, ErrorCode.UNAUTHORIZED_BACKOFFICE);
 	})
 	.use(tenantRouter)
 	.use(billingRouter)

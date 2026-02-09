@@ -19,6 +19,7 @@ import {
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { incrementEmbedUsage, incrementStorageUsage } from '@api/utils/billing';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -41,7 +42,6 @@ import {
 } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-typebox';
 import { Elysia, type Static, t } from 'elysia';
-import { HttpError } from 'elysia-logger';
 
 const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
@@ -491,7 +491,12 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					)
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('FILE_NOT_FOUND');
+			if (!existing)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.FILE_NOT_FOUND,
+					activeUser.language,
+				);
 
 			const set =
 				'name' in body || 'metadata' in body
@@ -508,7 +513,12 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 							}
 						: undefined;
 
-			if (!set) throw HttpError.BadRequest('INVALID_REQUEST');
+			if (!set)
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.INVALID_REQUEST,
+					activeUser.language,
+				);
 
 			return (
 				await db
@@ -570,7 +580,12 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					)
 			).at(0);
 
-			if (!existing) throw HttpError.NotFound('EXTERNAL_DIR_NOT_FOUND');
+			if (!existing)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.EXTERNAL_DIR_NOT_FOUND,
+					activeUser.language,
+				);
 
 			return (
 				await db
