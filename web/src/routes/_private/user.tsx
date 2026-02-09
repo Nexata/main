@@ -271,12 +271,7 @@ export default function ProfilePage() {
 	}
 
 	return (
-		<motion.div
-			initial={{ opacity: 0, y: 6 }}
-			animate={{ opacity: 1, y: 0 }}
-			transition={{ duration: 0.25, ease: 'easeOut' }}
-			className="flex flex-col gap-6 px-3 py-4 w-full max-w-screen-2xl mx-auto"
-		>
+		<div className="flex flex-col gap-6 px-3 py-4 w-full max-w-screen-2xl mx-auto">
 			{/* Header */}
 			<header className="flex items-center justify-between">
 				<div>
@@ -509,7 +504,7 @@ export default function ProfilePage() {
 				</CardContent>
 			</Card>
 
-			<Card className="bg-[var(--sidebar)]">
+			<Card className="bg-sidebar">
 				<CardContent className="p-6 space-y-6">
 					<div className="space-y-3">
 						<div>
@@ -667,7 +662,7 @@ export default function ProfilePage() {
 				onOpenChange={setDeleteApiKeyOpen}
 				onConfirm={handleDeleteApiKey}
 			/>
-		</motion.div>
+		</div>
 	);
 }
 

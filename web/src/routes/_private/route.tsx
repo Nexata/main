@@ -1,54 +1,61 @@
 import {
-	createFileRoute,
-	Outlet,
-	redirect,
-	useMatches,
+  createFileRoute,
+  Outlet,
+  redirect,
+  useRouterState,
 } from '@tanstack/react-router';
-import { AnimatePresence, motion } from 'framer-motion';
-import { useRef } from 'react';
+import { motion } from 'framer-motion';
+import { useEffect, useRef } from 'react';
 import Sidebar from '@/components/sidebar/sidebar';
 import { isAuthenticated } from '@/lib/auth';
 
 export const Route = createFileRoute('/_private')({
-	beforeLoad: () => {
-		if (!isAuthenticated()) {
-			throw redirect({
-				to: '/login',
-			});
-		}
-	},
-	component: PrivateLayout,
+  beforeLoad: () => {
+    if (!isAuthenticated()) {
+      throw redirect({
+        to: '/login',
+      });
+    }
+  },
+  component: PrivateLayout,
 });
 
 function PrivateLayout() {
-	const matches = useMatches();
-	const currentMatch = matches[matches.length - 1];
-	const hasMountedRef = useRef(false);
+  const { location } = useRouterState();
+  const controlsRef = useRef<HTMLDivElement>(null);
 
-	return (
-		<div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
-			<Sidebar />
+  useEffect(() => {
+    controlsRef.current?.animate(
+      [
+        {
+          opacity: 0,
+          transform: 'translateY(6px)',
+        },
+        {
+          opacity: 1,
+          transform: 'translateY(0px)',
+        },
+      ],
+      {
+        duration: 500,
+        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+        fill: 'both',
+      }
+    );
+  }, [location.pathname]);
 
-			<div className="flex-1 overflow-hidden relative bg-background text-foreground">
-				<AnimatePresence mode="wait">
-					<motion.div
-						key={currentMatch?.id}
-						initial={hasMountedRef.current ? { opacity: 0, x: 40 } : false}
-						animate={{ opacity: 1, x: 0 }}
-						exit={{ opacity: 0, x: -40 }}
-						transition={{
-							duration: 0.35,
-							ease: 'easeInOut',
-						}}
-						onAnimationComplete={() => {
-							hasMountedRef.current = true;
-						}}
-						className="absolute inset-0 overflow-y-auto p-6"
-					>
-						<Outlet />
-					</motion.div>
-				</AnimatePresence>
-			</div>
-		</div>
-	);
+
+  return (
+    <div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
+      <Sidebar />
+
+      <motion.div
+        ref={controlsRef}
+        initial={{ opacity: 1, x: 0 }}
+        className="flex-1 overflow-y-auto bg-background text-foreground p-6"
+      >
+        <Outlet />
+      </motion.div>
+    </div>
+  );
 }
