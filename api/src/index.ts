@@ -53,6 +53,13 @@ export const app = new Elysia()
 							url: 'https://creativecommons.org/licenses/by-nc-nd/4.0',
 						},
 					},
+					servers: [
+						{
+							url: `http://localhost:${process.env.PORT ?? 8080}`,
+							description: 'Local',
+						},
+						{ url: 'https://api.nexata.app', description: 'Production' },
+					],
 				},
 			}),
 	)
