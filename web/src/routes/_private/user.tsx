@@ -124,7 +124,7 @@ export default function ProfilePage() {
 	const updateMe = useUpdateMe();
 	const [editing, setEditing] = useState(false);
 	const [displayName, setDisplayName] = useState('');
-	const [language, setLanguage] = useState<Language>(Language.ES);
+	const [language, setLanguage] = useState<Language>('es' as Language);
 	const [file, setFile] = useState<File | null>(null);
 	const deleteMyDevice = useDeleteMyDevice();
 	const deleteMe = useDeleteMe();
