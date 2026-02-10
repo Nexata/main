@@ -31,6 +31,12 @@ import {
 } from '@/components/ui/dialog';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import {
 	Tooltip,
@@ -38,9 +44,11 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import { clearTokens } from '@/lib/auth';
 import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
 import {
+	type Language,
 	useCreateOrRegenerateApiKey,
 	useDeleteApiKey,
 	useDeleteMe,
@@ -104,9 +112,6 @@ import {
 	'user.profile.header.logout' as user_profile_header_logout,
 	'user.profile.info.messages_used' as user_profile_info_messages_used,
 } from '@/paraglide/messages.js';
-import { Select, SelectContent, SelectItem, SelectTrigger } from '@/components/ui/select';
-import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
-import { Language } from '@api/schema/user';
 import { isLocale, setLocale } from '@/paraglide/runtime';
 
 export const Route = createFileRoute('/_private/user')({
@@ -118,8 +123,8 @@ export default function ProfilePage() {
 	const { data: me, isLoading: meLoading } = useMe();
 	const updateMe = useUpdateMe();
 	const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState('');
-  const [language, setLanguage] = useState<Language>(Language.ES);
+	const [displayName, setDisplayName] = useState('');
+	const [language, setLanguage] = useState<Language>(Language.ES);
 	const [file, setFile] = useState<File | null>(null);
 	const deleteMyDevice = useDeleteMyDevice();
 	const deleteMe = useDeleteMe();
@@ -132,26 +137,26 @@ export default function ProfilePage() {
 
 	useEffect(() => {
 		document.title = `Nexata | ${profile_header_title()}`;
-    if (me?.displayName) setDisplayName(me.displayName);
-    if (me?.language) setLanguage(me.language);
-  }, [me]);
+		if (me?.displayName) setDisplayName(me.displayName);
+		if (me?.language) setLanguage(me.language);
+	}, [me]);
 
 	// Cambio de Idioma
 	const handleLanguageChange = (lang: Language) => {
-    setLanguage(lang);
-    if (isLocale(lang)) setLocale(lang, { reload: false });
+		setLanguage(lang);
+		if (isLocale(lang)) setLocale(lang, { reload: false });
 
-    updateMe({ language: lang });
-  };
+		updateMe({ language: lang });
+	};
 
 	// TODO: Skeleton
 	if (meLoading || !me) return null;
 
 	// UpdateMe
 	async function handleSave() {
-    await updateMe({
-      language,
-      displayName: displayName !== me?.displayName ? displayName : undefined,
+		await updateMe({
+			language,
+			displayName: displayName !== me?.displayName ? displayName : undefined,
 			pfp: file ?? undefined,
 		});
 
@@ -343,19 +348,22 @@ export default function ProfilePage() {
 							</div>
 						</div>
 
-            <div className="flex items-center gap-1">
-              <div className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-2">
-                <LanguageSelector value={language} onChange={handleLanguageChange} />
-                <Separator orientation="vertical" className="h-6" />
-                <span className="text-sm text-muted-foreground">
-                  {user_profile_info_messages_used()}
-                </span>
-                <Separator orientation="vertical" className="h-6" />
-                <span className="text-xl font-semibold leading-none text-primary">
-                  {me.messageCount}
-                </span>
-              </div>
-            </div>
+						<div className="flex items-center gap-1">
+							<div className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-2">
+								<LanguageSelector
+									value={language}
+									onChange={handleLanguageChange}
+								/>
+								<Separator orientation="vertical" className="h-6" />
+								<span className="text-sm text-muted-foreground">
+									{user_profile_info_messages_used()}
+								</span>
+								<Separator orientation="vertical" className="h-6" />
+								<span className="text-xl font-semibold leading-none text-primary">
+									{me.messageCount}
+								</span>
+							</div>
+						</div>
 					</div>
 
 					<AnimatePresence>
@@ -411,7 +419,7 @@ export default function ProfilePage() {
 															</motion.div>
 														)}
 													</AnimatePresence>
-                        </div>
+												</div>
 											</div>
 										</div>
 									</div>
@@ -423,7 +431,7 @@ export default function ProfilePage() {
 											onClick={() => {
 												setEditing(false);
 												setFile(null);
-                        setDisplayName(me.displayName ?? '');
+												setDisplayName(me.displayName ?? '');
 												setLanguage(me.language);
 											}}
 										>
@@ -831,20 +839,19 @@ function ConfirmDeleteApiKeyModal({
 }
 
 function LanguageSelector({
-  value,
-  onChange,
+	value,
+	onChange,
 }: {
-  value: Language;
-  onChange: (v: Language) => void;
+	value: Language;
+	onChange: (v: Language) => void;
 }) {
-  const current =
-    LANGUAGE_OPTIONS.find((l) => l.value === value) ??
-    LANGUAGE_OPTIONS[0];
+	const current =
+		LANGUAGE_OPTIONS.find((l) => l.value === value) ?? LANGUAGE_OPTIONS[0];
 
-  return (
-    <Select value={value} onValueChange={(v) => onChange(v as Language)}>
-      <SelectTrigger
-        className="
+	return (
+		<Select value={value} onValueChange={(v) => onChange(v as Language)}>
+			<SelectTrigger
+				className="
           h-8
           min-w-18
           px-2
@@ -854,32 +861,32 @@ function LanguageSelector({
           hover:bg-muted/60
           flex items-center
         "
-      >
-        <Flag country={current.country} />
-        <span className="hidden sm:inline text-xs font-medium uppercase">
-          {current.value}
-        </span>
-      </SelectTrigger>
+			>
+				<Flag country={current.country} />
+				<span className="hidden sm:inline text-xs font-medium uppercase">
+					{current.value}
+				</span>
+			</SelectTrigger>
 
-      <SelectContent align="start">
-        {LANGUAGE_OPTIONS.map((lang) => (
-          <SelectItem key={lang.value} value={lang.value}>
-            <div className="flex items-center gap-2">
-              <Flag country={lang.country} />
-              <span className="text-sm uppercase">{lang.value}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
+			<SelectContent align="start">
+				{LANGUAGE_OPTIONS.map((lang) => (
+					<SelectItem key={lang.value} value={lang.value}>
+						<div className="flex items-center gap-2">
+							<Flag country={lang.country} />
+							<span className="text-sm uppercase">{lang.value}</span>
+						</div>
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	);
 }
 
 function Flag({ country }: { country: string }) {
-  return (
-    <span
-      className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
-      style={{ width: 18, height: 12 }}
-    />
-  );
+	return (
+		<span
+			className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
+			style={{ width: 18, height: 12 }}
+		/>
+	);
 }

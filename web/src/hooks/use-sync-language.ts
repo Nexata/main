@@ -1,7 +1,6 @@
 import { useEffect } from 'react';
 import { setLocale, isLocale } from '@/paraglide/runtime';
-import { useMe } from '@/lib/user';
-import { Language } from '@api/schema/user';
+import { useMe, type Language } from '@/lib/user';
 
 export function useSyncLocale() {
   const { data: me } = useMe();
@@ -19,12 +18,12 @@ export function useSyncLocale() {
 
 export const LANGUAGE_OPTIONS = [
   {
-    value: Language.ES,
+    value: 'es' as Language,
     label: 'Español',
     country: 'ar',
   },
   {
-    value: Language.EN,
+    value: 'en' as Language,
     label: 'English',
     country: 'us',
   },

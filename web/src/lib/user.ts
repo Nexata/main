@@ -2,7 +2,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, withAuthRetry } from '@/api';
 import { clearTokens } from './auth';
 import { clearFingerprint } from './fingerprint';
-import type { Language } from '@api/schema/user';
 
 // GetMe
 export async function getMe() {
@@ -13,6 +12,7 @@ export async function getMe() {
 	);
 }
 export type Me = Awaited<ReturnType<typeof getMe>>;
+export type Language = Me['language'];
 
 export function useMe() {
 	return useQuery<Me>({
@@ -24,53 +24,53 @@ export function useMe() {
 
 // UpdateMe
 export async function updateMe(data: {
-  language: Language;
-  displayName?: string;
-  pfp?: File;
+	language: Language;
+	displayName?: string;
+	pfp?: File;
 }) {
-  return withAuthRetry((headers) => {
-    const body: {
-      language: Language;
-      displayName?: string;
-      pfp?: File;
-    } = { language: data.language };
+	return withAuthRetry((headers) => {
+		const body: {
+			language: Language;
+			displayName?: string;
+			pfp?: File;
+		} = { language: data.language };
 
-    if (data.displayName !== undefined) body.displayName = data.displayName;
-    if (data.pfp !== undefined) body.pfp = data.pfp;
+		if (data.displayName !== undefined) body.displayName = data.displayName;
+		if (data.pfp !== undefined) body.pfp = data.pfp;
 
-    return apiClient.user.me.patch({
-      $headers: headers,
-      ...body,
-    });
-  });
+		return apiClient.user.me.patch({
+			$headers: headers,
+			...body,
+		});
+	});
 }
 
 export function useUpdateMe() {
-  const queryClient = useQueryClient();
+	const queryClient = useQueryClient();
 
-  return async (data: {
-    language: Language;
-    displayName?: string;
-    pfp?: File;
-  }) => {
-    await withAuthRetry((headers) => {
-      const body: {
-        language: Language;
-        displayName?: string;
-        pfp?: File;
-      } = { language: data.language };
+	return async (data: {
+		language: Language;
+		displayName?: string;
+		pfp?: File;
+	}) => {
+		await withAuthRetry((headers) => {
+			const body: {
+				language: Language;
+				displayName?: string;
+				pfp?: File;
+			} = { language: data.language };
 
-      if (data.displayName !== undefined) body.displayName = data.displayName;
-      if (data.pfp !== undefined) body.pfp = data.pfp;
+			if (data.displayName !== undefined) body.displayName = data.displayName;
+			if (data.pfp !== undefined) body.pfp = data.pfp;
 
-      return apiClient.user.me.patch({
-        $headers: headers,
-        ...body,
-      });
-    });
+			return apiClient.user.me.patch({
+				$headers: headers,
+				...body,
+			});
+		});
 
-    await queryClient.invalidateQueries({ queryKey: ['me'] });
-  };
+		await queryClient.invalidateQueries({ queryKey: ['me'] });
+	};
 }
 
 // GetMyTenant
