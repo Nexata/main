@@ -142,9 +142,7 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					activeUser.language,
 				);
 
-			const rawApiKey = (crypto.randomUUID() + crypto.randomUUID())
-				.replace(/-/g, '')
-				.toUpperCase();
+			const rawApiKey = crypto.randomUUID().replaceAll('-', '').toUpperCase();
 			const hashedApiKey = await password.hash(rawApiKey);
 
 			await Promise.all([
