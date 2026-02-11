@@ -164,8 +164,9 @@ export default function ProfilePage() {
 		updateMe({ language: lang });
 	};
 
-	// TODO: Skeleton
-	if (meLoading || !me) return null;
+	// Skeleton Loading
+	if (meLoading) return <ProfileSkeleton />;
+	if (!me) return null;
 
 	// UpdateMe
 	async function handleSave() {
@@ -720,8 +721,9 @@ export default function ProfilePage() {
 	);
 }
 
-// ------ DELETE MODAL ------
-
+// ------------------------------------------------------------------------------------------
+// ---------------------------------------- DELETE MODAL ------------------------------------
+// ------------------------------------------------------------------------------------------
 function ConfirmDeleteAccountModal({
 	open,
 	onOpenChange,
@@ -768,7 +770,9 @@ function ConfirmDeleteAccountModal({
 	);
 }
 
-// ------- ONE TIME APIKEY MODAL -------
+// ------------------------------------------------------------------------------------------
+// --------------------------------- ONE TIME APIKEY MODAL ----------------------------------
+// ------------------------------------------------------------------------------------------
 function ApiKeyOneTimeModal({
 	open,
 	onOpenChange,
@@ -845,7 +849,9 @@ function ApiKeyOneTimeModal({
 	);
 }
 
-// ----- DELETE APIKEY MODAL -----
+// ------------------------------------------------------------------------------------------
+// ----------------------------------- DELETE APIKEY MODAL ----------------------------------
+// ------------------------------------------------------------------------------------------
 function ConfirmDeleteApiKeyModal({
 	open,
 	onOpenChange,
@@ -883,6 +889,10 @@ function ConfirmDeleteApiKeyModal({
 		</Dialog>
 	);
 }
+
+// ------------------------------------------------------------------------------------------
+// ------------------------------------- LANGUAGE SELECTOR ----------------------------------
+// ------------------------------------------------------------------------------------------
 
 function LanguageSelector({
 	value,
@@ -934,5 +944,131 @@ function Flag({ country }: { country: string }) {
 			className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
 			style={{ width: 18, height: 12 }}
 		/>
+	);
+}
+
+// ------------------------------------------------------------------------------------------
+// ------------------------------------- SKELETON LOADING -----------------------------------
+// ------------------------------------------------------------------------------------------
+
+function ProfileSkeleton() {
+	return (
+		<div className="flex flex-col gap-6 px-3 py-4 w-full max-w-screen-2xl mx-auto animate-pulse">
+			{/* HEADER */}
+			<header className="flex items-center justify-between">
+				<div className="space-y-2">
+					<div className="h-8 w-48 bg-muted rounded-md" />
+					<div className="h-4 w-72 bg-muted rounded-md opacity-60" />
+				</div>
+
+				<div className="flex items-center gap-2">
+					<div className="h-9 w-36 bg-muted rounded-md" />
+					<div className="h-9 w-28 bg-muted rounded-md" />
+				</div>
+			</header>
+
+			<Separator />
+
+			{/* PROFILE CARD */}
+			<Card className="bg-sidebar">
+				<CardContent className="p-6 space-y-6">
+					<div className="flex items-center justify-between gap-6">
+						<div className="flex items-center gap-5">
+							<div className="h-16 w-16 rounded-full bg-muted shrink-0" />
+
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<div className="h-5 w-40 bg-muted rounded-md" />
+									<div className="h-5 w-14 bg-muted rounded-md" />
+									<div className="h-8 w-8 bg-muted rounded-md" />
+								</div>
+
+								<div className="h-4 w-56 bg-muted rounded-md opacity-60" />
+							</div>
+						</div>
+
+						<div className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-2">
+							<div className="h-6 w-16 bg-muted rounded-md" />
+							<Separator orientation="vertical" className="h-6" />
+							<div className="h-4 w-24 bg-muted rounded-md opacity-60" />
+							<Separator orientation="vertical" className="h-6" />
+							<div className="h-6 w-10 bg-muted rounded-md" />
+						</div>
+					</div>
+
+					<Separator />
+
+					{/* DEVICES SECTION */}
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<div className="h-6 w-40 bg-muted rounded-md" />
+							<div className="h-4 w-64 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<div className="space-y-3">
+							{[1, 2, 3].map((i) => (
+								<div
+									key={i}
+									className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
+								>
+									<div className="space-y-2 w-full max-w-md">
+										<div className="h-4 w-72 bg-muted rounded-md" />
+										<div className="h-3 w-56 bg-muted rounded-md opacity-60" />
+										<div className="h-3 w-40 bg-muted rounded-md opacity-40" />
+									</div>
+
+									<div className="h-9 w-9 bg-muted rounded-md shrink-0" />
+								</div>
+							))}
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* API KEY + DANGER ZONE CARD */}
+			<Card className="bg-sidebar">
+				<CardContent className="p-6 space-y-6">
+					{/* API KEY SECTION */}
+					<div className="space-y-3">
+						<div className="space-y-2">
+							<div className="h-6 w-48 bg-muted rounded-md" />
+							<div className="h-4 w-72 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<div className="flex items-center gap-3">
+							<div className="flex-1">
+								<div className="h-10 w-full bg-muted rounded-md" />
+							</div>
+
+							<div className="flex gap-2">
+								<div className="h-9 w-9 bg-muted rounded-md" />
+								<div className="h-9 w-9 bg-muted rounded-md" />
+							</div>
+						</div>
+					</div>
+
+					<Separator />
+
+					{/* DANGER ZONE */}
+					<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5 space-y-4">
+						<div className="space-y-2">
+							<div className="h-4 w-32 bg-muted rounded-md" />
+							<div className="h-3 w-64 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<Separator />
+
+						<div className="flex items-center justify-between">
+							<div className="space-y-2">
+								<div className="h-4 w-40 bg-muted rounded-md" />
+								<div className="h-3 w-56 bg-muted rounded-md opacity-60" />
+							</div>
+
+							<div className="h-9 w-36 bg-muted rounded-md" />
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }
