@@ -379,7 +379,8 @@
 				"actions": {
 					"regenerate": "Regenerate API key",
 					"delete": "Delete API key",
-					"create": "Create API key"
+					"create": "Create API key",
+					"not_enabled": "Your Tenant does not have API access enabled"
 				},
 				"empty": {
 					"title": "No API key",

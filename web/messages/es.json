@@ -379,7 +379,8 @@
 				"actions": {
 					"regenerate": "Regenerar clave API",
 					"delete": "Eliminar clave API",
-					"create": "Crear clave API"
+					"create": "Crear clave API",
+					"not_enabled": "Tu Empresa no tiene la funcion de ApiKey activa"
 				},
 				"empty": {
 					"title": "Sin clave API",

@@ -56,6 +56,7 @@ import {
 	useDeleteMe,
 	useDeleteMyDevice,
 	useMe,
+	useMyTenant,
 	useUpdateMe,
 } from '@/lib/user';
 import {
@@ -114,7 +115,8 @@ import {
 	'user.profile.header.logout' as user_profile_header_logout,
   'user.profile.info.messages_used' as user_profile_info_messages_used,
   'user.profile.devices.cant_delete' as user_profile_devices_cant_delete,
-  'user.profile.devices.current' as user_profile_devices_current
+  'user.profile.devices.current' as user_profile_devices_current,
+  'user.profile.api_keys.actions.not_enabled' as user_profile_api_keys_actions_not_enabled
 } from '@/paraglide/messages.js';
 import { isLocale, setLocale } from '@/paraglide/runtime';
 
@@ -124,7 +126,8 @@ export const Route = createFileRoute('/_private/user')({
 
 export default function ProfilePage() {
 	const navigate = useNavigate();
-	const { data: me, isLoading: meLoading } = useMe();
+  const { data: me, isLoading: meLoading } = useMe();
+	const { data: tenant } = useMyTenant();
 	const updateMe = useUpdateMe();
 	const [editing, setEditing] = useState(false);
 	const [displayName, setDisplayName] = useState('');
@@ -640,13 +643,26 @@ export default function ProfilePage() {
 									</p>
 								</div>
 
-								<Button
-									size="sm"
-									className="cursor-pointer"
-									onClick={handleCreateOrRegenerateApiKey}
-								>
-									{profile_api_keys_action_create()}
-								</Button>
+								<Tooltip>
+                  <TooltipTrigger>
+                    <span>
+                      <Button
+                        size="sm"
+                        className={!tenant?.hasApiAccess ? "cursor-not-allowed" : "cursor-pointer"}
+                        disabled={!tenant?.hasApiAccess}
+                        onClick={handleCreateOrRegenerateApiKey}
+                      >
+                        {profile_api_keys_action_create()}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+
+                  {!tenant?.hasApiAccess && (
+                    <TooltipContent>
+                      {user_profile_api_keys_actions_not_enabled()}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
 							</div>
 						)}
 					</div>
