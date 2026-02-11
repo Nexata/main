@@ -109,6 +109,7 @@
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "Nuevo Chat",
+		"search": "Buscar Chats...",
 		"delete_chat_title": "¿Eliminar chat?",
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
 	},

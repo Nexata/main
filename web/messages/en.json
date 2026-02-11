@@ -109,6 +109,7 @@
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "New Chat",
+		"search": "Search Chats...",
 		"delete_chat_title": "Delete chat?",
 		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone."
 	},
