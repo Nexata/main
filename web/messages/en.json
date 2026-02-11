@@ -355,6 +355,8 @@
 				"empty": "No active devices",
 				"added_on": "Added on",
 				"delete": "Delete Device",
+				"cant_delete": "You cannot delete your current device",
+				"current": "Current Device",
 				"revoke": {
 					"loading_title": "Revoking device",
 					"loading_description": "Signing out the device…",

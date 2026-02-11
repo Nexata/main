@@ -355,6 +355,8 @@
 				"empty": "No hay dispositivos activos",
 				"added_on": "Agregado el",
 				"delete": "Borrar Dispositivo",
+				"cant_delete": "No puede borrar su dispositivo actual",
+				"current": "Dispositivo Actual",
 				"revoke": {
 					"loading_title": "Revocando dispositivo",
 					"loading_description": "Cerrando sesión del dispositivo…",
