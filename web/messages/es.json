@@ -111,7 +111,11 @@
 		"new_chat": "Nuevo Chat",
 		"search": "Buscar Chats...",
 		"delete_chat_title": "¿Eliminar chat?",
-		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
+		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer.",
+		"theme": "Cambiar tema",
+		"settings": "Configuracion",
+		"help": "Ayuda",
+		"feedback": "Enviar feedback"
 	},
 	"user_input": {
 		"placeholder": "Seleccionar usuario",

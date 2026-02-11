@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Trash2, Settings } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Settings,
+  HelpCircle,
+  MessageSquareText,
+} from "lucide-react";
 import {
   IoSunny,
   IoMoon,
@@ -20,7 +26,11 @@ import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
 import {
   "sidebar.new_chat" as sidebar_new_chat,
-  "sidebar.search" as sidebar_search
+  "sidebar.search" as sidebar_search,
+  "sidebar.theme" as sidebar_theme,
+  "sidebar.settings" as sidebar_settings,
+  "sidebar.help" as sidebar_help,
+  "sidebar.feedback" as sidebar_feedback
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
@@ -373,33 +383,123 @@ export default function Sidebar() {
           )}
 
           {/* Menú inferior */}
-          <div
-            className={`flex flex-col gap-4 transition-all duration-300 ${isCollapsed ? "items-center" : "items-stretch"}`}
-          >
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleDarkMode}
-              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
-            >
-              {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
-            </Button>
+          <TooltipProvider>
+            <div className="mt-auto flex flex-col w-full">
 
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate({ to: "/settings" })}
-              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
-            >
-              <Settings className="w-6 h-6" />
-            </Button>
+              <motion.div
+                key={isCollapsed ? "collapsed" : "expanded"}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={cn(
+                  "flex w-full",
+                  isCollapsed
+                    ? "flex-col items-center gap-2"
+                    : "flex-row items-center gap-2"
+                )}
+              >
 
-            <UserSection
-              me={me ?? null}
-              collapsed={isCollapsed}
-              loading={meLoading}
-            />
-          </div>
+                {/* Theme */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        onClick={toggleDarkMode}
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        {theme === "dark" ? (
+                          <IoSunny className="w-5 h-5" />
+                        ) : (
+                          <IoMoon className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_theme()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Settings */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate({ to: "/settings" })}
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <Settings className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_settings()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Help */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <HelpCircle className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_help()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Feedback */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <MessageSquareText className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_feedback()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+              </motion.div>
+
+              <div className="mt-3">
+                <UserSection
+                  me={me ?? null}
+                  collapsed={isCollapsed}
+                  loading={meLoading}
+                />
+              </div>
+
+            </div>
+          </TooltipProvider>
+
+
+
         </div>
 
         {!isCollapsed && (
