@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from "react"
 import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
-import type { UIMessage } from "ai"
+import type { UIMessage } from "@ai-sdk/react" // ✅ CORREGIDO
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import { Button } from "@/components/ui/button"
@@ -18,13 +18,11 @@ import { MessageList } from "@/components/ui/message-list"
 import { ChatThinkingIndicator } from "../chat-thinking/chat-thinking"
 
 function getMessageText(message: UIMessage): string {
+  if (!message.parts) return ""
+
   return message.parts
-    .filter((p) => p.type === "text" || p.type === "reasoning")
-    .map((p) => {
-      if (p.type === "text") return p.text
-      if (p.type === "reasoning") return p.text
-      return ""
-    })
+    .filter((p): p is Extract<typeof p, { type: "text" | "reasoning" }> => p.type === "text" || p.type === "reasoning")
+    .map((p) => p.text ?? "")
     .join("")
 }
 
@@ -43,11 +41,11 @@ interface ChatPropsBase {
     messageId: string,
     rating: "thumbs-up" | "thumbs-down"
   ) => void
-  setMessages?: (messages: any[]) => void
+  setMessages?: (messages: UIMessage[]) => void
   transcribeAudio?: (blob: Blob) => Promise<string>
-  welcomeLabel?: string,
-  isHydratingThread?: boolean,
-  isNewChat?: boolean,
+  welcomeLabel?: string
+  isHydratingThread?: boolean
+  isNewChat?: boolean
   isUserLoading?: boolean
 }
 
@@ -65,17 +63,20 @@ export function Chat({
   welcomeLabel,
   isHydratingThread,
   isNewChat,
-  isUserLoading
+  isUserLoading,
 }: ChatPropsBase) {
-
-  // Status Flags
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
   const showWelcome = isNewChat && !isHydrating && !isStreaming && messages.length === 0
   const showWelcomeSkeleton = isNewChat && isHydrating && messages.length === 0
+  const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined
 
-  const lastMessage = messages.at(-1)
-  const assistantHasText = lastMessage?.role === 'assistant' && lastMessage.parts?.some(p => p.type === 'text' && p.text.length > 0)
+  const assistantHasText =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts?.some(
+      (p) => p.type === "text" && (p.text?.length ?? 0) > 0
+    )
+
   const showThinking = isStreaming && !assistantHasText
 
   const messagesRef = useRef(messages)
@@ -98,19 +99,27 @@ export function Chat({
                 copyMessage="Copied response to clipboard!"
               />
             </div>
+
             <Button
               size="icon"
               variant="ghost"
               className="h-6 w-6"
-              onClick={() => onRateResponse(message.id, "thumbs-up")}
+              onClick={() =>
+                message.id &&
+                onRateResponse(message.id, "thumbs-up")
+              }
             >
               <ThumbsUp className="h-4 w-4" />
             </Button>
+
             <Button
               size="icon"
               variant="ghost"
               className="h-6 w-6"
-              onClick={() => onRateResponse(message.id, "thumbs-down")}
+              onClick={() =>
+                message.id &&
+                onRateResponse(message.id, "thumbs-down")
+              }
             >
               <ThumbsDown className="h-4 w-4" />
             </Button>
@@ -128,8 +137,14 @@ export function Chat({
 
   return (
     <ChatContainer className={className}>
-      {showWelcome && (<ChatWelcome label={welcomeLabel} isLoading={isUserLoading}/>)}
-      {showWelcomeSkeleton && (<ChatWelcome isLoading/>)}
+      {showWelcome && (
+        <ChatWelcome
+          label={welcomeLabel}
+          isLoading={isUserLoading}
+        />
+      )}
+
+      {showWelcomeSkeleton && <ChatWelcome isLoading />}
 
       {isHydrating && (
         <ChatMessages messages={[]}>
@@ -141,7 +156,9 @@ export function Chat({
         <ChatMessages messages={messages}>
           <MessageList
             messages={messages}
-            disableTypingAnimation={!isStreaming && lastMessage?.role !== "user"}
+            disableTypingAnimation={
+              !isStreaming && lastMessage?.role !== "user"
+            }
             messageOptions={messageOptions}
           />
 
@@ -175,6 +192,7 @@ export function Chat({
   )
 }
 Chat.displayName = "Chat"
+
 
 export function ChatMessages({
   messages,
