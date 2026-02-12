@@ -109,8 +109,13 @@
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "Nuevo Chat",
+		"search": "Buscar Chats...",
 		"delete_chat_title": "¿Eliminar chat?",
-		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer."
+		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer.",
+		"theme": "Cambiar tema",
+		"settings": "Configuracion",
+		"help": "Ayuda",
+		"feedback": "Enviar feedback"
 	},
 	"user_input": {
 		"placeholder": "Seleccionar usuario",
@@ -355,6 +360,8 @@
 				"empty": "No hay dispositivos activos",
 				"added_on": "Agregado el",
 				"delete": "Borrar Dispositivo",
+				"cant_delete": "No puede borrar su dispositivo actual",
+				"current": "Dispositivo Actual",
 				"revoke": {
 					"loading_title": "Revocando dispositivo",
 					"loading_description": "Cerrando sesión del dispositivo…",
@@ -377,7 +384,8 @@
 				"actions": {
 					"regenerate": "Regenerar clave API",
 					"delete": "Eliminar clave API",
-					"create": "Crear clave API"
+					"create": "Crear clave API",
+					"not_enabled": "Tu Empresa no tiene la funcion de ApiKey activa"
 				},
 				"empty": {
 					"title": "Sin clave API",
