@@ -79,6 +79,13 @@ export const getTools = async (
 			(au) => au,
 			async (au, input) => Nexata.listCredentials(au, input),
 		),
+		NexataListUsers: toolify(
+			Nexata.listUsersDescription,
+			Nexata.listUsersInput,
+			activeUser,
+			(au) => au,
+			async (au, input) => Nexata.listUsers(au, input),
+		),
 		NexataFileSearch: toolify(
 			NexataFile.searchDescription,
 			NexataFile.searchInput,

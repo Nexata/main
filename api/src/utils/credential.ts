@@ -1,6 +1,4 @@
 import { cache, db } from '@api/env';
-import { Dropbox } from '@api/integration/dropbox';
-import { Google } from '@api/integration/google/lib';
 import {
 	AccessLevel,
 	allAccessLevelEntries,
@@ -8,12 +6,14 @@ import {
 	credentialAccess,
 	encodeCredentialAccess,
 	type Language,
-	OauthProvider,
+	type OauthProvider,
 	type OauthScope,
+	user,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
-import { and, eq, ne } from 'drizzle-orm';
+import { providerRefreshers } from '@api/utils/token-refresh';
+import { and, eq, inArray, ne } from 'drizzle-orm';
 
 const CACHE_TTL = 12 * 60 * 60;
 
@@ -38,11 +38,6 @@ export type CachedCredential = {
 };
 
 const FIVE_MINUTES = 5 * 60 * 1000;
-
-const providerRefreshers: Record<string, typeof Dropbox.refreshTokens> = {
-	[OauthProvider.DROPBOX]: Dropbox.refreshTokens,
-	[OauthProvider.GOOGLE]: Google.refreshTokens,
-};
 
 export async function ensureFreshTokens(
 	credentialId: string,
@@ -172,7 +167,7 @@ export async function getCredentialsForUser(
 	const credentials = await db
 		.select()
 		.from(credentialAccess)
-		.where(and(eq(credentialAccess.userId, activeUser.id)));
+		.where(eq(credentialAccess.userId, activeUser.id));
 
 	if (!credentials.length) return [];
 
@@ -186,8 +181,8 @@ export async function getCredentialsForUser(
 			refreshToken: c.refreshToken,
 			accessTokenExpiresAt: c.accessTokenExpiresAt.toISOString(),
 			ownedBy: {
-				id: c.ownedBy.id,
-				email: c.ownedBy.email,
+				id: c.ownerId,
+				email: c.ownerEmail,
 			},
 		},
 		encodeCredentialAccess(c.id, c.accessLevel),
@@ -213,14 +208,87 @@ export async function getCredentialsForUser(
 		await Promise.all(cachePromises);
 	}
 
-	return returnType === 'usage'
-		? usageCredentials
-		: credentials.map((c) => ({
-				...c,
-				accessToken: undefined,
-				refreshToken: undefined,
-				accessTokenExpiresAt: undefined,
-			}));
+	if (returnType === 'usage') return usageCredentials;
+
+	const credentialIds = credentials.map((c) => c.id);
+
+	const [ownerRows, permissionRows] = await Promise.all([
+		db
+			.select({
+				credentialId: credential.id,
+				id: user.id,
+				email: user.email,
+				pfpUrl: user.pfpUrl,
+				displayName: user.displayName,
+				isTenantAdmin: user.isAdmin,
+			})
+			.from(credential)
+			.innerJoin(user, eq(user.id, credential.userId))
+			.where(inArray(credential.id, credentialIds)),
+		db
+			.select({
+				credentialId: credentialAccess.id,
+				id: credentialAccess.userId,
+				accessLevel: credentialAccess.accessLevel,
+			})
+			.from(credentialAccess)
+			.where(inArray(credentialAccess.id, credentialIds)),
+	]);
+
+	const ownerMap = new Map(ownerRows.map((o) => [o.credentialId, o]));
+
+	const permUserIds = [...new Set(permissionRows.map((p) => p.id))];
+	const permUsers = permUserIds.length
+		? await db
+				.select({
+					id: user.id,
+					displayName: user.displayName,
+					email: user.email,
+					pfpUrl: user.pfpUrl,
+				})
+				.from(user)
+				.where(inArray(user.id, permUserIds))
+		: [];
+	const permUserMap = new Map(permUsers.map((u) => [u.id, u]));
+
+	return credentials.map((c) => {
+		const ownerInfo = ownerMap.get(c.id);
+		const perms = permissionRows
+			.filter((p) => p.credentialId === c.id && p.id !== c.ownerId)
+			.map((p) => {
+				const u = permUserMap.get(p.id);
+				return {
+					id: p.id,
+					displayName: u?.displayName ?? null,
+					email: u?.email ?? '',
+					pfpUrl: u?.pfpUrl ?? null,
+					accessLevel: p.accessLevel,
+				};
+			});
+
+		return {
+			id: c.id,
+			userId: activeUser.id,
+			slug: activeUser.slug,
+			accessLevel: c.accessLevel,
+			provider: c.provider,
+			scope: c.scope,
+			email: c.email,
+			isGlobal: c.isGlobal,
+			ownedBy: {
+				id: ownerInfo?.id ?? c.ownerId,
+				email: ownerInfo?.email ?? c.ownerEmail,
+				pfpUrl: ownerInfo?.pfpUrl ?? null,
+				displayName: ownerInfo?.displayName ?? null,
+				isTenantAdmin: ownerInfo?.isTenantAdmin ?? false,
+			},
+			permissions: perms,
+			createdAt: c.createdAt,
+			accessToken: undefined,
+			refreshToken: undefined,
+			accessTokenExpiresAt: undefined,
+		};
+	});
 }
 
 export async function getTokensForUser(

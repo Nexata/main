@@ -1,9 +1,11 @@
+import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { OauthProvider, OauthScope } from '@api/schema';
+import { OauthProvider, OauthScope, user } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Static } from '@sinclair/typebox';
+import { and, eq, ilike, isNotNull, or, type SQL } from 'drizzle-orm';
 import { t } from 'elysia';
 
 export namespace Nexata {
@@ -80,5 +82,41 @@ export namespace Nexata {
 			fileIds: ctx.fileIds,
 			...input,
 		});
+	}
+
+	export const [listUsersDescription, listUsersInput] = [
+		'Nexata tool to list users in the tenant. Supports filtering by name or email. Only returns users belonging to the same tenant as the requesting user.',
+		tObject({
+			search: Nullish(t.String(), {
+				description: 'Search query to filter users by display name or email.',
+			}),
+		}),
+	];
+
+	export async function listUsers(
+		activeUser: JwtPayload,
+		input: Static<typeof listUsersInput>,
+	) {
+		return db
+			.select({
+				id: user.id,
+				email: user.email,
+				displayName: user.displayName,
+				pfpUrl: user.pfpUrl,
+				hasApiKey: isNotNull(user.apiKey) as SQL<boolean>,
+				isAdmin: user.isAdmin,
+			})
+			.from(user)
+			.where(
+				and(
+					eq(user.slug, activeUser.slug),
+					input.search
+						? or(
+								ilike(user.displayName, `%${input.search}%`),
+								ilike(user.email, `%${input.search}%`),
+							)
+						: undefined,
+				),
+			);
 	}
 }

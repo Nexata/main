@@ -19,16 +19,13 @@ import {
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
 import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
-import {
-	getTokensForUser,
-	invalidateCredentialCache,
-	userHasCredential,
-} from '@api/utils/credential';
+import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { refreshDropboxTokens } from '@api/utils/token-refresh';
 import { Nullish, tObject } from '@api/utils/type';
 import { and, eq, notInArray } from 'drizzle-orm';
-import { DropboxAuth, Dropbox as DropboxClient } from 'dropbox';
+import { Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
 
 export namespace Dropbox {
@@ -76,57 +73,7 @@ export namespace Dropbox {
 			tokens?: { refreshToken: string; accessToken: string };
 		},
 	) {
-		const tokens =
-			options?.tokens ??
-			(
-				await db
-					.select({
-						refreshToken: credential.refreshToken,
-						accessToken: credential.accessToken,
-					})
-					.from(credential)
-					.where(
-						and(
-							eq(credential.id, credentialId),
-							eq(credential.provider, OauthProvider.DROPBOX),
-						),
-					)
-			).at(0);
-
-		if (!tokens)
-			throw httpError(
-				HttpCode.NOT_FOUND,
-				ErrorCode.CREDENTIAL_LOST,
-				options?.language,
-			);
-
-		const auth = new DropboxAuth({
-			accessToken: tokens.accessToken,
-			refreshToken: tokens.refreshToken,
-			clientId: requireEnv('DROPBOX_APP_KEY'),
-			clientSecret: requireEnv('DROPBOX_APP_SECRET'),
-		});
-
-		auth.refreshAccessToken();
-
-		const newTokens = {
-			accessToken: auth.getAccessToken(),
-			accessTokenExpiresAt: auth.getAccessTokenExpiresAt(),
-			refreshToken: auth.getRefreshToken(),
-		};
-
-		if (newTokens.accessToken === tokens.accessToken) return false;
-
-		if (options?.slug)
-			await Promise.all([
-				db
-					.update(credential)
-					.set(newTokens)
-					.where(eq(credential.id, credentialId)),
-				invalidateCredentialCache(options.slug, credentialId),
-			]);
-
-		return true;
+		return refreshDropboxTokens(credentialId, options);
 	}
 
 	export const [searchDescription, searchInput] = [
