@@ -11,6 +11,7 @@ import type { JwtPayload } from '@api/utils/auth';
 import { invalidateCredentialCache } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { boolOr } from '@api/utils/sql';
+import { tObject } from '@api/utils/type';
 import { and, eq, exists, or, type SQLWrapper, sql } from 'drizzle-orm';
 import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
@@ -156,6 +157,9 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 		},
 		{
 			detail: { summary: 'Delete credential permission' },
-			body: t.Pick(selectCredentialPermission, ['credentialId', 'userId']),
+			body: tObject({
+				credentialId: t.String({ format: 'uuid' }),
+				userId: t.String({ format: 'uuid' }),
+			}),
 		},
 	);
