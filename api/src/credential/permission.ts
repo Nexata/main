@@ -13,13 +13,10 @@ import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { boolOr } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
 import { and, eq, exists, or, type SQLWrapper, sql } from 'drizzle-orm';
-import { createInsertSchema, createSelectSchema } from 'drizzle-typebox';
+import { createInsertSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
 
-const [selectCredentialPermission, insertCredentialPermission] = [
-	createSelectSchema(credentialPermission),
-	createInsertSchema(credentialPermission),
-];
+const insertCredentialPermission = createInsertSchema(credentialPermission);
 
 const isCredentialAdmin = (
 	activeUser: JwtPayload,
@@ -117,10 +114,11 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 		},
 	)
 	.delete(
-		'/',
-		async ({ body, activeUser }) => {
+		'/:credentialId/:userId',
+		async ({ params, activeUser }) => {
 			if (
-				!(await isCredentialAdmin(activeUser, body.credentialId)).at(0)?.isAdmin
+				!(await isCredentialAdmin(activeUser, params.credentialId)).at(0)
+					?.isAdmin
 			)
 				throw httpError(
 					HttpCode.FORBIDDEN,
@@ -128,8 +126,8 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 					activeUser.language,
 				);
 
-			await invalidateCredentialCache(activeUser.slug, body.credentialId, [
-				body.userId,
+			await invalidateCredentialCache(activeUser.slug, params.credentialId, [
+				params.userId,
 			]);
 
 			const [result] = await db.batch([
@@ -137,8 +135,8 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 					.delete(credentialPermission)
 					.where(
 						and(
-							eq(credentialPermission.credentialId, body.credentialId),
-							eq(credentialPermission.userId, body.userId),
+							eq(credentialPermission.credentialId, params.credentialId),
+							eq(credentialPermission.userId, params.userId),
 						),
 					)
 					.returning({
@@ -149,7 +147,7 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 				db.insert(trace).values({
 					userId: activeUser.id,
 					type: TraceType.CREDENTIAL_REMOVED,
-					metadata: { credentialId: body.credentialId },
+					metadata: { credentialId: params.credentialId },
 				}),
 			]);
 
@@ -157,7 +155,7 @@ export const permissionRouter = new Elysia({ prefix: '/permission' })
 		},
 		{
 			detail: { summary: 'Delete credential permission' },
-			body: tObject({
+			params: tObject({
 				credentialId: t.String({ format: 'uuid' }),
 				userId: t.String({ format: 'uuid' }),
 			}),
