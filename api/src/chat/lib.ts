@@ -93,8 +93,8 @@ You have access to powerful tools. Use them proactively.
 - **CalendarRead**: Read detailed event information including attendees and conference links
 
 ### Dropbox (when connected)
-- **dropboxSearch**: Search files by name and category
-- **dropboxListDir**: Browse folder contents
+- **DropboxSearch**: Search files by name and category
+- **DropboxListDir**: Browse folder contents
 
 ---
 

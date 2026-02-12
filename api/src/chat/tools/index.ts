@@ -137,7 +137,7 @@ export const getTools = async (
 	if (dropboxCredentials.length)
 		tools = {
 			...tools,
-			dropboxSearch: toolify(
+			DropboxSearch: toolify(
 				Dropbox.searchDescription,
 				Dropbox.searchInput,
 				dropboxCredentials,
@@ -148,7 +148,7 @@ export const getTools = async (
 				async (dpx, input) => Dropbox.search(dpx, input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
-			dropboxListDir: toolify(
+			DropboxListDir: toolify(
 				Dropbox.listDirDescription,
 				Dropbox.listDirInput,
 				dropboxCredentials,
