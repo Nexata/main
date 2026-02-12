@@ -99,6 +99,7 @@ export const credentialAccess = pgView('credential_access').as((qb) =>
 			).as('permissions'),
 			accessToken: credential.accessToken,
 			refreshToken: credential.refreshToken,
+			accessTokenExpiresAt: credential.accessTokenExpiresAt,
 			createdAt: credential.createdAt,
 		})
 		.from(credential)

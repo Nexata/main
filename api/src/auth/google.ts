@@ -64,10 +64,11 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 				await oauth2.authorize('Google'),
 				jwt.sign,
 				refreshJwt.sign,
-				async (
-					idToken: { email?: string; name?: string; picture?: string },
-					data?: { refresh_token_expires_in?: number },
-				) => {
+				async (idToken: {
+					email?: string;
+					name?: string;
+					picture?: string;
+				}) => {
 					if (!idToken?.email)
 						throw httpError(
 							HttpCode.PRECONDITION_FAILED,
@@ -76,12 +77,6 @@ export const googleRouter = new Elysia({ prefix: `/google` })
 
 					return {
 						email: idToken.email,
-						refreshTokenExpiresAt: new Date(
-							Date.now() +
-								(data?.refresh_token_expires_in
-									? data.refresh_token_expires_in * 1000
-									: 86400 * 7 * 1000),
-						),
 						name: idToken?.name,
 						pfpUrl: idToken?.picture,
 						userAgent: headers['user-agent'],

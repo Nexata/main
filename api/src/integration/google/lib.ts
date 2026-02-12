@@ -69,7 +69,6 @@ export namespace Google {
 				? new Date(credentials.expiry_date)
 				: new Date(Date.now() + 3600 * 1000),
 			refreshToken: credentials.refresh_token ?? tokens.refreshToken,
-			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10),
 		};
 
 		if (options?.slug)

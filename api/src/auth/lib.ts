@@ -125,9 +125,6 @@ export async function authorizeOauthCallback(
 		tokens.data,
 	);
 
-	if (q.flow === 'credential' && !metadata.refreshTokenExpiresAt)
-		throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN_EXPIRATION);
-
 	const u = (
 		await db
 			.select()
@@ -194,7 +191,7 @@ export async function authorizeOauthCallback(
 		accessToken: tokens.accessToken(),
 		accessTokenExpiresAt: tokens.accessTokenExpiresAt(),
 		refreshToken: tokens.refreshToken(),
-		refreshTokenExpiresAt: metadata.refreshTokenExpiresAt!,
+		refreshTokenExpiresAt: metadata.refreshTokenExpiresAt ?? null,
 	};
 
 	const cred = (

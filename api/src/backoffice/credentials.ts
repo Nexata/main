@@ -2,7 +2,7 @@ import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
 import { Google } from '@api/integration/google';
 import { credential, OauthProvider, user } from '@api/schema';
-import { eq, lte, or } from 'drizzle-orm';
+import { and, eq, isNotNull, lte } from 'drizzle-orm';
 import Elysia from 'elysia';
 
 const providerRefreshers: Record<string, typeof Dropbox.refreshTokens> = {
@@ -26,8 +26,8 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 			.from(credential)
 			.innerJoin(user, eq(user.id, credential.userId))
 			.where(
-				or(
-					lte(credential.accessTokenExpiresAt, oneHourFromNow),
+				and(
+					isNotNull(credential.refreshTokenExpiresAt),
 					lte(credential.refreshTokenExpiresAt, oneHourFromNow),
 				),
 			);
@@ -57,7 +57,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 			summary: 'Refresh credentials',
 			// NOTE: Cron job, scheduled to run once every 1 hour
 			description:
-				'Refreshes tokens that will expire in the next 1 hour. Expected to run cronologically every 1 hour.',
+				'Refreshes refresh tokens that will expire in the next 1 hour. Access tokens are refreshed on-demand when credentials are used. Expected to run chronologically every 1 hour.',
 		},
 	},
 );

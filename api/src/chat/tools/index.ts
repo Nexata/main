@@ -5,7 +5,11 @@ import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
 import { OauthScope } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
-import { getCredentialsForUser } from '@api/utils/credential';
+import {
+	type CachedCredential,
+	ensureFreshTokens,
+	getCredentialsForUser,
+} from '@api/utils/credential';
 import * as Sentry from '@sentry/bun';
 import { Value } from '@sinclair/typebox/value';
 import { encode } from '@toon-format/toon';
@@ -131,6 +135,22 @@ export const getTools = async (
 		};
 	}
 
+	const freshClient = async <T>(
+		c: CachedCredential,
+		create: (at: string, rt: string) => T,
+	) => {
+		const { at, rt } = await ensureFreshTokens(
+			c.id,
+			c.provider,
+			c.accessToken,
+			c.refreshToken,
+			c.accessTokenExpiresAt,
+			activeUser.slug,
+		);
+
+		return create(at, rt);
+	};
+
 	const dropboxCredentials = credentials.filter(
 		(c) => c.scope === OauthScope.DROPBOX,
 	);
@@ -141,22 +161,18 @@ export const getTools = async (
 				Dropbox.searchDescription,
 				Dropbox.searchInput,
 				dropboxCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Dropbox.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (dpx, input) => Dropbox.search(dpx, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Dropbox.search(await freshClient(c, Dropbox.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 			DropboxListDir: toolify(
 				Dropbox.listDirDescription,
 				Dropbox.listDirInput,
 				dropboxCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Dropbox.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (dpx, input) => Dropbox.listDir(dpx, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Dropbox.listDir(await freshClient(c, Dropbox.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
@@ -171,22 +187,18 @@ export const getTools = async (
 				Drive.searchDescription,
 				Drive.searchInput,
 				driveCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Drive.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (drv, input) => Drive.search(drv, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Drive.search(await freshClient(c, Drive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 			DriveListDir: toolify(
 				Drive.listDirDescription,
 				Drive.listDirInput,
 				driveCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Drive.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (drv, input) => Drive.listDir(drv, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Drive.listDir(await freshClient(c, Drive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
@@ -201,22 +213,18 @@ export const getTools = async (
 				Gmail.searchDescription,
 				Gmail.searchInput,
 				gmailCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Gmail.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (client, input) => Gmail.search(client, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Gmail.search(await freshClient(c, Gmail.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 			GmailRead: toolify(
 				Gmail.readDescription,
 				Gmail.readInput,
 				gmailCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Gmail.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (client, input) => Gmail.read(client, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Gmail.read(await freshClient(c, Gmail.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
@@ -231,33 +239,27 @@ export const getTools = async (
 				Calendar.listDescription,
 				Calendar.listInput,
 				calendarCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Calendar.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (client, input) => Calendar.list(client, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Calendar.list(await freshClient(c, Calendar.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 			CalendarEvents: toolify(
 				Calendar.eventsDescription,
 				Calendar.eventsInput,
 				calendarCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Calendar.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (client, input) => Calendar.events(client, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Calendar.events(await freshClient(c, Calendar.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 			CalendarRead: toolify(
 				Calendar.readDescription,
 				Calendar.readInput,
 				calendarCredentials,
-				(credentials) =>
-					credentials.map((c) =>
-						Calendar.fromTokens(c.accessToken, c.refreshToken),
-					),
-				async (client, input) => Calendar.read(client, input),
+				(credentials) => credentials,
+				async (c, input) =>
+					Calendar.read(await freshClient(c, Calendar.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};

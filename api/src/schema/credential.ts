@@ -77,7 +77,7 @@ export const credential = pgTable(
 		accessToken: varchar({ length: 4096 }).notNull(),
 		accessTokenExpiresAt: timestamp().notNull(),
 		refreshToken: varchar({ length: 4096 }).notNull(),
-		refreshTokenExpiresAt: timestamp().notNull(),
+		refreshTokenExpiresAt: timestamp(),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
 	(t) => [

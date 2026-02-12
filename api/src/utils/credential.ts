@@ -1,11 +1,14 @@
 import { cache, db } from '@api/env';
+import { Dropbox } from '@api/integration/dropbox';
+import { Google } from '@api/integration/google/lib';
 import {
 	AccessLevel,
 	allAccessLevelEntries,
+	credential,
 	credentialAccess,
 	encodeCredentialAccess,
 	type Language,
-	type OauthProvider,
+	OauthProvider,
 	type OauthScope,
 } from '@api/schema';
 import type { JwtPayload } from '@api/utils/auth';
@@ -26,12 +29,59 @@ export type CachedCredential = {
 	scope: OauthScope;
 	accessToken: string;
 	refreshToken: string;
+	accessTokenExpiresAt: string;
 	email: string;
 	ownedBy: {
 		id: string;
 		email: string;
 	};
 };
+
+const FIVE_MINUTES = 5 * 60 * 1000;
+
+const providerRefreshers: Record<string, typeof Dropbox.refreshTokens> = {
+	[OauthProvider.DROPBOX]: Dropbox.refreshTokens,
+	[OauthProvider.GOOGLE]: Google.refreshTokens,
+};
+
+export async function ensureFreshTokens(
+	credentialId: string,
+	provider: OauthProvider,
+	accessToken: string,
+	refreshToken: string,
+	accessTokenExpiresAt: Date | string,
+	slug: string,
+	language?: Language,
+): Promise<{ at: string; rt: string }> {
+	const expiresAt = new Date(accessTokenExpiresAt);
+	if (expiresAt.getTime() > Date.now() + FIVE_MINUTES)
+		return { at: accessToken, rt: refreshToken };
+
+	const refresher = providerRefreshers[provider];
+	if (!refresher) return { at: accessToken, rt: refreshToken };
+
+	await refresher(credentialId, {
+		slug,
+		language,
+		tokens: { accessToken, refreshToken },
+	});
+	const [updated] = await Promise.all([
+		db
+			.select({
+				accessToken: credential.accessToken,
+				refreshToken: credential.refreshToken,
+			})
+			.from(credential)
+			.where(eq(credential.id, credentialId))
+			.then((res) => res.at(0)),
+		invalidateCredentialCache(slug, credentialId),
+	]);
+
+	if (!updated)
+		throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST, language);
+
+	return { at: updated.accessToken, rt: updated.refreshToken };
+}
 
 export async function invalidateCredentialCache(
 	slug: string,
@@ -96,6 +146,7 @@ export async function getCredentialsForUser(
 		createdAt: Date;
 		accessToken: undefined;
 		refreshToken: undefined;
+		accessTokenExpiresAt: undefined;
 	}[]
 >;
 export async function getCredentialsForUser(
@@ -133,6 +184,7 @@ export async function getCredentialsForUser(
 			email: c.email,
 			accessToken: c.accessToken,
 			refreshToken: c.refreshToken,
+			accessTokenExpiresAt: c.accessTokenExpiresAt.toISOString(),
 			ownedBy: {
 				id: c.ownedBy.id,
 				email: c.ownedBy.email,
@@ -167,6 +219,7 @@ export async function getCredentialsForUser(
 				...c,
 				accessToken: undefined,
 				refreshToken: undefined,
+				accessTokenExpiresAt: undefined,
 			}));
 }
 
@@ -186,7 +239,16 @@ export async function getTokensForUser(
 			credentialCacheKey(activeUser.slug, credentialId),
 		);
 
-		if (cached) return { at: cached.accessToken, rt: cached.refreshToken };
+		if (cached)
+			return ensureFreshTokens(
+				cached.id,
+				cached.provider,
+				cached.accessToken,
+				cached.refreshToken,
+				cached.accessTokenExpiresAt,
+				activeUser.slug,
+				activeUser.language,
+			);
 	}
 
 	const result = (
@@ -195,6 +257,8 @@ export async function getTokensForUser(
 				accessLevel: credentialAccess.accessLevel,
 				accessToken: credentialAccess.accessToken,
 				refreshToken: credentialAccess.refreshToken,
+				accessTokenExpiresAt: credentialAccess.accessTokenExpiresAt,
+				provider: credentialAccess.provider,
 			})
 			.from(credentialAccess)
 			.where(
@@ -223,7 +287,15 @@ export async function getTokensForUser(
 		encodeCredentialAccess(credentialId, result.accessLevel),
 	);
 
-	return { at: result.accessToken, rt: result.refreshToken };
+	return ensureFreshTokens(
+		credentialId,
+		result.provider,
+		result.accessToken,
+		result.refreshToken,
+		result.accessTokenExpiresAt,
+		activeUser.slug,
+		activeUser.language,
+	);
 }
 
 export async function userHasCredential(

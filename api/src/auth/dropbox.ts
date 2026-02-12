@@ -85,7 +85,6 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 
 					return {
 						email: idToken.email,
-						refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // 10 years
 						name:
 							`${idToken.given_name ?? ''} ${idToken.family_name ?? ''}`.trim() ||
 							undefined,

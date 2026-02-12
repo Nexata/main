@@ -113,7 +113,6 @@ export namespace Dropbox {
 			accessToken: auth.getAccessToken(),
 			accessTokenExpiresAt: auth.getAccessTokenExpiresAt(),
 			refreshToken: auth.getRefreshToken(),
-			refreshTokenExpiresAt: new Date(Date.now() + 86400 * 365 * 10), // 10 years
 		};
 
 		if (newTokens.accessToken === tokens.accessToken) return false;
