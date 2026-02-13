@@ -92,7 +92,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			let fileSystemMessage: PartialMessage | undefined;
 
 			if (body.files?.length) {
-				const fileIds = body.files.map(crypto.randomUUID);
+				const fileIds = body.files.map(() => crypto.randomUUID());
 
 				const insertedFiles = await Promise.all(
 					body.files.map((f, i) =>
@@ -259,10 +259,16 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			detail: { summary: 'Chat with LLM' },
 			body: tObject({
 				prompt: t.String(),
-				extraReason: Nullish(t.Boolean({ default: false }), {
-					description:
-						'If true, uses a heavier reasoning model in exchange of two message credits.',
-				}),
+				extraReason: Nullish(
+					t.Union([
+						t.Boolean({ default: false }),
+						t.BooleanString({ default: false }),
+					]),
+					{
+						description:
+							'If true, uses a heavier reasoning model in exchange of two message credits.',
+					},
+				),
 				threadId: Nullish(t.String({ format: 'uuid' }), {
 					description:
 						'UUID of the thread. If none, a new thread will be created.',
