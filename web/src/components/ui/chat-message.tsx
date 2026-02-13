@@ -68,10 +68,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isUser = message.role === "user"
   const isAssistant = message.role === "assistant"
 
-  const textParts = message.parts.filter(
-    (p): p is Extract<typeof p, { type: "text" }> => p.type === "text"
-  )
-
+  const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
   const fullText = textParts.map((p) => p.text).join("")
 
   const shouldAnimateTyping =
@@ -79,7 +76,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     !disableTypingAnimation &&
     textParts.some((p) => p.state === "streaming")
 
-  const typedContent = useTypingText(fullText, shouldAnimateTyping, 6)
+  const typedContent = useTypingText(fullText, shouldAnimateTyping, 4)
+
+  const lastStreamingTextIndex = [...message.parts]
+    .map((p, i) => p.type === "text" && p.state === "streaming" ? i : -1)
+    .filter(i => i !== -1)
+    .pop()
 
   const createdAt =
     typeof message.metadata === "object" &&
@@ -117,9 +119,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               <MarkdownRenderer>{content}</MarkdownRenderer>
 
               {shouldAnimateTyping &&
-                typedContent.length < fullText.length && (
-                  <span className="ml-1 animate-pulse">▍</span>
-                )}
+                index === lastStreamingTextIndex &&
+                typedContent.length < fullText.length && (<span className="ml-1 animate-pulse">▍</span>
+              )}
             </div>
           )
         }
