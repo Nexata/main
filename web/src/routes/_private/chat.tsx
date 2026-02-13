@@ -145,7 +145,7 @@ export function NexataChat() {
 				body: {
           threadId: activeThreadId ?? undefined,
           languagePreference: me?.languagePreference ?? undefined,
-          extraReason: reasoning || undefined
+          extraReason: reasoning
 				},
 			},
     );
