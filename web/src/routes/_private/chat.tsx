@@ -140,7 +140,8 @@ export function NexataChat() {
 			{ text, files },
 			{
 				body: {
-					threadId: activeThreadId ?? undefined,
+          threadId: activeThreadId ?? undefined,
+					languagePreference: me?.languagePreference ?? undefined
 				},
 			},
 		);
