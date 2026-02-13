@@ -1,66 +1,61 @@
 import { useEffect, useRef, useState } from "react"
 
-// How many pixels from the bottom of the container to enable auto-scroll
 const ACTIVATION_THRESHOLD = 50
-// Minimum pixels of scroll-up movement required to disable auto-scroll
 const MIN_SCROLL_UP_THRESHOLD = 10
 
 export function useAutoScroll(dependencies: React.DependencyList) {
   const containerRef = useRef<HTMLDivElement | null>(null)
   const previousScrollTop = useRef<number | null>(null)
+  const isProgrammaticScroll = useRef(false)
+
   const [shouldAutoScroll, setShouldAutoScroll] = useState(true)
 
   const scrollToBottom = () => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = containerRef.current.scrollHeight
-    }
+    const el = containerRef.current
+    if (!el) return
+
+    isProgrammaticScroll.current = true
+
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: "smooth",
+    })
+
+    // unlock after animation settles
+    setTimeout(() => { isProgrammaticScroll.current = false }, 120)
   }
 
   const handleScroll = () => {
-    if (containerRef.current) {
-      const { scrollTop, scrollHeight, clientHeight } = containerRef.current
+    const el = containerRef.current
+    if (!el || isProgrammaticScroll.current) return
 
-      const distanceFromBottom = Math.abs(
-        scrollHeight - scrollTop - clientHeight
-      )
+    const { scrollTop, scrollHeight, clientHeight } = el
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight
+    const prev = previousScrollTop.current ?? scrollTop
 
-      const isScrollingUp = previousScrollTop.current
-        ? scrollTop < previousScrollTop.current
-        : false
+    const scrollUpDistance = prev - scrollTop
+    const isScrollingUp = scrollUpDistance > MIN_SCROLL_UP_THRESHOLD
 
-      const scrollUpDistance = previousScrollTop.current
-        ? previousScrollTop.current - scrollTop
-        : 0
+    let nextShouldAuto = shouldAutoScroll
 
-      const isDeliberateScrollUp =
-        isScrollingUp && scrollUpDistance > MIN_SCROLL_UP_THRESHOLD
+    if (isScrollingUp) nextShouldAuto = false
+    else if (distanceFromBottom < ACTIVATION_THRESHOLD) nextShouldAuto = true
 
-      if (isDeliberateScrollUp) {
-        setShouldAutoScroll(false)
-      } else {
-        const isScrolledToBottom = distanceFromBottom < ACTIVATION_THRESHOLD
-        setShouldAutoScroll(isScrolledToBottom)
-      }
 
-      previousScrollTop.current = scrollTop
-    }
+    if (nextShouldAuto !== shouldAutoScroll) setShouldAutoScroll(nextShouldAuto)
+
+    previousScrollTop.current = scrollTop
   }
 
-  const handleTouchStart = () => {
-    setShouldAutoScroll(false)
-  }
+  const handleTouchStart = () => { setShouldAutoScroll(false) }
 
   useEffect(() => {
-    if (containerRef.current) {
-      previousScrollTop.current = containerRef.current.scrollTop
-    }
+    previousScrollTop.current = containerRef.current?.scrollTop ?? 0
   }, [])
 
   useEffect(() => {
-    if (shouldAutoScroll) {
-      scrollToBottom()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (shouldAutoScroll) scrollToBottom()
+    // eslint-disable-next-line
   }, dependencies)
 
   return {
