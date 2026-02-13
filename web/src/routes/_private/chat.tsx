@@ -1,8 +1,7 @@
 'use client';
 
-import { Chat as AIChat, useChat } from '@ai-sdk/react';
+import { Chat as AIChat, useChat, type UIMessage } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
-import type { UIMessage } from 'ai';
 import { useEffect, useMemo, useState } from 'react';
 
 import { Chat } from '@/components/ui/chat';
@@ -17,35 +16,45 @@ export const Route = createFileRoute('/_private/chat')({
 	component: NexataChat,
 });
 
+// ----------------------------
+// Stable helpers (outside component)
+// ----------------------------
+
+type UIParts = UIMessage['parts'];
+
+function normalizeParts(content: unknown): UIParts {
+	if (!content) return [];
+	if (Array.isArray(content)) return content as UIParts;
+	if (typeof content === 'string') return [{ type: 'text', text: content }];
+	return [];
+}
+
 export function NexataChat() {
 	useEffect(() => {
 		document.title = chat_meta_title();
 	}, []);
 
-	// Store (fuente única de estado UI)
-	const { activeThreadId, status, hydrateChat, setStreaming, finishStreaming } =
-		useChatUIStore();
+	// ----------------------------
+	// Store
+	// ----------------------------
+
+	const {
+		activeThreadId,
+		status,
+		setStreaming,
+		finishStreaming,
+	} = useChatUIStore();
 
 	const isNewChat = status === 'new';
 	const isHydrating = status === 'hydrating';
 	const isStreaming = status === 'streaming';
 
-	// Hidratación de thread
+	// ----------------------------
+	// Thread Hydration
+	// ----------------------------
+
 	const shouldLoadThread = isHydrating && !!activeThreadId;
-	const { data: threadMessages } = useThreadById(
-		shouldLoadThread ? activeThreadId : null,
-	);
-
-	type UIParts = UIMessage['parts'];
-
-	const normalizeParts = (content: unknown): UIParts => {
-		if (!content) return [];
-		if (Array.isArray(content)) return content as UIParts;
-		if (typeof content === 'string') {
-			return [{ type: 'text', text: content }];
-		}
-		return [];
-	};
+	const { data: threadMessages } = useThreadById(shouldLoadThread ? activeThreadId : null);
 
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
 		if (!threadMessages) return [];
@@ -59,11 +68,17 @@ export function NexataChat() {
 				metadata: { hydrated: true },
 				parts: normalizeParts(m.content),
 			}));
-	}, [threadMessages, normalizeParts]);
+	}, [threadMessages]);
 
-	// Chat engine
+	// ----------------------------
+	// Chat Engine (stable)
+	// ----------------------------
+
 	const chat = useMemo(
-		() => new AIChat({ transport: createAuthenticatedChatTransport() }),
+		() =>
+			new AIChat({
+				transport: createAuthenticatedChatTransport(),
+			}),
 		[],
 	);
 
@@ -76,7 +91,10 @@ export function NexataChat() {
 		status: chatStatus,
 	} = useChat({ chat });
 
-	// Aplicar hidratación al motor de chat
+	// ----------------------------
+	// Apply hydration to engine
+	// ----------------------------
+
 	useEffect(() => {
 		if (!isHydrating) return;
 		if (!hydratedMessages.length) return;
@@ -85,13 +103,22 @@ export function NexataChat() {
 		finishStreaming();
 	}, [isHydrating, hydratedMessages, setMessages, finishStreaming]);
 
-	// Volver al estado inicial una vez termina el Streaming
+	// ----------------------------
+	// Reset streaming state when done
+	// ----------------------------
+
 	useEffect(() => {
-		if (chatStatus === 'ready' || chatStatus === 'error') finishStreaming();
+		if (chatStatus === 'ready' || chatStatus === 'error') {
+			finishStreaming();
+		}
 	}, [chatStatus, finishStreaming]);
 
-	// Input / submit
-	const [input, setInput] = useState('');
+	// ----------------------------
+	// Input / Submit
+	// ----------------------------
+
+  const [input, setInput] = useState('');
+  const [extraReason, setExtraReason] = useState(false)
 
 	const handleSubmit = async (
 		event?: { preventDefault?: () => void },
@@ -105,22 +132,29 @@ export function NexataChat() {
 		if (!hasText && !hasFiles) return;
 
 		const text = input;
-		const files = options?.attachments;
+    const files = options?.attachments;
+    const reasoning = extraReason;
 
 		setInput('');
-		setStreaming(activeThreadId ?? '');
+    setStreaming(activeThreadId ?? '');
+		setExtraReason(false);
 
 		await sendMessage(
 			{ text, files },
 			{
 				body: {
-					threadId: activeThreadId ?? undefined,
+          threadId: activeThreadId ?? undefined,
+          languagePreference: me?.languagePreference ?? undefined,
+          extraReason: reasoning
 				},
 			},
-		);
+    );
 	};
 
-	// Welcome / empty state
+	// ----------------------------
+	// Welcome / Empty State
+	// ----------------------------
+
 	const { data: me, isLoading: isMeLoading } = useMe();
 	const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
 	const welcomeText = useRandomWelcome(userName);
@@ -130,6 +164,10 @@ export function NexataChat() {
 			setMessages([]);
 		}
 	}, [status, setMessages]);
+
+	// ----------------------------
+	// Render
+	// ----------------------------
 
 	return (
 		<div className="flex flex-col h-full w-full min-h-0">
@@ -145,7 +183,8 @@ export function NexataChat() {
 					isHydratingThread={isHydrating}
 					isNewChat={isNewChat}
 					welcomeLabel={welcomeText}
-					isUserLoading={isMeLoading}
+          isUserLoading={isMeLoading}
+					setExtraReason={setExtraReason}
 				/>
 
 				{error && (

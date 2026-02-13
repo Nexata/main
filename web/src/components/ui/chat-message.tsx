@@ -1,9 +1,17 @@
-import React, { useMemo, useState } from "react"
+import React, { useState } from "react"
+import type { UIMessage } from "@ai-sdk/react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
-import { Ban, ChevronRight, Code2, Loader2, Terminal } from "lucide-react"
-import { useTypingText } from "@/hooks/use-typing-text"
+import {
+  ChevronRight,
+  Loader2,
+  Check,
+  X,
+  Ban,
+  Globe,
+} from "lucide-react"
 
+import { useTypingText } from "@/hooks/use-typing-text"
 import { cn } from "@/lib/utils"
 import {
   Collapsible,
@@ -12,13 +20,14 @@ import {
 } from "@/components/ui/collapsible"
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
+import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sources"
 
 /* -------------------------------------------------------------------------- */
 /*                                   Styles                                    */
 /* -------------------------------------------------------------------------- */
 
 const chatBubbleVariants = cva(
-  "group/message relative break-words rounded-lg p-3 text-sm sm:max-w-[70%]",
+  "relative break-words rounded-lg p-3 text-sm max-w-[85%]",
   {
     variants: {
       isUser: {
@@ -32,104 +41,54 @@ const chatBubbleVariants = cva(
         fade: "duration-500 animate-in fade-in-0",
       },
     },
-    compoundVariants: [
-      { isUser: true, animation: "slide", class: "slide-in-from-right" },
-      { isUser: false, animation: "slide", class: "slide-in-from-left" },
-      { isUser: true, animation: "scale", class: "origin-bottom-right" },
-      { isUser: false, animation: "scale", class: "origin-bottom-left" },
-    ],
   }
 )
 
 type Animation = VariantProps<typeof chatBubbleVariants>["animation"]
 
 /* -------------------------------------------------------------------------- */
-/*                                    Types                                    */
+/*                                ChatMessage                                  */
 /* -------------------------------------------------------------------------- */
 
-interface Attachment {
-  name?: string
-  contentType?: string
-  url: string
-}
-
-interface PartialToolCall {
-  state: "partial-call"
-  toolName: string
-}
-
-interface ToolCall {
-  state: "call"
-  toolName: string
-}
-
-interface ToolResult {
-  state: "result"
-  toolName: string
-  result: {
-    __cancelled?: boolean
-    [key: string]: any
-  }
-}
-
-type ToolInvocation = PartialToolCall | ToolCall | ToolResult
-
-export interface Message {
-  id: string
-  role: "user" | "assistant" | (string & {})
-  content: string
-  reasoning?: string
-  createdAt?: Date
-  experimental_attachments?: Attachment[]
-  toolInvocations?: ToolInvocation[]
-  hydrated?: boolean
-}
-
-export interface ChatMessageProps extends Message {
+export interface ChatMessageProps {
+  message: UIMessage
   showTimeStamp?: boolean
   animation?: Animation
-  actions?: React.ReactNode,
+  actions?: React.ReactNode
   disableTypingAnimation?: boolean
 }
 
-/* -------------------------------------------------------------------------- */
-/*                               ChatMessage                                   */
-/* -------------------------------------------------------------------------- */
-
 export const ChatMessage: React.FC<ChatMessageProps> = ({
-  role,
-  content,
-  reasoning,
-  createdAt,
-  hydrated,
+  message,
   showTimeStamp = false,
   animation = "scale",
   actions,
-  experimental_attachments,
-  toolInvocations,
-  disableTypingAnimation
+  disableTypingAnimation,
 }) => {
-  const isUser = role === "user"
-  const isAssistant = role === "assistant"
+  const isUser = message.role === "user"
+  const isAssistant = message.role === "assistant"
 
-  const shouldAnimateTyping = isAssistant && !disableTypingAnimation
+  const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+  const fullText = textParts.map((p) => p.text).join("")
 
-  const typedContent = useTypingText(
-    content ?? "",
-    shouldAnimateTyping,
-    6
-  )
+  const shouldAnimateTyping =
+    isAssistant &&
+    !disableTypingAnimation &&
+    textParts.some((p) => p.state === "streaming")
 
-  const visibleContent = shouldAnimateTyping ? typedContent : content
+  const typedContent = useTypingText(fullText, shouldAnimateTyping, 4)
 
-  const files = useMemo(() => {
-    return experimental_attachments?.map((attachment) => {
-      const dataArray = dataUrlToUint8Array(attachment.url)
-      return new File([dataArray], attachment.name ?? "Unknown", {
-        type: attachment.contentType,
-      })
-    })
-  }, [experimental_attachments])
+  const lastStreamingTextIndex = [...message.parts]
+    .map((p, i) => p.type === "text" && p.state === "streaming" ? i : -1)
+    .filter(i => i !== -1)
+    .pop()
+
+  const createdAt =
+    typeof message.metadata === "object" &&
+    message.metadata &&
+    "createdAt" in message.metadata
+      ? new Date((message.metadata as any).createdAt)
+      : undefined
 
   const formattedTime = createdAt?.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -137,52 +96,69 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   })
 
   return (
-    <div className={cn("flex flex-col", isUser ? "items-end" : "items-start")}>
-      {/* Attachments */}
-      {files?.length ? (
-        <div className="mb-1 flex flex-wrap gap-2">
-          {files.map((file, index) => (
-            <FilePreview file={file} key={index} />
-          ))}
-        </div>
-      ) : null}
+    <div
+      className={cn(
+        "flex flex-col gap-3 w-full",
+        isUser ? "items-end" : "items-start"
+      )}
+    >
+      {message.parts.map((part, index) => {
+        /* ---------------- TEXT ---------------- */
 
-      {/* Message bubble */}
-      <div className={cn(chatBubbleVariants({ isUser, animation }))}>
-        <MarkdownRenderer>
-          {visibleContent}
-        </MarkdownRenderer>
+        if (part.type === "text") {
+          const content =
+            shouldAnimateTyping && part.state === "streaming"
+              ? typedContent
+              : part.text
 
-        {shouldAnimateTyping && typedContent.length < content.length && (
-          <span className="ml-0.5 animate-pulse">▍</span>
-        )}
+          return (
+            <div
+              key={index}
+              className={cn(chatBubbleVariants({ isUser, animation }))}
+            >
+              <MarkdownRenderer>{content}</MarkdownRenderer>
 
-        {actions && (
-          <div className="absolute -bottom-4 right-2 flex space-x-1 rounded-lg border bg-background p-1 text-foreground opacity-0 transition-opacity group-hover/message:opacity-100">
-            {actions}
-          </div>
-        )}
-      </div>
+              {shouldAnimateTyping &&
+                index === lastStreamingTextIndex &&
+                typedContent.length < fullText.length && (<span className="ml-1 animate-pulse">▍</span>
+              )}
+            </div>
+          )
+        }
 
-      {/* Reasoning */}
-      {isAssistant && reasoning && (<ReasoningBlock reasoning={reasoning} disableTypingAnimation={hydrated} />)}
+        /* ---------------- REASONING ---------------- */
 
-      {/* Tool calls */}
-      {toolInvocations?.length ? (
-        <ToolCall toolInvocations={toolInvocations} />
-      ) : null}
+        if (part.type === "reasoning") {
+          return (
+            <ReasoningBlock
+              key={index}
+              reasoning={part.text}
+              streaming={part.state === "streaming"}
+            />
+          )
+        }
 
-      {/* Timestamp */}
+        /* ---------------- FILE ---------------- */
+
+        if (part.type === "file") {
+          return (
+            <div key={index}>
+              <FilePreview file={part} />
+            </div>
+          )
+        }
+
+        /* ---------------- TOOL ---------------- */
+
+        if (isToolPart(part)) {
+          return <ToolRenderer key={index} part={part} />
+        }
+
+        return null
+      })}
+
       {showTimeStamp && createdAt && (
-        <time
-          dateTime={createdAt.toISOString()}
-          className={cn(
-            "mt-1 block px-1 text-xs opacity-50",
-            animation !== "none" && "duration-500 animate-in fade-in-0"
-          )}
-        >
-          {formattedTime}
-        </time>
+        <time className="text-xs opacity-50">{formattedTime}</time>
       )}
     </div>
   )
@@ -192,37 +168,28 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 /*                               ReasoningBlock                                */
 /* -------------------------------------------------------------------------- */
 
-const ReasoningBlock = ({ reasoning, disableTypingAnimation }: { reasoning: string, disableTypingAnimation?: boolean }) => {
+const ReasoningBlock = ({
+  reasoning,
+  streaming,
+}: {
+  reasoning: string
+  streaming?: boolean
+}) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  const shouldAnimate = !disableTypingAnimation
-  const typedReasoning = useTypingText(
-    reasoning,
-    shouldAnimate,
-    6
-  )
-  const visibleReasoning = shouldAnimate ? typedReasoning : reasoning
-  const isStreaming = typedReasoning.length < reasoning.length
-
   return (
-    <div className="mb-2 flex flex-col items-start sm:max-w-[70%]">
+    <div className="w-full sm:max-w-[85%]">
       <Collapsible
         open={isOpen}
         onOpenChange={setIsOpen}
-        className="group w-full overflow-hidden rounded-lg border bg-muted/50"
+        className="rounded-lg border bg-muted/50"
       >
         <div className="flex items-center p-2">
-          <CollapsibleTrigger
-            render={
-              <button className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                <ChevronRight className="h-4 w-4 transition-transform group-data-[state=open]:rotate-90" />
-                <span>Thinking</span>
-                {isStreaming && (
-                  <Loader2 className="ml-1 h-3 w-3 animate-spin" />
-                )}
-              </button>
-            }
-          />
+          <CollapsibleTrigger className="flex items-center gap-2 text-sm">
+            <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
+            Thinking
+            {streaming && <Loader2 className="h-3 w-3 animate-spin" />}
+          </CollapsibleTrigger>
         </div>
 
         <CollapsibleContent>
@@ -233,15 +200,10 @@ const ReasoningBlock = ({ reasoning, disableTypingAnimation }: { reasoning: stri
               open: { height: "auto", opacity: 1 },
               closed: { height: 0, opacity: 0 },
             }}
-            transition={{ duration: 0.3, ease: [0.04, 0.62, 0.23, 0.98] }}
-            className="border-t"
+            transition={{ duration: 0.25 }}
+            className="border-t p-2 text-xs whitespace-pre-wrap"
           >
-            <div className="p-2 whitespace-pre-wrap text-xs leading-relaxed">
-              {visibleReasoning}
-              {shouldAnimate && typedReasoning.length < reasoning.length && (
-                <span className="ml-0.5 animate-pulse">▍</span>
-              )}
-            </div>
+            {reasoning}
           </motion.div>
         </CollapsibleContent>
       </Collapsible>
@@ -250,95 +212,107 @@ const ReasoningBlock = ({ reasoning, disableTypingAnimation }: { reasoning: stri
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                 ToolCall                                   */
+/*                                ToolRenderer                                 */
 /* -------------------------------------------------------------------------- */
 
-function ToolCall({
-  toolInvocations,
-}: Pick<ChatMessageProps, "toolInvocations">) {
-  if (!toolInvocations?.length) return null
+function ToolRenderer({
+  part,
+}: {
+  part: UIMessage["parts"][number]
+}) {
+  if (!isToolPart(part)) return null
+
+  const rawToolName =
+    part.type === "dynamic-tool"
+      ? part.toolName
+      : part.type.replace("tool-", "")
+
+  const normalized = normalizeToolName(rawToolName)
+
+  const dataSource = findDataSource(normalized)
+
+  const StatusIcon = getStatusIcon(part.state)
 
   return (
-    <div className="flex flex-col items-start gap-2">
-      {toolInvocations.map((invocation, index) => {
-        const isCancelled =
-          invocation.state === "result" &&
-          invocation.result.__cancelled === true
+    <div className="w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3">
+      <div className="flex items-center justify-between gap-4">
 
-        if (isCancelled) {
-          return (
-            <div
-              key={index}
-              className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
-            >
-              <Ban className="h-4 w-4" />
-              <span>
-                Cancelled{" "}
-                <span className="font-mono">
-                  {"`"}
-                  {invocation.toolName}
-                  {"`"}
-                </span>
+        {/* LEFT SIDE */}
+        <div className="flex items-center gap-3 min-w-0">
+
+          {/* Data source icon */}
+          {dataSource ? (
+            <img
+              src={dataSource.icon}
+              alt={dataSource.name}
+              className="h-5 w-5 shrink-0"
+            />
+          ) : (
+            <Globe className="h-5 w-5 shrink-0 text-muted-foreground" />
+          )}
+
+          {/* Tool name + ID */}
+          <div className="flex flex-col min-w-0">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="text-sm font-medium truncate">
+                {rawToolName}
               </span>
-            </div>
-          )
-        }
 
-        switch (invocation.state) {
-          case "partial-call":
-          case "call":
-            return (
-              <div
-                key={index}
-                className="flex items-center gap-2 rounded-lg border bg-muted/50 px-3 py-2 text-sm text-muted-foreground"
-              >
-                <Terminal className="h-4 w-4" />
-                <span>
-                  Calling{" "}
-                  <span className="font-mono">
-                    {"`"}
-                    {invocation.toolName}
-                    {"`"}
-                  </span>
-                  ...
+              {(part as any).toolCallId && (
+                <span className="text-xs text-muted-foreground truncate">
+                  | {(part as any).toolCallId}
                 </span>
-                <Loader2 className="h-3 w-3 animate-spin" />
-              </div>
-            )
-          case "result":
-            return (
-              <div
-                key={index}
-                className="flex flex-col gap-1.5 rounded-lg border bg-muted/50 px-3 py-2 text-sm"
-              >
-                <div className="flex items-center gap-2 text-muted-foreground">
-                  <Code2 className="h-4 w-4" />
-                  <span>
-                    Result from{" "}
-                    <span className="font-mono">
-                      {"`"}
-                      {invocation.toolName}
-                      {"`"}
-                    </span>
-                  </span>
-                </div>
-                <pre className="overflow-x-auto whitespace-pre-wrap text-foreground">
-                  {JSON.stringify(invocation.result, null, 2)}
-                </pre>
-              </div>
-            )
-        }
-      })}
+              )}
+            </div>
+
+            {(part as any).output?.credentialEmail && (
+              <span className="text-xs opacity-60 truncate">
+                {(part as any).output.credentialEmail}
+              </span>
+            )}
+          </div>
+        </div>
+
+        {/* STATUS ICON */}
+        <StatusIcon />
+      </div>
     </div>
   )
 }
 
 /* -------------------------------------------------------------------------- */
-/*                                   Utils                                     */
+/*                             Helper functions                                */
 /* -------------------------------------------------------------------------- */
 
-function dataUrlToUint8Array(data: string) {
-  const base64 = data.split(",")[1]
-  const buf = Buffer.from(base64, "base64")
-  return new Uint8Array(buf)
+function normalizeToolName(name: string) {
+  return name
+    .toLowerCase()
+    .replace("search", "")
+    .replace(/[_-]/g, "")
+    .trim()
+}
+
+function findDataSource(normalized: string) {
+  const all = [...DINAMIC_DATA_SOURCES, ...STORAGE_DATA_SOURCES]
+
+  return all.find((source) =>
+    normalized.includes(source.id.toLowerCase())
+  )
+}
+
+function getStatusIcon(state?: string) {
+  if (state === "output-available") return () => <Check className="h-4 w-4 text-green-500" />
+  if (state === "output-error") return () => <X className="h-4 w-4 text-red-500" />
+  if (state === "output-denied") return () => <Ban className="h-4 w-4 text-yellow-500" />
+
+  return () => (<Loader2 className="h-4 w-4 animate-spin text-blue-500" />)
+}
+
+function isToolPart(
+  part: UIMessage["parts"][number]
+): part is Extract<UIMessage["parts"][number], { state: string }> {
+  return (
+    part.type === "dynamic-tool" ||
+    part.type.startsWith("tool-")
+  )
 }

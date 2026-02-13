@@ -144,7 +144,14 @@ const COMPONENTS = {
   h4: withClass("h4", "font-semibold text-base"),
   h5: withClass("h5", "font-medium"),
   strong: withClass("strong", "font-semibold"),
-  a: withClass("a", "text-primary underline underline-offset-2"),
+  a: ({ node, ...props }: any) => (
+    <a
+      {...props}
+      target="_blank"
+      rel="noopener noreferrer"
+      className="text-primary underline underline-offset-2"
+    />
+  ),
   blockquote: withClass("blockquote", "border-l-2 border-primary pl-4"),
   code: ({ children, className, node, ...rest }: any) => {
     const match = /language-(\w+)/.exec(className || "")
@@ -167,19 +174,34 @@ const COMPONENTS = {
   ol: withClass("ol", "list-decimal space-y-2 pl-6"),
   ul: withClass("ul", "list-disc space-y-2 pl-6"),
   li: withClass("li", "my-1.5"),
-  table: withClass(
-    "table",
-    "w-full border-collapse overflow-y-auto rounded-md border border-foreground/20"
+  table: ({ node, ...props }: any) => (
+    <div className="my-4 w-full overflow-x-auto rounded-lg border bg-card">
+      <table
+        className="w-full border-collapse text-sm"
+        {...props}
+      />
+    </div>
+  ),
+  thead: withClass(
+    "thead",
+    "border-b bg-muted/50"
+  ),
+  tbody: withClass(
+    "tbody",
+    ""
+  ),
+  tr: withClass(
+    "tr",
+    "border-b transition-colors hover:bg-muted/40"
   ),
   th: withClass(
     "th",
-    "border border-foreground/20 px-4 py-2 text-left font-bold [&[align=center]]:text-center [&[align=right]]:text-right"
+    "px-4 py-3 text-left font-medium text-muted-foreground [&[align=center]]:text-center [&[align=right]]:text-right"
   ),
   td: withClass(
     "td",
-    "border border-foreground/20 px-4 py-2 text-left [&[align=center]]:text-center [&[align=right]]:text-right"
+    "px-4 py-3 [&[align=center]]:text-center [&[align=right]]:text-right"
   ),
-  tr: withClass("tr", "m-0 border-t p-0 even:bg-muted"),
   p: withClass("p", "whitespace-pre-wrap"),
   hr: withClass("hr", "border-foreground/20"),
 }

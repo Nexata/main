@@ -11,7 +11,9 @@ import {
 	LogOut,
 	Pencil,
 	RotateCw,
-	Trash2,
+  Trash2,
+  Smartphone,
+  Monitor
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { UAParser } from 'ua-parser-js';
@@ -54,6 +56,7 @@ import {
 	useDeleteMe,
 	useDeleteMyDevice,
 	useMe,
+	useMyTenant,
 	useUpdateMe,
 } from '@/lib/user';
 import {
@@ -110,7 +113,10 @@ import {
 	'user.profile.devices.delete' as user_profile_devices_delete,
 	'user.profile.edit.label' as user_profile_edit_label,
 	'user.profile.header.logout' as user_profile_header_logout,
-	'user.profile.info.messages_used' as user_profile_info_messages_used,
+  'user.profile.info.messages_used' as user_profile_info_messages_used,
+  'user.profile.devices.cant_delete' as user_profile_devices_cant_delete,
+  'user.profile.devices.current' as user_profile_devices_current,
+  'user.profile.api_keys.actions.not_enabled' as user_profile_api_keys_actions_not_enabled
 } from '@/paraglide/messages.js';
 import { isLocale, setLocale } from '@/paraglide/runtime';
 
@@ -120,7 +126,8 @@ export const Route = createFileRoute('/_private/user')({
 
 export default function ProfilePage() {
 	const navigate = useNavigate();
-	const { data: me, isLoading: meLoading } = useMe();
+  const { data: me, isLoading: meLoading } = useMe();
+	const { data: tenant } = useMyTenant();
 	const updateMe = useUpdateMe();
 	const [editing, setEditing] = useState(false);
 	const [displayName, setDisplayName] = useState('');
@@ -133,13 +140,24 @@ export default function ProfilePage() {
 	const deleteApiKey = useDeleteApiKey();
 	const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
 	const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
-	const [deleteApiKeyOpen, setDeleteApiKeyOpen] = useState(false);
+  const [deleteApiKeyOpen, setDeleteApiKeyOpen] = useState(false);
+  const [actualFingerprint, setActualFingerprint] = useState<string | null>(null);
 
+  // Title + User
 	useEffect(() => {
 		document.title = `Nexata | ${profile_header_title()}`;
 		if (me?.displayName) setDisplayName(me.displayName);
 		if (me?.language) setLanguage(me.language);
-	}, [me]);
+  }, [me]);
+
+	// Get Fingerprint
+	useEffect(() => {
+    async function loadFingerprint() {
+  			const fp = await getFingerprint();
+  			setActualFingerprint(fp);
+    }
+  		loadFingerprint();
+  }, []);
 
 	// Cambio de Idioma
 	const handleLanguageChange = (lang: Language) => {
@@ -149,8 +167,9 @@ export default function ProfilePage() {
 		updateMe({ language: lang });
 	};
 
-	// TODO: Skeleton
-	if (meLoading || !me) return null;
+	// Skeleton Loading
+	if (meLoading) return <ProfileSkeleton />;
+	if (!me) return null;
 
 	// UpdateMe
 	async function handleSave() {
@@ -259,7 +278,18 @@ export default function ProfilePage() {
 		];
 
 		return parts.filter(Boolean).join(' · ');
-	}
+  }
+
+  // Icon Device Helper
+  function getDeviceIcon(ua: string | null | undefined) {
+  	if (!ua) return <Monitor className="h-4 w-4" />;
+
+  	const parser = new UAParser(ua);
+  	const { device } = parser.getResult();
+
+  	if (device.type === 'mobile' || device.type === 'tablet') 	return <Smartphone className="h-4 w-4" />;
+  	return <Monitor className="h-4 w-4" />;
+    }
 
 	// Handle LogOut
 	async function handleLogout() {
@@ -466,47 +496,67 @@ export default function ProfilePage() {
 						)}
 
 						<div className="space-y-3">
-							{me.devices.map((device) => (
-								<div
-									key={device.id}
-									className="
-								flex items-center justify-between
-								rounded-lg border border-border
-								px-4 py-3
-								hover:bg-muted/40
-								transition-colors
-								"
-								>
-									<div className="space-y-1 min-w-0">
-										<p className="text-sm font-medium truncate">
-											{formatUserAgent(device.userAgent)}
-										</p>
-										<p className="text-xs text-muted-foreground truncate">
-											{device.userAgent}
-										</p>
-										<p className="text-xs text-muted-foreground">
-											{profile_devices_added_on()}{' '}
-											{new Date(device.createdAt).toLocaleDateString()}
-										</p>
-									</div>
+  						{me.devices.map((device) => {
+  							const isCurrent = device.fingerprint === actualFingerprint;
 
-									<Tooltip>
-										<TooltipTrigger>
-											<Button
-												variant="destructive"
-												size="icon"
-												className="cursor-pointer"
-												onClick={() => handleDeleteDevice(device.fingerprint)}
-											>
-												<Trash2 className="w-5 h-5" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>
-											{user_profile_devices_delete()}
-										</TooltipContent>
-									</Tooltip>
-								</div>
-							))}
+  							return (
+  								<div
+  									key={device.id}
+  									className="
+  										flex items-center justify-between
+  										rounded-lg border border-border
+  										px-4 py-3
+  										hover:bg-muted/40
+  										transition-colors
+  									"
+  								>
+  									<div className="space-y-1 min-w-0">
+  										<div className="flex items-center gap-2">
+  											<span className="text-muted-foreground">
+  												{getDeviceIcon(device.userAgent)}
+  											</span>
+  											<p className="text-sm font-medium truncate">
+  												{formatUserAgent(device.userAgent)}
+  											</p>
+  											{isCurrent && (
+  												<Badge variant="destructive" className="text-xs">
+                            {user_profile_devices_current()}
+  												</Badge>
+  											)}
+  										</div>
+
+  										<p className="text-xs text-muted-foreground truncate">
+  											{device.userAgent}
+  										</p>
+
+  										<p className="text-xs text-muted-foreground">
+  											{profile_devices_added_on()}{' '}
+  											{new Date(device.createdAt).toLocaleDateString()}
+  										</p>
+  									</div>
+
+  									<Tooltip>
+  										<TooltipTrigger>
+  											<span>
+  												<Button
+  													variant="destructive"
+  													size="icon"
+  													className={`${isCurrent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+  													disabled={isCurrent}
+  													onClick={() => !isCurrent && handleDeleteDevice(device.fingerprint)}
+  												>
+  													<Trash2 className="w-5 h-5" />
+  												</Button>
+  											</span>
+  										</TooltipTrigger>
+
+  										<TooltipContent>
+  											{isCurrent ? user_profile_devices_cant_delete() : user_profile_devices_delete()}
+  										</TooltipContent>
+  									</Tooltip>
+  								</div>
+  							);
+              })}
 						</div>
 					</div>
 				</CardContent>
@@ -593,13 +643,26 @@ export default function ProfilePage() {
 									</p>
 								</div>
 
-								<Button
-									size="sm"
-									className="cursor-pointer"
-									onClick={handleCreateOrRegenerateApiKey}
-								>
-									{profile_api_keys_action_create()}
-								</Button>
+								<Tooltip>
+                  <TooltipTrigger>
+                    <span>
+                      <Button
+                        size="sm"
+                        className={!tenant?.hasApiAccess ? "cursor-not-allowed" : "cursor-pointer"}
+                        disabled={!tenant?.hasApiAccess}
+                        onClick={handleCreateOrRegenerateApiKey}
+                      >
+                        {profile_api_keys_action_create()}
+                      </Button>
+                    </span>
+                  </TooltipTrigger>
+
+                  {!tenant?.hasApiAccess && (
+                    <TooltipContent>
+                      {user_profile_api_keys_actions_not_enabled()}
+                    </TooltipContent>
+                  )}
+                </Tooltip>
 							</div>
 						)}
 					</div>
@@ -674,8 +737,9 @@ export default function ProfilePage() {
 	);
 }
 
-// ------ DELETE MODAL ------
-
+// ------------------------------------------------------------------------------------------
+// ---------------------------------------- DELETE MODAL ------------------------------------
+// ------------------------------------------------------------------------------------------
 function ConfirmDeleteAccountModal({
 	open,
 	onOpenChange,
@@ -722,7 +786,9 @@ function ConfirmDeleteAccountModal({
 	);
 }
 
-// ------- ONE TIME APIKEY MODAL -------
+// ------------------------------------------------------------------------------------------
+// --------------------------------- ONE TIME APIKEY MODAL ----------------------------------
+// ------------------------------------------------------------------------------------------
 function ApiKeyOneTimeModal({
 	open,
 	onOpenChange,
@@ -799,7 +865,9 @@ function ApiKeyOneTimeModal({
 	);
 }
 
-// ----- DELETE APIKEY MODAL -----
+// ------------------------------------------------------------------------------------------
+// ----------------------------------- DELETE APIKEY MODAL ----------------------------------
+// ------------------------------------------------------------------------------------------
 function ConfirmDeleteApiKeyModal({
 	open,
 	onOpenChange,
@@ -837,6 +905,10 @@ function ConfirmDeleteApiKeyModal({
 		</Dialog>
 	);
 }
+
+// ------------------------------------------------------------------------------------------
+// ------------------------------------- LANGUAGE SELECTOR ----------------------------------
+// ------------------------------------------------------------------------------------------
 
 function LanguageSelector({
 	value,
@@ -888,5 +960,131 @@ function Flag({ country }: { country: string }) {
 			className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
 			style={{ width: 18, height: 12 }}
 		/>
+	);
+}
+
+// ------------------------------------------------------------------------------------------
+// ------------------------------------- SKELETON LOADING -----------------------------------
+// ------------------------------------------------------------------------------------------
+
+function ProfileSkeleton() {
+	return (
+		<div className="flex flex-col gap-6 px-3 py-4 w-full max-w-screen-2xl mx-auto animate-pulse">
+			{/* HEADER */}
+			<header className="flex items-center justify-between">
+				<div className="space-y-2">
+					<div className="h-8 w-48 bg-muted rounded-md" />
+					<div className="h-4 w-72 bg-muted rounded-md opacity-60" />
+				</div>
+
+				<div className="flex items-center gap-2">
+					<div className="h-9 w-36 bg-muted rounded-md" />
+					<div className="h-9 w-28 bg-muted rounded-md" />
+				</div>
+			</header>
+
+			<Separator />
+
+			{/* PROFILE CARD */}
+			<Card className="bg-sidebar">
+				<CardContent className="p-6 space-y-6">
+					<div className="flex items-center justify-between gap-6">
+						<div className="flex items-center gap-5">
+							<div className="h-16 w-16 rounded-full bg-muted shrink-0" />
+
+							<div className="space-y-2">
+								<div className="flex items-center gap-2">
+									<div className="h-5 w-40 bg-muted rounded-md" />
+									<div className="h-5 w-14 bg-muted rounded-md" />
+									<div className="h-8 w-8 bg-muted rounded-md" />
+								</div>
+
+								<div className="h-4 w-56 bg-muted rounded-md opacity-60" />
+							</div>
+						</div>
+
+						<div className="flex items-center gap-4 rounded-lg border border-border bg-muted/40 px-4 py-2">
+							<div className="h-6 w-16 bg-muted rounded-md" />
+							<Separator orientation="vertical" className="h-6" />
+							<div className="h-4 w-24 bg-muted rounded-md opacity-60" />
+							<Separator orientation="vertical" className="h-6" />
+							<div className="h-6 w-10 bg-muted rounded-md" />
+						</div>
+					</div>
+
+					<Separator />
+
+					{/* DEVICES SECTION */}
+					<div className="space-y-4">
+						<div className="space-y-2">
+							<div className="h-6 w-40 bg-muted rounded-md" />
+							<div className="h-4 w-64 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<div className="space-y-3">
+							{[1, 2, 3].map((i) => (
+								<div
+									key={i}
+									className="flex items-center justify-between rounded-lg border border-border px-4 py-3"
+								>
+									<div className="space-y-2 w-full max-w-md">
+										<div className="h-4 w-72 bg-muted rounded-md" />
+										<div className="h-3 w-56 bg-muted rounded-md opacity-60" />
+										<div className="h-3 w-40 bg-muted rounded-md opacity-40" />
+									</div>
+
+									<div className="h-9 w-9 bg-muted rounded-md shrink-0" />
+								</div>
+							))}
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+
+			{/* API KEY + DANGER ZONE CARD */}
+			<Card className="bg-sidebar">
+				<CardContent className="p-6 space-y-6">
+					{/* API KEY SECTION */}
+					<div className="space-y-3">
+						<div className="space-y-2">
+							<div className="h-6 w-48 bg-muted rounded-md" />
+							<div className="h-4 w-72 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<div className="flex items-center gap-3">
+							<div className="flex-1">
+								<div className="h-10 w-full bg-muted rounded-md" />
+							</div>
+
+							<div className="flex gap-2">
+								<div className="h-9 w-9 bg-muted rounded-md" />
+								<div className="h-9 w-9 bg-muted rounded-md" />
+							</div>
+						</div>
+					</div>
+
+					<Separator />
+
+					{/* DANGER ZONE */}
+					<div className="rounded-lg border border-destructive/30 bg-destructive/5 p-5 space-y-4">
+						<div className="space-y-2">
+							<div className="h-4 w-32 bg-muted rounded-md" />
+							<div className="h-3 w-64 bg-muted rounded-md opacity-60" />
+						</div>
+
+						<Separator />
+
+						<div className="flex items-center justify-between">
+							<div className="space-y-2">
+								<div className="h-4 w-40 bg-muted rounded-md" />
+								<div className="h-3 w-56 bg-muted rounded-md opacity-60" />
+							</div>
+
+							<div className="h-9 w-36 bg-muted rounded-md" />
+						</div>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
 	);
 }

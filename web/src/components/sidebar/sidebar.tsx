@@ -2,7 +2,13 @@
 
 import { useState, useRef, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Pencil, Trash2, Settings } from "lucide-react";
+import {
+  Pencil,
+  Trash2,
+  Settings,
+  HelpCircle,
+  MessageSquareText,
+} from "lucide-react";
 import {
   IoSunny,
   IoMoon,
@@ -18,7 +24,14 @@ import { useTheme } from "../theme-provider";
 import { useNavigate } from "@tanstack/react-router";
 import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
-import { "sidebar.new_chat" as sidebar_new_chat} from "@/paraglide/messages.js";
+import {
+  "sidebar.new_chat" as sidebar_new_chat,
+  "sidebar.search" as sidebar_search,
+  "sidebar.theme" as sidebar_theme,
+  "sidebar.settings" as sidebar_settings,
+  "sidebar.help" as sidebar_help,
+  "sidebar.feedback" as sidebar_feedback
+} from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
@@ -35,17 +48,41 @@ export default function Sidebar() {
   useSyncLocale();
   const queryClient = useQueryClient();
 
+  // Sidebar Sizes + Resizing Effect
+  const MIN_WIDTH = 220;
+  const MAX_WIDTH = 320;
+  const COLLAPSED_WIDTH = 60;
+  const [sidebarWidth, setSidebarWidth] = useState(250);
+  const [isResizing, setIsResizing] = useState(false);
+
+  useEffect(() => {
+    if (!isResizing) return;
+
+    const handleMouseMove = (e: MouseEvent) => {
+      const newWidth = Math.min(
+        Math.max(e.clientX, MIN_WIDTH),
+        MAX_WIDTH
+      );
+      setSidebarWidth(newWidth);
+    };
+
+    const handleMouseUp = () => { setIsResizing(false); };
+
+    document.addEventListener("mousemove", handleMouseMove);
+    document.addEventListener("mouseup", handleMouseUp);
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+    };
+  }, [isResizing]);
+
   // Chat Status
   const { startNewChat, hydrateChat } = useChatUIStore();
 
   // Search
   const [search, setSearch] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
-
-  // Get active thread only if /chat is active
-  const activeThreadId = useChatUIStore((s) => s.activeThreadId);
-  // New Thred Title
-  const optimisticThreads = useChatUIStore((s) => s.optimisticThreads);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -55,6 +92,11 @@ export default function Sidebar() {
     return () => clearTimeout(t);
   }, [search]);
 
+  // Get active thread only if /chat is active
+  const activeThreadId = useChatUIStore((s) => s.activeThreadId);
+  // New Thread Title
+  const optimisticThreads = useChatUIStore((s) => s.optimisticThreads);
+  // Get Threads
   const { data: threads, isLoading: threadsLoading } = useThreads({ search: debouncedSearch || undefined });
 
   // Add new Thread Title
@@ -149,25 +191,23 @@ export default function Sidebar() {
     navigate({ to: '/chat' });
   };
 
-  const sidebarWidth = isCollapsed ? 60 : 250;
+  // Theme Switch
   const MotionDiv = motion.div;
   const { theme, setTheme } = useTheme();
   const toggleDarkMode = () => {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // User info
+  // User + Tenant info
   const { data: me, isLoading: meLoading } = useMe();
-
-  // Tenant info
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
   return (
     <>
       <MotionDiv
-        className="h-full flex flex-col"
-        animate={{ width: sidebarWidth }}
-        initial={{ width: sidebarWidth }}
+        className="h-full flex flex-col relative"
+        animate={{ width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
+        initial={false}
         transition={{ width: { type: "spring", stiffness: 300, damping: 30 } }}
       >
         <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md">
@@ -231,13 +271,28 @@ export default function Sidebar() {
 
           {/* Search chats */}
           {!isCollapsed && (
-            <div className="mb-3">
+            <div className="mb-3 relative">
               <Input
-                placeholder="Search chats..."
+                placeholder={sidebar_search()}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 text-sm bg-transparent"
+                className="h-9 text-sm bg-transparent pr-8"
               />
+
+              {search && (
+                <button
+                  onClick={() => setSearch("")}
+                  className="
+                  absolute right-2 top-1/2 -translate-y-1/2
+                  text-muted-foreground
+                  hover:text-foreground
+                  transition-colors
+                  cursor-pointer
+                  "
+                >
+                  <IoClose className="w-4 h-4" />
+                </button>
+              )}
             </div>
           )}
 
@@ -328,34 +383,144 @@ export default function Sidebar() {
           )}
 
           {/* Menú inferior */}
+          <TooltipProvider>
+            <div className="mt-auto flex flex-col w-full">
+
+              <motion.div
+                key={isCollapsed ? "collapsed" : "expanded"}
+                initial={{ opacity: 0, y: 4 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.2, ease: "easeOut" }}
+                className={cn(
+                  "flex w-full",
+                  isCollapsed
+                    ? "flex-col items-center gap-2"
+                    : "flex-row items-center gap-2"
+                )}
+              >
+
+                {/* Theme */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        onClick={toggleDarkMode}
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        {theme === "dark" ? (
+                          <IoSunny className="w-5 h-5" />
+                        ) : (
+                          <IoMoon className="w-5 h-5" />
+                        )}
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_theme()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Settings */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        onClick={() => navigate({ to: "/settings" })}
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <Settings className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_settings()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Help */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <HelpCircle className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_help()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+                {/* Feedback */}
+                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                  <Tooltip>
+                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                      <Button
+                        variant="outline"
+                        className={cn(
+                          "h-10 rounded-lg cursor-pointer transition-all duration-200",
+                          isCollapsed ? "w-10" : "w-full"
+                        )}
+                      >
+                        <MessageSquareText className="w-5 h-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                      {sidebar_feedback()}
+                    </TooltipContent>
+                  </Tooltip>
+                </div>
+
+              </motion.div>
+
+              <div className="mt-3">
+                <UserSection
+                  me={me ?? null}
+                  collapsed={isCollapsed}
+                  loading={meLoading}
+                />
+              </div>
+
+            </div>
+          </TooltipProvider>
+
+
+
+        </div>
+
+        {!isCollapsed && (
           <div
-            className={`flex flex-col gap-4 transition-all duration-300 ${isCollapsed ? "items-center" : "items-stretch"}`}
+            onMouseDown={() => setIsResizing(true)}
+            className="
+            absolute right-0 top-0 h-full w-1.5
+            cursor-col-resize
+            group
+            "
           >
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={toggleDarkMode}
-              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center items-center"
-            >
-              {theme === "dark" ? (<IoSunny className="w-6 h-6" />) : (<IoMoon className="w-6 h-6" />)}
-            </Button>
-
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate({ to: "/settings" })}
-              className="h-10 cursor-pointer transition-colors rounded-lg w-full flex justify-center"
-            >
-              <Settings className="w-6 h-6" />
-            </Button>
-
-            <UserSection
-              me={me ?? null}
-              collapsed={isCollapsed}
-              loading={meLoading}
+            <div
+              className="
+              h-full w-full
+              bg-transparent
+              group-hover:bg-primary/20
+              transition-colors
+              "
             />
           </div>
-        </div>
+        )}
       </MotionDiv>
 
       {/* Modal de eliminación */}

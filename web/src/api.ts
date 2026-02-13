@@ -64,25 +64,35 @@ export async function withAuthRetry<T>(
 		};
 	};
 
+	const forceLogout = async () => {
+		clearTokens();
+		localStorage.clear();
+		sessionStorage.clear();
+		window.location.href = '/login';
+	};
+
 	const headers = await makeHeaders();
 	let result = await request(headers);
 
 	if (!result.error && result.data) return result.data;
-
 	if (result.error?.status !== 401) throw result.error;
 
-	await refreshAccessToken();
 	try {
 		await refreshAccessToken();
 	} catch (err) {
-		clearTokens();
+		await forceLogout();
 		throw err;
 	}
+
 	const refheaders = await makeHeaders();
 	result = await request(refheaders);
 
-	if (result.error) throw result.error;
+	if (result.error?.status === 401) {
+		await forceLogout();
+		throw result.error;
+	}
 
+	if (result.error) throw result.error;
 	if (!result.data) throw new Error('No data returned');
 
 	return result.data;

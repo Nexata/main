@@ -3,6 +3,9 @@
 
 	"common": {
 		"ask_nexy": "Ask Nexy...",
+		"brain": "Extra Reasoning",
+		"attachment": "Add Attachments",
+		"brain_description": "Extra reasoning is enabled. Your request will use an advanced reasoning model for deeper analysis. This counts as two messages instead of one.",
 		"cancel": "Cancel",
 		"delete": "Delete",
 		"confirm": "Confirm",
@@ -109,8 +112,13 @@
 	"sidebar": {
 		"chat": "Chat",
 		"new_chat": "New Chat",
+		"search": "Search Chats...",
 		"delete_chat_title": "Delete chat?",
-		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone."
+		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone.",
+		"theme": "Toggle theme",
+		"settings": "Settings",
+		"help": "Help",
+		"feedback": "Send feedback"
 	},
 	"user_input": {
 		"placeholder": "Select user",
@@ -355,6 +363,8 @@
 				"empty": "No active devices",
 				"added_on": "Added on",
 				"delete": "Delete Device",
+				"cant_delete": "You cannot delete your current device",
+				"current": "Current Device",
 				"revoke": {
 					"loading_title": "Revoking device",
 					"loading_description": "Signing out the device…",
@@ -377,7 +387,8 @@
 				"actions": {
 					"regenerate": "Regenerate API key",
 					"delete": "Delete API key",
-					"create": "Create API key"
+					"create": "Create API key",
+					"not_enabled": "Your Tenant does not have API access enabled"
 				},
 				"empty": {
 					"title": "No API key",

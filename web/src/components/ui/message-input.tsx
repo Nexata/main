@@ -2,9 +2,8 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, Info, Loader2, Mic, Paperclip, Square, X } from "lucide-react"
+import { ArrowUp, Info, Loader2, Mic, Paperclip, Square, Brain } from "lucide-react"
 import { omit } from "remeda"
-
 import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
@@ -12,7 +11,14 @@ import { AudioVisualizer } from "@/components/ui/audio-visualizer"
 import { Button } from "@/components/ui/button"
 import { FilePreview } from "@/components/ui/file-preview"
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
-import * as m from "@/paraglide/messages.js";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  "common.ask_nexy" as common_ask_nexy,
+  "common.brain" as common_brain,
+  "common.attachment" as common_attachment,
+  "common.brain_description" as common_brain_description
+} from "@/paraglide/messages.js";
+
 
 interface MessageInputBaseProps
   extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
@@ -22,6 +28,7 @@ interface MessageInputBaseProps
   isGenerating: boolean
   enableInterrupt?: boolean
   transcribeAudio?: (blob: Blob) => Promise<string>
+  setExtraReason?: (value: boolean) => void
 }
 
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
@@ -47,11 +54,13 @@ export function MessageInput({
   isGenerating,
   enableInterrupt = true,
   transcribeAudio,
+  setExtraReason,
   ...props
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
-  const resolvedPlaceholder = placeholder ?? m["common.ask_nexy"]()
+  const resolvedPlaceholder = placeholder ?? common_ask_nexy()
+  const [brainMode, setBrainMode] = useState(false)
 
   const {
     isListening,
@@ -138,6 +147,12 @@ export function MessageInput({
   }
 
   const onKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const el = event.currentTarget
+    let caret = el.selectionStart
+
+    if (event.key === "Enter") caret += 1
+    caretRef.current = caret
+
     if (submitOnEnter && event.key === "Enter" && !event.shiftKey) {
       event.preventDefault()
 
@@ -162,6 +177,7 @@ export function MessageInput({
   }
 
   const textAreaRef = useRef<HTMLTextAreaElement>(null)
+  const caretRef = useRef<number | null>(null)
   const [textAreaHeight, setTextAreaHeight] = useState<number>(0)
 
   useEffect(() => {
@@ -180,9 +196,31 @@ export function MessageInput({
     dependencies: [props.value, showFileList],
   })
 
+  const hasFiles = props.allowAttachments && props.files && props.files.length > 0
+  const expandedByText = props.value.trim().length > 0 && textAreaHeight > 40
+  const isExpanded = expandedByText || hasFiles
+
+  useEffect(() => {
+    const el = textAreaRef.current
+    if (!el) return
+
+    requestAnimationFrame(() => {
+      el.focus()
+
+      if (caretRef.current !== null) {
+        el.setSelectionRange(
+          caretRef.current,
+          caretRef.current
+        )
+      }
+
+      el.scrollTop = el.scrollHeight
+    })
+  }, [isExpanded])
+
   return (
     <div
-      className="relative flex w-full"
+      className="relative flex w-full flex-col"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -199,104 +237,226 @@ export function MessageInput({
         onStopRecording={stopRecording}
       />
 
-      <div className="relative flex w-full items-center space-x-2">
-        <div className="relative flex-1">
-          <textarea
-            aria-label="Write your prompt here"
-            placeholder={resolvedPlaceholder}
-            ref={textAreaRef}
-            onPaste={onPaste}
-            onKeyDown={onKeyDown}
-            className={cn(
-              "z-10 w-full grow resize-none rounded-xl border border-input bg-background p-3 pr-24 text-sm ring-offset-background transition-[border] placeholder:text-muted-foreground focus-visible:border-primary focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50 overflow-x-hidden overflow-y-auto scrollbar-thin break-words",
-              showFileList && "pb-16",
-              className
-            )}
-            {...(props.allowAttachments
-              ? omit(props, ["allowAttachments", "files", "setFiles"])
-              : omit(props, ["allowAttachments"]))}
-          />
+      <motion.div
+        layout
+        animate={{ borderRadius: isExpanded ? 20 : 999 }}
+        transition={{
+          layout: {
+            type: "spring",
+            stiffness: 380,
+            damping: 32,
+          },
+          borderRadius: {
+            type: "spring",
+            stiffness: 260,
+            damping: 20,
+          },
+        }}
+        className={cn(
+          "relative w-full border bg-background px-2 py-2",
+          isExpanded ? "flex flex-col gap-2" : "flex items-center gap-2"
+        )}
+      >
+        {/* ROW — estado compacto */}
+        {!isExpanded && (
+          <>
+            <Tooltip>
+              <TooltipTrigger>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={cn(
+                    "h-8 w-8 rounded-full cursor-pointer",
+                    brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
+                  )}
+                  onClick={() => {
+                    setBrainMode(v => {
+                      const next = !v
+                      setExtraReason?.(next)
+                      return next
+                    })
+                  }}
+                >
+                  <Brain className="h-5 w-5" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>{common_brain()}</TooltipContent>
+            </Tooltip>
 
-          {props.allowAttachments && (
-            <div className="absolute inset-x-3 bottom-0 z-20 overflow-x-auto scrollbar-thin py-3">
-              <div className="flex space-x-3">
-                <AnimatePresence mode="popLayout">
-                  {props.files?.map((file) => {
-                    return (
-                      <FilePreview
-                        key={file.name + String(file.lastModified)}
-                        file={file}
-                        onRemove={() => {
-                          props.setFiles((files) => {
-                            if (!files) return null
+            <textarea
+              aria-label="Write your prompt here"
+              placeholder={resolvedPlaceholder}
+              ref={textAreaRef}
+              onPaste={onPaste}
+              onKeyDown={onKeyDown}
+              className={cn(
+                "flex-1 resize-none bg-transparent border-none outline-none",
+                "text-sm leading-5",
+                "h-9 py-2",
+                "overflow-y-auto scrollbar-thin",
+                "placeholder:text-muted-foreground",
+                className
+              )}
+              {...(props.allowAttachments
+                ? omit(props, ["allowAttachments", "files", "setFiles"])
+                : omit(props, ["allowAttachments"]))}
+            />
 
-                            const filtered = Array.from(files).filter(
-                              (f) => f !== file
-                            )
-                            if (filtered.length === 0) return null
-                            return filtered
-                          })
+            {/* Right buttons */}
+            <div className="flex items-center gap-1">
+              {props.allowAttachments && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full cursor-pointer"
+                      onClick={async () => {
+                        const files = await showFileUploadDialog()
+                        addFiles(files)
+                      }}
+                    >
+                      <Paperclip className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{common_attachment()}</TooltipContent>
+                </Tooltip>
+              )}
+
+              {isGenerating && stop ? (
+                <Button
+                  type="button"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                  onClick={stop}
+                >
+                  <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
+                </Button>
+              ) : (
+                <Button
+                  type="submit"
+                  size="icon"
+                  className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                  disabled={props.value === "" || isGenerating}
+                >
+                  <ArrowUp className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+          </>
+        )}
+
+        {/* EXPANDED MODE */}
+        {isExpanded && (
+          <>
+            <textarea
+              aria-label="Write your prompt here"
+              placeholder={resolvedPlaceholder}
+              ref={textAreaRef}
+              onPaste={onPaste}
+              onKeyDown={onKeyDown}
+              className={cn(
+                "w-full resize-none bg-transparent border-none outline-none",
+                "text-sm leading-tight",
+                "py-2 px-4",
+                "min-h-0",
+                "overflow-y-auto scrollbar-thin",
+                "placeholder:text-muted-foreground",
+                className
+              )}
+              {...(props.allowAttachments
+                ? omit(props, ["allowAttachments", "files", "setFiles"])
+                : omit(props, ["allowAttachments"]))}
+            />
+
+            <div className="flex items-center gap-2">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-8 w-8 rounded-full cursor-pointer",
+                      brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => {
+                      setBrainMode(v => {
+                        const next = !v
+                        setExtraReason?.(next)
+                        return next
+                      })
+                    }}
+                  >
+                    <Brain className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{common_brain()}</TooltipContent>
+              </Tooltip>
+
+              {props.allowAttachments && props.files?.length && (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2 overflow-hidden"
+                >
+                  <FilePreviewRow
+                    files={props.files}
+                    setFiles={props.setFiles}
+                  />
+                </motion.div>
+              )}
+
+              <div className="ml-auto flex items-center gap-1">
+                {props.allowAttachments && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full cursor-pointer"
+                        onClick={async () => {
+                          const files = await showFileUploadDialog()
+                          addFiles(files)
                         }}
-                      />
-                    )
-                  })}
-                </AnimatePresence>
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{common_attachment()}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {isGenerating && stop ? (
+                  <Button
+                    type="button"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                    onClick={stop}
+                  >
+                    <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
+                  </Button>
+                ) : (
+                  <Button
+                    type="submit"
+                    size="icon"
+                    className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                    disabled={props.value === "" || isGenerating}
+                  >
+                    <ArrowUp className="h-5 w-5" />
+                  </Button>
+                )}
               </div>
             </div>
-          )}
-        </div>
-      </div>
-
-      <div className="absolute right-3 top-3 z-20 flex gap-2">
-        {props.allowAttachments && (
-          <Button
-            type="button"
-            size="icon"
-            variant="outline"
-            className="h-8 w-8"
-            aria-label="Attach a file"
-            onClick={async () => {
-              const files = await showFileUploadDialog()
-              addFiles(files)
-            }}
-          >
-            <Paperclip className="h-4 w-4" />
-          </Button>
+          </>
         )}
-        {isSpeechSupported && (
-          <Button
-            type="button"
-            variant="outline"
-            className={cn("h-8 w-8", isListening && "text-primary")}
-            aria-label="Voice input"
-            size="icon"
-            onClick={toggleListening}
-          >
-            <Mic className="h-4 w-4" />
-          </Button>
-        )}
-        {isGenerating && stop ? (
-          <Button
-            type="button"
-            size="icon"
-            className="h-8 w-8 bg-foreground text-background hover:bg-foreground/90"
-            aria-label="Stop generating"
-            onClick={stop}
-          >
-            <Square className="h-3 w-3 animate-pulse" fill="currentColor" />
-          </Button>
-        ) : (
-          <Button
-            type="submit"
-            size="icon"
-            className={"bg-foreground text-background hover:bg-foreground/90"}
-            aria-label="Send message"
-            disabled={props.value === "" || isGenerating}
-          >
-            <ArrowUp className="h-5 w-5" />
-          </Button>
-        )}
-      </div>
+      </motion.div>
 
       {props.allowAttachments && <FileUploadOverlay isDragging={isDragging} />}
 
@@ -307,6 +467,33 @@ export function MessageInput({
         textAreaHeight={textAreaHeight}
         onStopRecording={stopRecording}
       />
+
+      <AnimatePresence>
+        {brainMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="mt-2 flex justify-center"
+          >
+            <div
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2 w-fit ",
+                "border-amber-500/30 bg-amber-500/10",
+                "text-amber-700 dark:text-amber-300",
+                "text-xs leading-relaxed"
+              )}
+            >
+              <Info className="mt-0.5 h-4 w-4 shrink-0 opacity-90" />
+
+              <p className="text-center sm:text-left">
+                {common_brain_description()}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }
@@ -368,9 +555,9 @@ function TranscribingOverlay() {
       transition={{ duration: 0.2 }}
     >
       <div className="relative">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <Loader2 className="h-9 w-9 animate-spin text-primary" />
         <motion.div
-          className="absolute inset-0 h-8 w-8 animate-pulse rounded-full bg-primary/20"
+          className="absolute inset-0 h-9 w-9 animate-pulse rounded-full bg-primary/20"
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1.2, opacity: 1 }}
           transition={{
@@ -439,7 +626,7 @@ function RecordingControls({
   if (isRecording) {
     return (
       <div
-        className="absolute inset-[1px] z-50 overflow-hidden rounded-xl"
+        className="absolute inset-px z-50 overflow-hidden rounded-xl"
         style={{ height: textAreaHeight - 2 }}
       >
         <AudioVisualizer
@@ -454,7 +641,7 @@ function RecordingControls({
   if (isTranscribing) {
     return (
       <div
-        className="absolute inset-[1px] z-50 overflow-hidden rounded-xl"
+        className="absolute inset-px z-50 overflow-hidden rounded-xl"
         style={{ height: textAreaHeight - 2 }}
       >
         <TranscribingOverlay />
@@ -463,4 +650,45 @@ function RecordingControls({
   }
 
   return null
+}
+
+function FilePreviewRow({
+  files,
+  setFiles,
+}: {
+  files: File[]
+  setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
+}) {
+  const MAX_VISIBLE = 3
+  const visible = files.slice(0, MAX_VISIBLE)
+  const overflow = files.length - MAX_VISIBLE
+
+  return (
+    <div className="flex items-center gap-2">
+      <AnimatePresence mode="popLayout">
+        {visible.map((file) => (
+          <FilePreview
+            key={file.name + file.lastModified}
+            file={file}
+            onRemove={() => {
+              setFiles((prev) => {
+                if (!prev) return null
+                const next = prev.filter((f) => f !== file)
+                return next.length ? next : null
+              })
+            }}
+          />
+        ))}
+      </AnimatePresence>
+
+      {overflow > 0 && (
+        <motion.div
+          layout
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground px-2"
+        >
+          +{overflow}
+        </motion.div>
+      )}
+    </div>
+  )
 }
