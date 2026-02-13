@@ -1,3 +1,4 @@
+// transport completo con solo cambios en la sección de archivos
 import { DefaultChatTransport } from 'ai';
 import { API_BASE_URL } from '@/api';
 import { getAccessToken } from '@/lib/auth';
@@ -24,7 +25,7 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 		if (typeof input === 'string' && input === '/chat' && init?.body) {
 			try {
-				const originalPayload = JSON.parse(init.body as string);
+        const originalPayload = JSON.parse(init.body as string);
 				const lastMessage = originalPayload.messages?.at(-1);
 
 				const prompt =
@@ -41,23 +42,35 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 				const finalThreadId = originalPayload.threadId ?? threadId ?? undefined;
 
 				const adaptedPayload = cleanObject({
-					prompt,
-					extraReason: originalPayload.extraReason ?? false,
-					threadId: finalThreadId,
-					editedMessageId: originalPayload.editedMessageId,
-					languagePreference: originalPayload.languagePreference,
-				});
+					prompt: prompt ?? '',
+					extraReason: originalPayload.extraReason != null	? Boolean(originalPayload.extraReason)	: null,
+					threadId: finalThreadId ?? null,
+					editedMessageId: originalPayload.editedMessageId ?? null,
+					languagePreference: originalPayload.languagePreference ?? null,
+					files: hasFiles ? fileParts : null,
+        });
 
-				// ===== CON ARCHIVOS =====
 				if (hasFiles) {
 					const formData = new FormData();
 
-					Object.entries(adaptedPayload).forEach(([k, v]) => {
-						if (v !== undefined) formData.append(k, String(v));
+          Object.entries(adaptedPayload).forEach(([key, value]) => {
+            if (key === 'files') return;
+						if (value != null && value !== '') 	formData.append(key, String(value));
 					});
 
 					for (const part of fileParts) {
-						formData.append('files', part.file);
+						let fileToSend: File;
+						if (part.file instanceof File) {
+							fileToSend = part.file;
+						} else if (part.url && part.filename) {
+							const res = await fetch(part.url);
+							const blob = await res.blob();
+							fileToSend = new File([blob], part.filename, { type: part.mediaType });
+						} else {
+							console.warn('[Transport] Skipping invalid file part', part);
+							continue;
+						}
+						formData.append('files', fileToSend);
 					}
 
 					return baseFetch(url, {
@@ -65,7 +78,7 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 						body: formData,
 						headers: {
 							authorization: (init.headers as any)?.authorization,
-							fingerprint: (init.headers as any)?.fingerprint,
+							fingerprint: (init.headers as any)?.fingerprint
 						},
 					});
 				}
@@ -85,7 +98,6 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 				const [sdkStream, sideStream] = response.body.tee();
 
-				// Rama paralela: lógica de negocio
 				(async () => {
 					const reader = sideStream.getReader();
 					const decoder = new TextDecoder();
@@ -131,7 +143,6 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 					}
 				})();
 
-				// Devolvemos el stream intacto al SDK
 				return new Response(sdkStream, response);
 			} catch (err) {
 				console.error('[Chat Transport] Payload adaptation failed', err);
@@ -157,9 +168,10 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 		},
 		body: {
 			threadId,
-			extraReason: false,
-			editedMessageId: undefined,
-			languagePreference: undefined,
+			extraReason: null,
+			editedMessageId: null,
+			languagePreference: null,
+			files: null,
 		},
 	});
 }
