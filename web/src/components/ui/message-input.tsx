@@ -196,7 +196,10 @@ export function MessageInput({
     dependencies: [props.value, showFileList],
   })
 
-  const isExpanded = props.value.trim().length > 0 && textAreaHeight > 40
+  const hasFiles = props.allowAttachments && props.files && props.files.length > 0
+  const expandedByText = props.value.trim().length > 0 && textAreaHeight > 40
+  const isExpanded = expandedByText || hasFiles
+
   useEffect(() => {
     const el = textAreaRef.current
     if (!el) return
@@ -293,7 +296,6 @@ export function MessageInput({
                 "h-9 py-2",
                 "overflow-y-auto scrollbar-thin",
                 "placeholder:text-muted-foreground",
-                showFileList && "pb-16",
                 className
               )}
               {...(props.allowAttachments
@@ -357,10 +359,11 @@ export function MessageInput({
               onKeyDown={onKeyDown}
               className={cn(
                 "w-full resize-none bg-transparent border-none outline-none",
-                "text-sm leading-5 py-2 px-4",
+                "text-sm leading-tight",
+                "py-2 px-4",
+                "min-h-0",
                 "overflow-y-auto scrollbar-thin",
                 "placeholder:text-muted-foreground",
-                showFileList && "pb-16",
                 className
               )}
               {...(props.allowAttachments
@@ -368,7 +371,7 @@ export function MessageInput({
                 : omit(props, ["allowAttachments"]))}
             />
 
-            <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
               <Tooltip>
                 <TooltipTrigger>
                   <Button
@@ -393,7 +396,23 @@ export function MessageInput({
                 <TooltipContent>{common_brain()}</TooltipContent>
               </Tooltip>
 
-              <div className="flex items-center gap-1">
+              {props.allowAttachments && props.files?.length && (
+                <motion.div
+                  layout
+                  initial={{ opacity: 0, width: 0 }}
+                  animate={{ opacity: 1, width: "auto" }}
+                  exit={{ opacity: 0, width: 0 }}
+                  transition={{ duration: 0.2 }}
+                  className="flex items-center gap-2 overflow-hidden"
+                >
+                  <FilePreviewRow
+                    files={props.files}
+                    setFiles={props.setFiles}
+                  />
+                </motion.div>
+              )}
+
+              <div className="ml-auto flex items-center gap-1">
                 {props.allowAttachments && (
                   <Tooltip>
                     <TooltipTrigger>
@@ -436,34 +455,6 @@ export function MessageInput({
               </div>
             </div>
           </>
-        )}
-
-        {props.allowAttachments && (
-          <div className="absolute inset-x-3 bottom-0 z-20 overflow-x-auto scrollbar-thin py-3">
-            <div className="flex space-x-3">
-              <AnimatePresence mode="popLayout">
-                {props.files?.map((file) => {
-                  return (
-                    <FilePreview
-                      key={file.name + String(file.lastModified)}
-                      file={file}
-                      onRemove={() => {
-                        props.setFiles((files) => {
-                          if (!files) return null
-
-                          const filtered = Array.from(files).filter(
-                            (f) => f !== file
-                          )
-                          if (filtered.length === 0) return null
-                          return filtered
-                        })
-                      }}
-                    />
-                  )
-                })}
-              </AnimatePresence>
-            </div>
-          </div>
         )}
       </motion.div>
 
@@ -659,4 +650,45 @@ function RecordingControls({
   }
 
   return null
+}
+
+function FilePreviewRow({
+  files,
+  setFiles,
+}: {
+  files: File[]
+  setFiles: React.Dispatch<React.SetStateAction<File[] | null>>
+}) {
+  const MAX_VISIBLE = 3
+  const visible = files.slice(0, MAX_VISIBLE)
+  const overflow = files.length - MAX_VISIBLE
+
+  return (
+    <div className="flex items-center gap-2">
+      <AnimatePresence mode="popLayout">
+        {visible.map((file) => (
+          <FilePreview
+            key={file.name + file.lastModified}
+            file={file}
+            onRemove={() => {
+              setFiles((prev) => {
+                if (!prev) return null
+                const next = prev.filter((f) => f !== file)
+                return next.length ? next : null
+              })
+            }}
+          />
+        ))}
+      </AnimatePresence>
+
+      {overflow > 0 && (
+        <motion.div
+          layout
+          className="flex h-7 w-7 items-center justify-center rounded-lg bg-muted text-xs font-medium text-muted-foreground px-2"
+        >
+          +{overflow}
+        </motion.div>
+      )}
+    </div>
+  )
 }
