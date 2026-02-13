@@ -1,151 +1,254 @@
-import React, { useEffect } from "react"
+import React, { useEffect, useMemo } from "react"
 import { motion } from "framer-motion"
-import { FileIcon, X } from "lucide-react"
+import {
+  FileIcon,
+  ImageIcon,
+  FileText,
+  FileCode,
+  Archive,
+  FileSpreadsheet,
+  X,
+  FileText as PdfIcon,
+} from "lucide-react"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip" // shadcn tooltip
 
 interface FilePreviewProps {
   file: File
   onRemove?: () => void
 }
 
-export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
-  (props, ref) => {
-    if (props.file.type.startsWith("image/")) {
-      return <ImageFilePreview {...props} ref={ref} />
-    }
+function truncateFileName(name: string, maxLength = 16) {
+  if (name.length <= maxLength) return name
 
-    if (
-      props.file.type.startsWith("text/") ||
-      props.file.name.endsWith(".txt") ||
-      props.file.name.endsWith(".md")
-    ) {
-      return <TextFilePreview {...props} ref={ref} />
-    }
-
-    return <GenericFilePreview {...props} ref={ref} />
+  const extIndex = name.lastIndexOf(".")
+  if (extIndex === -1) {
+    return name.slice(0, maxLength - 3) + "..."
   }
+
+  const base = name.slice(0, extIndex)
+  const ext = name.slice(extIndex)
+  if (base.length + ext.length <= maxLength) return name
+
+  const allowedBaseLength = maxLength - ext.length - 3
+  if (allowedBaseLength <= 0) {
+    return name.slice(0, maxLength - 3) + "..."
+  }
+
+  return base.slice(0, allowedBaseLength) + "..." + ext
+}
+
+/* ---------------- ICON RESOLVER ---------------- */
+
+function getFileIcon(file: File) {
+  const ext = file.name.split(".").pop()?.toLowerCase()
+
+  if (file.type.startsWith("image/")) return ImageIcon
+  if (file.type.startsWith("text/")) return FileText
+
+  switch (ext) {
+    case "doc":
+    case "docx":
+      return FileText
+    case "xls":
+    case "xlsx":
+      return FileSpreadsheet
+    case "pdf":
+      return PdfIcon
+    case "zip":
+    case "rar":
+    case "7z":
+      return Archive
+    case "json":
+    case "js":
+    case "ts":
+    case "tsx":
+    case "html":
+    case "css":
+      return FileCode
+    default:
+      return FileIcon
+  }
+}
+
+/* ---------------- ROOT WRAPPER ---------------- */
+
+const BaseCard = ({
+  children,
+  onRemove,
+  ref,
+}: {
+  children: React.ReactNode
+  onRemove?: () => void
+  ref?: React.Ref<HTMLDivElement>
+}) => (
+  <motion.div
+    ref={ref}
+    layout
+    initial={{ opacity: 0, y: 8 }}
+    animate={{ opacity: 1, y: 0 }}
+    exit={{ opacity: 0, y: 8 }}
+    className="
+      group relative flex items-center w-50
+      rounded-lg border
+      bg-background/80 backdrop-blur
+      p-2
+      shadow-sm
+      transition-all
+    "
+  >
+    {children}
+
+    {onRemove && (
+      <button
+        onClick={onRemove}
+        type="button"
+        aria-label="Remove file"
+        className="
+          absolute right-1 top-1
+          flex h-5 w-5 items-center justify-center
+          rounded-md
+          bg-muted/70
+          opacity-0
+          transition
+          group-hover:opacity-100
+          hover:bg-destructive/10
+          cursor-pointer
+        "
+      >
+        <X className="h-3 w-3" />
+      </button>
+    )}
+  </motion.div>
 )
-FilePreview.displayName = "FilePreview"
+
+/* ---------------- IMAGE PREVIEW ---------------- */
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
-    return (
-      <motion.div
-        ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
-        layout
-        initial={{ opacity: 0, y: "100%" }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: "100%" }}
-      >
-        <div className="flex w-full items-center space-x-2">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            alt={`Attachment ${file.name}`}
-            className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted object-cover"
-            src={URL.createObjectURL(file)}
-          />
-          <span className="w-full truncate text-muted-foreground">
-            {file.name}
-          </span>
-        </div>
+    const url = useMemo(() => URL.createObjectURL(file), [file])
 
-        {onRemove ? (
-          <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove attachment"
-          >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        ) : null}
-      </motion.div>
+    return (
+      <TooltipProvider>
+        <BaseCard ref={ref} onRemove={onRemove}>
+          <img
+            src={url}
+            alt={file.name}
+            className="h-10 w-10 shrink-0 rounded-md border object-cover"
+          />
+          <div className="flex min-w-0 flex-1 flex-col justify-center items-start pl-2">
+            <Tooltip>
+              <TooltipTrigger>
+                <span className="truncate text-sm font-medium">
+                  {truncateFileName(file.name, 16)}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>{file.name}</TooltipContent>
+            </Tooltip>
+            <span className="truncate text-xs text-muted-foreground">image</span>
+          </div>
+        </BaseCard>
+      </TooltipProvider>
     )
   }
 )
 ImageFilePreview.displayName = "ImageFilePreview"
 
+/* ---------------- TEXT PREVIEW ---------------- */
+
 const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
-    const [preview, setPreview] = React.useState<string>("")
+    const [preview, setPreview] = React.useState("")
 
     useEffect(() => {
       const reader = new FileReader()
       reader.onload = (e) => {
-        const text = e.target?.result as string
-        setPreview(text.slice(0, 50) + (text.length > 50 ? "..." : ""))
+        const text = (e.target?.result as string) || ""
+        setPreview(text.slice(0, 60))
       }
       reader.readAsText(file)
     }, [file])
 
     return (
-      <motion.div
-        ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
-        layout
-        initial={{ opacity: 0, y: "100%" }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: "100%" }}
-      >
-        <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted p-0.5">
-            <div className="h-full w-full overflow-hidden text-[6px] leading-none text-muted-foreground">
-              {preview || "Loading..."}
+      <TooltipProvider>
+        <BaseCard ref={ref} onRemove={onRemove}>
+          <div className="flex items-center gap-2">
+            <div className="h-10 w-10 shrink-0 rounded-md border bg-muted p-1 text-[8px] leading-tight overflow-hidden text-muted-foreground">
+              {preview || "..."}
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-center items-start">
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="truncate text-sm font-medium">
+                    {truncateFileName(file.name, 16)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{file.name}</TooltipContent>
+              </Tooltip>
+              <span className="truncate text-xs text-muted-foreground">{truncateFileName(preview, 16)}</span>
             </div>
           </div>
-          <span className="w-full truncate text-muted-foreground">
-            {file.name}
-          </span>
-        </div>
-
-        {onRemove ? (
-          <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove attachment"
-          >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        ) : null}
-      </motion.div>
+        </BaseCard>
+      </TooltipProvider>
     )
   }
 )
 TextFilePreview.displayName = "TextFilePreview"
 
+/* ---------------- GENERIC PREVIEW ---------------- */
+
 const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
-    return (
-      <motion.div
-        ref={ref}
-        className="relative flex max-w-[200px] rounded-md border p-1.5 pr-2 text-xs"
-        layout
-        initial={{ opacity: 0, y: "100%" }}
-        animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, y: "100%" }}
-      >
-        <div className="flex w-full items-center space-x-2">
-          <div className="grid h-10 w-10 shrink-0 place-items-center rounded-sm border bg-muted">
-            <FileIcon className="h-6 w-6 text-foreground" />
-          </div>
-          <span className="w-full truncate text-muted-foreground">
-            {file.name}
-          </span>
-        </div>
+    const Icon = getFileIcon(file)
 
-        {onRemove ? (
-          <button
-            className="absolute -right-2 -top-2 flex h-4 w-4 items-center justify-center rounded-full border bg-background"
-            type="button"
-            onClick={onRemove}
-            aria-label="Remove attachment"
-          >
-            <X className="h-2.5 w-2.5" />
-          </button>
-        ) : null}
-      </motion.div>
+    return (
+      <TooltipProvider>
+        <BaseCard ref={ref} onRemove={onRemove}>
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted">
+              <Icon className="h-5 w-5 text-muted-foreground" />
+            </div>
+            <div className="flex min-w-0 flex-1 flex-col justify-center items-start">
+              <Tooltip>
+                <TooltipTrigger>
+                  <span className="truncate text-sm font-medium">
+                    {truncateFileName(file.name, 16)}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>{file.name}</TooltipContent>
+              </Tooltip>
+              <span className="truncate text-xs text-muted-foreground">
+                {truncateFileName(file.type, 16) || "file"}
+              </span>
+            </div>
+          </div>
+        </BaseCard>
+      </TooltipProvider>
     )
   }
 )
 GenericFilePreview.displayName = "GenericFilePreview"
+
+/* ---------------- MAIN SWITCH ---------------- */
+
+export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
+  (props, ref) => {
+    if (props.file.type.startsWith("image/"))
+      return <ImageFilePreview {...props} ref={ref} />
+
+    if (
+      props.file.type.startsWith("text/") ||
+      props.file.name.endsWith(".txt") ||
+      props.file.name.endsWith(".md")
+    )
+      return <TextFilePreview {...props} ref={ref} />
+
+    return <GenericFilePreview {...props} ref={ref} />
+  }
+)
+
+FilePreview.displayName = "FilePreview"
