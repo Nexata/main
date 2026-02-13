@@ -15,7 +15,8 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import {
   "common.ask_nexy" as common_ask_nexy,
   "common.brain" as common_brain,
-  "common.attachment" as common_attachment
+  "common.attachment" as common_attachment,
+  "common.brain_description" as common_brain_description
 } from "@/paraglide/messages.js";
 
 
@@ -27,6 +28,7 @@ interface MessageInputBaseProps
   isGenerating: boolean
   enableInterrupt?: boolean
   transcribeAudio?: (blob: Blob) => Promise<string>
+  setExtraReason?: (value: boolean) => void
 }
 
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
@@ -52,6 +54,7 @@ export function MessageInput({
   isGenerating,
   enableInterrupt = true,
   transcribeAudio,
+  setExtraReason,
   ...props
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -214,7 +217,7 @@ export function MessageInput({
 
   return (
     <div
-      className="relative flex w-full"
+      className="relative flex w-full flex-col"
       onDragOver={onDragOver}
       onDragLeave={onDragLeave}
       onDrop={onDrop}
@@ -264,7 +267,13 @@ export function MessageInput({
                     "h-8 w-8 rounded-full cursor-pointer",
                     brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
                   )}
-                  onClick={() => setBrainMode(v => !v)}
+                  onClick={() => {
+                    setBrainMode(v => {
+                      const next = !v
+                      setExtraReason?.(next)
+                      return next
+                    })
+                  }}
                 >
                   <Brain className="h-5 w-5" />
                 </Button>
@@ -370,7 +379,13 @@ export function MessageInput({
                       "h-8 w-8 rounded-full cursor-pointer",
                       brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
                     )}
-                    onClick={() => setBrainMode(v => !v)}
+                    onClick={() => {
+                      setBrainMode(v => {
+                        const next = !v
+                        setExtraReason?.(next)
+                        return next
+                      })
+                    }}
                   >
                     <Brain className="h-5 w-5" />
                   </Button>
@@ -461,6 +476,33 @@ export function MessageInput({
         textAreaHeight={textAreaHeight}
         onStopRecording={stopRecording}
       />
+
+      <AnimatePresence>
+        {brainMode && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2, ease: "easeOut" }}
+            className="mt-2 flex justify-center"
+          >
+            <div
+              className={cn(
+                "flex items-start gap-3 rounded-lg border px-3 py-2 w-fit ",
+                "border-amber-500/30 bg-amber-500/10",
+                "text-amber-700 dark:text-amber-300",
+                "text-xs leading-relaxed"
+              )}
+            >
+              <Info className="mt-0.5 h-4 w-4 shrink-0 opacity-90" />
+
+              <p className="text-center sm:text-left">
+                {common_brain_description()}
+              </p>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

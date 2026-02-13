@@ -117,7 +117,8 @@ export function NexataChat() {
 	// Input / Submit
 	// ----------------------------
 
-	const [input, setInput] = useState('');
+  const [input, setInput] = useState('');
+  const [extraReason, setExtraReason] = useState(false)
 
 	const handleSubmit = async (
 		event?: { preventDefault?: () => void },
@@ -131,20 +132,23 @@ export function NexataChat() {
 		if (!hasText && !hasFiles) return;
 
 		const text = input;
-		const files = options?.attachments;
+    const files = options?.attachments;
+    const reasoning = extraReason;
 
 		setInput('');
-		setStreaming(activeThreadId ?? '');
+    setStreaming(activeThreadId ?? '');
+		setExtraReason(false);
 
 		await sendMessage(
 			{ text, files },
 			{
 				body: {
           threadId: activeThreadId ?? undefined,
-					languagePreference: me?.languagePreference ?? undefined
+          languagePreference: me?.languagePreference ?? undefined,
+          extraReason: reasoning || undefined
 				},
 			},
-		);
+    );
 	};
 
 	// ----------------------------
@@ -179,7 +183,8 @@ export function NexataChat() {
 					isHydratingThread={isHydrating}
 					isNewChat={isNewChat}
 					welcomeLabel={welcomeText}
-					isUserLoading={isMeLoading}
+          isUserLoading={isMeLoading}
+					setExtraReason={setExtraReason}
 				/>
 
 				{error && (

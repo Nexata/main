@@ -5,6 +5,7 @@
 		"loading": "Cargando…",
 		"ask_nexy": "Preguntale a Nexy...",
 		"brain": "Extra Razonamiento",
+		"brain_description": "Razonamiento avanzado activado. Tu solicitud utilizará un modelo de razonamiento avanzado para un análisis más profundo. Esto consume dos mensajes en lugar de uno.",
 		"attachment": "Agregar Adjuntos",
 		"cancel": "Cancelar",
 		"delete": "Eliminar",

@@ -47,6 +47,7 @@ interface ChatPropsBase {
   isHydratingThread?: boolean
   isNewChat?: boolean
   isUserLoading?: boolean
+  setExtraReason?: (value: boolean) => void
 }
 
 export function Chat({
@@ -64,6 +65,7 @@ export function Chat({
   isHydratingThread,
   isNewChat,
   isUserLoading,
+  setExtraReason
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -185,6 +187,7 @@ export function Chat({
             stop={handleStop}
             isGenerating={isGenerating}
             transcribeAudio={transcribeAudio}
+            setExtraReason={setExtraReason}
           />
         )}
       </ChatForm>

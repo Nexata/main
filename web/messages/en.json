@@ -5,6 +5,7 @@
 		"ask_nexy": "Ask Nexy...",
 		"brain": "Extra Reasoning",
 		"attachment": "Add Attachments",
+		"brain_description": "Extra reasoning is enabled. Your request will use an advanced reasoning model for deeper analysis. This counts as two messages instead of one.",
 		"cancel": "Cancel",
 		"delete": "Delete",
 		"confirm": "Confirm",
