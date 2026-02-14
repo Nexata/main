@@ -3,7 +3,6 @@
 import { Chat as AIChat, useChat, type UIMessage } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import { useThreadById } from '@/lib/chat';
@@ -140,14 +139,15 @@ export function NexataChat() {
 		setExtraReason(false);
 
 		await sendMessage(
-			{ text, files },
-			{
-				body: {
-          threadId: activeThreadId ?? undefined,
-          languagePreference: me?.languagePreference ?? undefined,
+      { text, files: files?.length ? files : null },
+      {
+        body: {
+          threadId: activeThreadId ?? null,
+          editedMessageId: null,
+          languagePreference: me?.language ?? null,
           extraReason: reasoning
-				},
-			},
+        },
+      },
     );
 	};
 

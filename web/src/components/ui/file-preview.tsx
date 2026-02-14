@@ -22,22 +22,19 @@ interface FilePreviewProps {
   onRemove?: () => void
 }
 
-function truncateFileName(name: string, maxLength = 16) {
+function truncateFileName(name: string | undefined, maxLength = 16) {
+  if (!name) return "unknown"
   if (name.length <= maxLength) return name
 
   const extIndex = name.lastIndexOf(".")
-  if (extIndex === -1) {
-    return name.slice(0, maxLength - 3) + "..."
-  }
+  if (extIndex === -1) return name.slice(0, maxLength - 3) + "..."
 
   const base = name.slice(0, extIndex)
   const ext = name.slice(extIndex)
   if (base.length + ext.length <= maxLength) return name
 
   const allowedBaseLength = maxLength - ext.length - 3
-  if (allowedBaseLength <= 0) {
-    return name.slice(0, maxLength - 3) + "..."
-  }
+  if (allowedBaseLength <= 0) return name.slice(0, maxLength - 3) + "..."
 
   return base.slice(0, allowedBaseLength) + "..." + ext
 }
@@ -45,10 +42,10 @@ function truncateFileName(name: string, maxLength = 16) {
 /* ---------------- ICON RESOLVER ---------------- */
 
 function getFileIcon(file: File) {
-  const ext = file.name.split(".").pop()?.toLowerCase()
+  const ext = file.name?.split(".").pop()?.toLowerCase() || ""
 
-  if (file.type.startsWith("image/")) return ImageIcon
-  if (file.type.startsWith("text/")) return FileText
+  if (file.type?.startsWith("image/")) return ImageIcon
+  if (file.type?.startsWith("text/")) return FileText
 
   switch (ext) {
     case "doc":
@@ -77,38 +74,31 @@ function getFileIcon(file: File) {
 
 /* ---------------- ROOT WRAPPER ---------------- */
 
-const BaseCard = ({
-  children,
-  onRemove,
-  ref,
-}: {
-  children: React.ReactNode
-  onRemove?: () => void
-  ref?: React.Ref<HTMLDivElement>
-}) => (
-  <motion.div
-    ref={ref}
-    layout
-    initial={{ opacity: 0, y: 8 }}
-    animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: 8 }}
-    className="
-      group relative flex items-center w-50
-      rounded-lg border
-      bg-background/80 backdrop-blur
-      p-2
-      shadow-sm
-      transition-all
-    "
-  >
-    {children}
+const BaseCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; onRemove?: () => void }>(
+  ({ children, onRemove }, ref) => (
+    <motion.div
+      ref={ref}
+      layout
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: 8 }}
+      className="
+        group relative flex items-center w-50
+        rounded-lg border
+        bg-background/80 backdrop-blur
+        p-2
+        shadow-sm
+        transition-all
+      "
+    >
+      {children}
 
-    {onRemove && (
-      <button
-        onClick={onRemove}
-        type="button"
-        aria-label="Remove file"
-        className="
+      {onRemove && (
+        <button
+          onClick={onRemove}
+          type="button"
+          aria-label="Remove file"
+          className="
           absolute right-1 top-1
           flex h-5 w-5 items-center justify-center
           rounded-md
@@ -118,13 +108,17 @@ const BaseCard = ({
           group-hover:opacity-100
           hover:bg-destructive/10
           cursor-pointer
-        "
-      >
-        <X className="h-3 w-3" />
-      </button>
-    )}
-  </motion.div>
+          "
+        >
+          <X className="h-3 w-3" />
+        </button>
+      )}
+    </motion.div>
+  )
 )
+
+BaseCard.displayName = "BaseCard"
+
 
 /* ---------------- IMAGE PREVIEW ---------------- */
 
@@ -237,13 +231,12 @@ GenericFilePreview.displayName = "GenericFilePreview"
 
 export const FilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   (props, ref) => {
-    if (props.file.type.startsWith("image/"))
-      return <ImageFilePreview {...props} ref={ref} />
+    if (props.file.type.startsWith("image/")) return <ImageFilePreview {...props} ref={ref} />
 
     if (
       props.file.type.startsWith("text/") ||
-      props.file.name.endsWith(".txt") ||
-      props.file.name.endsWith(".md")
+      props.file.name?.endsWith(".txt") ||
+      props.file.name?.endsWith(".md")
     )
       return <TextFilePreview {...props} ref={ref} />
 
