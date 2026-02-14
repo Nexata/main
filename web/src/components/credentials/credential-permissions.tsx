@@ -165,7 +165,7 @@ export function CredentialPermissions({
 
                                 <AvatarFallback
                                     className="text-xs font-medium text-white"
-                                    style={{ backgroundColor: stringToColor( user.displayName ?? user.email) }}
+                                    style={{ backgroundColor: stringToColor(user.displayName ?? user.email) }}
                                 >
                                     {getInitials(user)}
                                 </AvatarFallback>
@@ -177,7 +177,7 @@ export function CredentialPermissions({
                                   {user.displayName ?? user.email}
                                 </span>
                                 <span className="shrink-0">
-                                  <AccessLevelBadge level={credential.accessLevel} />
+                                  <AccessLevelBadge level={user.accessLevel} />
                                 </span>
                               </div>
                               <span className="text-xs text-muted-foreground truncate">
