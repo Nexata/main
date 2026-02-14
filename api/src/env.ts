@@ -63,7 +63,7 @@ export const MODEL = createFallback({
 
 export const LIGHT_MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	models: [deepinfra('zai-org/GLM-4.7-Flash'), groq('openai/gpt-oss-20b')],
+	models: [groq('openai/gpt-oss-20b'), deepinfra('zai-org/GLM-4.7-Flash')],
 });
 
 export const REASONING_MODEL = createFallback({
