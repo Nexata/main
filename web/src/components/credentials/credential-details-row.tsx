@@ -199,7 +199,7 @@ export function CredentialDetailsRow({
                   source.kind === "storage" && (
                     <StorageFileTree
                       credentialId={credential.id}
-                      sourceName={source.name}
+                      source={source}
                     />
                   )}
               </motion.div>

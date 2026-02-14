@@ -1,21 +1,52 @@
-import { ScrollArea } from "@/components/ui/scroll-area"
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { useQuery } from "@tanstack/react-query";
+import type { SourceConfig } from "@/lib/available-sources";
 
 type Props = {
-  credentialId: string
-  sourceName: string
-}
+  credentialId: string;
+  source: SourceConfig;
+};
 
-export function StorageFileTree({ credentialId, sourceName }: Props) {
+export function StorageFileTree({
+  credentialId,
+  source,
+}: Props) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["file-tree", source.id, credentialId],
+    queryFn: () => {
+      if (!source.getFileTree) throw new Error("Source does not support file listing");
+      return source.getFileTree(credentialId);
+    },
+    enabled: !!credentialId && !!source.getFileTree,
+  });
+
+  console.log(data);
+
   return (
-    <div className="border rounded-md w-[320px] h-[280px]">
-      <ScrollArea className="h-full p-3">
-        <p className="text-sm text-muted-foreground">
-          File tree for <strong>{sourceName}</strong>
+    <div className="border rounded-md w-full h-70">
+      <ScrollArea className="h-full p-3 space-y-2">
+        <p className="text-sm font-medium">
+          {source.name}
         </p>
-        <p className="text-xs mt-2">
-          Credential ID: {credentialId}
-        </p>
+
+        {isLoading && (
+          <p className="text-xs text-muted-foreground">
+            Loading files…
+          </p>
+        )}
+
+        {error && (
+          <p className="text-xs text-destructive">
+            Failed to load files
+          </p>
+        )}
+
+        {data && (
+          <pre className="text-xs whitespace-pre-wrap">
+            {JSON.stringify(data, null, 2)}
+          </pre>
+        )}
       </ScrollArea>
     </div>
-  )
+  );
 }
