@@ -20,8 +20,6 @@ export function StorageFileTree({
     enabled: !!credentialId && !!source.getFileTree,
   });
 
-  console.log(data);
-
   return (
     <div className="border rounded-md w-full h-70">
       <ScrollArea className="h-full p-3 space-y-2">

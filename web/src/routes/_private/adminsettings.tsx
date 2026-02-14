@@ -56,6 +56,7 @@ import { UpgradePlanModal } from '@/components/upgrade-plan/upgrade-plan';
 import UserSection from '@/components/user-section/user-section';
 import {
 	useBillingMessages,
+	useBillingUsage,
 	useCreateUser,
 	useDeleteUser,
 	useEditTenant,
@@ -193,16 +194,13 @@ function CompanyOverviewSection() {
 	const editTenantFn = useEditTenant();
 	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
 	const [upgradePlanOpen, setUpgradePlanOpen] = useState(false);
+	const { data: usage, isLoading: usageLoading } = useBillingUsage();
 
-	const mockEmbeddings = {
-		count: 420_000,
-		limit: 1_000_000,
-	};
+  const embeddingsUsed = usage?.embeds?.used ?? 0;
+  const embeddingsTotal = usage?.embeds?.limit ?? 0;
 
-	const mockStorage = {
-		count: 3_200,
-		limit: 10_000,
-	};
+  const storageUsed = usage?.storage?.used ?? 0;
+  const storageTotal = usage?.storage?.limit ?? 0;
 
 	useEffect(() => {
 		if (myTenant) {
@@ -337,18 +335,18 @@ function CompanyOverviewSection() {
 
 					<UsageBar
 						label={admin_company_overview_embeddings_balance()}
-						used={mockEmbeddings.count}
-						total={mockEmbeddings.limit}
+						used={embeddingsUsed}
+						total={embeddingsTotal}
 						colorClass="bg-indigo-500"
-						loading={false}
+						loading={usageLoading}
 					/>
 
 					<UsageBar
 						label={admin_company_overview_storage_balance()}
-						used={mockStorage.count}
-						total={mockStorage.limit}
+						used={storageUsed}
+						total={storageTotal}
 						colorClass="bg-emerald-500"
-						loading={false}
+						loading={usageLoading}
 					/>
 				</div>
 
@@ -623,6 +621,8 @@ function UsersSection() {
 		? users.find((u) => u.id === deleteUserId)
 		: null;
 	const queryClient = useQueryClient();
+
+	if(users) console.log(users);
 
 	// Ordenar admins primero
 	const sortedUsers = [...users].sort(
