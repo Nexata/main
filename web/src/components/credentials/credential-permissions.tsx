@@ -93,7 +93,6 @@ export function CredentialPermissions({
         })
 
         try {
-            console.log(userId)
             await deleteCredentialPermission({credentialId: credential.id, userId: userId})
             const fresh = await listCredentials()
             onCredentialsUpdate(fresh)

@@ -37,6 +37,8 @@
 	"components": {
 		"credentials": {
 			"permissions": {
+     	  "view_credentials": "Ver Permisos",
+        "hice_credentials": "Ocultar Permisos",
 				"title": "Permisos de la credencial",
 				"description": "Administrá qué usuarios pueden acceder y utilizar esta credencial.",
 				"no_manage_description": "Revisa qué usuarios pueden acceder y utilizar esta credencial.",
@@ -76,7 +78,8 @@
 		},
 
 		"sources": {
-			"view_files": "Ver archivos"
+			"view_files": "Ver Archivos",
+			"collapse_files": "Ocultar Archivos"
 		},
 
 		"buy_messages_modal": {
