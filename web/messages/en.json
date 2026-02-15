@@ -97,6 +97,11 @@
 				"helper": "The price per message for custom amounts may be slightly higher than predefined packs.",
 				"buy_button": "Buy"
 			}
+		},
+
+		"file_tree":{
+		  "disclaimer_title": "Storage estimate:",
+		  "disclaimer_title_description": "The displayed storage values are approximate. In most cases, Nexata’s intelligent optimization reduces the real space consumed, allowing you to store more than what the indicator suggests maximizing efficiency without extra effort."
 		}
 	},
 

@@ -97,6 +97,11 @@
 				"helper": "El precio por mensaje para cantidades personalizadas puede ser levemente superior a los packs predefinidos.",
 				"buy_button": "Comprar"
 			}
+		},
+
+		"file_tree":{
+		  "disclaimer_title": "Estimación de almacenamiento:",
+		  "disclaimer_title_description": "Los valores mostrados son aproximados. En la mayoría de los casos, la optimización inteligente de Nexata reduce el consumo real, permitiéndote almacenar más de lo indicado y aprovechar mejor tu espacio disponible."
 		}
 	},
 

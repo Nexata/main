@@ -1,6 +1,6 @@
 import type { CredentialItem } from '@/lib/credential';
 import { getDropboxCredentialUrl, getGoogleCredentialUrl } from '@/lib/oauth';
-import { listDriveDir, listDropboxDir } from './file';
+import { listDriveDir, listDropboxDir, type ListDriveDirInput } from './file';
 
 type OauthProvider = `${CredentialItem['provider']}`;
 type OauthScope = `${CredentialItem['scope']}`;
@@ -13,7 +13,7 @@ export type SourceConfig = {
 	scope: OauthScope;
 	connect: () => Promise<string>;
 	kind: 'dynamic' | 'storage';
-	getFileTree?: (credentialId: string) => Promise<unknown>;
+	getFileTree?: (credentialId: string, input?: ListDriveDirInput) => Promise<any>;
 };
 
 export function credentialsBySource(
@@ -74,8 +74,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		scope: 'drive',
 		connect: () => getGoogleCredentialUrl('drive'),
 		kind: 'storage',
-		getFileTree: async (credentialId) => { return listDriveDir(credentialId); }
-	},
+		getFileTree: (credentialId, input) => listDriveDir(credentialId, input) },
 	{
 		id: 'dropbox',
 		provider: 'dropbox',
@@ -84,8 +83,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		scope: 'dropbox',
 		connect: () => getDropboxCredentialUrl(),
 		kind: 'storage',
-		getFileTree: async (credentialId) => { return listDropboxDir(credentialId); }
-	},
+		getFileTree: (credentialId, input) => listDropboxDir(credentialId, input) },
 	{
 		id: 'onedrive',
 		provider: 'microsoft',

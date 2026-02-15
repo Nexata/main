@@ -2,7 +2,7 @@ import { useMutation, useQuery } from "@tanstack/react-query";
 import { apiClient, withAuthRetry } from "@/api";
 
 /* ======================================================
-   Types
+   Types + Helper
 ====================================================== */
 
 export type FileSelectionItem = {
@@ -20,9 +20,9 @@ type ListDirPageTokenInput = {
 };
 
 type ListDirParamsInput = {
-  path?: string | null;
-  recursive?: boolean | null;
-  limit?: number | null;
+  path?: string;
+  recursive?: boolean;
+  limit?: number;
 };
 
 export type ListDriveDirInput =
@@ -30,25 +30,55 @@ export type ListDriveDirInput =
   | ListDirParamsInput;
 
 
+function normalizeDirInput(
+  input?: ListDriveDirInput
+): ListDriveDirInput {
+  if (!input) return {};
+
+  if ("pageToken" in input) return input;
+
+  const clean: ListDirParamsInput = {};
+
+  if (input.path !== undefined) clean.path = input.path;
+  if (input.recursive !== undefined)
+    clean.recursive = input.recursive;
+  if (input.limit !== undefined) clean.limit = input.limit;
+
+  return clean;
+}
+
 /* ======================================================
    DROPBOX
 ====================================================== */
 
 // List directory
-export async function listDropboxDir(credentialId: string) {
+export async function listDropboxDir(
+  credentialId: string,
+  input?: ListDriveDirInput
+) {
+  const query = normalizeDirInput(input);
+
   return withAuthRetry((headers) =>
     apiClient.integration.dropbox[credentialId]!.get({
       $headers: headers,
+      $query: query,
     })
   );
 }
 
 export type DropboxDir = Awaited<ReturnType<typeof listDropboxDir>>;
 
-export function useDropboxDir(credentialId?: string) {
+export function useDropboxDir(
+  credentialId?: string,
+  input?: ListDriveDirInput
+) {
   return useQuery({
-    queryKey: ["dropbox-dir", credentialId],
-    queryFn: () => listDropboxDir(credentialId!),
+    queryKey: [
+      "dropbox-dir",
+      credentialId,
+      JSON.stringify(input ?? {}),
+    ],
+    queryFn: () => listDropboxDir(credentialId!, input),
     enabled: !!credentialId,
   });
 }
@@ -78,10 +108,12 @@ export async function listDriveDir(
   credentialId: string,
   input?: ListDriveDirInput
 ) {
+  const query = normalizeDirInput(input);
+
   return withAuthRetry((headers) =>
     apiClient.integration.google.drive[credentialId]!.get({
       $headers: headers,
-      query: input,
+      $query: query,
     })
   );
 }
@@ -90,10 +122,14 @@ export type DriveDir = Awaited<ReturnType<typeof listDriveDir>>;
 
 export function useDriveDir(
   credentialId?: string,
-  input?: ListDriveDirInput
+ input?: ListDriveDirInput
 ) {
   return useQuery({
-    queryKey: ["drive-dir", credentialId, input],
+    queryKey: [
+      "drive-dir",
+      credentialId,
+      JSON.stringify(input ?? {}),
+    ],
     queryFn: () => listDriveDir(credentialId!, input),
     enabled: !!credentialId,
   });
