@@ -1,9 +1,15 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
-import { BillableEventType, bill, billableEvent, tenant } from '@api/schema';
+import {
+	BillableEventType,
+	bill,
+	billableEvent,
+	tenant,
+	user,
+} from '@api/schema';
 import { getMessageCount } from '@api/utils/chat';
 import { tObject } from '@api/utils/type';
-import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
+import { and, desc, eq, isNull, or, sql, sum } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
@@ -23,11 +29,9 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 						consumption: sum(billableEvent.consumption),
 					})
 					.from(billableEvent)
+					.leftJoin(user, eq(billableEvent.userId, user.id))
 					.where(
-						and(
-							eq(billableEvent.slug, activeUser.slug),
-							isNull(billableEvent.billId),
-						),
+						and(eq(user.slug, activeUser.slug), isNull(billableEvent.billId)),
 					)
 					.groupBy(billableEvent.type),
 				db

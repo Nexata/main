@@ -291,6 +291,7 @@ export namespace NexataFile {
 						type: BillableEventType.EMBED,
 						consumption: totalEmbedTokens.toString(),
 						userId: data.userId,
+						slug: data.slug,
 					}),
 					db.insert(chunk).values(chunks),
 				]),
