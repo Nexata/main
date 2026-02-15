@@ -78,10 +78,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   const typedContent = useTypingText(fullText, shouldAnimateTyping, 4)
 
-  const lastStreamingTextIndex = [...message.parts]
-    .map((p, i) => p.type === "text" && p.state === "streaming" ? i : -1)
-    .filter(i => i !== -1)
-    .pop()
+  const lastTextPartGlobalIndex = (() => {
+    for (let i = message.parts.length - 1; i >= 0; i--) {
+      if (message.parts[i].type === "text") return i
+    }
+    return -1
+  })()
 
   const createdAt =
     typeof message.metadata === "object" &&
@@ -95,6 +97,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     minute: "2-digit",
   })
 
+  // Helper para FilePreview
+  function filePartToBrowserFile(part: any): File {
+    const base64 = part.url.split(",")[1]
+    const bytes = atob(base64)
+    const array = new Uint8Array(bytes.length)
+    for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i)
+
+    return new File(
+      [array],
+      part.filename ?? "Unknown",
+      { type: part.mediaType ?? "application/octet-stream" }
+    )
+  }
+
   return (
     <div
       className={cn(
@@ -102,68 +118,102 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         isUser ? "items-end" : "items-start"
       )}
     >
-      {message.parts.map((part, index) => {
-        /* ---------------- TEXT ---------------- */
+      {(() => {
+        const blocks: React.ReactNode[] = []
 
-        if (part.type === "text") {
-          const content =
-            shouldAnimateTyping && part.state === "streaming"
-              ? typedContent
-              : part.text
+        // guardamos part + índice global
+        let buffer: { part: any; globalIndex: number }[] = []
 
-          return (
+        const flushBuffer = (key: number) => {
+          if (!buffer.length) return
+
+          const textBuffer = buffer.filter(b => b.part.type === "text")
+          const fileBuffer = buffer.filter(b => b.part.type === "file")
+
+          blocks.push(
             <div
-              key={index}
+              key={`bubble-${key}`}
               className={cn(chatBubbleVariants({ isUser, animation }))}
             >
-              <MarkdownRenderer>{content}</MarkdownRenderer>
+              {/* TEXT */}
+              {textBuffer.map(({ part, globalIndex }, i) => {
+                const content =
+                  shouldAnimateTyping && part.state === "streaming"
+                    ? typedContent
+                    : part.text
 
-              {shouldAnimateTyping &&
-                index === lastStreamingTextIndex &&
-                typedContent.length < fullText.length && (<span className="ml-1 animate-pulse">▍</span>
-              )}
+                return (
+                  <div key={`text-${i}`}>
+                    <span className="inline">
+                      <MarkdownRenderer>{content}</MarkdownRenderer>
+                    </span>
+                  </div>
+                )
+              })}
+
+              {/* FILES */}
+              {fileBuffer.map(({ part }, i) => {
+                const browserFile = filePartToBrowserFile(part)
+
+                return (
+                  <div
+                    key={`file-${i}`}
+                    className="mt-3 scale-90 origin-left"
+                  >
+                    <FilePreview file={browserFile} />
+                  </div>
+                )
+              })}
             </div>
           )
+
+          buffer = []
         }
 
-        /* ---------------- REASONING ---------------- */
+        message.parts.forEach((part, index) => {
+          if (part.type === "text" || part.type === "file") {
+            buffer.push({ part, globalIndex: index })
+            return
+          }
 
-        if (part.type === "reasoning") {
-          return (
-            <ReasoningBlock
-              key={index}
-              reasoning={part.text}
-              streaming={part.state === "streaming"}
-            />
-          )
-        }
+          // flush bubble before special block
+          flushBuffer(index)
 
-        /* ---------------- FILE ---------------- */
+          if (part.type === "reasoning") {
+            blocks.push(
+              <ReasoningBlock
+                key={`reasoning-${index}`}
+                reasoning={part.text}
+                streaming={part.state === "streaming"}
+              />
+            )
+            return
+          }
 
-        if (part.type === "file") {
-          return (
-            <div key={index}>
-              <FilePreview file={part} />
-            </div>
-          )
-        }
+          if (isToolPart(part)) {
+            blocks.push(
+              <ToolRenderer
+                key={`tool-${index}`}
+                part={part}
+              />
+            )
+          }
+        })
 
-        /* ---------------- TOOL ---------------- */
+        // flush final bubble
+        flushBuffer(9999)
 
-        if (isToolPart(part)) {
-          return <ToolRenderer key={index} part={part} />
-        }
-
-        return null
-      })}
+        return blocks
+      })()}
 
       {showTimeStamp && createdAt && (
-        <time className="text-xs opacity-50">{formattedTime}</time>
+        <time className="text-xs opacity-50">
+          {formattedTime}
+        </time>
       )}
     </div>
   )
 }
-
 /* -------------------------------------------------------------------------- */
 /*                               ReasoningBlock                                */
 /* -------------------------------------------------------------------------- */

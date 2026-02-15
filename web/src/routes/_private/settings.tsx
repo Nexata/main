@@ -61,7 +61,6 @@ function SettingsPage() {
 			try {
 				setLoading(true);
 				const data = await listCredentials();
-				console.log('[SettingsPage] Credentials from API:', data);
 				if (mounted) setCredentials(data);
 			} catch (err) {
 				console.error(err);

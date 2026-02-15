@@ -20,40 +20,21 @@ export function useBillingMessages() {
 	});
 }
 
-// Embeddings Consumption
-export async function getBillingEmbeds() {
+// Consumptions
+export async function getBillingUsage() {
 	return await withAuthRetry((headers) =>
-		apiClient.admin.billing.embeds.get({
+		apiClient.admin.billing.usage.get({
 			$headers: headers,
 		}),
 	);
 }
 
-export type BillingEmbeds = Awaited<ReturnType<typeof getBillingEmbeds>>;
+export type BillingUsage = Awaited<ReturnType<typeof getBillingUsage>>;
 
-export function useBillingEmbeds() {
-	return useQuery<BillingEmbeds>({
-		queryKey: ['admin', 'billing', 'embeds'],
-		queryFn: getBillingEmbeds,
-		staleTime: 60_000,
-	});
-}
-
-// Storage Consumption
-export async function getBillingStorage() {
-	return await withAuthRetry((headers) =>
-		apiClient.admin.billing.storage.get({
-			$headers: headers,
-		}),
-	);
-}
-
-export type BillingStorage = Awaited<ReturnType<typeof getBillingStorage>>;
-
-export function useBillingStorage() {
-	return useQuery<BillingStorage>({
-		queryKey: ['admin', 'billing', 'storage'],
-		queryFn: getBillingStorage,
+export function useBillingUsage() {
+	return useQuery<BillingUsage>({
+		queryKey: ['admin', 'billing', 'usage'],
+		queryFn: getBillingUsage,
 		staleTime: 60_000,
 	});
 }
