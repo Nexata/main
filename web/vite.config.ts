@@ -22,4 +22,11 @@ export default defineConfig({
 			'@api': path.resolve(__dirname, '../api/src'),
 		},
 	},
+	optimizeDeps: {
+		exclude: [
+			"drizzle-orm",
+			"remark-math",
+			"rehype-katex",
+		],
+	},
 });
