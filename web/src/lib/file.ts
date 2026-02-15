@@ -15,6 +15,21 @@ export type IngestPayload = {
   selection: FileSelectionItem[];
 };
 
+type ListDirPageTokenInput = {
+  pageToken: string;
+};
+
+type ListDirParamsInput = {
+  path?: string | null;
+  recursive?: boolean | null;
+  limit?: number | null;
+};
+
+export type ListDriveDirInput =
+  | ListDirPageTokenInput
+  | ListDirParamsInput;
+
+
 /* ======================================================
    DROPBOX
 ====================================================== */
@@ -59,20 +74,27 @@ export function useIngestFromDropbox() {
 ====================================================== */
 
 // List directory
-export async function listDriveDir(credentialId: string) {
+export async function listDriveDir(
+  credentialId: string,
+  input?: ListDriveDirInput
+) {
   return withAuthRetry((headers) =>
     apiClient.integration.google.drive[credentialId]!.get({
       $headers: headers,
+      query: input,
     })
   );
 }
 
 export type DriveDir = Awaited<ReturnType<typeof listDriveDir>>;
 
-export function useDriveDir(credentialId?: string) {
+export function useDriveDir(
+  credentialId?: string,
+  input?: ListDriveDirInput
+) {
   return useQuery({
-    queryKey: ["drive-dir", credentialId],
-    queryFn: () => listDriveDir(credentialId!),
+    queryKey: ["drive-dir", credentialId, input],
+    queryFn: () => listDriveDir(credentialId!, input),
     enabled: !!credentialId,
   });
 }

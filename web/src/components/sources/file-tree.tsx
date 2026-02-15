@@ -1,9 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
-// import { Progress } from "@/components/ui/progress";
-import { useQuery } from "@tanstack/react-query";
 import { useBillingUsage } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import type { SourceConfig } from "@/lib/available-sources";
@@ -19,6 +17,9 @@ import {
   FileAudio,
   FileVideo,
   ExternalLink,
+  Loader2,
+  ChevronRight,
+  ChevronLeft,
 } from "lucide-react";
 
 type Props = {
@@ -30,33 +31,86 @@ type Entry = {
   id: string;
   name: string;
   url: string;
-  path: string;
   ext: string;
   updatedAt: string;
-  size?: number; // assumed MB
+  size?: number;
 };
 
+type Crumb = { id: string; name: string };
+
 export function StorageFileTree({ credentialId, source }: Props) {
+  const [entries, setEntries] = useState<Entry[]>([]);
+  const [loading, setLoading] = useState(false);
+
+  const [history, setHistory] = useState<Crumb[]>([
+    { id: "root", name: "Root" },
+  ]);
+  const [historyIndex, setHistoryIndex] = useState(0);
+
   const [selected, setSelected] = useState<Set<string>>(new Set());
 
-  const { data, isLoading, error } = useQuery({
-    queryKey: ["file-tree", source.id, credentialId],
-    queryFn: () => {
-      if (!source.getFileTree)
-        throw new Error("Source does not support file listing");
-      return source.getFileTree(credentialId);
-    },
-    enabled: !!credentialId && !!source.getFileTree,
-  });
-
-  const entries: Entry[] = data?.entries ?? [];
+  const current = history[historyIndex];
 
   const { data: usage } = useBillingUsage();
-
   const storageUsed = usage?.storage?.used ?? 0;
   const storageLimit = usage?.storage?.limit ?? 1;
 
-  /* ---------------- ICON SELECTOR ---------------- */
+  /* ---------------- FETCH DIRECTORY ---------------- */
+
+  async function fetchDir(path: string) {
+    if (!source.getFileTree || !credentialId) return;
+
+    setLoading(true);
+
+    try {
+      let cursor: string | null = null;
+      let all: Entry[] = [];
+
+      do {
+        const res = await source.getFileTree(
+          credentialId,
+          cursor ? { pageToken: cursor } : { path }
+        );
+
+        all = [...all, ...(res.entries ?? [])];
+        cursor = res.cursor ?? null;
+      } while (cursor);
+
+      setEntries(all);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    fetchDir(current.id);
+  }, [current.id]);
+
+  /* ---------------- NAVIGATION ---------------- */
+
+  function enterFolder(entry: Entry) {
+    const nextHistory = history.slice(0, historyIndex + 1);
+
+    nextHistory.push({ id: entry.id, name: entry.name });
+
+    setHistory(nextHistory);
+    setHistoryIndex(nextHistory.length - 1);
+  }
+
+  function goBack() {
+    if (historyIndex > 0) setHistoryIndex(historyIndex - 1);
+  }
+
+  function goForward() {
+    if (historyIndex < history.length - 1)
+      setHistoryIndex(historyIndex + 1);
+  }
+
+  function jumpTo(index: number) {
+    setHistoryIndex(index);
+  }
+
+  /* ---------------- ICONS ---------------- */
 
   function getIcon(ext: string) {
     const map: Record<string, any> = {
@@ -68,12 +122,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
       rar: FileArchive,
       zip: FileArchive,
       csv: FileSpreadsheet,
-      xls: FileSpreadsheet,
-      xlsx: FileSpreadsheet,
       png: FileImage,
       jpg: FileImage,
-      jpeg: FileImage,
-      gif: FileImage,
       mp3: FileAudio,
       mp4: FileVideo,
       js: FileCode,
@@ -82,7 +132,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
     };
 
     const Icon = map[ext?.toLowerCase()] ?? File;
-    return <Icon className="h-4 w-4 shrink-0 text-muted-foreground" />;
+
+    return (
+      <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+    );
   }
 
   /* ---------------- SELECTION ---------------- */
@@ -96,14 +149,13 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }
 
   function toggleAll() {
-    if (selected.size === entries.length) {
+    if (selected.size === entries.length)
       setSelected(new Set());
-    } else {
+    else
       setSelected(new Set(entries.map((e) => e.id)));
-    }
   }
 
-  /* ---------------- COMPUTED DATA ---------------- */
+  /* ---------------- STORAGE COMPUTE ---------------- */
 
   const selectedFiles = useMemo(
     () => entries.filter((e) => selected.has(e.id)),
@@ -111,84 +163,115 @@ export function StorageFileTree({ credentialId, source }: Props) {
   );
 
   const selectedSize = selectedFiles.reduce(
-    (sum, f) => sum + (f.size ?? 0),
+    (s, f) => s + (f.size ?? 0),
     0
   );
 
-  const projectedStorage = storageUsed + selectedSize;
-  const remainingStorage = storageLimit - projectedStorage;
-  const usagePercent = Math.min(
-    (projectedStorage / storageLimit) * 100,
-    100
-  );
+  const remaining =
+    storageLimit - (storageUsed + selectedSize);
 
-  /* ---------------- HELPERS ---------------- */
-
-  function formatMB(n: number) {
-    return `${n.toFixed(2)} MB`;
-  }
-
-  function formatDate(d: string) {
-    return new Date(d).toLocaleDateString();
-  }
+  const formatMB = (n: number) => `${n.toFixed(2)} MB`;
+  const formatDate = (d: string) =>
+    new Date(d).toLocaleDateString();
 
   /* ---------------- UI ---------------- */
 
   return (
-    <div className="border rounded-md w-full">
-      <div className="p-4 space-y-2">
+    <div className="pt-4 border-t space-y-3">
+      {/* HEADER */}
+      <div>
         <h4 className="text-sm font-medium">{source.name}</h4>
         <p className="text-xs text-muted-foreground">
           Select files to embed and track storage usage.
         </p>
       </div>
 
-      <Separator />
+      {/* EXPLORER */}
+      <div className="border rounded-md">
+        {/* NAV HEADER */}
+        <div className="flex items-center justify-between px-3 py-2 text-xs">
+          <div className="flex items-center gap-1 min-w-0">
+            <button
+              onClick={goBack}
+              disabled={historyIndex === 0}
+              className="opacity-70 hover:opacity-100 disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
 
-      {/* HEADER SELECT ALL */}
-      <div className="flex items-center gap-2 px-4 py-2">
-        <Checkbox
-          checked={selected.size === entries.length && entries.length > 0}
-          onCheckedChange={toggleAll}
-          className="cursor-pointer"
-        />
-        <span className="text-xs text-muted-foreground">
-          Select all files
-        </span>
-      </div>
+            <button
+              onClick={goForward}
+              disabled={
+                historyIndex === history.length - 1
+              }
+              className="opacity-70 hover:opacity-100 disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
 
-      {/* FILE LIST */}
-      <ScrollArea className="h-72 px-2">
-        <div className="space-y-1 p-2">
-          {isLoading && (
-            <p className="text-xs text-muted-foreground">
-              Loading files…
-            </p>
-          )}
-
-          {error && (
-            <p className="text-xs text-destructive">
-              Failed to load files
-            </p>
-          )}
-
-          {!isLoading &&
-            entries.map((file) => {
-              const checked = selected.has(file.id);
-
-              return (
+            <div className="flex items-center gap-1 truncate">
+              {history.map((crumb, i) => (
                 <div
-                  key={file.id}
-                  className={cn(
-                    "flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-xs transition hover:bg-muted/40",
-                    checked && "bg-muted"
-                  )}
+                  key={crumb.id}
+                  className="flex items-center gap-1"
                 >
-                  <div className="flex items-center gap-3 min-w-0">
+                  {i > 0 && <span>/</span>}
+                  <button
+                    onClick={() => jumpTo(i)}
+                    className={cn(
+                      "truncate hover:underline",
+                      i === historyIndex &&
+                        "font-medium"
+                    )}
+                  >
+                    {crumb.name}
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Checkbox
+              checked={
+                selected.size === entries.length &&
+                entries.length > 0
+              }
+              onCheckedChange={toggleAll}
+            />
+            <span className="text-muted-foreground">
+              Select all
+            </span>
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* FILE LIST */}
+        <ScrollArea className="h-72">
+          {loading && (
+            <div className="flex items-center gap-2 px-3 py-3 text-xs text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Loading…
+            </div>
+          )}
+
+          {!loading &&
+            entries.map((file, i) => (
+              <div key={file.id}>
+                <div
+                  className="flex items-center justify-between px-3 py-2 text-xs hover:bg-muted/40 cursor-pointer"
+                  onDoubleClick={() =>
+                    file.ext === "dir" &&
+                    enterFolder(file)
+                  }
+                >
+                  <div className="flex items-center gap-2 min-w-0">
                     <Checkbox
-                      checked={checked}
-                      onCheckedChange={() => toggle(file.id)}
-                      className="cursor-pointer"
+                      checked={selected.has(file.id)}
+                      onCheckedChange={() =>
+                        toggle(file.id)
+                      }
                     />
 
                     {getIcon(file.ext)}
@@ -197,10 +280,13 @@ export function StorageFileTree({ credentialId, source }: Props) {
                       <a
                         href={file.url}
                         target="_blank"
-                        className="flex items-center gap-1 truncate hover:underline"
+                        className="truncate hover:underline flex gap-1"
+                        onClick={(e) =>
+                          e.stopPropagation()
+                        }
                       >
                         {file.name}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
+                        <ExternalLink className="h-3 w-3" />
                       </a>
 
                       <span className="text-muted-foreground">
@@ -209,49 +295,45 @@ export function StorageFileTree({ credentialId, source }: Props) {
                     </div>
                   </div>
 
-                  <span className="text-muted-foreground shrink-0">
-                    {file.size ? formatMB(file.size) : "—"}
+                  <span className="text-muted-foreground">
+                    {file.size
+                      ? formatMB(file.size)
+                      : "—"}
                   </span>
                 </div>
-              );
-            })}
-        </div>
-      </ScrollArea>
 
-      <Separator />
+                {i !== entries.length - 1 && (
+                  <Separator />
+                )}
+              </div>
+            ))}
+        </ScrollArea>
+      </div>
 
-      {/* FOOTER SUMMARY */}
-      <div className="p-4 space-y-3 text-xs">
+      {/* FOOTER */}
+      <div className="text-xs space-y-1">
         <div className="flex justify-between">
-          <span>
-            Selected: {selectedFiles.length} files
-          </span>
-
-          <span>
-            {formatMB(selectedSize)}
-          </span>
+          <span>Selected files</span>
+          <span>{selectedFiles.length}</span>
         </div>
 
-        <div className="space-y-1">
-          <div className="flex justify-between text-muted-foreground">
-            <span>Storage after import</span>
-            <span>
-              {formatMB(projectedStorage)} / {formatMB(storageLimit)}
-            </span>
-          </div>
-
-          {/*<Progress value={usagePercent} />*/}
+        <div className="flex justify-between">
+          <span>Total size</span>
+          <span>{formatMB(selectedSize)}</span>
         </div>
 
         <div
           className={cn(
-            "text-right",
-            remainingStorage < 0
+            "flex justify-between",
+            remaining < 0
               ? "text-destructive"
               : "text-muted-foreground"
           )}
         >
-          Remaining: {formatMB(Math.max(remainingStorage, 0))}
+          <span>Remaining storage</span>
+          <span>
+            {formatMB(Math.max(remaining, 0))}
+          </span>
         </div>
       </div>
     </div>

@@ -58,20 +58,37 @@ export default function Sidebar() {
   useEffect(() => {
     if (!isResizing) return;
 
+    document.body.style.userSelect = "none";
+    document.body.style.cursor = "col-resize";
+
+    let raf: number;
+
     const handleMouseMove = (e: MouseEvent) => {
-      const newWidth = Math.min(
-        Math.max(e.clientX, MIN_WIDTH),
-        MAX_WIDTH
-      );
-      setSidebarWidth(newWidth);
+      cancelAnimationFrame(raf);
+
+      raf = requestAnimationFrame(() => {
+        const newWidth = Math.min(
+          Math.max(e.clientX, MIN_WIDTH),
+          MAX_WIDTH
+        );
+
+        setSidebarWidth(newWidth);
+      });
     };
 
-    const handleMouseUp = () => { setIsResizing(false); };
+    const handleMouseUp = () => {
+      setIsResizing(false);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
+    };
 
     document.addEventListener("mousemove", handleMouseMove);
     document.addEventListener("mouseup", handleMouseUp);
 
     return () => {
+      cancelAnimationFrame(raf);
+      document.body.style.userSelect = "";
+      document.body.style.cursor = "";
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
@@ -208,7 +225,11 @@ export default function Sidebar() {
         className="h-full flex flex-col relative"
         animate={{ width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
         initial={false}
-        transition={{ width: { type: "spring", stiffness: 300, damping: 30 } }}
+        transition={
+          isResizing
+            ? { duration: 0 }
+            : { width: { type: "spring", stiffness: 300, damping: 30 } }
+        }
       >
         <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md">
           {/* Header */}
