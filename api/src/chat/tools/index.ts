@@ -10,7 +10,7 @@ import {
 	ensureFreshTokens,
 	getCredentialsForUser,
 } from '@api/utils/credential';
-import * as Sentry from '@sentry/bun';
+import { captureException } from '@sentry/bun';
 import { Value } from '@sinclair/typebox/value';
 import { encode } from '@toon-format/toon';
 import { jsonSchema, type ToolSet, tool } from 'ai';
@@ -55,10 +55,11 @@ const toolify = <
 						: res.map((output, i) => mold(output, context, i))
 					: res;
 			} catch (error) {
-				Sentry.captureException(error, {
+				captureException(error, {
 					tags: { source: 'tool' },
 					extra: { input },
 				});
+
 				throw error;
 			}
 		},

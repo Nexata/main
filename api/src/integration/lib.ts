@@ -5,6 +5,7 @@ import { FileHost } from '@api/schema';
 export type NexataListDirEntry = {
 	id: string;
 	name: string;
+	// TODO: alreadyIngested: boolean;
 	url?: string;
 	size?: number; // in MB
 	path?: string;

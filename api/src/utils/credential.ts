@@ -13,6 +13,7 @@ import {
 import type { JwtPayload } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { providerRefreshers } from '@api/utils/token-refresh';
+import { captureException } from '@sentry/bun';
 import { and, eq, inArray, ne } from 'drizzle-orm';
 
 const CACHE_TTL = 12 * 60 * 60;
@@ -374,7 +375,11 @@ export async function userHasCredential(
 	try {
 		await getTokensForUser(activeUser, credentialId, adminExpected);
 		return true;
-	} catch {
+	} catch (error) {
+		captureException(error, {
+			tags: { source: 'userHasCredential' },
+			extra: { activeUser, credentialId, adminExpected },
+		});
 		return false;
 	}
 }
