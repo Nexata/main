@@ -157,3 +157,42 @@ export function useEditTenant() {
 		return res;
 	};
 }
+
+// Admin Trace
+export type TraceType =
+	Parameters<typeof apiClient.admin.trace.get>[0]['$query']['type'] extends
+		| (infer T)[]
+		| null
+		| undefined
+		? T : never;
+
+export type AdminTraceParams = {
+	type?: TraceType[] | null;
+	userId?: string[] | null;
+	from?: Date | null;
+	to?: Date | null;
+	cursor?: Date | null;
+	limit?: number;
+};
+
+export async function getAdminTrace(params: AdminTraceParams = {}) {
+	return await withAuthRetry((headers) =>
+		apiClient.admin.trace.get({
+			$headers: headers,
+			$query: {
+				limit: params.limit ?? 100,
+				...params,
+			},
+		}),
+	);
+}
+
+export type AdminTrace = Awaited<ReturnType<typeof getAdminTrace>>;
+
+export function useAdminTrace(params: AdminTraceParams = {}) {
+	return useQuery<AdminTrace>({
+		queryKey: ['admin', 'trace', params],
+		queryFn: () => getAdminTrace(params),
+		staleTime: 60_000,
+	});
+}

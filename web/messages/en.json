@@ -237,14 +237,6 @@
 			"tenant_name": "Company Name",
 			"tenant_logo": "Company Logo"
 		},
-		"usage": {
-			"title": "Message usage",
-			"description": "Visualization of message consumption and key activity metrics.",
-			"chart_type": {
-				"bars": "Bars",
-				"lines": "Lines"
-			}
-		},
 		"users": {
 			"title": "Users",
 			"description": "Manage the users that belong to your Nexata organization.",

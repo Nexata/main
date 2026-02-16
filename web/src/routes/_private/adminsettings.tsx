@@ -12,16 +12,6 @@ import {
 	TrendingUp,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import {
-	Bar,
-	BarChart,
-	Line,
-	LineChart,
-	ResponsiveContainer,
-	Tooltip,
-	XAxis,
-	YAxis,
-} from 'recharts';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 import { infoToast } from '@/components/info-toast/info-toast';
@@ -37,12 +27,6 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from '@/components/ui/dialog';
-import {
-	DropdownMenu,
-	DropdownMenuContent,
-	DropdownMenuItem,
-	DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -65,6 +49,24 @@ import {
 } from '@/lib/admin';
 import { useMyTenant } from '@/lib/user';
 import { UsageBar } from '@/components/usage-bar/usage-bar'
+import { useAdminTrace } from '@/lib/admin';
+import { format } from 'date-fns';
+import { CalendarIcon } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import {
+	Table,
+	TableBody,
+	TableCell,
+	TableFooter,
+	TableHead,
+	TableHeader,
+	TableRow,
+} from '@/components/ui/table';
+import {
+	Popover,
+	PopoverContent,
+	PopoverTrigger,
+} from '@/components/ui/popover';
 import {
 	'admin.company_overview.buy_messages' as admin_company_overview_buy_messages,
 	'admin.company_overview.current_plan' as admin_company_overview_current_plan,
@@ -82,10 +84,6 @@ import {
 	'admin.header.subtitle' as admin_header_subtitle,
 	'admin.header.title' as admin_header_title,
 	'admin.meta.title' as admin_meta_title,
-	'admin.usage.chart_type.bars' as admin_usage_chart_type_bars,
-	'admin.usage.chart_type.lines' as admin_usage_chart_type_lines,
-	'admin.usage.description' as admin_usage_description,
-	'admin.usage.title' as admin_usage_title,
 	'admin.users.actions.display_name' as admin_users_actions_display_name,
 	'admin.users.actions.edit' as admin_users_actions_edit,
 	'admin.users.actions.img' as admin_users_actions_img,
@@ -111,6 +109,7 @@ import {
 	'common.loading' as common_loading,
 	'common.save_changes' as common_save_changes,
 } from '@/paraglide/messages.js';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -171,8 +170,8 @@ function AdminSettingsPage() {
 
 			<div className="h-px bg-border" />
 
-			<CompanyOverviewSection />
-			<UsageChartSection />
+      <CompanyOverviewSection />
+			<TraceEventsSection />
 			<UsersSection />
 		</div>
 	);
@@ -411,141 +410,177 @@ function CompanyOverviewSection() {
 }
 
 /* -------------------------------------------------------------------------- */
-/*                             UsageChartSection                              */
+/*                              Traces Table                                  */
 /* -------------------------------------------------------------------------- */
 
-function UsageChartSection() {
-	const [type, setType] = useState<'bars' | 'lines'>('bars');
+function TraceEventsSection() {
+	const PAGE_SIZES = [5, 10, 20] as const;
+	const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(5);
+	const [page, setPage] = useState(1);
+	const [type, setType] = useState<'all' | 'message_sent'>('all');
+	const [date, setDate] = useState<Date | undefined>();
 
-	const data = [
-		{ name: 'Juan', mensajes: 120 },
-		{ name: 'María', mensajes: 90 },
-		{ name: 'Pedro', mensajes: 70 },
-		{ name: 'Ana', mensajes: 150 },
-	];
+	const { data, isLoading } = useAdminTrace({
+		//type: type === 'all' ? null : ['message_sent'],
+		// from: date ?? null,
+		// to: date ?? null,
+		limit: 100,
+	});
 
-	function ChartTooltip({ active, payload, label }: any) {
-		if (!active || !payload?.length) return null;
+	// LOG PARA INSPECCIONAR RESPUESTA
+	useEffect(() => {
+		console.log('TRACE RESPONSE:', data);
+	}, [data]);
 
-		return (
-			<div className="rounded-lg border border-border bg-card px-3 py-2 shadow-md">
-				<p className="text-xs text-muted-foreground">{label}</p>
-				<p className="text-sm font-medium text-foreground">
-					{payload[0].value} mensajes
-				</p>
-			</div>
-		);
-	}
+	const events = data ?? [];
 
-	function MetricItem({ label, value }: { label: string; value: string }) {
-		return (
-			<div className="space-y-1">
-				<p className="text-xs text-muted-foreground">{label}</p>
-				<p className="text-lg font-semibold text-foreground">{value}</p>
-			</div>
-		);
-	}
+	const filtered = events.filter((e: any) => {
+		if (!date) return true;
+		const d = new Date(e.createdAt);
+		return d.toDateString() === date.toDateString();
+	});
+
+	const totalPages = Math.ceil(filtered.length / pageSize);
+
+	const paginated = filtered.slice(
+		(page - 1) * pageSize,
+		page * pageSize,
+	);
 
 	return (
 		<Card className="bg-sidebar">
 			<CardContent className="p-6 space-y-4">
+				{/* Header */}
 				<div>
-					<h2 className="text-lg font-semibold">{admin_usage_title()}</h2>
-					<div className="flex justify-between items-center">
-						<p className="text-sm text-muted-foreground">
-							{admin_usage_description()}
-						</p>
-						<DropdownMenu>
-							<DropdownMenuTrigger>
-								<Button variant="outline" size="sm" className="cursor-pointer">
-									{type === 'bars'
-										? admin_usage_chart_type_bars()
-										: admin_usage_chart_type_lines()}
-								</Button>
-							</DropdownMenuTrigger>
-
-							<DropdownMenuContent>
-								<DropdownMenuItem onClick={() => setType('bars')}>
-									{admin_usage_chart_type_bars()}
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setType('lines')}>
-									{admin_usage_chart_type_lines()}
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
-					</div>
+					<h2 className="text-lg font-semibold">
+						Event Trace
+					</h2>
+					<p className="text-sm text-muted-foreground">
+						Monitor system activity and trace events.
+					</p>
 				</div>
 
 				<Separator />
 
-				<div className="h-56 rounded-xl border border-border bg-muted/40 p-3">
-					<ResponsiveContainer width="100%" height="100%">
-						{type === 'bars' ? (
-							<BarChart data={data}>
-								<XAxis
-									dataKey="name"
-									stroke="var(--muted-foreground)"
-									tickLine={false}
-									axisLine={false}
-								/>
-								<YAxis
-									stroke="var(--muted-foreground)"
-									tickLine={false}
-									axisLine={false}
-								/>
-								<Tooltip content={<ChartTooltip />} cursor={false} />
-								<Bar
-									dataKey="mensajes"
-									fill="var(--primary)"
-									radius={6}
-									activeBar={{
-										fill: 'var(--primary)',
-										opacity: 1,
-										stroke: 'var(--primary)',
-										strokeWidth: 1,
-									}}
-								/>
-							</BarChart>
-						) : (
-							<LineChart data={data}>
-								<XAxis
-									dataKey="name"
-									stroke="var(--muted-foreground)"
-									tickLine={false}
-									axisLine={false}
-								/>
-								<YAxis
-									stroke="var(--muted-foreground)"
-									tickLine={false}
-									axisLine={false}
-								/>
-								<Tooltip content={<ChartTooltip />} cursor={false} />
-								<Line
-									type="monotone"
-									dataKey="mensajes"
-									stroke="var(--primary)"
-									strokeWidth={3}
-									dot={{ r: 4, fill: 'var(--primary)', opacity: 0.6 }}
-									activeDot={{
-										r: 6,
-										fill: 'var(--primary)',
-										stroke: 'var(--background)',
-										strokeWidth: 2,
-									}}
-								/>
-							</LineChart>
-						)}
-					</ResponsiveContainer>
+				{/* Filters */}
+				<div className="flex gap-2">
+					<DropdownMenu>
+						<DropdownMenuTrigger>
+							<Button variant="outline" size="sm">
+								{type === 'all' ? 'All events' : 'Message sent'}
+							</Button>
+						</DropdownMenuTrigger>
+
+						<DropdownMenuContent>
+							<DropdownMenuItem onClick={() => setType('all')}>
+								All events
+							</DropdownMenuItem>
+							<DropdownMenuItem onClick={() => setType('message_sent')}>
+								Message sent
+							</DropdownMenuItem>
+						</DropdownMenuContent>
+					</DropdownMenu>
+
+					<Popover>
+						<PopoverTrigger>
+							<Button variant="outline" size="sm">
+								<CalendarIcon className="mr-2 h-4 w-4" />
+								{date ? format(date, 'PPP') : 'Filter by date'}
+							</Button>
+						</PopoverTrigger>
+
+						<PopoverContent className="p-0">
+							<Calendar
+								mode="single"
+								selected={date}
+								onSelect={setDate}
+							/>
+						</PopoverContent>
+					</Popover>
 				</div>
-				{/* Extra info */}
-				<div className="grid grid-cols-1 sm:grid-cols-4 gap-4 place-items-center rounded-xl border border-border bg-muted/30 p-4">
-					<MetricItem label="Total de mensajes" value="430" />
 
-					<MetricItem label="Usuario más activo" value="Ana" />
+				{/* Table */}
+				<div className="rounded-lg border overflow-hidden">
+					<Table>
+						<TableHeader className="bg-muted/50">
+							<TableRow>
+								<TableHead>Date</TableHead>
+								<TableHead>Type</TableHead>
+								<TableHead>User</TableHead>
+								<TableHead>Metadata</TableHead>
+							</TableRow>
+						</TableHeader>
 
-					<MetricItem label="Pico máximo" value="150" />
+						<TableBody>
+							{isLoading && (
+								<TableRow>
+									<TableCell colSpan={4} className="text-center">
+										Loading…
+									</TableCell>
+								</TableRow>
+							)}
 
-					<MetricItem label="Hora mas activa" value="10AM - 11AM" />
+							{!isLoading && paginated.length === 0 && (
+								<TableRow>
+									<TableCell colSpan={4} className="text-center text-muted-foreground">
+										No events found
+									</TableCell>
+								</TableRow>
+							)}
+
+							{paginated.map((e: any, i: number) => (
+								<TableRow key={i}>
+									<TableCell>
+										{format(new Date(e.createdAt), 'PPP p')}
+									</TableCell>
+
+									<TableCell>
+										<span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+											{e.type}
+										</span>
+									</TableCell>
+
+									<TableCell className="text-muted-foreground">
+										{e.userId ?? 'system'}
+									</TableCell>
+
+									<TableCell className="text-xs">
+										{JSON.stringify(e.meta ?? {})}
+									</TableCell>
+								</TableRow>
+							))}
+						</TableBody>
+
+						<TableFooter className="bg-muted/50">
+							<TableRow>
+								<TableCell colSpan={2}>
+									Page {page} / {totalPages || 1}
+								</TableCell>
+
+								<TableCell colSpan={2}>
+									<div className="flex justify-end gap-2">
+										<Button
+											size="sm"
+											variant="outline"
+											disabled={page === 1}
+											onClick={() => setPage(p => p - 1)}
+										>
+											Prev
+										</Button>
+
+										<Button
+											size="sm"
+											variant="outline"
+											disabled={page === totalPages}
+											onClick={() => setPage(p => p + 1)}
+										>
+											Next
+										</Button>
+									</div>
+								</TableCell>
+							</TableRow>
+						</TableFooter>
+					</Table>
 				</div>
 			</CardContent>
 		</Card>
