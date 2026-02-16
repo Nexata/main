@@ -129,7 +129,7 @@ export namespace Drive {
 	}
 
 	function buildSearchQuery(
-		input: Exclude<Static<typeof searchInput>, { pageToken: string }>,
+		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = ['trashed = false'];
 
@@ -187,7 +187,7 @@ export namespace Drive {
 		'Google Drive tool to search for files using Drive query syntax.',
 		t.Union([
 			t.Object({
-				pageToken: t.String({
+				cursor: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
@@ -240,9 +240,9 @@ export namespace Drive {
 		input: Static<typeof searchInput>,
 	): Promise<NexataListDir> {
 		const res =
-			'pageToken' in input
+			'cursor' in input
 				? await drv.files.list({
-						pageToken: input.pageToken,
+						pageToken: input.cursor,
 						fields: `nextPageToken, files(${FILE_FIELDS})`,
 					})
 				: await drv.files.list({
@@ -264,7 +264,7 @@ export namespace Drive {
 		'Lists files and folders in a Google Drive directory.',
 		t.Union([
 			t.Object({
-				pageToken: t.String({
+				cursor: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
@@ -291,9 +291,9 @@ export namespace Drive {
 		drv: drive_v3.Drive,
 		input: Static<typeof listDirInput>,
 	): Promise<NexataListDir> {
-		if ('pageToken' in input) {
+		if ('cursor' in input) {
 			const res = await drv.files.list({
-				pageToken: input.pageToken,
+				pageToken: input.cursor,
 				fields: `nextPageToken, files(${FILE_FIELDS})`,
 			});
 
