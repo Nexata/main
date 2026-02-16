@@ -2,10 +2,12 @@ import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
 import { getMimeTypeFromExt } from '@api/file/lib/types';
-import type {
-	IngestSelection,
-	NexataListDir,
-	NexataListDirEntry,
+import {
+	getIngestedDirIds,
+	getIngestedFileIds,
+	type IngestSelection,
+	type NexataListDir,
+	type NexataListDirEntry,
 } from '@api/integration/lib';
 import {
 	credential,
@@ -24,6 +26,7 @@ import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { refreshDropboxTokens } from '@api/utils/token-refresh';
 import { Nullish, tObject } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
@@ -125,20 +128,35 @@ export namespace Dropbox {
 		if (res.status !== 200)
 			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
+		const entries = res.result.matches
+			// biome-ignore lint/suspicious/noExplicitAny: Dropbox miss-type
+			.flatMap((e) => (e.metadata as unknown as any).metadata)
+			.map((e) => ({
+				id: e.id ?? e.path_lower,
+				name: e.name,
+				url: `https://www.dropbox.com/home${e.path_lower}`,
+				size: e.size ? e.size / (1024 * 1024) : undefined,
+				path: e.path_display,
+				ext: e['.tag'] === 'folder' ? 'dir' : e.name.split('.').pop(),
+				updatedAt: e.server_modified ?? new Date(e.server_modified),
+			}));
+
+		const fileIds = entries.filter((e) => e.ext !== 'dir').map((e) => e.id);
+		const dirIds = entries.filter((e) => e.ext === 'dir').map((e) => e.id);
+		const [ingestedFiles, ingestedDirs] = await Promise.all([
+			getIngestedFileIds(fileIds, FileHost.DROPBOX),
+			getIngestedDirIds(dirIds, FileHost.DROPBOX),
+		]);
+
 		return {
 			cursor: res.result.has_more ? (res.result.cursor ?? null) : null,
-			entries: res.result.matches
-				// biome-ignore lint/suspicious/noExplicitAny: Dropbox miss-type
-				.flatMap((e) => (e.metadata as unknown as any).metadata)
-				.map((e) => ({
-					id: e.id ?? e.path_lower,
-					name: e.name,
-					url: `https://www.dropbox.com/home${e.path_lower}`,
-					size: e.size ? e.size / (1024 * 1024) : undefined,
-					path: e.path_display,
-					ext: e['.tag'] === 'folder' ? 'dir' : e.name.split('.').pop(),
-					updatedAt: e.server_modified ?? new Date(e.server_modified),
-				})),
+			entries: entries.map((e) => ({
+				...e,
+				alreadyIngested:
+					e.ext === 'dir'
+						? ingestedDirs.includes(e.id)
+						: ingestedFiles.includes(e.id),
+			})),
 		};
 	}
 
@@ -185,19 +203,34 @@ export namespace Dropbox {
 		if (res.status !== 200)
 			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
+		const entries = res.result.entries.map((e) => ({
+			// @ts-expect-error
+			id: e.id ?? e.path_lower,
+			name: e.name,
+			url: `https://www.dropbox.com/home${e.path_lower}`,
+			// @ts-expect-error
+			size: e.size ? e.size / (1024 * 1024) : undefined,
+			path: e.path_display,
+			ext: e['.tag'] === 'folder' ? 'dir' : e.name.split('.').pop(),
+			// @ts-expect-error
+			updatedAt: e.server_modified ?? new Date(e.server_modified),
+		}));
+
+		const fileIds = entries.filter((e) => e.ext !== 'dir').map((e) => e.id);
+		const dirIds = entries.filter((e) => e.ext === 'dir').map((e) => e.id);
+		const [ingestedFiles, ingestedDirs] = await Promise.all([
+			getIngestedFileIds(fileIds, FileHost.DROPBOX),
+			getIngestedDirIds(dirIds, FileHost.DROPBOX),
+		]);
+
 		return {
 			cursor: res.result.has_more ? res.result.cursor : null,
-			entries: res.result.entries.map((e) => ({
-				// @ts-expect-error
-				id: e.id ?? e.path_lower,
-				name: e.name,
-				url: `https://www.dropbox.com/home${e.path_lower}`,
-				// @ts-expect-error
-				size: e.size ? e.size / (1024 * 1024) : undefined,
-				path: e.path_display,
-				ext: e['.tag'] === 'folder' ? 'dir' : e.name.split('.').pop(),
-				// @ts-expect-error
-				updatedAt: e.server_modified ?? new Date(e.server_modified),
+			entries: entries.map((e) => ({
+				...e,
+				alreadyIngested:
+					e.ext === 'dir'
+						? ingestedDirs.includes(e.id)
+						: ingestedFiles.includes(e.id),
 			})),
 		};
 	}
@@ -285,6 +318,11 @@ export namespace Dropbox {
 
 			return result;
 		} catch (error) {
+			captureException(error, {
+				tags: { source: 'Dropbox.ingestFile' },
+				extra: { userId, entry },
+			});
+
 			await db.insert(trace).values({
 				userId,
 				type: TraceType.INGEST_FAILED,
@@ -462,6 +500,7 @@ export namespace Dropbox {
 			url: `https://www.dropbox.com/home${e.path_lower}`,
 			path: e.path_display,
 			ext: 'dir',
+			alreadyIngested: false,
 		};
 	}
 
@@ -485,6 +524,7 @@ export namespace Dropbox {
 			ext: e.name.split('.').pop(),
 			// @ts-expect-error
 			updatedAt: e.server_modified ? new Date(e.server_modified) : undefined,
+			alreadyIngested: false,
 		};
 	}
 }

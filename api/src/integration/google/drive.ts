@@ -3,10 +3,12 @@ import { db } from '@api/env';
 import { NexataFile } from '@api/file';
 import { getMimeTypeFromExt } from '@api/file/lib/types';
 import { Google } from '@api/integration/google/lib';
-import type {
-	IngestSelection,
-	NexataListDir,
-	NexataListDirEntry,
+import {
+	getIngestedDirIds,
+	getIngestedFileIds,
+	type IngestSelection,
+	type NexataListDir,
+	type NexataListDirEntry,
 } from '@api/integration/lib';
 import {
 	credential,
@@ -25,6 +27,7 @@ import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { drive, type drive_v3 } from '@googleapis/drive';
+import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
 
@@ -160,17 +163,12 @@ export namespace Drive {
 
 	function mapFileToEntry(f: drive_v3.Schema$File): NexataListDirEntry {
 		const isFolder = f.mimeType === FOLDER_MIME_TYPE;
-		let ext: string | undefined;
-
-		if (isFolder) {
-			ext = 'dir';
-		} else if (f.name) {
-			ext = f.name.split('.').pop();
-		}
+		const ext = isFolder ? 'dir' : f.name ? f.name.split('.').pop() : undefined;
 
 		return {
 			id: f.id!,
 			name: f.name ?? 'Unknown',
+			alreadyIngested: false,
 			url:
 				f.webViewLink ??
 				(isFolder
@@ -254,9 +252,24 @@ export namespace Drive {
 		if (res.status !== 200)
 			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 
+		const entries = (res.data.files ?? []).map(mapFileToEntry);
+
+		const fileIds = entries.filter((e) => e.ext !== 'dir').map((e) => e.id);
+		const dirIds = entries.filter((e) => e.ext === 'dir').map((e) => e.id);
+		const [ingestedFiles, ingestedDirs] = await Promise.all([
+			getIngestedFileIds(fileIds, FileHost.DRIVE),
+			getIngestedDirIds(dirIds, FileHost.DRIVE),
+		]);
+
 		return {
 			cursor: res.data.nextPageToken ?? null,
-			entries: (res.data.files ?? []).map(mapFileToEntry),
+			entries: entries.map((e) => ({
+				...e,
+				alreadyIngested:
+					e.ext === 'dir'
+						? ingestedDirs.includes(e.id)
+						: ingestedFiles.includes(e.id),
+			})),
 		};
 	}
 
@@ -287,6 +300,25 @@ export namespace Drive {
 		]),
 	];
 
+	async function enrichEntries(
+		entries: NexataListDirEntry[],
+	): Promise<NexataListDirEntry[]> {
+		const fileIds = entries.filter((e) => e.ext !== 'dir').map((e) => e.id);
+		const dirIds = entries.filter((e) => e.ext === 'dir').map((e) => e.id);
+		const [ingestedFiles, ingestedDirs] = await Promise.all([
+			getIngestedFileIds(fileIds, FileHost.DRIVE),
+			getIngestedDirIds(dirIds, FileHost.DRIVE),
+		]);
+
+		return entries.map((e) => ({
+			...e,
+			alreadyIngested:
+				e.ext === 'dir'
+					? ingestedDirs.includes(e.id)
+					: ingestedFiles.includes(e.id),
+		}));
+	}
+
 	export async function listDir(
 		drv: drive_v3.Drive,
 		input: Static<typeof listDirInput>,
@@ -302,7 +334,9 @@ export namespace Drive {
 
 			return {
 				cursor: res.data.nextPageToken ?? null,
-				entries: (res.data.files ?? []).map(mapFileToEntry),
+				entries: await enrichEntries(
+					(res.data.files ?? []).map(mapFileToEntry),
+				),
 			};
 		}
 
@@ -337,7 +371,7 @@ export namespace Drive {
 
 		return {
 			cursor: res.data.nextPageToken ?? null,
-			entries,
+			entries: await enrichEntries(entries),
 		};
 	}
 
@@ -485,6 +519,11 @@ export namespace Drive {
 
 			return result;
 		} catch (error) {
+			captureException(error, {
+				tags: { source: 'Drive.ingestFile' },
+				extra: { userId, entry },
+			});
+
 			await db.insert(trace).values({
 				userId,
 				type: TraceType.INGEST_FAILED,
@@ -515,6 +554,7 @@ export namespace Drive {
 		return {
 			id: res.data.id!,
 			name: res.data.name!,
+			alreadyIngested: false,
 			url:
 				res.data.webViewLink ??
 				`https://drive.google.com/drive/folders/${res.data.id}`,

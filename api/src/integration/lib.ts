@@ -1,11 +1,13 @@
+import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
 import { Drive } from '@api/integration/google/drive';
-import { FileHost } from '@api/schema';
+import { externalDir, FileHost, file } from '@api/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 
 export type NexataListDirEntry = {
 	id: string;
 	name: string;
-	// TODO: alreadyIngested: boolean;
+	alreadyIngested: boolean;
 	url?: string;
 	size?: number; // in MB
 	path?: string;
@@ -13,6 +15,35 @@ export type NexataListDirEntry = {
 	updatedAt?: Date;
 	extra?: object;
 };
+
+export async function getIngestedFileIds(
+	ids: string[],
+	provider: FileHost,
+): Promise<string[]> {
+	if (!ids.length) return [];
+	const rows = await db
+		.select({ externalId: file.externalId })
+		.from(file)
+		.where(and(eq(file.provider, provider), inArray(file.externalId, ids)));
+	return rows.map((r) => r.externalId!);
+}
+
+export async function getIngestedDirIds(
+	ids: string[],
+	provider: FileHost,
+): Promise<string[]> {
+	if (!ids.length) return [];
+	const rows = await db
+		.select({ externalId: externalDir.externalId })
+		.from(externalDir)
+		.where(
+			and(
+				eq(externalDir.provider, provider),
+				inArray(externalDir.externalId, ids),
+			),
+		);
+	return rows.map((r) => r.externalId);
+}
 
 export type NexataListDir = {
 	cursor: string | null;

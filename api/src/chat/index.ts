@@ -92,7 +92,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			let fileSystemMessage: PartialMessage | undefined;
 
 			if (body.files?.length) {
-				const fileIds = body.files.map(() => crypto.randomUUID());
+				fileIds.push(...body.files.map(() => crypto.randomUUID()));
 
 				const insertedFiles = await Promise.all(
 					body.files.map((f, i) =>

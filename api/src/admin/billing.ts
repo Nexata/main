@@ -9,7 +9,7 @@ import {
 } from '@api/schema';
 import { getMessageCount } from '@api/utils/chat';
 import { tObject } from '@api/utils/type';
-import { and, desc, eq, isNull, or, sql, sum } from 'drizzle-orm';
+import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
