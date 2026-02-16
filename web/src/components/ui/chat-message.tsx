@@ -133,15 +133,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         // guardamos part + índice global
         let buffer: { part: any; globalIndex: number }[] = []
 
-        const flushBuffer = (key: number) => {
+        const flushBuffer = () => {
           if (!buffer.length) return
+
+          const firstIndex = buffer[0]?.globalIndex
+          const lastIndex = buffer[buffer.length - 1]?.globalIndex
+          const bubbleKey = `bubble-${firstIndex}-${lastIndex}`
+
 
           const textBuffer = buffer.filter(b => b.part.type === "text")
           const fileBuffer = buffer.filter(b => b.part.type === "file")
 
           blocks.push(
             <div
-              key={`bubble-${key}`}
+              key={bubbleKey}
               className={cn(chatBubbleVariants({ isUser, animation }))}
             >
               {/* TEXT */}
@@ -184,7 +189,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           }
 
           // flush bubble before special block
-          flushBuffer(index)
+          flushBuffer()
 
           if (part.type === "reasoning") {
             blocks.push(
@@ -208,7 +213,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         })
 
         // flush final bubble
-        flushBuffer(9999)
+        flushBuffer()
 
         return blocks
       })()}
