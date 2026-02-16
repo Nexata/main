@@ -87,12 +87,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [history, setHistory] = useState<Crumb[]>([
-    { id: "root", name: "Root" },
-  ]);
+  const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: "Root" }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ingesting, setIngesting] = useState(false);
 
   const current = history[historyIndex];
 
@@ -212,8 +211,27 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const remaining = storageLimit - (storageUsed + selectedSize);
 
   const formatMB = (n: number) => `${n.toFixed(2)} MB`;
-  const formatDate = (d: string) =>
-    new Date(d).toLocaleDateString();
+  const formatDate = (d: string) => new Date(d).toLocaleDateString();
+
+  async function handleConfirm() {
+  	if (!source.ingest || selectedFiles.length === 0) return;
+
+  	setIngesting(true);
+
+  	try {
+  		await source.ingest({
+  			credentialId,
+  			selection: selectedFiles.map(file => ({
+  				id: file.id,
+  				isDir: file.ext === "dir",
+  			})),
+  		});
+  	} catch (err) {
+  		console.error("Ingest failed:", err);
+  	} finally {
+  		setIngesting(false);
+  	}
+  }
 
   /* UI */
 
@@ -403,8 +421,14 @@ export function StorageFileTree({ credentialId, source }: Props) {
             </Button>
 
             <div className="flex flex-col items-end">
-              <Button size="sm" disabled={selected.size === 0 || remaining < 0}>
-                Confirm
+              <Button
+               	size="sm"
+               	onClick={handleConfirm}
+               	disabled={selected.size === 0 || remaining < 0 ||
+                		ingesting
+               	}
+              >
+               	{ingesting ? "Processing…" : "Confirm"}
               </Button>
 
               {remaining < 0 && (
