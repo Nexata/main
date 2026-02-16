@@ -80,7 +80,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   const lastTextPartGlobalIndex = (() => {
     for (let i = message.parts.length - 1; i >= 0; i--) {
-      if (message.parts[i].type === "text") return i
+      if (message.parts[i]?.type === "text") return i
     }
     return -1
   })()
@@ -137,10 +137,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             >
               {/* TEXT */}
               {textBuffer.map(({ part, globalIndex }, i) => {
-                const content =
-                  shouldAnimateTyping && part.state === "streaming"
-                    ? typedContent
-                    : part.text
+                const isLastStreamingText =
+                  shouldAnimateTyping &&
+                  part.state === "streaming" &&
+                  globalIndex === lastTextPartGlobalIndex
+
+                const content = isLastStreamingText ? typedContent : part.text
 
                 return (
                   <div key={`text-${i}`}>
