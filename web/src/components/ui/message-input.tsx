@@ -253,7 +253,7 @@ export function MessageInput({
           },
         }}
         className={cn(
-          "relative w-full border bg-background px-2 py-2",
+          "relative w-full border bg-muted shadow-sm px-2 py-2",
           isExpanded ? "flex flex-col gap-2" : "flex items-center gap-2"
         )}
       >
