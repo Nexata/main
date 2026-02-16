@@ -30,22 +30,35 @@ export type ListDriveDirInput =
   | ListDirParamsInput;
 
 
-function normalizeDirInput(
-  input?: ListDriveDirInput
-): ListDriveDirInput {
-  if (!input) return {};
+  function normalizeDirInput(
+    input?: ListDriveDirInput
+  ):
+    | { cursor: string }
+    | {
+        path?: string;
+        recursive?: boolean;
+        limit?: number;
+      } {
+    if (!input) return {};
 
-  if ("pageToken" in input) return input;
+    // translate pageToken -> cursor
+    if ("pageToken" in input) {
+      return { cursor: input.pageToken };
+    }
 
-  const clean: ListDirParamsInput = {};
+    const clean: {
+      path?: string;
+      recursive?: boolean;
+      limit?: number;
+    } = {};
 
-  if (input.path !== undefined) clean.path = input.path;
-  if (input.recursive !== undefined)
-    clean.recursive = input.recursive;
-  if (input.limit !== undefined) clean.limit = input.limit;
+    if (input.path !== undefined) clean.path = input.path;
+    if (input.recursive !== undefined)
+      clean.recursive = input.recursive;
+    if (input.limit !== undefined) clean.limit = input.limit;
 
-  return clean;
-}
+    return clean;
+  }
 
 /* ======================================================
    DROPBOX

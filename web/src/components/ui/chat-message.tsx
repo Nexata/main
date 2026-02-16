@@ -69,18 +69,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isAssistant = message.role === "assistant"
 
   const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
-  const fullText = textParts.map((p) => p.text).join("")
+  const lastStreamingTextPart = [...message.parts]
+    .reverse()
+    .find(
+      (p): p is Extract<typeof p, { type: "text" }> =>
+        p.type === "text" && p.state === "streaming"
+    )
 
   const shouldAnimateTyping =
     isAssistant &&
     !disableTypingAnimation &&
     textParts.some((p) => p.state === "streaming")
 
-  const typedContent = useTypingText(fullText, shouldAnimateTyping, 4)
+  const typedContent = useTypingText(
+    lastStreamingTextPart?.text ?? "",
+    shouldAnimateTyping,
+    4
+  )
 
   const lastTextPartGlobalIndex = (() => {
     for (let i = message.parts.length - 1; i >= 0; i--) {
-      if (message.parts[i].type === "text") return i
+      if (message.parts[i]?.type === "text") return i
     }
     return -1
   })()
@@ -124,23 +133,26 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         // guardamos part + índice global
         let buffer: { part: any; globalIndex: number }[] = []
 
-        const flushBuffer = (key: number) => {
+        const flushBuffer = () => {
           if (!buffer.length) return
+
+          const firstIndex = buffer[0]?.globalIndex
+          const lastIndex = buffer[buffer.length - 1]?.globalIndex
+          const bubbleKey = `bubble-${firstIndex}-${lastIndex}`
+
 
           const textBuffer = buffer.filter(b => b.part.type === "text")
           const fileBuffer = buffer.filter(b => b.part.type === "file")
 
           blocks.push(
             <div
-              key={`bubble-${key}`}
+              key={bubbleKey}
               className={cn(chatBubbleVariants({ isUser, animation }))}
             >
               {/* TEXT */}
               {textBuffer.map(({ part, globalIndex }, i) => {
-                const content =
-                  shouldAnimateTyping && part.state === "streaming"
-                    ? typedContent
-                    : part.text
+                const isStreamingPart = shouldAnimateTyping && part === lastStreamingTextPart
+                const content = isStreamingPart ? typedContent : part.text
 
                 return (
                   <div key={`text-${i}`}>
@@ -177,7 +189,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           }
 
           // flush bubble before special block
-          flushBuffer(index)
+          flushBuffer()
 
           if (part.type === "reasoning") {
             blocks.push(
@@ -201,7 +213,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         })
 
         // flush final bubble
-        flushBuffer(9999)
+        flushBuffer()
 
         return blocks
       })()}

@@ -99,10 +99,26 @@
 			}
 		},
 
-		"file_tree":{
-		  "disclaimer_title": "Estimación de almacenamiento:",
-		  "disclaimer_title_description": "Los valores mostrados son aproximados. En la mayoría de los casos, la optimización inteligente de Nexata reduce el consumo real, permitiéndote almacenar más de lo indicado y aprovechar mejor tu espacio disponible."
-		}
+		"file_tree": {
+      "disclaimer_title": "Estimación de almacenamiento:",
+      "disclaimer_title_description": "Los valores mostrados son aproximados. En la mayoría de los casos, la optimización inteligente de Nexata reduce el consumo real, permitiéndote almacenar más de lo indicado y aprovechar mejor tu espacio disponible.",
+      "header_description": "Administra archivos para que Nexata pueda tener conocimiento sobre su contenido.",
+      "root": "Raíz",
+      "select_all": "Seleccionar todo",
+      "empty_title": "Esta carpeta está vacía",
+      "empty_description": "No se encontraron archivos o carpetas aquí.",
+      "updated": "Actualizado",
+      "selected": "seleccionados",
+      "remaining": "restante",
+      "storage_exceeded": "Límite de almacenamiento excedido",
+      "reduce_selection": "Reduce la selección para continuar",
+      "toast_loading_title": "Iniciando ingesta",
+      "toast_loading_description": "{count} archivos en cola",
+      "toast_success_title": "Ingesta iniciada",
+      "toast_success_description": "Los archivos fueron correctamente ingeridos",
+      "toast_error_title": "Falló la ingesta",
+      "toast_error_description": "Ocurrió un error durante el proceso"
+    }
 	},
 
 	"login": {
@@ -220,14 +236,6 @@
 			"edit": "Editar Empresa",
 			"tenant_name": "Nombre de la Empresa",
 			"tenant_logo": "Logo de la Empresa"
-		},
-		"usage": {
-			"title": "Uso de mensajes",
-			"description": "Visualización del consumo de mensajes y métricas clave de actividad.",
-			"chart_type": {
-				"bars": "Barras",
-				"lines": "Líneas"
-			}
 		},
 		"users": {
 			"title": "Usuarios",
