@@ -5,23 +5,25 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type AsyncConfirmButtonProps = {
-    onClick: () => Promise<void>;
-    children: React.ReactNode;
-    successDuration?: number;
-    size?: "sm" | "default" | "lg";
-    variant?: "default" | "outline";
-    className?: string;
+  onClick: () => Promise<void>;
+  children: React.ReactNode;
+  successDuration?: number;
+  size?: "sm" | "default" | "lg";
+  variant?: "default" | "outline";
+  className?: string;
+  disabled?: boolean;
 };
 
 type State = "idle" | "loading" | "success";
 
 export function AsyncConfirmButton({
-    onClick,
-    children,
-    successDuration = 2000,
-    size = "sm",
-    variant = "outline",
-    className,
+  onClick,
+  children,
+  successDuration = 2000,
+  size = "sm",
+  variant = "outline",
+  className,
+  disabled = false
 }: AsyncConfirmButtonProps) {
     const [state, setState] = useState<State>("idle");
 
@@ -45,10 +47,10 @@ export function AsyncConfirmButton({
         <Button
         size={size}
         variant={variant}
-        disabled={state !== "idle"}
+        disabled={state !== "idle" || disabled}
         onClick={handleClick}
         className={cn(
-            "min-w-[150px] transition-colors cursor-pointer",
+            "min-w-37.5 transition-colors cursor-pointer",
             state === "success" &&
             `
                 bg-emerald-500

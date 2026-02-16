@@ -99,10 +99,26 @@
 			}
 		},
 
-		"file_tree":{
-		  "disclaimer_title": "Storage estimate:",
-		  "disclaimer_title_description": "The displayed storage values are approximate. In most cases, Nexata’s intelligent optimization reduces the real space consumed, allowing you to store more than what the indicator suggests maximizing efficiency without extra effort."
-		}
+		"file_tree": {
+      "disclaimer_title": "Storage estimate:",
+      "disclaimer_title_description": "The displayed storage values are approximate. In most cases, Nexata’s intelligent optimization reduces the real space consumed, allowing you to store more than what the indicator suggests maximizing efficiency without extra effort.",
+      "header_description": "Manage files so Nexata can understand their content.",
+      "root": "Root",
+      "select_all": "Select all",
+      "empty_title": "This folder is empty",
+      "empty_description": "No files or folders found here.",
+      "updated": "Updated",
+      "selected": "selected",
+      "remaining": "remaining",
+      "storage_exceeded": "Storage limit exceeded",
+      "reduce_selection": "Reduce selection to continue",
+      "toast_loading_title": "Starting ingestion",
+      "toast_loading_description": "{count} files queued",
+      "toast_success_title": "Ingestion started",
+      "toast_success_description": "The files were successfully ingested",
+      "toast_error_title": "Ingestion failed",
+      "toast_error_description": "Something went wrong during processing"
+    }
 	},
 
 	"login": {

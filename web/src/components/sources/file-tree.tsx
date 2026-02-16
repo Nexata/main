@@ -25,7 +25,27 @@ import {
 import {
   "components.file_tree.disclaimer_title" as components_file_tree_disclaimer_title,
   "components.file_tree.disclaimer_title_description" as components_file_tree_disclaimer_description,
+  "components.file_tree.header_description" as components_file_tree_header_description,
+  "components.file_tree.root" as components_file_tree_root,
+  "components.file_tree.select_all" as components_file_tree_select_all,
+  "components.file_tree.empty_title" as components_file_tree_empty_title,
+  "components.file_tree.empty_description" as components_file_tree_empty_description,
+  "components.file_tree.updated" as components_file_tree_updated,
+  "components.file_tree.selected" as components_file_tree_selected,
+  "components.file_tree.remaining" as components_file_tree_remaining,
+  "components.file_tree.storage_exceeded" as components_file_tree_storage_exceeded,
+  "components.file_tree.reduce_selection" as components_file_tree_reduce_selection,
+  "components.file_tree.toast_loading_title" as components_file_tree_toast_loading_title,
+  "components.file_tree.toast_loading_description" as components_file_tree_toast_loading_description,
+  "components.file_tree.toast_success_title" as components_file_tree_toast_success_title,
+  "components.file_tree.toast_success_description" as components_file_tree_toast_success_description,
+  "components.file_tree.toast_error_title" as components_file_tree_toast_error_title,
+  "components.file_tree.toast_error_description" as components_file_tree_toast_error_description,
+  "common.cancel" as common_cancel,
+  "common.confirm" as common_confirm
 } from "@/paraglide/messages.js";
+import { infoToast } from "../info-toast/info-toast";
+import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
 
 /* =========================
    TYPES
@@ -53,26 +73,18 @@ type Crumb = { id: string; name: string };
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center justify-between px-3 py-2 min-h-[46px]">
-
+    <div className="flex items-center justify-between px-3 py-2 min-h-11.5">
       <div className="flex items-center gap-2.5 min-w-0 flex-1">
-
         {/* checkbox */}
         <div className="h-4.5 w-4.5 rounded border bg-muted animate-pulse shrink-0" />
-
         {/* icon */}
         <div className="h-4.5 w-4.5 rounded bg-muted animate-pulse shrink-0" />
-
         {/* text block */}
         <div className="flex flex-col justify-center gap-1 min-w-0 flex-1">
-
           <div className="h-3 w-40 bg-muted rounded animate-pulse" />
-
           <div className="h-2.5 w-26 bg-muted/70 rounded animate-pulse" />
-
         </div>
       </div>
-
       {/* size */}
       <div className="h-3 w-12 bg-muted rounded animate-pulse shrink-0" />
     </div>
@@ -87,11 +99,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
 
-  const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: "Root" }]);
+  const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: components_file_tree_root() }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [ingesting, setIngesting] = useState(false);
 
   const current = history[historyIndex];
 
@@ -100,7 +111,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const storageLimit = usage?.storage?.limit ?? 1;
 
   /* FETCH */
-
   async function fetchDir(folderId?: string) {
     if (!folderId) return;
     if (!source.getFileTree || !credentialId) return;
@@ -113,11 +123,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
       do {
         const input = cursor ? { pageToken: cursor } : folderId === "root" ? {} : { path: folderId };
-
-        const res = await source.getFileTree(
-          credentialId,
-          input as any
-        );
+        const res = await source.getFileTree(credentialId, input as any);
 
         all = [...all, ...(res.entries ?? [])];
         cursor = res.cursor ?? null;
@@ -134,7 +140,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }, [current?.id]);
 
   /* NAVIGATION */
-
   function enterFolder(entry: Entry) {
     const next = history.slice(0, historyIndex + 1);
     next.push({ id: entry.id, name: entry.name });
@@ -143,17 +148,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
     setHistoryIndex(next.length - 1);
   }
 
-  const goBack = () =>
-    historyIndex > 0 && setHistoryIndex(historyIndex - 1);
-
-  const goForward = () =>
-    historyIndex < history.length - 1 &&
-    setHistoryIndex(historyIndex + 1);
-
+  const goBack = () => historyIndex > 0 && setHistoryIndex(historyIndex - 1);
+  const goForward = () => historyIndex < history.length - 1 && setHistoryIndex(historyIndex + 1);
   const jumpTo = (i: number) => setHistoryIndex(i);
 
   /* ICON */
-
   function getIcon(ext: string) {
     const map: Record<string, any> = {
       dir: Folder,
@@ -175,13 +174,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
     const Icon = map[ext?.toLowerCase()] ?? File;
 
-    return (
-      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />
-    );
+    return (<Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />);
   }
 
   /* SELECTION */
-
   function toggle(id: string) {
     setSelected(prev => {
       const next = new Set(prev);
@@ -197,26 +193,25 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }
 
   /* STORAGE */
-
   const selectedFiles = useMemo(
     () => entries.filter(e => selected.has(e.id)),
     [entries, selected]
   );
 
-  const selectedSize = selectedFiles.reduce(
-    (s, f) => s + (f.size ?? 0),
-    0
-  );
-
+  const selectedSize = selectedFiles.reduce((s, f) => s + (f.size ?? 0), 0);
   const remaining = storageLimit - (storageUsed + selectedSize);
 
   const formatMB = (n: number) => `${n.toFixed(2)} MB`;
   const formatDate = (d: string) => new Date(d).toLocaleDateString();
 
+  /* SAVE SELECTION */
   async function handleConfirm() {
   	if (!source.ingest || selectedFiles.length === 0) return;
 
-  	setIngesting(true);
+  	const toastId = infoToast.loading({
+  		title: components_file_tree_toast_loading_title(),
+      description: components_file_tree_toast_loading_description({ count: selectedFiles.length }),
+  	});
 
   	try {
   		await source.ingest({
@@ -226,22 +221,32 @@ export function StorageFileTree({ credentialId, source }: Props) {
   				isDir: file.ext === "dir",
   			})),
   		});
+
+  		infoToast.success(toastId, {
+  			title: components_file_tree_toast_success_title(),
+  			description: components_file_tree_toast_success_description(),
+  		});
+
+  		setSelected(new Set());
+      fetchDir(current?.id);
   	} catch (err) {
-  		console.error("Ingest failed:", err);
-  	} finally {
-  		setIngesting(false);
+  		console.error(err);
+
+  		infoToast.error(toastId, {
+  			title: components_file_tree_toast_error_title(),
+  			description: components_file_tree_toast_error_description(),
+  		});
   	}
   }
 
   /* UI */
-
   return (
     <div className="pt-4 border-t space-y-3">
       {/* HEADER */}
       <div>
         <h4 className="text-sm font-medium">{source.name}</h4>
         <p className="text-xs text-muted-foreground">
-          Select files to embed and track storage usage.
+          {components_file_tree_header_description()}
         </p>
       </div>
 
@@ -252,19 +257,19 @@ export function StorageFileTree({ credentialId, source }: Props) {
         <div className="flex items-center justify-between px-3 h-11 bg-muted border-b">
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={goBack}
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={goBack}
             >
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
             <Button
-              variant="ghost"
-              size="icon"
-              className="h-6 w-6"
-              onClick={goForward}
+            variant="ghost"
+            size="icon"
+            className="h-6 w-6"
+            onClick={goForward}
             >
               <ChevronRight className="h-4 w-4" />
             </Button>
@@ -279,9 +284,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
                     onClick={() => jumpTo(i)}
                     className={cn(
                       "px-1 text-[11px]",
-                      i === historyIndex
-                        ? "font-medium text-foreground"
-                        : "text-muted-foreground"
+                      i === historyIndex ? "font-medium text-foreground" : "text-muted-foreground"
                     )}
                   >
                     {crumb.name}
@@ -296,7 +299,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
               checked={selected.size === entries.length && entries.length > 0}
               onCheckedChange={toggleAll}
             />
-            <span className="text-muted-foreground">Select all</span>
+            <span className="text-muted-foreground">{components_file_tree_select_all()}</span>
           </div>
         </div>
 
@@ -320,11 +323,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
               <div className="space-y-1">
                 <p className="font-medium text-foreground">
-                  This folder is empty
+                  {components_file_tree_empty_title()}
                 </p>
-
                 <p className="text-xs">
-                  No files or folders found here.
+                  {components_file_tree_empty_description()}
                 </p>
               </div>
 
@@ -366,7 +368,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
                         </Button>
 
                         <span className="text-muted-foreground">
-                          Updated {formatDate(file.updatedAt)}
+                          {components_file_tree_updated()} {formatDate(file.updatedAt)}
                         </span>
                       </div>
                     </div>
@@ -391,7 +393,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
               <span className="font-medium text-foreground">
                 {selectedFiles.length}
               </span>{" "}
-              selected
+              {components_file_tree_selected()}
             </span>
 
             <Separator orientation="vertical" />
@@ -401,11 +403,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
             <Separator orientation="vertical" />
 
             <span className={cn(remaining < 0 && "text-destructive font-medium")}>
-              {formatMB(Math.max(remaining, 0))} remaining
+              {formatMB(Math.max(remaining, 0))} {components_file_tree_remaining()}
             </span>
             {remaining < 0 && (
               <span className="text-destructive text-xs font-medium">
-                Storage limit exceeded
+                {components_file_tree_storage_exceeded()}
               </span>
             )}
           </div>
@@ -417,23 +419,21 @@ export function StorageFileTree({ credentialId, source }: Props) {
               onClick={() => setSelected(new Set())}
               disabled={selected.size === 0}
             >
-              Cancel
+              {common_cancel()}
             </Button>
 
             <div className="flex flex-col items-end">
-              <Button
+              <AsyncConfirmButton
                	size="sm"
                	onClick={handleConfirm}
-               	disabled={selected.size === 0 || remaining < 0 ||
-                		ingesting
-               	}
+               	disabled={selected.size === 0 || remaining < 0}
               >
-               	{ingesting ? "Processing…" : "Confirm"}
-              </Button>
+                {common_confirm()}
+              </AsyncConfirmButton>
 
               {remaining < 0 && (
                 <span className="text-[10px] text-destructive mt-1">
-                  Reduce selection to continue
+                  {components_file_tree_reduce_selection()}
                 </span>
               )}
             </div>
