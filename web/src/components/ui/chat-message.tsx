@@ -69,14 +69,23 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isAssistant = message.role === "assistant"
 
   const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
-  const fullText = textParts.map((p) => p.text).join("")
+  const lastStreamingTextPart = [...message.parts]
+    .reverse()
+    .find(
+      (p): p is Extract<typeof p, { type: "text" }> =>
+        p.type === "text" && p.state === "streaming"
+    )
 
   const shouldAnimateTyping =
     isAssistant &&
     !disableTypingAnimation &&
     textParts.some((p) => p.state === "streaming")
 
-  const typedContent = useTypingText(fullText, shouldAnimateTyping, 4)
+  const typedContent = useTypingText(
+    lastStreamingTextPart?.text ?? "",
+    shouldAnimateTyping,
+    4
+  )
 
   const lastTextPartGlobalIndex = (() => {
     for (let i = message.parts.length - 1; i >= 0; i--) {
@@ -137,12 +146,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             >
               {/* TEXT */}
               {textBuffer.map(({ part, globalIndex }, i) => {
-                const isLastStreamingText =
-                  shouldAnimateTyping &&
-                  part.state === "streaming" &&
-                  globalIndex === lastTextPartGlobalIndex
-
-                const content = isLastStreamingText ? typedContent : part.text
+                const isStreamingPart = shouldAnimateTyping && part === lastStreamingTextPart
+                const content = isStreamingPart ? typedContent : part.text
 
                 return (
                   <div key={`text-${i}`}>
