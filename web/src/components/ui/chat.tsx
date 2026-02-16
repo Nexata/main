@@ -213,7 +213,7 @@ export function ChatMessages({
 
   return (
     <div
-      className="grid grid-cols-1 overflow-y-auto scrollbar-thin pb-4 min-h-0"
+      className="grid grid-cols-1 overflow-y-auto scrollbar-thin pb-16 min-h-0"
       ref={containerRef}
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
