@@ -37,7 +37,7 @@ export const traceRouter = new Elysia({ prefix: '/trace' })
 						query.cursor ? lt(trace.createdAt, query.cursor) : undefined,
 					),
 				)
-				.groupBy(trace.id)
+				.groupBy(trace.id, user.id)
 				.orderBy(desc(trace.createdAt))
 				.limit(query.limit),
 		{
