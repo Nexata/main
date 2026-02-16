@@ -19,7 +19,8 @@ import {
   ExternalLink,
   ChevronRight,
   ChevronLeft,
-  AlertTriangle
+  AlertTriangle,
+  Inbox
 } from "lucide-react";
 import {
   "components.file_tree.disclaimer_title" as components_file_tree_disclaimer_title,
@@ -52,17 +53,28 @@ type Crumb = { id: string; name: string };
 
 function SkeletonRow() {
   return (
-    <div className="flex items-center justify-between px-3 py-1.5">
-      <div className="flex items-center gap-2 flex-1">
-        <div className="h-3.5 w-3.5 rounded bg-muted animate-pulse" />
+    <div className="flex items-center justify-between px-3 py-2 min-h-[46px]">
 
-        <div className="space-y-1 flex-1">
-          <div className="h-2.5 w-28 bg-muted rounded animate-pulse" />
-          <div className="h-2.5 w-20 bg-muted/70 rounded animate-pulse" />
+      <div className="flex items-center gap-2.5 min-w-0 flex-1">
+
+        {/* checkbox */}
+        <div className="h-4.5 w-4.5 rounded border bg-muted animate-pulse shrink-0" />
+
+        {/* icon */}
+        <div className="h-4.5 w-4.5 rounded bg-muted animate-pulse shrink-0" />
+
+        {/* text block */}
+        <div className="flex flex-col justify-center gap-1 min-w-0 flex-1">
+
+          <div className="h-3 w-40 bg-muted rounded animate-pulse" />
+
+          <div className="h-2.5 w-26 bg-muted/70 rounded animate-pulse" />
+
         </div>
       </div>
 
-      <div className="h-2.5 w-10 bg-muted rounded animate-pulse" />
+      {/* size */}
+      <div className="h-3 w-12 bg-muted rounded animate-pulse shrink-0" />
     </div>
   );
 }
@@ -282,6 +294,25 @@ export function StorageFileTree({ credentialId, source }: Props) {
               </div>
             ))}
 
+          {/* EMPTY STATE */}
+          {!loading && entries.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full py-10 text-center text-muted-foreground gap-3">
+
+              <Inbox className="h-8 w-8 opacity-60" />
+
+              <div className="space-y-1">
+                <p className="font-medium text-foreground">
+                  This folder is empty
+                </p>
+
+                <p className="text-xs">
+                  No files or folders found here.
+                </p>
+              </div>
+
+            </div>
+          )}
+
           {!loading &&
             entries.map((file, i) => {
               const isDir = file.ext === "dir";
@@ -351,13 +382,14 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
             <Separator orientation="vertical" />
 
-            <span
-              className={cn(
-                remaining < 0 && "text-destructive font-medium"
-              )}
-            >
+            <span className={cn(remaining < 0 && "text-destructive font-medium")}>
               {formatMB(Math.max(remaining, 0))} remaining
             </span>
+            {remaining < 0 && (
+              <span className="text-destructive text-xs font-medium">
+                Storage limit exceeded
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
@@ -370,12 +402,17 @@ export function StorageFileTree({ credentialId, source }: Props) {
               Cancel
             </Button>
 
-            <Button
-              size="sm"
-              disabled={selected.size === 0 || remaining < 0}
-            >
-              Confirm
-            </Button>
+            <div className="flex flex-col items-end">
+              <Button size="sm" disabled={selected.size === 0 || remaining < 0}>
+                Confirm
+              </Button>
+
+              {remaining < 0 && (
+                <span className="text-[10px] text-destructive mt-1">
+                  Reduce selection to continue
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </div>
