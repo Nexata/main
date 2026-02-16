@@ -19,7 +19,7 @@ import {
 	TraceType,
 	trace,
 } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
@@ -33,7 +33,7 @@ import { Elysia, type Static, t } from 'elysia';
 
 export namespace Dropbox {
 	export const fromRequest = async (
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		credentialId: string,
 		adminExpected?: true,
 	) => {

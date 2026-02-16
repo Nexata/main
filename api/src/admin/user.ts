@@ -1,6 +1,7 @@
 import { authPlugin } from '@api/auth';
-import { db } from '@api/env';
+import { cache, db } from '@api/env';
 import { filePermission, user } from '@api/schema';
+import { userCacheKey } from '@api/utils/auth';
 import { uploadUserPfp } from '@api/utils/s3';
 import { tObject } from '@api/utils/type';
 import { s3 } from 'bun';
@@ -55,15 +56,27 @@ export const userRouter = new Elysia({ prefix: '/user' })
 	)
 	.patch(
 		'/:id',
-		async ({ body, params: { id }, activeUser }) =>
-			db
-				.update(user)
-				.set({
-					...body,
-					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
-				})
-				.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
-				.returning({ id: user.id }),
+		async ({ body, params: { id }, activeUser }) => {
+			const updated = (
+				await db
+					.update(user)
+					.set({
+						...body,
+						pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+					})
+					.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
+					.returning()
+			).at(0);
+
+			if (updated)
+				await cache.set(
+					userCacheKey(activeUser.slug, id),
+					{ ...updated, apiKey: null },
+					{ ex: 12 * 60 * 60 },
+				);
+
+			return { id: updated?.id };
+		},
 		{
 			detail: { summary: 'Update user by ID' },
 			body: t.Composite([
@@ -78,29 +91,34 @@ export const userRouter = new Elysia({ prefix: '/user' })
 	.delete(
 		'/:id',
 		async ({ params: { id }, activeUser }) => {
-			await db.batch([
-				db
-					.delete(filePermission)
-					.where(
-						and(
-							eq(filePermission.userId, id),
-							or(
-								eq(filePermission.inferred, false),
-								isNull(filePermission.email),
+			await Promise.all([
+				db.batch([
+					db
+						.delete(filePermission)
+						.where(
+							and(
+								eq(filePermission.userId, id),
+								or(
+									eq(filePermission.inferred, false),
+									isNull(filePermission.email),
+								),
+								exists(
+									db
+										.select({ id: user.id })
+										.from(user)
+										.where(
+											and(eq(user.id, id), eq(user.slug, activeUser.slug)),
+										),
+								),
 							),
-							exists(
-								db
-									.select({ id: user.id })
-									.from(user)
-									.where(and(eq(user.id, id), eq(user.slug, activeUser.slug))),
-							),
-						),
-					)
-					.returning({ filePermissionId: filePermission.id }),
-				db
-					.delete(user)
-					.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
-					.returning({ userId: user.id }),
+						)
+						.returning({ filePermissionId: filePermission.id }),
+					db
+						.delete(user)
+						.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
+						.returning({ userId: user.id }),
+				]),
+				cache.del(userCacheKey(activeUser.slug, id)),
 			]);
 
 			await s3.delete(`u/${id}`);

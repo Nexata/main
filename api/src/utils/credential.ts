@@ -10,7 +10,7 @@ import {
 	type OauthScope,
 	user,
 } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { providerRefreshers } from '@api/utils/token-refresh';
 import { captureException } from '@sentry/bun';
@@ -109,11 +109,11 @@ export async function addCredentialToUserCache(
 }
 
 export async function getCredentialsForUser(
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	returnType: 'usage',
 ): Promise<CachedCredential[]>;
 export async function getCredentialsForUser(
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	returnType: 'display',
 ): Promise<
 	{
@@ -146,7 +146,7 @@ export async function getCredentialsForUser(
 	}[]
 >;
 export async function getCredentialsForUser(
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	returnType: 'display' | 'usage',
 ) {
 	const setKey = userCredentialsSetKey(activeUser.slug, activeUser.id);
@@ -293,7 +293,7 @@ export async function getCredentialsForUser(
 }
 
 export async function getTokensForUser(
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	credentialId: string,
 	adminExpected?: true,
 ) {
@@ -368,7 +368,7 @@ export async function getTokensForUser(
 }
 
 export async function userHasCredential(
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	credentialId: string,
 	adminExpected?: true,
 ) {

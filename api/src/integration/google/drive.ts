@@ -21,7 +21,7 @@ import {
 	TraceType,
 	trace,
 } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -58,7 +58,7 @@ const FILE_FIELDS =
 
 export namespace Drive {
 	export const fromRequest = async (
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		credentialId: string,
 		adminExpected?: true,
 	) => {

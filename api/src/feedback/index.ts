@@ -1,7 +1,7 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { FeedbackStatus, FeedbackType, feedback, user } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { S3_ACCESS_URL } from '@api/utils/s3';
 import { coalesce } from '@api/utils/sql';
@@ -28,7 +28,7 @@ export namespace NexataFeedback {
 	];
 
 	export async function list(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof listInput>,
 	) {
 		const cursorExpr = coalesce(feedback.modifiedAt, feedback.createdAt);
@@ -81,7 +81,7 @@ export namespace NexataFeedback {
 	];
 
 	export async function create(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof createInput>,
 		files?: File[],
 	) {

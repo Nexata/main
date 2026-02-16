@@ -2,12 +2,36 @@ import { dropboxRouter } from '@api/auth/dropbox';
 import { googleRouter } from '@api/auth/google';
 import { cache, db } from '@api/env';
 import { device, user } from '@api/schema';
-import { type JwtPayload, jwtPlugin } from '@api/utils/auth';
+import { type ActiveUser, jwtPlugin, userCacheKey } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
 import { password } from 'bun';
 import { and, eq, exists, isNotNull } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+
+const USER_CACHE_TTL = 12 * 60 * 60;
+
+async function getCachedUser(
+	slug: string,
+	userId: string,
+): Promise<ActiveUser> {
+	const key = userCacheKey(slug, userId);
+	const cached = await cache.get<ActiveUser>(key);
+	if (cached) return cached;
+
+	const u = (
+		await db
+			.select()
+			.from(user)
+			.where(and(eq(user.id, userId), eq(user.slug, slug)))
+	).at(0);
+
+	if (!u) throw httpError(HttpCode.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
+
+	const activeUser = { ...u, apiKey: null };
+	await cache.set(key, activeUser, { ex: USER_CACHE_TTL });
+	return activeUser;
+}
 
 export const authPlugin =
 	(options: { admin?: boolean; apiAllowed?: boolean } = {}) =>
@@ -36,11 +60,13 @@ export const authPlugin =
 						clientSecret: string;
 					};
 
-					const cached = await cache.get<JwtPayload & { clientSecret: string }>(
+					const cached = await cache.get<ActiveUser & { clientSecret: string }>(
 						`apikey:${clientId}`,
 					);
 					if (cached && cached.clientSecret === clientSecret) {
 						const { clientSecret, ...activeUser } = cached;
+						if (options.admin && !activeUser.isAdmin)
+							throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);
 						return { activeUser };
 					}
 
@@ -59,10 +85,13 @@ export const authPlugin =
 							ErrorCode.INVALID_CREDENTIALS,
 						);
 
+					if (options.admin && !u.isAdmin)
+						throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);
+
 					const activeUser = { ...u, apiKey: null };
 					await cache.set(
 						`apikey:${clientId}`,
-						{ ...activeUser, clientSecret } as JwtPayload & {
+						{ ...activeUser, clientSecret } as ActiveUser & {
 							clientSecret: string;
 						},
 						{ ex: 3600 },
@@ -78,7 +107,7 @@ export const authPlugin =
 				const at = authorization?.split(' ')[1];
 				const payload = await jwt.verify(at);
 
-				if (!at || !payload || (options.admin && !payload.isAdmin))
+				if (!at || !payload)
 					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);
 
 				const cachedToken = await cache.get<string>(
@@ -107,7 +136,12 @@ export const authPlugin =
 						ex: 60 * 60,
 					});
 
-				return { activeUser: payload };
+				const activeUser = await getCachedUser(payload.slug, payload.id);
+
+				if (options.admin && !activeUser.isAdmin)
+					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);
+
+				return { activeUser };
 			});
 
 export const authRouter = new Elysia({
@@ -153,33 +187,42 @@ export const authRouter = new Elysia({
 			).at(0);
 
 			if (!u) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
+
 			const [accessToken, refreshToken] = await Promise.all([
-				jwt.sign({ ...u, apiKey: null }),
+				jwt.sign({ id: u.id, slug: u.slug }),
 				refreshJwt.sign({ id: u.id }),
 			]);
 
-			await db
-				.insert(device)
-				.values({
-					fingerprint,
-					userId: payload.id,
-					accessToken,
-					refreshToken,
-					userAgent,
-				})
-				.onConflictDoUpdate({
-					target: [device.userId, device.fingerprint],
-					set: {
+			await Promise.all([
+				db
+					.insert(device)
+					.values({
+						fingerprint,
+						userId: payload.id,
 						accessToken,
 						refreshToken,
 						userAgent,
-						createdAt: new Date(),
+					})
+					.onConflictDoUpdate({
+						target: [device.userId, device.fingerprint],
+						set: {
+							accessToken,
+							refreshToken,
+							userAgent,
+							createdAt: new Date(),
+						},
+					}),
+				cache.set(`device:${payload.id}:${fingerprint}`, accessToken, {
+					ex: USER_CACHE_TTL,
+				}),
+				cache.set(
+					userCacheKey(u.slug, u.id),
+					{ ...u, apiKey: null },
+					{
+						ex: USER_CACHE_TTL,
 					},
-				});
-
-			await cache.set(`device:${payload.id}:${fingerprint}`, accessToken, {
-				ex: 12 * 60 * 60,
-			});
+				),
+			]);
 
 			return { accessToken, refreshToken };
 		},

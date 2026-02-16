@@ -1,7 +1,7 @@
 import { authPlugin } from '@api/auth';
 import { Google } from '@api/integration/google/lib';
 import type { Language } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
@@ -10,7 +10,7 @@ import { Elysia, type Static, t } from 'elysia';
 
 export namespace Gmail {
 	export const fromRequest = async (
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		credentialId: string,
 		adminExpected?: true,
 	) => {

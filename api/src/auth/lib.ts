@@ -12,6 +12,7 @@ import {
 	trace,
 	user,
 } from '@api/schema';
+import { userCacheKey } from '@api/utils/auth';
 import { addCredentialToUserCache } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -155,7 +156,7 @@ export async function authorizeOauthCallback(
 
 	if (q.flow === 'login') {
 		const [accessToken, refreshToken] = await Promise.all([
-			jwtSign({ ...u, apiKey: null }),
+			jwtSign({ id: u.id, slug: u.slug }),
 			refreshJwtSign({ id: u.id }),
 		]);
 
@@ -166,18 +167,27 @@ export async function authorizeOauthCallback(
 			createdAt: new Date(),
 		};
 
-		await db
-			.insert(device)
-			.values({
-				fingerprint: q.fingerprint,
-				userId: u.id,
-				...set,
-			})
-			.onConflictDoUpdate({ target: [device.userId, device.fingerprint], set });
+		const ttl = 12 * 60 * 60;
 
-		await cache.set(`device:${u.id}:${q.fingerprint}`, accessToken, {
-			ex: 12 * 60 * 60,
-		});
+		await Promise.all([
+			db
+				.insert(device)
+				.values({
+					fingerprint: q.fingerprint,
+					userId: u.id,
+					...set,
+				})
+				.onConflictDoUpdate({
+					target: [device.userId, device.fingerprint],
+					set,
+				}),
+			cache.set(`device:${u.id}:${q.fingerprint}`, accessToken, { ex: ttl }),
+			cache.set(
+				userCacheKey(u.slug, u.id),
+				{ ...u, apiKey: null },
+				{ ex: ttl },
+			),
+		]);
 
 		if (url) {
 			url.searchParams.set('at', accessToken);

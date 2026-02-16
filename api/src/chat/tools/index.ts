@@ -4,7 +4,7 @@ import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
 import { OauthScope } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import {
 	type CachedCredential,
 	ensureFreshTokens,
@@ -66,7 +66,7 @@ const toolify = <
 	});
 
 export const getTools = async (
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	threadId: string | null = null,
 	fileIds: string[] | null = null,
 ) => {

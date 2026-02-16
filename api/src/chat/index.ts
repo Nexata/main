@@ -149,7 +149,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					...activeUser,
 					languagePreference,
 				}),
-				stopWhen: stepCountIs(20),
+				stopWhen: stepCountIs(25),
 				tools: await getTools(activeUser, body.threadId, fileIds),
 				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(

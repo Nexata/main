@@ -1,6 +1,7 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
 import { device, Language, TraceType, tenant, trace, user } from '@api/schema';
+import { userCacheKey } from '@api/utils/auth';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
@@ -73,15 +74,27 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	)
 	.patch(
 		'/',
-		async ({ activeUser: { id }, body }) =>
-			db
-				.update(user)
-				.set({
-					...body,
-					pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
-				})
-				.where(eq(user.id, id))
-				.returning({ id: user.id }),
+		async ({ activeUser, body }) => {
+			const updated = (
+				await db
+					.update(user)
+					.set({
+						...body,
+						pfpUrl: body.pfp && (await uploadUserPfp(activeUser.id, body.pfp)),
+					})
+					.where(eq(user.id, activeUser.id))
+					.returning()
+			).at(0);
+
+			if (updated)
+				await cache.set(
+					userCacheKey(activeUser.slug, activeUser.id),
+					{ ...updated, apiKey: null },
+					{ ex: 12 * 60 * 60 },
+				);
+
+			return { id: updated?.id };
+		},
 		{
 			detail: { summary: 'Update me' },
 			body: t.Composite([
@@ -95,8 +108,11 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	)
 	.delete(
 		'/',
-		async ({ activeUser: { id } }) => {
-			await db.delete(user).where(eq(user.id, id));
+		async ({ activeUser: { id, slug } }) => {
+			await Promise.all([
+				db.delete(user).where(eq(user.id, id)),
+				cache.del(userCacheKey(slug, id)),
+			]);
 			await s3.delete(`u/${id}`);
 			return id;
 		},

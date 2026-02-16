@@ -7,7 +7,7 @@ import {
 	trace,
 	user,
 } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { invalidateCredentialCache } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { boolOr } from '@api/utils/sql';
@@ -19,7 +19,7 @@ import { Elysia, t } from 'elysia';
 const insertCredentialPermission = createInsertSchema(credentialPermission);
 
 const isCredentialAdmin = (
-	activeUser: JwtPayload,
+	activeUser: ActiveUser,
 	credentialId: string,
 	...whereConditions: SQLWrapper[]
 ) =>

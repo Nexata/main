@@ -17,7 +17,7 @@ import {
 	trace,
 	user,
 } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { incrementEmbedUsage, incrementStorageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadFile } from '@api/utils/s3';
@@ -88,7 +88,7 @@ export namespace NexataFile {
 	];
 
 	export async function search(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof searchInput>,
 	) {
 		const { embedding } = input.query
@@ -332,7 +332,7 @@ export namespace NexataFile {
 	];
 
 	export async function read(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof readInput>,
 	) {
 		const { embedding } = input.query

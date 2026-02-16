@@ -1,7 +1,7 @@
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
 import { OauthProvider, OauthScope, user } from '@api/schema';
-import type { JwtPayload } from '@api/utils/auth';
+import type { ActiveUser } from '@api/utils/auth';
 import { getCredentialsForUser } from '@api/utils/credential';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Static } from '@sinclair/typebox';
@@ -25,7 +25,7 @@ export namespace Nexata {
 	];
 
 	export async function listCredentials(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof listCredentialsInput>,
 	) {
 		let credentials = await getCredentialsForUser(activeUser, 'display');
@@ -56,7 +56,7 @@ export namespace Nexata {
 	];
 
 	export async function listFilesOnThread(
-		ctx: { activeUser: JwtPayload; threadId: string },
+		ctx: { activeUser: ActiveUser; threadId: string },
 		input: Static<typeof listFilesOnThreadInput>,
 	) {
 		return NexataFile.search(ctx.activeUser, {
@@ -75,7 +75,7 @@ export namespace Nexata {
 	];
 
 	export async function listFilesOnMessage(
-		ctx: { activeUser: JwtPayload; fileIds: string[] },
+		ctx: { activeUser: ActiveUser; fileIds: string[] },
 		input: Static<typeof listFilesOnMessageInput>,
 	) {
 		return NexataFile.search(ctx.activeUser, {
@@ -94,7 +94,7 @@ export namespace Nexata {
 	];
 
 	export async function listUsers(
-		activeUser: JwtPayload,
+		activeUser: ActiveUser,
 		input: Static<typeof listUsersInput>,
 	) {
 		return db
