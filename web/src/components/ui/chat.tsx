@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from "react"
 import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
-import type { UIMessage } from "@ai-sdk/react" // ✅ CORREGIDO
+import type { UIMessage } from "@ai-sdk/react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import { Button } from "@/components/ui/button"
@@ -218,8 +218,10 @@ export function ChatMessages({
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
     >
-      <div className="max-w-full col-[1/1] row-[1/1]">
-        {children}
+      <div className="col-[1/1] row-[1/1] flex justify-center">
+        <div className="w-full max-w-4xl px-6">
+          {children}
+        </div>
       </div>
 
       {!shouldAutoScroll && (
@@ -284,7 +286,11 @@ export const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
 
     return (
       <form ref={ref} onSubmit={onSubmit} className={className}>
-        {children({ files, setFiles })}
+        <div className="flex justify-center">
+          <div className="w-full max-w-4xl px-6">
+            {children({ files, setFiles })}
+          </div>
+        </div>
       </form>
     )
   }
