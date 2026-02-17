@@ -34,7 +34,12 @@ async function getCachedUser(
 }
 
 export const authPlugin =
-	(options: { admin?: boolean; apiAllowed?: boolean } = {}) =>
+	(
+		options: { admin?: boolean; apiAllowed?: boolean } = {
+			admin: false,
+			apiAllowed: true,
+		},
+	) =>
 	(app: Elysia) =>
 		app
 			.use(jwtPlugin)
@@ -106,6 +111,7 @@ export const authPlugin =
 
 				const at = authorization?.split(' ')[1];
 				const payload = await jwt.verify(at);
+				console.log(payload);
 
 				if (!at || !payload)
 					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);

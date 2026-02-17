@@ -1,11 +1,13 @@
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
 import { user } from '@api/schema';
-import { tObject } from '@api/utils/type';
 import { jwt } from '@elysiajs/jwt';
 import { createSelectSchema } from 'drizzle-typebox';
 import { Elysia, type Static, t } from 'elysia';
 
-const jwtPayload = tObject({ id: t.String(), slug: t.String() });
+const jwtPayload = t.Object({
+	id: t.String({ format: 'uuid' }),
+	slug: t.String(),
+});
 
 export type JwtPayload = Static<typeof jwtPayload>;
 
@@ -32,6 +34,6 @@ export const jwtPlugin = new Elysia()
 			name: 'refreshJwt',
 			exp: '30d',
 			secret: `${NEXATA_SECRET}_refresh_${[...NEXATA_SECRET].reverse().join('')}`,
-			schema: tObject({ id: t.String() }),
+			schema: t.Object({ id: t.String() }),
 		}),
 	);
