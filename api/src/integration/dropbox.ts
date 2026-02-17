@@ -269,18 +269,24 @@ export namespace Dropbox {
 
 		const result = res.result as typeof res.result & {
 			fileBinary?: Uint8Array;
+			fileBlob?: Blob;
 		};
-		if (!result.fileBinary)
+
+		const fileData = result.fileBinary ?? result.fileBlob;
+		if (!fileData)
 			throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_CONTENT);
 
 		const mimeType = getMimeTypeFromExt(result.name);
 		if (mimeType === 'unsupported')
 			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
 
+		const buffer =
+			fileData instanceof Blob
+				? await fileData.arrayBuffer()
+				: (fileData.buffer as ArrayBuffer);
+
 		return {
-			file: new File([result.fileBinary.buffer as ArrayBuffer], result.name, {
-				type: mimeType,
-			}),
+			file: new File([buffer], result.name, { type: mimeType }),
 			id: result.id,
 			name: result.name,
 			path: result.path_display ?? result.path_lower ?? '',
