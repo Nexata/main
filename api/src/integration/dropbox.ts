@@ -619,17 +619,17 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 				activeUser.slug,
 			);
 			if (blockReason) {
-				const lang = activeUser.language as Language;
 				if (blockReason === 'PAYMENT_REQUIRED')
 					throw httpError(
 						HttpCode.PAYMENT_REQUIRED,
 						ErrorCode.PAYMENT_REQUIRED,
-						lang,
+						activeUser.language,
 					);
+
 				throw httpError(
 					HttpCode.METHOD_NOT_ALLOWED,
 					ErrorCode[blockReason as keyof typeof ErrorCode],
-					lang,
+					activeUser.language,
 				);
 			}
 

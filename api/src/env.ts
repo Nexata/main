@@ -35,14 +35,6 @@ export const db = drizzle({
 	logger: !IS_PRODUCTION,
 }) as NeonHttpDatabase<typeof schema>;
 
-export const PRICING = {
-	baseBill: 20,
-	baseBillMessages: 100,
-	oneMessageRefill: 0.1,
-	embedPerMb: 0.009,
-	storedMbPerMonth: 0.002,
-};
-
 export const FALLBACK_BEHAVIOR: {
 	retryAfterOutput?: boolean;
 	modelResetInterval?: number;

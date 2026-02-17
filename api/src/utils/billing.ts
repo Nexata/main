@@ -51,7 +51,7 @@ export async function getTenantBillingInfo(
 
 export async function getStorageUsage(slug: string): Promise<number> {
 	const cached = await cache.get<number>(STORAGE_KEY(slug));
-	if (cached !== null) return cached;
+	if (cached) return cached;
 
 	const result = (
 		await db
@@ -71,7 +71,7 @@ export async function getStorageUsage(slug: string): Promise<number> {
 
 export async function getEmbedUsage(slug: string): Promise<number> {
 	const cached = await cache.get<number>(EMBED_KEY(slug));
-	if (cached !== null) return cached;
+	if (cached) return cached;
 
 	const result = (
 		await db
