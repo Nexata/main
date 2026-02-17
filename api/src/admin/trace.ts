@@ -3,7 +3,7 @@ import { db } from '@api/env';
 import { TraceType, trace, user } from '@api/schema';
 import { jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
-import { and, desc, eq, gte, inArray, lt, lte } from 'drizzle-orm';
+import { and, desc, eq, gte, inArray, lt, lte, not } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const traceRouter = new Elysia({ prefix: '/trace' })
@@ -30,6 +30,7 @@ export const traceRouter = new Elysia({ prefix: '/trace' })
 				.where(
 					and(
 						eq(user.slug, activeUser.slug),
+						not(eq(trace.type, TraceType.MESSAGE_SENT)),
 						query.type ? inArray(trace.type, query.type) : undefined,
 						query.userId ? inArray(trace.userId, query.userId) : undefined,
 						query.from ? gte(trace.createdAt, query.from) : undefined,
