@@ -8,6 +8,7 @@ import {
   Settings,
   HelpCircle,
   MessageSquareText,
+  Loader2,
 } from "lucide-react";
 import {
   IoSunny,
@@ -143,22 +144,34 @@ export default function Sidebar() {
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Edit Thread
+  const [editingTitle, setEditingTitle] = useState("");
+  const [savingThreads, setSavingThreads] = useState<Set<string>>(new Set());
 
-  const handleEditClick = (id: string) => {
+  const handleEditClick = (id: string, currentTitle: string) => {
     setEditingChatId(id);
-    setTimeout(() => inputRef.current?.focus(), 50);
+    setEditingTitle(currentTitle);
   };
 
-  const handleEditSave = async (id: string, newTitle: string) => {
+  const handleEditSave = (id: string, newTitle: string) => {
     if (!newTitle.trim()) return;
 
-    try {
-      await updateThreadFn(id, { title: newTitle });
-      setEditingChatId(null);
-    } catch (error) {
-      console.error('Failed to update thread', error);
-    }
+    setEditingChatId(null);
+    setSavingThreads(prev => new Set(prev).add(id));
+
+    updateThreadFn(id, { title: newTitle })
+      .catch((error) => {
+        console.error("Failed to update thread", error);
+      })
+      .finally(() => {
+        setSavingThreads(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
+      });
   };
+
 
   const handleDeleteClick = (chat: { id: string; title: string | null }) => setChatToDelete(chat);
 
@@ -339,7 +352,10 @@ export default function Sidebar() {
                 {!threadsLoading && ((mergedThreads.length > 0 ? mergedThreads : [{ id: null, title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
                   <div
                     key={chat.id}
-                    onClick={() => handleSelectChat(chat.id)}
+                    onClick={() => {
+                      if (editingChatId === chat.id) return;
+                      handleSelectChat(chat.id);
+                    }}
                     className={cn(
                       "px-2 py-2 rounded-md flex justify-between items-center cursor-pointer group transition-colors",
                       chat.id === activeThreadId ? "bg-muted text-foreground" : "hover:bg-muted/50"
@@ -348,21 +364,19 @@ export default function Sidebar() {
                     {editingChatId !== null && editingChatId === chat.id ? (
                       <div className="flex items-center w-full">
                         <Input
-                          ref={inputRef}
-                          defaultValue={chat.title ?? "New Chat"}
+                          value={editingTitle}
+                          onChange={(e) => setEditingTitle(e.target.value)}
+                          autoFocus
                           className="flex-1 bg-transparent border-b border-muted focus:border-primary"
                           onKeyDown={(e) => {
-                            if (e.key === "Enter")
-                              handleEditSave(chat.id, (e.target as HTMLInputElement).value);
+                            if (e.key === "Enter") handleEditSave(chat.id, editingTitle);
                             else if (e.key === "Escape") setEditingChatId(null);
                           }}
                         />
                         <div className="flex gap-2 ml-2">
                           <IoCheckmark
                             className="text-green-500 w-5 h-5 cursor-pointer"
-                            onClick={() =>
-                              handleEditSave(chat.id, inputRef.current?.value || chat.title || "New Chat")
-                            }
+                            onClick={() => handleEditSave(chat.id, editingTitle)}
                           />
                           <IoClose
                             className="text-red-500 w-5 h-5 cursor-pointer"
@@ -375,6 +389,7 @@ export default function Sidebar() {
                         <ThreadTitle
                           title={chat.title ?? "New Chat"}
                           isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
+                          isSaving={savingThreads.has(chat.id ?? "")}
                         />
 
                         {chat.id !== null && (
@@ -383,7 +398,7 @@ export default function Sidebar() {
                               className="text-secondary-500 w-4 h-4 cursor-pointer"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditClick(chat.id);
+                                handleEditClick(chat.id, chat.title ?? "New Chat");
                               }}
                             />
                             <Trash2
@@ -558,10 +573,12 @@ export default function Sidebar() {
 function ThreadTitle({
   title,
   isTyping,
+  isSaving,
 }: {
   title: string;
   isTyping: boolean;
-  }) {
+  isSaving: boolean;
+}) {
   function truncateText(text: string, max = 32) {
     if (text.length <= max) return text;
     return text.slice(0, max - 1) + "…";
@@ -574,12 +591,31 @@ function ThreadTitle({
     <TooltipProvider>
       <Tooltip>
         <TooltipTrigger>
-          <span className="truncate cursor-pointer">
-            {visibleText}
-          </span>
+          <div className="flex items-center gap-2 min-w-0 cursor-pointer">
+
+            <span className="truncate">
+              {visibleText}
+            </span>
+
+            <div
+              className={`
+              w-4 h-4 shrink-0
+              transition-all duration-200 ease-out
+              ${isSaving ? "opacity-100 scale-100" : "opacity-0 scale-75"}
+              `}
+            >
+              <Loader2 className="w-4 h-4 animate-spin opacity-70" />
+            </div>
+
+          </div>
         </TooltipTrigger>
 
-        <TooltipContent side="bottom" align="start" sideOffset={10} className="max-w-xs">
+        <TooltipContent
+        side="bottom"
+        align="start"
+        sideOffset={10}
+        className="max-w-xs"
+        >
           {title}
         </TooltipContent>
       </Tooltip>
