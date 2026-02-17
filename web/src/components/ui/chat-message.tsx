@@ -27,7 +27,7 @@ import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sour
 /* -------------------------------------------------------------------------- */
 
 const chatBubbleVariants = cva(
-  "relative break-words rounded-lg p-3 text-sm max-w-[85%]",
+  "relative break-words rounded-lg p-3 text-md max-w-[85%]",
   {
     variants: {
       isUser: {
@@ -247,7 +247,7 @@ const ReasoningBlock = ({
         className="rounded-lg border bg-muted/50"
       >
         <div className="flex items-center p-2">
-          <CollapsibleTrigger className="flex items-center gap-2 text-sm">
+          <CollapsibleTrigger className="flex items-center gap-2 text-md">
             <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
             Thinking
             {streaming && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -316,7 +316,7 @@ function ToolRenderer({
           {/* Tool name + ID */}
           <div className="flex flex-col min-w-0">
             <div className="flex items-center gap-2 min-w-0">
-              <span className="text-sm font-medium truncate">
+              <span className="text-md font-medium truncate">
                 {rawToolName}
               </span>
 
