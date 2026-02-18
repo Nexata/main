@@ -162,7 +162,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					activeUser.language,
 				);
 
-			const arr: { casa: string; venta: number }[] = await res.json();
+			const arr = (await res.json()) as { casa: string; venta: number }[];
 			const oficial = arr.find((x) => x.casa === 'oficial');
 
 			if (!oficial?.venta)

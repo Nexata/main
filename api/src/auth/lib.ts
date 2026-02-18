@@ -9,6 +9,7 @@ import {
 	realOauthScopes,
 	scopesPerProvider,
 	TraceType,
+	tenant,
 	trace,
 	user,
 } from '@api/schema';
@@ -18,7 +19,7 @@ import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { lowerEq } from '@api/utils/sql';
 import { Nullish } from '@api/utils/type';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { redirect, type Static, t } from 'elysia';
 import { decodeIdToken, type OAuth2Tokens } from 'elysia-oauth2';
 
@@ -33,11 +34,13 @@ export const getOauthCallback = (key: string) =>
 
 export const oauthLoginExtendedState = t.Object({
 	flow: t.Literal('login', { default: 'login' }),
-	tenant: t.String({
-		minLength: 2,
-		pattern: '^[a-z0-9]{2,16}$',
-		description: 'Tenant slug',
-	}),
+	tenant: Nullish(
+		t.String({
+			minLength: 2,
+			pattern: '^[a-z0-9]{2,16}$',
+			description: 'Tenant slug',
+		}),
+	),
 	fingerprint: t.String({
 		description: 'Device fingerprint for token tracking',
 	}),
@@ -126,19 +129,105 @@ export async function authorizeOauthCallback(
 		tokens.data,
 	);
 
-	const u = (
-		await db
+	const url = q.redirect && new URL(q.redirect);
+
+	if (q.flow === 'login') {
+		const users = await db
 			.select()
 			.from(user)
+			.innerJoin(tenant, eq(user.slug, tenant.slug))
 			.where(
-				q.flow === 'credential'
-					? eq(user.id, q.userId)
-					: and(
-							lowerEq(user.email, metadata.email.toLowerCase()),
-							eq(user.slug, q.tenant.toLowerCase()),
-						),
-			)
-	).at(0);
+				and(
+					lowerEq(user.email, metadata.email.toLowerCase()),
+					q.tenant ? eq(user.slug, q.tenant.toLowerCase()) : undefined,
+				),
+			);
+
+		if (!users.length)
+			throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
+
+		const toUpdate = users.filter(
+			(row) =>
+				(!row.user.displayName && metadata.name) ||
+				(!row.user.pfpUrl && metadata.pfpUrl),
+		);
+
+		if (toUpdate.length)
+			await db
+				.update(user)
+				.set({ displayName: metadata.name, pfpUrl: metadata.pfpUrl })
+				.where(
+					inArray(
+						user.id,
+						toUpdate.map((row) => row.user.id),
+					),
+				);
+
+		const ttl = 12 * 60 * 60;
+
+		const sessions = await Promise.all(
+			users.map(async (row) => {
+				const u = {
+					...row.user,
+					displayName: row.user.displayName ?? metadata.name ?? null,
+					pfpUrl: row.user.pfpUrl ?? metadata.pfpUrl ?? null,
+				};
+
+				const [at, rt] = await Promise.all([
+					jwtSign({ id: u.id, slug: u.slug }),
+					refreshJwtSign({ id: u.id }),
+				]);
+
+				const set = {
+					accessToken: at,
+					refreshToken: rt,
+					userAgent: metadata.userAgent,
+					createdAt: new Date(),
+				};
+
+				await Promise.all([
+					db
+						.insert(device)
+						.values({
+							fingerprint: q.fingerprint,
+							userId: u.id,
+							...set,
+						})
+						.onConflictDoUpdate({
+							target: [device.userId, device.fingerprint],
+							set,
+						}),
+					cache.set(`device:${u.id}:${q.fingerprint}`, at, { ex: ttl }),
+					cache.set(
+						userCacheKey(u.slug, u.id),
+						{ ...u, apiKey: null },
+						{ ex: ttl },
+					),
+				]);
+
+				return {
+					at,
+					rt,
+					user: {
+						id: u.id,
+						email: u.email,
+						displayName: u.displayName,
+						pfpUrl: u.pfpUrl,
+					},
+					tenant: {
+						slug: row.tenant.slug,
+						displayName: row.tenant.displayName,
+						logoUrl: row.tenant.logoUrl,
+					},
+				};
+			}),
+		);
+
+		if (url) url.searchParams.set('sessions', btoa(JSON.stringify(sessions)));
+		return url ? redirect(url.href) : sessions;
+	}
+
+	const u = (await db.select().from(user).where(eq(user.id, q.userId))).at(0);
 
 	if (!u?.id) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
 
@@ -150,51 +239,6 @@ export async function authorizeOauthCallback(
 
 		u.pfpUrl = u.pfpUrl ?? metadata.pfpUrl ?? null;
 		u.displayName = u.displayName ?? metadata.name ?? null;
-	}
-
-	const url = q.redirect && new URL(q.redirect);
-
-	if (q.flow === 'login') {
-		const [accessToken, refreshToken] = await Promise.all([
-			jwtSign({ id: u.id, slug: u.slug }),
-			refreshJwtSign({ id: u.id }),
-		]);
-
-		const set = {
-			accessToken,
-			refreshToken,
-			userAgent: metadata.userAgent,
-			createdAt: new Date(),
-		};
-
-		const ttl = 12 * 60 * 60;
-
-		await Promise.all([
-			db
-				.insert(device)
-				.values({
-					fingerprint: q.fingerprint,
-					userId: u.id,
-					...set,
-				})
-				.onConflictDoUpdate({
-					target: [device.userId, device.fingerprint],
-					set,
-				}),
-			cache.set(`device:${u.id}:${q.fingerprint}`, accessToken, { ex: ttl }),
-			cache.set(
-				userCacheKey(u.slug, u.id),
-				{ ...u, apiKey: null },
-				{ ex: ttl },
-			),
-		]);
-
-		if (url) {
-			url.searchParams.set('at', accessToken);
-			url.searchParams.set('rt', refreshToken);
-		}
-
-		return url ? redirect(url.href) : { accessToken, refreshToken };
 	}
 
 	const set = {

@@ -68,21 +68,27 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.get(
 		'/tenant',
 		async ({ activeUser }) => {
-			const result = await db
-				.select({
-					slug: tenant.slug,
-					displayName: tenant.displayName,
-					logoUrl: tenant.logoUrl,
-					plan: tenant.plan,
-					createdAt: tenant.createdAt,
-				})
-				.from(tenant)
-				.where(eq(tenant.slug, activeUser.slug));
+			const result = (
+				await db
+					.select({
+						slug: tenant.slug,
+						displayName: tenant.displayName,
+						logoUrl: tenant.logoUrl,
+						plan: tenant.plan,
+						createdAt: tenant.createdAt,
+					})
+					.from(tenant)
+					.where(eq(tenant.slug, activeUser.slug))
+			).at(0);
 
-			return result.map((t) => ({
-				...t,
-				...PLANS[t.plan as Plan],
-			}));
+			if (!result)
+				throw httpError(
+					HttpCode.INTERNAL_SERVER_ERROR,
+					ErrorCode.TENANT_NOT_FOUND,
+					activeUser.language,
+				);
+
+			return { ...result, ...PLANS[result.plan as Plan] };
 		},
 		{
 			detail: { summary: 'Get my tenant' },
