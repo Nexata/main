@@ -462,7 +462,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
           </p>
         </div>
       </div>
-
     </div>
   );
 }
