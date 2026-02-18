@@ -39,5 +39,7 @@
 	"STORAGE_LIMIT_REACHED": "Se ha alcanzado el límite de almacenamiento",
 	"EMBED_LIMIT_REACHED": "Se ha alcanzado el límite de procesamiento",
 	"PLAN_CHANGE_UNPAID_BILLS": "No se puede cambiar a un plan inferior con facturas impagas",
-	"PLAN_CHANGE_NOT_ALLOWED": "Este cambio de plan no está permitido"
+	"PLAN_CHANGE_NOT_ALLOWED": "Este cambio de plan no está permitido",
+	"TENANT_CREATION_EXPIRED": "La solicitud de creación de la organización ha expirado o es inválida",
+	"SLUG_UNAVAILABLE": "Este identificador no está disponible"
 }

@@ -7,6 +7,7 @@ import { cache, db, IS_PRODUCTION } from '@api/env';
 import { feedbackRouter } from '@api/feedback';
 import { fileRouter } from '@api/file';
 import { integrationRouter } from '@api/integration';
+import { publicRouter } from '@api/public';
 import { userRouter } from '@api/user';
 import cors from '@elysiajs/cors';
 import openapi, { fromTypes } from '@elysiajs/openapi';
@@ -76,6 +77,7 @@ export const app = new Elysia()
 	.use(fileRouter)
 	.use(feedbackRouter)
 	.use(integrationRouter)
+	.use(publicRouter)
 	.get(
 		'/',
 		async () => ({

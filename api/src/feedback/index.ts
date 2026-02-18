@@ -90,7 +90,7 @@ export namespace NexataFeedback {
 		const fileUrls = files?.length
 			? await Promise.all(
 					files.map(async (f) => {
-						const path = `feedback/${id}/${f.name}`;
+						const path = `t/${activeUser.slug}/feedback/${id}/${f.name}`;
 						await s3.write(path, f, { acl: 'public-read', type: f.type });
 						return `${S3_ACCESS_URL}/${path}`;
 					}),
@@ -177,7 +177,7 @@ export const feedbackRouter = new Elysia({
 			if (body.files?.length) {
 				const newFileUrls = await Promise.all(
 					body.files.map(async (f) => {
-						const path = `feedback/${id}/${f.name}`;
+						const path = `t/${activeUser.slug}/feedback/${id}/${f.name}`;
 						await s3.write(path, f, { acl: 'public-read', type: f.type });
 						return `${S3_ACCESS_URL}/${path}`;
 					}),

@@ -276,7 +276,7 @@ export namespace NexataFile {
 			);
 
 			if (!data.provider || data.provider === FileHost.NEXATA)
-				data.url = await uploadFile(data.id, f);
+				data.url = await uploadFile(data.slug, data.id, f);
 
 			const totalEmbedTokens = (result.tokenUsage ?? 0) + embeddingUsage;
 			const storageDeltaMB =
@@ -699,7 +699,7 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 			await Promise.allSettled(
 				deleted
 					.filter(({ host }) => host === FileHost.NEXATA)
-					.map((f) => s3.delete(f.id)),
+					.map((f) => s3.delete(`t/${activeUser.slug}/f/${f.id}`)),
 			);
 
 			return deleted;

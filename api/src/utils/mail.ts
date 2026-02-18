@@ -2,23 +2,34 @@ import { SMTP } from '@api/env';
 import enFeedbackUpdated from '@api/locales/en/feedback-updated.json' with {
 	type: 'json',
 };
+import enTenantCreation from '@api/locales/en/tenant-creation.json' with {
+	type: 'json',
+};
 import esFeedbackUpdated from '@api/locales/es/feedback-updated.json' with {
+	type: 'json',
+};
+import esTenantCreation from '@api/locales/es/tenant-creation.json' with {
 	type: 'json',
 };
 import { Language } from '@api/schema';
 import feedbackUpdatedHbs from '@api/templates/feedback-updated.hbs' with {
 	type: 'text',
 };
+import tenantCreationHbs from '@api/templates/tenant-creation.hbs' with {
+	type: 'text',
+};
 import Handlebars from 'handlebars';
 
 export enum Template {
 	FEEDBACK_UPDATED = 'feedback-updated',
+	TENANT_CREATION = 'tenant-creation',
 }
 
 const FROM = '"Nexata" <noreply@nexata.app>';
 
 const templateSources: Record<Template, string> = {
 	[Template.FEEDBACK_UPDATED]: feedbackUpdatedHbs,
+	[Template.TENANT_CREATION]: tenantCreationHbs,
 };
 
 const templateLocales: Record<
@@ -28,6 +39,10 @@ const templateLocales: Record<
 	[Template.FEEDBACK_UPDATED]: {
 		[Language.EN]: enFeedbackUpdated,
 		[Language.ES]: esFeedbackUpdated,
+	},
+	[Template.TENANT_CREATION]: {
+		[Language.EN]: enTenantCreation,
+		[Language.ES]: esTenantCreation,
 	},
 };
 

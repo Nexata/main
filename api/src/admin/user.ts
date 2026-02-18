@@ -29,7 +29,9 @@ export const userRouter = new Elysia({ prefix: '/user' })
 							.values({
 								...body,
 								id,
-								pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+								pfpUrl:
+									body.pfp &&
+									(await uploadUserPfp(activeUser.slug, id, body.pfp)),
 								slug: activeUser.slug,
 							})
 							.returning({ id: user.id }),
@@ -62,7 +64,8 @@ export const userRouter = new Elysia({ prefix: '/user' })
 					.update(user)
 					.set({
 						...body,
-						pfpUrl: body.pfp && (await uploadUserPfp(id, body.pfp)),
+						pfpUrl:
+							body.pfp && (await uploadUserPfp(activeUser.slug, id, body.pfp)),
 					})
 					.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
 					.returning()
@@ -121,7 +124,7 @@ export const userRouter = new Elysia({ prefix: '/user' })
 				cache.del(userCacheKey(activeUser.slug, id)),
 			]);
 
-			await s3.delete(`u/${id}`);
+			await s3.delete(`t/${activeUser.slug}/u/${id}`);
 
 			return id;
 		},

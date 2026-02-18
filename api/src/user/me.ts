@@ -13,17 +13,24 @@ import {
 import { userCacheKey } from '@api/utils/auth';
 import { getTenantPlan } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
-import { uploadUserPfp } from '@api/utils/s3';
+import { deleteTenantData, uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
 import { password, s3 } from 'bun';
-import { and, countDistinct, eq, isNotNull, type SQL } from 'drizzle-orm';
+import {
+	and,
+	count,
+	countDistinct,
+	eq,
+	isNotNull,
+	type SQL,
+} from 'drizzle-orm';
 import { createUpdateSchema } from 'drizzle-typebox';
 import { Elysia, t } from 'elysia';
 
 const updateUser = createUpdateSchema(user);
 
-export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
+export const meRouter = new Elysia({ prefix: '/me' })
 	.use(authPlugin())
 	.get(
 		'/info',
@@ -102,7 +109,9 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 					.update(user)
 					.set({
 						...body,
-						pfpUrl: body.pfp && (await uploadUserPfp(activeUser.id, body.pfp)),
+						pfpUrl:
+							body.pfp &&
+							(await uploadUserPfp(activeUser.slug, activeUser.id, body.pfp)),
 					})
 					.where(eq(user.id, activeUser.id))
 					.returning()
@@ -135,7 +144,20 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 				db.delete(user).where(eq(user.id, id)),
 				cache.del(userCacheKey(slug, id)),
 			]);
-			await s3.delete(`u/${id}`);
+			await s3.delete(`t/${slug}/u/${id}`);
+
+			const remaining = (
+				await db
+					.select({ count: count() })
+					.from(user)
+					.where(eq(user.slug, slug))
+			).at(0);
+
+			if (!remaining?.count) {
+				await deleteTenantData(slug);
+				await db.delete(tenant).where(eq(tenant.slug, slug));
+			}
+
 			return id;
 		},
 		{

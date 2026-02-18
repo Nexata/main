@@ -149,32 +149,4 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 			detail: { summary: 'Change tenant plan' },
 			body: tObject({ plan: t.Enum(Plan) }),
 		},
-	)
-	.get(
-		'/usd-ars-quote',
-		async ({ activeUser }) => {
-			const res = await fetch('https://dolarapi.com/v1/dolares');
-
-			if (!res.ok)
-				throw httpError(
-					HttpCode.CONFLICT,
-					ErrorCode.EXTERNAL_ERROR,
-					activeUser.language,
-				);
-
-			const arr = (await res.json()) as { casa: string; venta: number }[];
-			const oficial = arr.find((x) => x.casa === 'oficial');
-
-			if (!oficial?.venta)
-				throw httpError(
-					HttpCode.CONFLICT,
-					ErrorCode.EXTERNAL_ERROR,
-					activeUser.language,
-				);
-
-			return oficial?.venta;
-		},
-		{
-			detail: { summary: 'Get current USD-ARS quote' },
-		},
 	);
