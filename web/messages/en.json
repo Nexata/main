@@ -237,6 +237,45 @@
 			"tenant_name": "Company Name",
 			"tenant_logo": "Company Logo"
 		},
+		"traces": {
+      "title": "Event trace",
+      "description": "Monitor system activity.",
+      "filters": {
+        "type": "Filter type",
+        "all": "All",
+        "from": "From",
+        "to": "To",
+        "clear": "Clear"
+      },
+      "table": {
+        "date": "Date",
+        "type": "Type",
+        "user": "User",
+        "metadata": "Metadata"
+      },
+      "empty": {
+        "title": "No events found",
+        "description": "Try adjusting filters or date range."
+      },
+      "pagination": {
+        "page": "Page",
+        "rows": "Rows",
+        "prev": "Prev",
+        "next": "Next"
+      },
+      "user": {
+        "system": "system"
+      },
+      "metadata": {
+        "provider": "Provider",
+        "file": "File"
+      },
+      "types": {
+        "credential_added": "Credential added",
+        "credential_removed": "Credential removed",
+        "ingest_failed": "Ingest failed"
+      }
+    },
 		"users": {
 			"title": "Users",
 			"description": "Manage the users that belong to your Nexata organization.",
