@@ -163,3 +163,106 @@ export function useIngestFromDrive() {
     mutationFn: ingestFromDrive,
   });
 }
+
+/* ======================================================
+   PLATFORM FILES
+====================================================== */
+
+/* ---------- Types ---------- */
+
+export type PlatformFile = {
+  id: string;
+  name: string;
+  metadata?: unknown;
+  provider?: string;
+  type?: string;
+  createdAt: string;
+};
+
+export type DeleteFilesPayload = {
+  ids: string[];
+};
+
+export type UpdateFilePayload = {
+  id: string;
+  name?: string;
+  metadata?: unknown;
+};
+
+export type SearchFilesParams = Parameters<typeof apiClient.file.get>[0]["$query"];
+
+type IngestBody = Parameters<typeof apiClient.file.post>[0];
+export type IngestFilesPayload = Pick<IngestBody, "files" | "metadata">;
+
+/* ---------- Ingest ---------- */
+
+export async function ingestFiles(payload: IngestFilesPayload) {
+  return withAuthRetry((headers) =>
+    apiClient.file.post({
+      $headers: headers,
+      ...payload,
+    })
+  );
+}
+
+export function useIngestFiles() {
+  return useMutation({
+    mutationFn: ingestFiles,
+  });
+}
+
+/* ---------- Delete ---------- */
+
+export async function deleteFiles(payload: DeleteFilesPayload) {
+  return withAuthRetry((headers) =>
+    apiClient.file.delete({
+      $headers: headers,
+      ...payload,
+    })
+  );
+}
+
+export function useDeleteFiles() {
+  return useMutation({
+    mutationFn: deleteFiles,
+  });
+}
+
+/* ---------- Update ---------- */
+
+export async function updateFile(payload: UpdateFilePayload) {
+  const { id, ...body } = payload;
+
+  return withAuthRetry((headers) =>
+    apiClient.file[id]!.patch({
+      $headers: headers,
+      ...body,
+    })
+  );
+}
+
+export function useUpdateFile() {
+  return useMutation({
+    mutationFn: updateFile,
+  });
+}
+
+/* ---------- Search ---------- */
+
+export async function searchFiles(params?: SearchFilesParams) {
+  return withAuthRetry((headers) =>
+    apiClient.file.get({
+      $headers: headers,
+      $query: params ?? {},
+    })
+  );
+}
+
+export type SearchFilesResult = Awaited<ReturnType<typeof searchFiles>>;
+
+export function useSearchFiles(params?: SearchFilesParams) {
+  return useQuery({
+    queryKey: ["platform-files", JSON.stringify(params ?? {})],
+    queryFn: () => searchFiles(params),
+  });
+}
