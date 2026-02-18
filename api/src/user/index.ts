@@ -1,6 +1,6 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
-import { device, TraceType, trace, user } from '@api/schema';
+import { BillableEventType, billableEvent, device, user } from '@api/schema';
 import { meRouter } from '@api/user/me';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
@@ -30,15 +30,15 @@ export const userRouter = new Elysia({ prefix: '/user', tags: ['User'] })
 						}),
 						{ distinct: true },
 					),
-					messageCount: countDistinct(trace.id),
+					messageCount: countDistinct(billableEvent.id),
 				})
 				.from(user)
 				.leftJoin(device, eq(device.userId, user.id))
 				.leftJoin(
-					trace,
+					billableEvent,
 					and(
-						eq(trace.userId, user.id),
-						eq(trace.type, TraceType.MESSAGE_SENT),
+						eq(billableEvent.userId, user.id),
+						eq(billableEvent.type, BillableEventType.MESSAGE),
 					),
 				)
 				.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))

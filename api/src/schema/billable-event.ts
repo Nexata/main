@@ -16,6 +16,7 @@ import {
 export enum BillableEventType {
 	EMBED = 'embed', // Consumption in token usage
 	STORAGE = 'storage', // Consumption in MBs
+	MESSAGE = 'message', // Consumption in credits (1 normal, 2 extraReason)
 	REFILL = 'refill', // Consumption in messages
 }
 

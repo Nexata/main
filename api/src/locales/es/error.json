@@ -37,5 +37,7 @@
 	"NO_FILE_NAME": "No se pudo determinar el nombre del archivo",
 	"UNSUPPORTED_FILE_TYPE": "Este tipo de archivo no es compatible",
 	"STORAGE_LIMIT_REACHED": "Se ha alcanzado el límite de almacenamiento",
-	"EMBED_LIMIT_REACHED": "Se ha alcanzado el límite de procesamiento"
+	"EMBED_LIMIT_REACHED": "Se ha alcanzado el límite de procesamiento",
+	"PLAN_CHANGE_UNPAID_BILLS": "No se puede cambiar a un plan inferior con facturas impagas",
+	"PLAN_CHANGE_NOT_ALLOWED": "Este cambio de plan no está permitido"
 }

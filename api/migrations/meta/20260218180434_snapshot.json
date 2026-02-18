@@ -1,6 +1,6 @@
 {
-  "id": "1bca3888-dee8-4e43-99e4-05696f1364a5",
-  "prevId": "f63f7e29-0caa-4044-9118-7e16bd1d02ca",
+  "id": "9c4954e0-8b93-485d-97e0-c97d5ce03d6d",
+  "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -35,12 +35,18 @@
           "notNull": true,
           "default": false
         },
-        "usage_based_billing": {
-          "name": "usage_based_billing",
-          "type": "boolean",
+        "amount": {
+          "name": "amount",
+          "type": "numeric",
           "primaryKey": false,
-          "notNull": true,
-          "default": false
+          "notNull": true
+        },
+        "plan": {
+          "name": "plan",
+          "type": "plan",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true
         },
         "details": {
           "name": "details",
@@ -1181,54 +1187,20 @@
           "primaryKey": false,
           "notNull": false
         },
-        "base_bill": {
-          "name": "base_bill",
-          "type": "integer",
+        "plan": {
+          "name": "plan",
+          "type": "plan",
+          "typeSchema": "public",
           "primaryKey": false,
           "notNull": true,
-          "default": 20
+          "default": "'free'"
         },
-        "message_limit": {
-          "name": "message_limit",
-          "type": "integer",
+        "billing_at": {
+          "name": "billing_at",
+          "type": "timestamp",
           "primaryKey": false,
           "notNull": true,
-          "default": 100
-        },
-        "default_message_limit": {
-          "name": "default_message_limit",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 100
-        },
-        "has_api_access": {
-          "name": "has_api_access",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "usage_based_billing": {
-          "name": "usage_based_billing",
-          "type": "boolean",
-          "primaryKey": false,
-          "notNull": true,
-          "default": false
-        },
-        "storage_limit": {
-          "name": "storage_limit",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 5120
-        },
-        "embed_limit": {
-          "name": "embed_limit",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 512000000
+          "default": "now()"
         },
         "created_at": {
           "name": "created_at",
@@ -1535,6 +1507,7 @@
       "values": [
         "embed",
         "storage",
+        "message",
         "refill"
       ]
     },
@@ -1601,11 +1574,20 @@
         "tool"
       ]
     },
+    "public.plan": {
+      "name": "plan",
+      "schema": "public",
+      "values": [
+        "free",
+        "personal",
+        "business",
+        "pay_as_you_go"
+      ]
+    },
     "public.trace_type": {
       "name": "trace_type",
       "schema": "public",
       "values": [
-        "message_sent",
         "file_ingested",
         "file_deleted",
         "credential_added",
@@ -1635,12 +1617,6 @@
           "primaryKey": true,
           "notNull": true,
           "default": "gen_random_uuid()"
-        },
-        "userId": {
-          "name": "userId",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
         },
         "provider": {
           "name": "provider",
@@ -1695,7 +1671,7 @@
           "default": "now()"
         }
       },
-      "definition": "select \"credential\".\"id\", \"user\".\"id\", case when \"user\".\"is_admin\" = true then 'tenant-admin' when (\"credential\".\"user_id\" = \"user\".\"id\" or \"credential_permission\".\"is_admin\" = true) then 'admin' when \"credential_permission\".\"is_admin\" = false then 'read' else 'global' end as \"access_level\", \"credential\".\"user_id\", \"credential\".\"provider\", \"credential\".\"scope\", \"credential\".\"email\", \"credential\".\"is_global\", \"credential\".\"access_token\", \"credential\".\"refresh_token\", \"credential\".\"access_token_expires_at\", \"credential\".\"created_at\" from \"credential\" inner join \"user\" \"owner\" on \"owner\".\"id\" = \"credential\".\"user_id\" inner join \"user\" on \"user\".\"slug\" = \"owner\".\"slug\" left join \"credential_permission\" on (\"credential_permission\".\"credential_id\" = \"credential\".\"id\" and \"credential_permission\".\"user_id\" = \"user\".\"id\") where (\"user\".\"is_admin\" = true or \"credential\".\"user_id\" = \"user\".\"id\" or \"credential_permission\".\"user_id\" is not null or \"credential\".\"is_global\" = true)",
+      "definition": "select \"credential\".\"id\", \"user\".\"id\" as \"user_id\", case when \"user\".\"is_admin\" = true then 'tenant-admin' when (\"credential\".\"user_id\" = \"user\".\"id\" or \"credential_permission\".\"is_admin\" = true) then 'admin' when \"credential_permission\".\"is_admin\" = false then 'read' else 'global' end as \"access_level\", \"owner\".\"id\" as \"owner_id\", \"owner\".\"email\" as \"owner_email\", \"credential\".\"provider\", \"credential\".\"scope\", \"credential\".\"email\", \"credential\".\"is_global\", \"credential\".\"access_token\", \"credential\".\"refresh_token\", \"credential\".\"access_token_expires_at\", \"credential\".\"created_at\" from \"credential\" inner join \"user\" \"owner\" on \"owner\".\"id\" = \"credential\".\"user_id\" inner join \"user\" on \"user\".\"slug\" = \"owner\".\"slug\" left join \"credential_permission\" on (\"credential_permission\".\"credential_id\" = \"credential\".\"id\" and \"credential_permission\".\"user_id\" = \"user\".\"id\") where (\"user\".\"is_admin\" = true or \"credential\".\"user_id\" = \"user\".\"id\" or \"credential_permission\".\"user_id\" is not null or \"credential\".\"is_global\" = true)",
       "name": "credential_access",
       "schema": "public",
       "isExisting": false,

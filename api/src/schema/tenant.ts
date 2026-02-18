@@ -1,12 +1,67 @@
 import { matchRegex } from '@api/utils/sql';
 import {
-	boolean,
 	check,
-	integer,
+	pgEnum,
 	pgTable,
 	timestamp,
 	varchar,
 } from 'drizzle-orm/pg-core';
+
+export enum Plan {
+	FREE = 'free',
+	PERSONAL = 'personal',
+	BUSINESS = 'business',
+	PAY_AS_YOU_GO = 'pay_as_you_go',
+}
+
+export const PLANS: Record<
+	Plan,
+	{
+		baseBill: number; // In USDs
+		messageLimit: number | null; // 1 = 1 message
+		storageLimit: number | null; // In MBs
+		embedLimit: number | null; // In tokens
+		hasApiAccess: boolean;
+	}
+> = {
+	[Plan.FREE]: {
+		baseBill: 0,
+		messageLimit: 20,
+		storageLimit: 10 * 1024,
+		embedLimit: 10 * 250_000,
+		hasApiAccess: false,
+	},
+	[Plan.PERSONAL]: {
+		baseBill: 20,
+		messageLimit: 150,
+		storageLimit: 1 * 1000 * 1024,
+		embedLimit: 1.5 * 1000 * 250_000,
+		hasApiAccess: false,
+	},
+	[Plan.BUSINESS]: {
+		baseBill: 100,
+		messageLimit: 1000,
+		storageLimit: 10 * 1000 * 1024,
+		embedLimit: 15 * 1000 * 250_000,
+		hasApiAccess: true,
+	},
+	[Plan.PAY_AS_YOU_GO]: {
+		baseBill: 200,
+		messageLimit: null,
+		storageLimit: null,
+		embedLimit: null,
+		hasApiAccess: true,
+	},
+};
+
+export const USAGE_BASED_PRICING = {
+	// In USDs
+	perMessage: 0.09, // extraReason implies double
+	storagePerMbPerDay: 0.0009,
+	embedPerToken: 0.04 / 1000000,
+};
+
+export const PlanEnum = pgEnum('plan', Object.values(Plan) as [Plan]);
 
 export const tenant = pgTable(
 	'tenant',
@@ -14,17 +69,8 @@ export const tenant = pgTable(
 		slug: varchar({ length: 16 }).primaryKey(),
 		displayName: varchar({ length: 64 }),
 		logoUrl: varchar(),
-		baseBill: integer().notNull().default(20), // PRICING.baseBill
-		messageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
-		defaultMessageLimit: integer().notNull().default(100), // PRICING.baseBillMessages
-		hasApiAccess: boolean().notNull().default(false),
-		usageBasedBilling: boolean().notNull().default(false),
-		storageLimit: integer()
-			.notNull()
-			.default(5 * 1024), // 5GB in MB
-		embedLimit: integer()
-			.notNull()
-			.default(2 * 1024 * 250_000), // 2GB worth of tokens (250k tokens/MB)
+		plan: PlanEnum().notNull().default(Plan.FREE),
+		billingAt: timestamp().notNull().defaultNow(),
 		createdAt: timestamp().notNull().defaultNow(),
 	},
 	(t) => [check('tenant_slug_regex', matchRegex(t.slug, /^[a-z0-9]{2,16}$/))],

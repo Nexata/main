@@ -22,7 +22,7 @@ import {
 	trace,
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
-import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
@@ -638,18 +638,28 @@ export namespace Drive {
 					),
 				);
 
-		const results = await Promise.allSettled(
-			fileEntries.map((entry) =>
-				ingestFile(drv, userId, slug, credentialId, entry, dirId),
-			),
-		);
+		for (const entry of fileEntries) {
+			const blockReason = await checkTenantCanIngest(slug);
+			if (blockReason) {
+				stats.failed +=
+					fileEntries.length - stats.ok - stats.unmodified - stats.failed;
+				break;
+			}
 
-		for (const result of results)
-			stats[
-				(result.status !== 'fulfilled'
-					? 'failed'
-					: result.value.toLowerCase()) as keyof typeof stats
-			]++;
+			try {
+				const result = await ingestFile(
+					drv,
+					userId,
+					slug,
+					credentialId,
+					entry,
+					dirId,
+				);
+				stats[result.toLowerCase() as keyof typeof stats]++;
+			} catch {
+				stats.failed++;
+			}
+		}
 
 		return stats;
 	}
@@ -679,6 +689,11 @@ export namespace Drive {
 				results.unmodified += stats.unmodified;
 				results.failed += stats.failed;
 			} else {
+				const blockReason = await checkTenantCanIngest(slug);
+				if (blockReason) {
+					results.failed++;
+					continue;
+				}
 				const fileInfo = await getFileInfo(drv, item.id);
 				const result = await ingestFile(
 					drv,
@@ -814,11 +829,7 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 	.post(
 		'/ingest',
 		async ({ activeUser, body }) => {
-			const billingInfo = await getTenantBillingInfo(activeUser.slug);
-			const blockReason = await checkTenantCanIngest(
-				billingInfo,
-				activeUser.slug,
-			);
+			const blockReason = await checkTenantCanIngest(activeUser.slug);
 			if (blockReason) {
 				const lang = activeUser.language as Language;
 				if (blockReason === 'PAYMENT_REQUIRED')
@@ -828,7 +839,7 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 						lang,
 					);
 				throw httpError(
-					HttpCode.METHOD_NOT_ALLOWED,
+					HttpCode.PRECONDITION_FAILED,
 					ErrorCode[blockReason as keyof typeof ErrorCode],
 					lang,
 				);

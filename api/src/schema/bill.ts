@@ -1,10 +1,11 @@
-import { tenant } from '@api/schema/tenant';
+import { PlanEnum, tenant } from '@api/schema/tenant';
 import { desc } from 'drizzle-orm';
 import {
 	boolean,
 	date,
 	index,
 	json,
+	numeric,
 	pgTable,
 	uuid,
 	varchar,
@@ -19,8 +20,9 @@ export const bill = pgTable(
 			.references(() => tenant.slug, { onDelete: 'cascade' }),
 		createdAt: date().notNull().defaultNow(),
 		paid: boolean().notNull().default(false),
-		usageBasedBilling: boolean().notNull().default(false),
-		details: json().notNull(), // keys being BillableEventType enum keys, values the totals
+		amount: numeric().notNull(),
+		plan: PlanEnum().notNull(),
+		details: json().notNull(),
 	},
 	(table) => [index('bill_created_at_desc').on(desc(table.createdAt))],
 );

@@ -1,7 +1,17 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
-import { device, Language, TraceType, tenant, trace, user } from '@api/schema';
+import {
+	BillableEventType,
+	billableEvent,
+	device,
+	Language,
+	PLANS,
+	type Plan,
+	tenant,
+	user,
+} from '@api/schema';
 import { userCacheKey } from '@api/utils/auth';
+import { getTenantPlan } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
@@ -37,15 +47,15 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 							}),
 							{ distinct: true },
 						),
-						messageCount: countDistinct(trace.id),
+						messageCount: countDistinct(billableEvent.id),
 					})
 					.from(user)
 					.leftJoin(device, eq(device.userId, user.id))
 					.leftJoin(
-						trace,
+						billableEvent,
 						and(
-							eq(trace.userId, user.id),
-							eq(trace.type, TraceType.MESSAGE_SENT),
+							eq(billableEvent.userId, user.id),
+							eq(billableEvent.type, BillableEventType.MESSAGE),
 						),
 					)
 					.where(eq(user.id, activeUser.id))
@@ -57,17 +67,23 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	)
 	.get(
 		'/tenant',
-		async ({ activeUser }) =>
-			db
+		async ({ activeUser }) => {
+			const result = await db
 				.select({
 					slug: tenant.slug,
 					displayName: tenant.displayName,
 					logoUrl: tenant.logoUrl,
+					plan: tenant.plan,
 					createdAt: tenant.createdAt,
-					hasApiAccess: tenant.hasApiAccess,
 				})
 				.from(tenant)
-				.where(eq(tenant.slug, activeUser.slug)),
+				.where(eq(tenant.slug, activeUser.slug));
+
+			return result.map((t) => ({
+				...t,
+				...PLANS[t.plan as Plan],
+			}));
+		},
 		{
 			detail: { summary: 'Get my tenant' },
 		},
@@ -143,15 +159,8 @@ export const meRouter = new Elysia({ prefix: '/me', tags: ['Me'] })
 	.put(
 		'/api-key',
 		async ({ activeUser }) => {
-			const tenantData = (
-				await db
-					.select({ hasApiAccess: tenant.hasApiAccess })
-					.from(tenant)
-					.where(eq(tenant.slug, activeUser.slug))
-					.limit(1)
-			).at(0);
-
-			if (!tenantData?.hasApiAccess)
+			const plan = await getTenantPlan(activeUser.slug);
+			if (!PLANS[plan].hasApiAccess)
 				throw httpError(
 					HttpCode.FORBIDDEN,
 					ErrorCode.API_ACCESS_NOT_ENABLED,

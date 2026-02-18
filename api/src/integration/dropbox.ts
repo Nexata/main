@@ -20,7 +20,7 @@ import {
 	trace,
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
-import { checkTenantCanIngest, getTenantBillingInfo } from '@api/utils/billing';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -401,18 +401,29 @@ export namespace Dropbox {
 					),
 				);
 
-		const results = await Promise.allSettled(
-			fileEntries.map((entry) =>
-				ingestFile(dpx, userId, slug, credentialId, entry, dirId),
-			),
-		);
+		for (const entry of fileEntries) {
+			const blockReason = await checkTenantCanIngest(slug);
+			if (blockReason) {
+				stats.failed +=
+					fileEntries.length - stats.ok - stats.unmodified - stats.failed;
+				break;
+			}
 
-		for (const result of results)
-			stats[
-				(result.status !== 'fulfilled'
-					? 'failed'
-					: result.value.toLowerCase()) as keyof typeof stats
-			]++;
+			try {
+				const result = await ingestFile(
+					dpx,
+					userId,
+					slug,
+					credentialId,
+					entry,
+					dirId,
+				);
+
+				stats[result.toLowerCase() as keyof typeof stats]++;
+			} catch {
+				stats.failed++;
+			}
+		}
 
 		return stats;
 	}
@@ -442,6 +453,11 @@ export namespace Dropbox {
 				results.unmodified += stats.unmodified;
 				results.failed += stats.failed;
 			} else {
+				const blockReason = await checkTenantCanIngest(slug);
+				if (blockReason) {
+					results.failed++;
+					continue;
+				}
 				const fileInfo = await getFileInfo(dpx, item.id);
 				const result = await ingestFile(
 					dpx,
@@ -613,11 +629,7 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 	.post(
 		'/ingest',
 		async ({ activeUser, body }) => {
-			const billingInfo = await getTenantBillingInfo(activeUser.slug);
-			const blockReason = await checkTenantCanIngest(
-				billingInfo,
-				activeUser.slug,
-			);
+			const blockReason = await checkTenantCanIngest(activeUser.slug);
 			if (blockReason) {
 				if (blockReason === 'PAYMENT_REQUIRED')
 					throw httpError(
@@ -627,7 +639,7 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 					);
 
 				throw httpError(
-					HttpCode.METHOD_NOT_ALLOWED,
+					HttpCode.PRECONDITION_FAILED,
 					ErrorCode[blockReason as keyof typeof ErrorCode],
 					activeUser.language,
 				);

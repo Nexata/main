@@ -10,7 +10,6 @@ import {
 } from 'drizzle-orm/pg-core';
 
 export enum TraceType {
-	MESSAGE_SENT = 'message_sent',
 	FILE_INGESTED = 'file_ingested',
 	FILE_DELETED = 'file_deleted',
 	CREDENTIAL_ADDED = 'credential_added',

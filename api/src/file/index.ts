@@ -11,6 +11,7 @@ import {
 	FileHost,
 	file,
 	filePermission,
+	type Language,
 	message,
 	TraceType,
 	thread,
@@ -18,7 +19,11 @@ import {
 	user,
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
-import { incrementEmbedUsage, incrementStorageUsage } from '@api/utils/billing';
+import {
+	checkTenantCanIngest,
+	incrementEmbedUsage,
+	incrementStorageUsage,
+} from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
@@ -404,15 +409,29 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.use(authPlugin())
 	.post(
 		'/',
-		async ({ body: { files, metadata }, activeUser }) =>
-			Promise.all(
-				files.map((f) =>
-					NexataFile.ingest(
+		async ({ body: { files, metadata }, activeUser }) => {
+			const results: string[] = [];
+			for (const f of files) {
+				const blockReason = await checkTenantCanIngest(activeUser.slug);
+				if (blockReason)
+					throw httpError(
+						blockReason === ErrorCode.PAYMENT_REQUIRED
+							? HttpCode.PAYMENT_REQUIRED
+							: HttpCode.PRECONDITION_FAILED,
+						blockReason,
+						activeUser.language as Language,
+					);
+
+				results.push(
+					await NexataFile.ingest(
 						{ userId: activeUser.id, slug: activeUser.slug, metadata },
 						f,
 					),
-				),
-			),
+				);
+			}
+
+			return results;
+		},
 		{
 			detail: { summary: 'Ingest files' },
 			body: tObject({ files: t.Files(), metadata: Nullish(t.String()) }),

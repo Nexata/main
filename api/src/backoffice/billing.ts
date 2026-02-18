@@ -1,17 +1,17 @@
-import { cache, db } from '@api/env';
+import { db } from '@api/env';
 import {
 	BillableEventType,
-	bill,
 	billableEvent,
 	chunk,
 	file,
-	TraceType,
-	tenant,
-	trace,
 	user,
 } from '@api/schema';
+import {
+	generateBillForTenant,
+	getTenantsDueForBilling,
+} from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
-import { and, eq, isNull, sql } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { Elysia } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
@@ -48,7 +48,6 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			detail: {
 				summary: 'Generate billable events',
-				// NOTE: Cron job, scheduled to run once a day
 				description:
 					'Generates chronological billable events. Expected to run chronologically at midnight.',
 			},
@@ -57,66 +56,19 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	.put(
 		'/generate-bills',
 		async () => {
-			const billData = await db
-				.select({
-					slug: tenant.slug,
-					baseBill: tenant.baseBill,
-					usageBasedBilling: tenant.usageBasedBilling,
-					details: sql<Record<
-						string,
-						string
-					> | null>`json_object_agg(${billableEvent.type}, sum(${billableEvent.consumption})) FILTER (WHERE ${billableEvent.slug} IS NOT NULL)`,
-				})
-				.from(tenant)
-				.leftJoin(
-					billableEvent,
-					and(
-						eq(billableEvent.slug, tenant.slug),
-						isNull(billableEvent.billId),
-					),
-				)
-				.groupBy(tenant.slug);
-
-			const billsToInsert = billData.map((t) => ({
-				id: crypto.randomUUID(),
-				slug: t.slug,
-				usageBasedBilling: t.usageBasedBilling,
-				details: {
-					...(t.details ?? {}),
-					baseBill: t.baseBill,
-				},
-			}));
-
-			return Promise.all([
-				cache.del(
-					...billData.flatMap((t) => [
-						`tenant:${t.slug}:message-count`,
-						`tenant:${t.slug}:embed-usage`,
-					]),
-				),
-				db.batch([
-					db.insert(bill).values(billsToInsert),
-					...billsToInsert.map((b) =>
-						db
-							.update(billableEvent)
-							.set({ billId: b.id })
-							.where(
-								and(
-									eq(billableEvent.slug, b.slug),
-									isNull(billableEvent.billId),
-								),
-							),
-					),
-					db.delete(trace).where(eq(trace.type, TraceType.MESSAGE_SENT)),
-				]),
-			]);
+			const dueTenants = await getTenantsDueForBilling();
+			return await Promise.all(
+				dueTenants.map(async (t) => {
+					const result = await generateBillForTenant(t.slug, t.plan);
+					return { slug: t.slug, ...result };
+				}),
+			);
 		},
 		{
 			detail: {
 				summary: 'Generate billing',
-				// NOTE: Cron job, scheduled to run once a month
 				description:
-					'Generates bills for the month and resets consumptions. Expected to run chronologically each first day of the month.',
+					'Generates bills for tenants due for billing and advances their billingAt. Expected to run once a day at midnight.',
 			},
 		},
 	);

@@ -1,1 +1,0 @@
-ALTER TABLE "feedback" ALTER COLUMN "file_urls" SET DEFAULT ARRAY[]::text[];

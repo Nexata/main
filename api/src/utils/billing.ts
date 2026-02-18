@@ -5,48 +5,37 @@ import {
 	billableEvent,
 	chunk,
 	file,
+	PLANS,
+	Plan,
 	tenant,
+	USAGE_BASED_PRICING,
 	user,
 } from '@api/schema';
-import { and, desc, eq, isNull, sql, sum } from 'drizzle-orm';
+import { ErrorCode } from '@api/utils/error';
+import dayjs from 'dayjs';
+import { and, desc, eq, isNull, lte, sql, sum } from 'drizzle-orm';
 
-const TENANT_BILLING_KEY = (slug: string) => `tenant:${slug}:billing-info`;
+const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
 const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
 const EMBED_KEY = (slug: string) => `tenant:${slug}:embed-usage`;
+const MESSAGE_KEY = (slug: string) => `tenant:${slug}:message-usage`;
+const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
 const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
 
-export type TenantBillingInfo = {
-	usageBasedBilling: boolean;
-	storageLimit: number;
-	embedLimit: number;
-};
-
-export async function getTenantBillingInfo(
-	slug: string,
-): Promise<TenantBillingInfo> {
-	const cached = await cache.get<TenantBillingInfo>(TENANT_BILLING_KEY(slug));
+export async function getTenantPlan(slug: string): Promise<Plan> {
+	const cached = await cache.get<Plan>(PLAN_KEY(slug));
 	if (cached) return cached;
 
 	const result = (
 		await db
-			.select({
-				usageBasedBilling: tenant.usageBasedBilling,
-				storageLimit: tenant.storageLimit,
-				embedLimit: tenant.embedLimit,
-			})
+			.select({ plan: tenant.plan })
 			.from(tenant)
 			.where(eq(tenant.slug, slug))
 	).at(0);
 
-	if (!result)
-		return {
-			usageBasedBilling: false,
-			storageLimit: 5 * 1024,
-			embedLimit: 2 * 1024 * 250_000,
-		};
-
-	await cache.set(TENANT_BILLING_KEY(slug), result, { ex: 60 * 60 });
-	return result;
+	const plan = result?.plan ?? Plan.FREE;
+	await cache.set(PLAN_KEY(slug), plan, { ex: 12 * 60 * 60 });
+	return plan;
 }
 
 export async function getStorageUsage(slug: string): Promise<number> {
@@ -92,15 +81,57 @@ export async function getEmbedUsage(slug: string): Promise<number> {
 	return usage;
 }
 
+export async function getMessageUsage(slug: string): Promise<number> {
+	const cached = await cache.get<number>(MESSAGE_KEY(slug));
+	if (cached) return cached;
+
+	const result = (
+		await db
+			.select({ consumption: sum(billableEvent.consumption) })
+			.from(billableEvent)
+			.innerJoin(user, eq(user.id, billableEvent.userId))
+			.where(
+				and(
+					eq(billableEvent.type, BillableEventType.MESSAGE),
+					eq(user.slug, slug),
+					isNull(billableEvent.billId),
+				),
+			)
+	).at(0);
+
+	const usage = Number(result?.consumption ?? 0);
+	await cache.set(MESSAGE_KEY(slug), usage, { ex: 60 * 60 });
+	return usage;
+}
+
+export async function getRefillMessages(slug: string): Promise<number> {
+	const cached = await cache.get<number>(REFILL_KEY(slug));
+	if (cached) return cached;
+
+	const result = (
+		await db
+			.select({ consumption: sum(billableEvent.consumption) })
+			.from(billableEvent)
+			.where(
+				and(
+					eq(billableEvent.type, BillableEventType.REFILL),
+					eq(billableEvent.slug, slug),
+					isNull(billableEvent.billId),
+				),
+			)
+	).at(0);
+
+	const usage = Number(result?.consumption ?? 0);
+	await cache.set(REFILL_KEY(slug), usage, { ex: 60 * 60 });
+	return usage;
+}
+
 export async function incrementStorageUsage(
 	slug: string,
 	deltaMB: number,
 ): Promise<void> {
 	const key = STORAGE_KEY(slug);
-	const current = await cache.get<number>(key);
-	if (current !== null) {
-		await cache.set(key, current + deltaMB, { ex: 12 * 60 * 60 });
-	}
+	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaMB);
 }
 
 export async function incrementEmbedUsage(
@@ -108,10 +139,15 @@ export async function incrementEmbedUsage(
 	deltaTokens: number,
 ): Promise<void> {
 	const key = EMBED_KEY(slug);
-	const current = await cache.get<number>(key);
-	if (current !== null) {
-		await cache.set(key, current + deltaTokens, { ex: 60 * 60 });
-	}
+	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaTokens);
+}
+
+export async function incrementMessageUsage(
+	slug: string,
+	deltaCredits: number,
+): Promise<void> {
+	const key = MESSAGE_KEY(slug);
+	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaCredits);
 }
 
 export async function hasUnpaidBill(slug: string): Promise<boolean> {
@@ -132,33 +168,134 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	return unpaid;
 }
 
-export type IngestBlockReason =
-	| 'PAYMENT_REQUIRED'
-	| 'STORAGE_LIMIT_REACHED'
-	| 'EMBED_LIMIT_REACHED';
-
 export async function checkTenantCanIngest(
-	billingInfo: TenantBillingInfo,
 	slug: string,
-): Promise<null | IngestBlockReason> {
-	if (await hasUnpaidBill(slug)) return 'PAYMENT_REQUIRED';
+): Promise<null | ErrorCode> {
+	if (await hasUnpaidBill(slug)) return ErrorCode.PAYMENT_REQUIRED;
 
-	if (billingInfo.usageBasedBilling) return null;
+	const plan = await getTenantPlan(slug);
+	const limits = PLANS[plan];
 
-	const [storageUsage, embedUsage] = await Promise.all([
-		getStorageUsage(slug),
-		getEmbedUsage(slug),
-	]);
+	if (limits.storageLimit !== null) {
+		const storageUsage = await getStorageUsage(slug);
+		if (storageUsage >= limits.storageLimit)
+			return ErrorCode.STORAGE_LIMIT_REACHED;
+	}
 
-	if (storageUsage >= billingInfo.storageLimit) return 'STORAGE_LIMIT_REACHED';
-	if (embedUsage >= billingInfo.embedLimit) return 'EMBED_LIMIT_REACHED';
+	if (limits.embedLimit !== null) {
+		const embedUsage = await getEmbedUsage(slug);
+		if (embedUsage >= limits.embedLimit) return ErrorCode.EMBED_LIMIT_REACHED;
+	}
 
 	return null;
 }
 
 export async function checkTenantCanChat(
 	slug: string,
-): Promise<null | 'PAYMENT_REQUIRED'> {
-	if (await hasUnpaidBill(slug)) return 'PAYMENT_REQUIRED';
+	creditsToUse: number,
+): Promise<null | ErrorCode> {
+	if (await hasUnpaidBill(slug)) return ErrorCode.PAYMENT_REQUIRED;
+
+	const plan = await getTenantPlan(slug);
+	const limits = PLANS[plan];
+
+	if (limits.messageLimit === null) return null;
+
+	const [messageUsage, refillMessages] = await Promise.all([
+		getMessageUsage(slug),
+		getRefillMessages(slug),
+	]);
+
+	if (messageUsage + creditsToUse > limits.messageLimit + refillMessages)
+		return ErrorCode.MESSAGE_LIMIT_REACHED;
+
 	return null;
+}
+
+type BillDetails = {
+	baseBill: number;
+	storage?: number;
+	embed?: number;
+	message?: number;
+	refill?: number;
+};
+
+export function calculateBillAmount(plan: Plan, details: BillDetails): number {
+	const limits = PLANS[plan];
+	let amount = limits.baseBill;
+
+	if (limits.storageLimit === null && details.storage)
+		amount += details.storage * USAGE_BASED_PRICING.storagePerMbPerDay;
+
+	if (limits.embedLimit === null && details.embed)
+		amount += details.embed * USAGE_BASED_PRICING.embedPerToken;
+
+	if (limits.messageLimit === null && details.message)
+		amount += details.message * USAGE_BASED_PRICING.perMessage;
+
+	return Math.round(amount * 100) / 100;
+}
+
+export async function generateBillForTenant(
+	slug: string,
+	plan: Plan,
+): Promise<{ billId: string; amount: number }> {
+	const consumption = await db
+		.select({
+			type: billableEvent.type,
+			total: sum(billableEvent.consumption),
+		})
+		.from(billableEvent)
+		.where(and(eq(billableEvent.slug, slug), isNull(billableEvent.billId)))
+		.groupBy(billableEvent.type);
+
+	const details: BillDetails = { baseBill: PLANS[plan].baseBill };
+	for (const row of consumption) {
+		const key = row.type as keyof Omit<BillDetails, 'baseBill'>;
+		details[key] = Number(row.total ?? 0);
+	}
+
+	const amount = calculateBillAmount(plan, details);
+	const billId = crypto.randomUUID();
+
+	await db.batch([
+		db.insert(bill).values({
+			id: billId,
+			slug,
+			amount: amount.toString(),
+			plan,
+			paid: amount === 0,
+			details,
+		}),
+		db
+			.update(billableEvent)
+			.set({ billId })
+			.where(and(eq(billableEvent.slug, slug), isNull(billableEvent.billId))),
+		db
+			.update(tenant)
+			.set({ billingAt: dayjs().add(1, 'month').toDate() })
+			.where(eq(tenant.slug, slug)),
+	]);
+
+	await cache.del(
+		PLAN_KEY(slug),
+		STORAGE_KEY(slug),
+		EMBED_KEY(slug),
+		MESSAGE_KEY(slug),
+		REFILL_KEY(slug),
+		UNPAID_KEY(slug),
+	);
+
+	return { billId, amount };
+}
+
+export async function getTenantsDueForBilling(): Promise<
+	{ slug: string; plan: Plan }[]
+> {
+	const now = dayjs().endOf('day').toDate();
+
+	return db
+		.select({ slug: tenant.slug, plan: tenant.plan })
+		.from(tenant)
+		.where(lte(tenant.billingAt, now));
 }

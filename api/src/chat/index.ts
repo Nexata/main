@@ -12,15 +12,14 @@ import { getTools } from '@api/chat/tools';
 import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
 import {
+	BillableEventType,
+	billableEvent,
 	file,
 	type MessageRole,
 	message,
-	TraceType,
 	thread,
-	trace,
 } from '@api/schema';
-import { checkTenantCanChat } from '@api/utils/billing';
-import { getMessageCount } from '@api/utils/chat';
+import { checkTenantCanChat, incrementMessageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -35,24 +34,15 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser }) => {
-			// Message limit and payment handling
-			const [unpaidBlock, messageCountData] = await Promise.all([
-				checkTenantCanChat(activeUser.slug),
-				getMessageCount(activeUser.slug),
-			]);
-
 			const creditsToUse = body.extraReason ? 2 : 1;
+			const chatBlock = await checkTenantCanChat(activeUser.slug, creditsToUse);
 
-			if (unpaidBlock)
+			if (chatBlock)
 				throw httpError(
-					HttpCode.PAYMENT_REQUIRED,
-					ErrorCode.PAYMENT_REQUIRED,
-					activeUser.language,
-				);
-			if (messageCountData.count + creditsToUse > messageCountData.limit)
-				throw httpError(
-					HttpCode.METHOD_NOT_ALLOWED,
-					ErrorCode.MESSAGE_LIMIT_REACHED,
+					chatBlock === ErrorCode.PAYMENT_REQUIRED
+						? HttpCode.PAYMENT_REQUIRED
+						: HttpCode.METHOD_NOT_ALLOWED,
+					chatBlock as ErrorCode,
 					activeUser.language,
 				);
 
@@ -200,14 +190,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					const baseDate = new Date();
 					const insertedMessages = await db
 						.with(
-							db.$with('trace').as(
-								db.insert(trace).values({
+							db.$with('billing').as(
+								db.insert(billableEvent).values({
+									type: BillableEventType.MESSAGE,
+									consumption: creditsToUse.toString(),
 									userId: activeUser.id,
-									type: TraceType.MESSAGE_SENT,
-									metadata: {
-										threadId: body.threadId,
-										extraReason: body.extraReason,
-									},
+									slug: activeUser.slug,
 								}),
 							),
 						)
@@ -227,14 +215,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						cache.set(threadId, [...threadMessages, ...insertedMessages], {
 							ex: 60 * 5,
 						}),
-						cache.set(
-							`tenant:${activeUser.slug}:message-count`,
-							{
-								limit: messageCountData.limit,
-								count: messageCountData.count + creditsToUse,
-							},
-							{ ex: 60 * 60 },
-						),
+						incrementMessageUsage(activeUser.slug, creditsToUse),
 					]);
 
 					// Update files with messageId if we have one
