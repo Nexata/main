@@ -5,10 +5,16 @@ import enFeedbackUpdated from '@api/locales/en/feedback-updated.json' with {
 import enTenantCreation from '@api/locales/en/tenant-creation.json' with {
 	type: 'json',
 };
+import enUserInvited from '@api/locales/en/user-invited.json' with {
+	type: 'json',
+};
 import esFeedbackUpdated from '@api/locales/es/feedback-updated.json' with {
 	type: 'json',
 };
 import esTenantCreation from '@api/locales/es/tenant-creation.json' with {
+	type: 'json',
+};
+import esUserInvited from '@api/locales/es/user-invited.json' with {
 	type: 'json',
 };
 import { Language } from '@api/schema';
@@ -18,11 +24,15 @@ import feedbackUpdatedHbs from '@api/templates/feedback-updated.hbs' with {
 import tenantCreationHbs from '@api/templates/tenant-creation.hbs' with {
 	type: 'text',
 };
+import userInvitedHbs from '@api/templates/user-invited.hbs' with {
+	type: 'text',
+};
 import Handlebars from 'handlebars';
 
 export enum Template {
 	FEEDBACK_UPDATED = 'feedback-updated',
 	TENANT_CREATION = 'tenant-creation',
+	USER_INVITED = 'user-invited',
 }
 
 const FROM = '"Nexata" <noreply@nexata.app>';
@@ -30,6 +40,7 @@ const FROM = '"Nexata" <noreply@nexata.app>';
 const templateSources: Record<Template, string> = {
 	[Template.FEEDBACK_UPDATED]: feedbackUpdatedHbs,
 	[Template.TENANT_CREATION]: tenantCreationHbs,
+	[Template.USER_INVITED]: userInvitedHbs,
 };
 
 const templateLocales: Record<
@@ -43,6 +54,10 @@ const templateLocales: Record<
 	[Template.TENANT_CREATION]: {
 		[Language.EN]: enTenantCreation,
 		[Language.ES]: esTenantCreation,
+	},
+	[Template.USER_INVITED]: {
+		[Language.EN]: enUserInvited,
+		[Language.ES]: esUserInvited,
 	},
 };
 

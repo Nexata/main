@@ -22,7 +22,9 @@ const tenantCreationRequest = tObject({
 	email: t.String({ format: 'email' }),
 });
 
-type TenantCreationRequest = Static<typeof tenantCreationRequest>;
+type TenantCreationRequest = Static<typeof tenantCreationRequest> & {
+	language: Language;
+};
 
 export const tenantRouter = new Elysia({ prefix: '/tenant' })
 	.get('/slug-available', ({ query }) => isSlugAvailable(query.slug), {
@@ -41,6 +43,7 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 				slug: await resolveSlug(body.slug, body.displayName, language),
 				redirect: body.redirect ?? null,
 				email: body.email,
+				language,
 			};
 
 			const requestId = crypto.randomUUID().replaceAll('-', '').toUpperCase();
@@ -57,18 +60,16 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 				}),
 			]);
 
-			return requestId;
+			return true;
 		},
 		{
 			detail: { summary: 'Request tenant creation' },
 			body: tenantCreationRequest,
 		},
 	)
-	.post(
+	.get(
 		'/:requestId',
 		async ({ params, headers }) => {
-			const language = (headers.language ?? Language.EN) as Language;
-
 			const req = await cache.getdel<TenantCreationRequest>(
 				CREATION_CACHE_KEY(params.requestId),
 			);
@@ -76,20 +77,25 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 				throw httpError(
 					HttpCode.NOT_FOUND,
 					ErrorCode.TENANT_CREATION_EXPIRED,
-					language,
+					(headers.language ?? Language.EN) as Language,
 				);
 
-			const slug = await resolveSlug(req.slug, req.displayName, language);
+			const slug = await resolveSlug(req.slug, req.displayName, req.language);
 
 			await db.batch([
 				db.insert(tenant).values({ slug, displayName: req.displayName }),
-				db.insert(user).values({ email: req.email, slug, isAdmin: true }),
+				db.insert(user).values({
+					email: req.email,
+					slug,
+					isAdmin: true,
+					language: req.language,
+				}),
 			]);
 
 			return req.redirect ? redirect(req.redirect) : true;
 		},
 		{
 			detail: { summary: 'Confirm tenant creation' },
-			params: tObject({ requestId: t.String({ format: 'uuid' }) }),
+			params: tObject({ requestId: t.String() }),
 		},
 	);

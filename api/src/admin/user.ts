@@ -1,9 +1,10 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
-import { filePermission, user } from '@api/schema';
+import { filePermission, type Language, tenant, user } from '@api/schema';
 import { userCacheKey } from '@api/utils/auth';
+import { sendTemplateMail, Template } from '@api/utils/mail';
 import { uploadUserPfp } from '@api/utils/s3';
-import { tObject } from '@api/utils/type';
+import { Nullish, tObject } from '@api/utils/type';
 import { s3 } from 'bun';
 import { and, eq, exists, isNull, or } from 'drizzle-orm';
 import { createInsertSchema, createUpdateSchema } from 'drizzle-typebox';
@@ -41,6 +42,30 @@ export const userRouter = new Elysia({ prefix: '/user' })
 				.set({ userId: id })
 				.where(eq(filePermission.email, body.email));
 
+			if (body.sendMail) {
+				const t = (
+					await db
+						.select({
+							displayName: tenant.displayName,
+							logoUrl: tenant.logoUrl,
+						})
+						.from(tenant)
+						.where(eq(tenant.slug, activeUser.slug))
+						.limit(1)
+				).at(0);
+
+				await sendTemplateMail({
+					to: body.email,
+					template: Template.USER_INVITED,
+					data: {
+						tenantDisplayName: t?.displayName ?? activeUser.slug,
+						logoUrl: t?.logoUrl,
+						redirect: body.redirect ?? 'https://nexata.app',
+					},
+					language: activeUser.language as Language,
+				});
+			}
+
 			return id;
 		},
 		{
@@ -52,6 +77,10 @@ export const userRouter = new Elysia({ prefix: '/user' })
 				t.Object({
 					pfp: t.Optional(t.File({ format: 'image/*', maxSize: '4m' })),
 					isAdmin: t.Optional(t.BooleanString({ default: false })),
+					sendMail: t.BooleanString({ default: true }),
+					redirect: Nullish(
+						t.String({ format: 'uri', default: 'https://nexata.app' }),
+					),
 				}),
 			]),
 		},

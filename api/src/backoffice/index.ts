@@ -2,7 +2,6 @@ import { billingRouter } from '@api/backoffice/billing';
 import { credentialsRouter } from '@api/backoffice/credentials';
 import { feedbackRouter } from '@api/backoffice/feedback';
 import { filesRouter } from '@api/backoffice/files';
-import { tenantRouter } from '@api/backoffice/tenant';
 import { IS_PRODUCTION, NEXATA_SECRET } from '@api/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
@@ -17,7 +16,6 @@ export const backofficeRouter = new Elysia({
 		if (IS_PRODUCTION && authorization !== NEXATA_SECRET)
 			throw httpError(HttpCode.NOT_FOUND, ErrorCode.UNAUTHORIZED_BACKOFFICE);
 	})
-	.use(tenantRouter)
 	.use(billingRouter)
 	.use(credentialsRouter)
 	.use(filesRouter)
