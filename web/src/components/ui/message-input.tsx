@@ -475,14 +475,14 @@ export function MessageInput({
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.2, ease: "easeOut" }}
-            className="mt-2 flex justify-center"
+            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-30 flex justify-center w-full"
           >
             <div
               className={cn(
-                "flex items-start gap-3 rounded-lg border px-3 py-2 w-fit ",
-                "border-amber-500/30 bg-amber-500/10",
-                "text-amber-700 dark:text-amber-300",
-                "text-xs leading-relaxed"
+                "flex items-start gap-3 rounded-lg border px-3 py-2 w-[90%] max-w-full",
+                "border-amber-500/40 bg-amber-100 dark:bg-amber-950",
+                "text-amber-800 dark:text-amber-200",
+                "text-xs leading-relaxed shadow-sm"
               )}
             >
               <Info className="mt-0.5 h-4 w-4 shrink-0 opacity-90" />
@@ -548,7 +548,7 @@ function showFileUploadDialog() {
 function TranscribingOverlay() {
   return (
     <motion.div
-      className="flex h-full w-full flex-col items-center justify-center rounded-xl bg-background/80 backdrop-blur-sm"
+      className="flex h-full w-full flex-col items-center justify-center rounded-xl bg-background"
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
