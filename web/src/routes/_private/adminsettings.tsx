@@ -9,9 +9,11 @@ import {
 	Pencil,
 	Settings,
 	Trash,
-	TrendingUp,
+  TrendingUp,
+  Calendar as CalendarIcon  ,
+  Filter
 } from 'lucide-react';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 import { infoToast } from '@/components/info-toast/info-toast';
@@ -39,6 +41,7 @@ import {
 import { UpgradePlanModal } from '@/components/upgrade-plan/upgrade-plan';
 import UserSection from '@/components/user-section/user-section';
 import {
+  useAdminTraceCount,
 	useBillingMessages,
 	useBillingUsage,
 	useCreateUser,
@@ -46,12 +49,12 @@ import {
 	useEditTenant,
 	useEditUser,
 	useUsers,
+  type TraceType,
 } from '@/lib/admin';
-import { useMyTenant } from '@/lib/user';
+import { useMyTenant, type Language } from '@/lib/user';
 import { UsageBar } from '@/components/usage-bar/usage-bar'
 import { useAdminTrace } from '@/lib/admin';
 import { format } from 'date-fns';
-import { CalendarIcon } from 'lucide-react';
 import { Calendar } from '@/components/ui/calendar';
 import {
 	Table,
@@ -107,7 +110,30 @@ import {
 	'common.cancel' as common_cancel,
 	'common.confirm' as common_confirm,
 	'common.loading' as common_loading,
-	'common.save_changes' as common_save_changes,
+  'common.save_changes' as common_save_changes,
+  'admin.traces.title' as traces_title,
+  'admin.traces.description' as traces_description,
+  'admin.traces.filters.type' as traces_filter_type,
+  'admin.traces.filters.all' as traces_filter_all,
+  'admin.traces.filters.from' as traces_filter_from,
+  'admin.traces.filters.to' as traces_filter_to,
+  'admin.traces.filters.clear' as traces_filter_clear,
+  'admin.traces.table.date' as traces_table_date,
+  'admin.traces.table.type' as traces_table_type,
+  'admin.traces.table.user' as traces_table_user,
+  'admin.traces.table.metadata' as traces_table_metadata,
+  'admin.traces.empty.title' as traces_empty_title,
+  'admin.traces.empty.description' as traces_empty_description,
+  'admin.traces.pagination.page' as traces_page,
+  'admin.traces.pagination.rows' as traces_rows,
+  'admin.traces.pagination.prev' as traces_prev,
+  'admin.traces.pagination.next' as traces_next,
+  'admin.traces.user.system' as traces_user_system,
+  'admin.traces.metadata.provider' as traces_meta_provider,
+  'admin.traces.metadata.file' as traces_meta_file,
+  'admin.traces.types.credential_added' as traces_type_credential_added,
+  'admin.traces.types.credential_removed' as traces_type_credential_removed,
+  'admin.traces.types.ingest_failed' as traces_type_ingest_failed,
 } from '@/paraglide/messages.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -414,177 +440,406 @@ function CompanyOverviewSection() {
 /* -------------------------------------------------------------------------- */
 
 function TraceEventsSection() {
-	const PAGE_SIZES = [5, 10, 20] as const;
-	const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(5);
-	const [page, setPage] = useState(1);
-	const [type, setType] = useState<'all' | 'message_sent'>('all');
-	const [date, setDate] = useState<Date | undefined>();
+  const PAGE_SIZES = [5, 10, 20] as const;
 
-	const { data, isLoading } = useAdminTrace({
-		//type: type === 'all' ? null : ['message_sent'],
-		// from: date ?? null,
-		// to: date ?? null,
-		limit: 100,
-	});
+  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(5);
+  const [page, setPage] = useState(1);
+  const [selectedTypes, setSelectedTypes] = useState<TraceType[] | null>(null);
+  const [from, setFrom] = useState<Date | null>(null);
+  const [to, setTo] = useState<Date | null>(null);
+  const [cursorStack, setCursorStack] = useState<(Date | null)[]>([null]);
+  const cursor = cursorStack[page - 1] ?? null;
 
-	// LOG PARA INSPECCIONAR RESPUESTA
-	useEffect(() => {
-		console.log('TRACE RESPONSE:', data);
-	}, [data]);
+  // Reset pagination when filters change
+  useEffect(() => {
+    setCursorStack([null]);
+    setPage(1);
+  }, [selectedTypes, from, to, pageSize]);
 
-	const events = data ?? [];
+  const cap = (s?: string) => (s ? s[0]?.toUpperCase() + s.slice(1) : "");
 
-	const filtered = events.filter((e: any) => {
-		if (!date) return true;
-		const d = new Date(e.createdAt);
-		return d.toDateString() === date.toDateString();
-	});
+  const deepParse = (obj: any): any => {
+    try {
+      if (typeof obj === "string") return deepParse(JSON.parse(obj));
+      if (Array.isArray(obj)) return obj.map(deepParse);
+      if (obj && typeof obj === "object") return Object.fromEntries(Object.entries(obj).map(([k, v]) => [k, deepParse(v)]));
+    } catch {}
+    return obj;
+  };
 
-	const totalPages = Math.ceil(filtered.length / pageSize);
+  const TRACE: Record<
+    TraceType,
+    { label: string; color: string; meta?: (m: any) => React.ReactNode }
+  > = {
+    credential_added: {
+      label: traces_type_credential_added(),
+      color: "bg-emerald-500/10 text-emerald-600",
+    },
+    credential_removed: {
+      label: traces_type_credential_removed(),
+      color: "bg-rose-500/10 text-rose-600",
+    },
+    ingest_failed: {
+      label: traces_type_ingest_failed(),
+      color: "bg-orange-500/10 text-orange-600",
+      meta: (m) => {
+        const meta = deepParse(m);
 
-	const paginated = filtered.slice(
-		(page - 1) * pageSize,
-		page * pageSize,
-	);
+        return (
+          <div className="text-xs leading-tight">
+            <div>
+              <span className="opacity-60">
+                {traces_meta_provider()}:
+              </span>{" "}
+              {cap(meta?.provider)}
+            </div>
 
-	return (
-		<Card className="bg-sidebar">
-			<CardContent className="p-6 space-y-4">
-				{/* Header */}
-				<div>
-					<h2 className="text-lg font-semibold">
-						Event Trace
-					</h2>
-					<p className="text-sm text-muted-foreground">
-						Monitor system activity and trace events.
-					</p>
-				</div>
+            <div className="truncate max-w-55">
+              <span className="opacity-60">
+                {traces_meta_file()}:
+              </span>{" "}
+              {meta?.name ?? "—"}
+            </div>
+          </div>
+        );
+      },
+    },
+    message_sent: {
+      label: 'message_sent',
+      color: "bg-blue-500/10 text-blue-600",
+    },
+    file_ingested: {
+      label: 'file_ingested',
+      color: "bg-violet-500/10 text-violet-600",
+    },
+    file_deleted: {
+      label: 'file_deleted',
+      color: "bg-zinc-500/10 text-zinc-600",
+    },
+  };
 
-				<Separator />
+  const selectedType = selectedTypes?.[0];
+  const selectedHelper = selectedType ? TRACE[selectedType] : undefined;
 
-				{/* Filters */}
-				<div className="flex gap-2">
-					<DropdownMenu>
-						<DropdownMenuTrigger>
-							<Button variant="outline" size="sm">
-								{type === 'all' ? 'All events' : 'Message sent'}
-							</Button>
-						</DropdownMenuTrigger>
+  const VISIBLE_TRACE_TYPES: TraceType[] = [
+    "credential_added" as TraceType,
+    "credential_removed" as TraceType,
+    "ingest_failed" as TraceType,
+  ];
 
-						<DropdownMenuContent>
-							<DropdownMenuItem onClick={() => setType('all')}>
-								All events
-							</DropdownMenuItem>
-							<DropdownMenuItem onClick={() => setType('message_sent')}>
-								Message sent
-							</DropdownMenuItem>
-						</DropdownMenuContent>
-					</DropdownMenu>
+  const eventsQueryParams = useMemo(
+    () => ({ type: selectedTypes, from, to, cursor, limit: pageSize }),
+    [selectedTypes, from, to, cursor, pageSize]
+  );
 
-					<Popover>
-						<PopoverTrigger>
-							<Button variant="outline" size="sm">
-								<CalendarIcon className="mr-2 h-4 w-4" />
-								{date ? format(date, 'PPP') : 'Filter by date'}
-							</Button>
-						</PopoverTrigger>
+  const countQueryParams = useMemo(
+    () => ({ type: selectedTypes, from, to }),
+    [selectedTypes, from, to]
+  );
 
-						<PopoverContent className="p-0">
-							<Calendar
-								mode="single"
-								selected={date}
-								onSelect={setDate}
-							/>
-						</PopoverContent>
-					</Popover>
-				</div>
+  const { data: events = [], isLoading } = useAdminTrace(eventsQueryParams);
+  const { data: countRows } = useAdminTraceCount(countQueryParams);
 
-				{/* Table */}
-				<div className="rounded-lg border overflow-hidden">
-					<Table>
-						<TableHeader className="bg-muted/50">
-							<TableRow>
-								<TableHead>Date</TableHead>
-								<TableHead>Type</TableHead>
-								<TableHead>User</TableHead>
-								<TableHead>Metadata</TableHead>
-							</TableRow>
-						</TableHeader>
+  const totalCount = countRows?.[0]?.count ?? 0;
+  const totalPages = Math.max(1, Math.ceil(totalCount / pageSize));
 
-						<TableBody>
-							{isLoading && (
-								<TableRow>
-									<TableCell colSpan={4} className="text-center">
-										Loading…
-									</TableCell>
-								</TableRow>
-							)}
+  const nextPage = () => {
+    if (!events.length) return;
 
-							{!isLoading && paginated.length === 0 && (
-								<TableRow>
-									<TableCell colSpan={4} className="text-center text-muted-foreground">
-										No events found
-									</TableCell>
-								</TableRow>
-							)}
+    const last = events[events.length - 1];
+    if (!last?.createdAt) return;
+    const oldest = new Date(last.createdAt);
 
-							{paginated.map((e: any, i: number) => (
-								<TableRow key={i}>
-									<TableCell>
-										{format(new Date(e.createdAt), 'PPP p')}
-									</TableCell>
+    setCursorStack((prev) => {
+      const copy = [...prev];
+      copy[page] = oldest;
+      return copy;
+    });
 
-									<TableCell>
-										<span className="inline-flex rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
-											{e.type}
-										</span>
-									</TableCell>
+    setPage((p) => p + 1);
+  };
 
-									<TableCell className="text-muted-foreground">
-										{e.userId ?? 'system'}
-									</TableCell>
+  const prevPage = () => {
+    if (page === 1) return;
+    setPage((p) => p - 1);
+  };
 
-									<TableCell className="text-xs">
-										{JSON.stringify(e.meta ?? {})}
-									</TableCell>
-								</TableRow>
-							))}
-						</TableBody>
+  const UserMini = ({ user }: any) =>
+    !user ? (
+      <span className="opacity-50">{traces_user_system()}</span>
+    ) : (
+      <div className="flex items-center gap-2 min-w-0">
+        {user.pfpUrl ? (
+          <img src={user.pfpUrl} className="w-7 h-7 rounded-full object-cover shrink-0"/>
+        ) : (
+          <div className="w-7 h-7 rounded-full flex items-center justify-center text-white bg-muted shrink-0">
+            {user.displayName?.[0]?.toUpperCase() ?? "?"}
+          </div>
+        )}
 
-						<TableFooter className="bg-muted/50">
-							<TableRow>
-								<TableCell colSpan={2}>
-									Page {page} / {totalPages || 1}
-								</TableCell>
+        <div className="min-w-0">
+          <div className="text-sm font-medium truncate">
+            {user.displayName}
+          </div>
+          <div className="text-xs opacity-60 truncate">{user.email}</div>
+        </div>
+      </div>
+    );
 
-								<TableCell colSpan={2}>
-									<div className="flex justify-end gap-2">
-										<Button
-											size="sm"
-											variant="outline"
-											disabled={page === 1}
-											onClick={() => setPage(p => p - 1)}
-										>
-											Prev
-										</Button>
+  const resetFilters = () => {
+    setSelectedTypes(null);
+    setFrom(null);
+    setTo(null);
+  };
 
-										<Button
-											size="sm"
-											variant="outline"
-											disabled={page === totalPages}
-											onClick={() => setPage(p => p + 1)}
-										>
-											Next
-										</Button>
-									</div>
-								</TableCell>
-							</TableRow>
-						</TableFooter>
-					</Table>
-				</div>
-			</CardContent>
-		</Card>
-	);
+  const formatDateLabel = (d: Date | null, label: string) => d ? format(d, "PPP") : label;
+
+  const selectedTypeLabel = useMemo(() => {
+    const type = selectedTypes?.[0];
+    if (!type) return traces_filter_type();
+    const helper = TRACE[type];
+    return helper?.label ?? traces_filter_type();
+  }, [selectedTypes]);
+
+  const SkeletonRows = () =>
+    Array.from({ length: pageSize }).map((_, i) => (
+      <TableRow key={i} className="h-12">
+        <TableCell>
+          <div className="h-3 w-28 rounded bg-muted animate-pulse" />
+        </TableCell>
+
+        <TableCell>
+          <div className="h-4 w-24 rounded-full bg-muted animate-pulse" />
+        </TableCell>
+
+        <TableCell>
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-full bg-muted animate-pulse" />
+            <div className="space-y-1">
+              <div className="h-2.5 w-20 rounded bg-muted animate-pulse" />
+              <div className="h-2.5 w-28 rounded bg-muted animate-pulse opacity-60" />
+            </div>
+          </div>
+        </TableCell>
+
+        <TableCell>
+          <div className="space-y-1.5">
+            <div className="h-2.5 w-36 rounded bg-muted animate-pulse" />
+            <div className="h-2.5 w-24 rounded bg-muted animate-pulse opacity-60" />
+          </div>
+        </TableCell>
+      </TableRow>
+    ));
+
+  const showEmpty = !isLoading && events.length === 0;
+
+  return (
+    <Card className="bg-sidebar">
+      <CardContent className="p-6 space-y-4">
+        <div>
+          <h2 className="text-lg font-semibold">{traces_title()}</h2>
+          <p className="text-sm text-muted-foreground">
+            {traces_description()}
+          </p>
+        </div>
+
+        <Separator />
+
+        {/* Filters */}
+        <div className="flex gap-2 flex-wrap">
+          <DropdownMenu>
+            <DropdownMenuTrigger>
+              <Button variant="outline" size="sm" className="gap-2">
+                <Filter className="w-4 h-4" />
+                {selectedHelper ? (
+                  <span className={`px-2 py-0.5 rounded-full text-xs ${selectedHelper.color}`}>
+                    {selectedTypeLabel}
+                  </span>
+                ) : (
+                  traces_filter_type()
+                )}
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent className="w-56">
+              <DropdownMenuItem onClick={() => setSelectedTypes(null)}>
+                {traces_filter_all()}
+              </DropdownMenuItem>
+
+              {VISIBLE_TRACE_TYPES.map((type) => {
+                const helper = TRACE[type];
+
+                return (
+                  <DropdownMenuItem
+                  key={type}
+                  className="flex items-center gap-2"
+                  onClick={() => setSelectedTypes([type])}
+                  >
+                    <span className={`px-2 py-0.5 rounded-full text-xs ${helper.color}`}>
+                      {helper.label}
+                    </span>
+                  </DropdownMenuItem>
+                );
+              })}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
+          {[
+            {
+              key: "from",
+              label: traces_filter_from(),
+              value: from,
+              setter: setFrom,
+            },
+            {
+              key: "to",
+              label: traces_filter_to(),
+              value: to,
+              setter: setTo,
+            },
+          ].map((f) => (
+            <Popover key={f.key}>
+              <PopoverTrigger>
+                <Button variant="outline" size="sm" className="gap-2">
+                  <CalendarIcon className="w-4 h-4" />
+                  {formatDateLabel(f.value, f.label)}
+                </Button>
+              </PopoverTrigger>
+
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar
+                mode="single"
+                selected={f.value ?? undefined}
+                onSelect={(d) => f.setter(d ?? null)}
+                />
+              </PopoverContent>
+            </Popover>
+          ))}
+
+          <Button variant="destructive" size="sm" onClick={resetFilters}>
+            {traces_filter_clear()}
+          </Button>
+        </div>
+
+        <div className="rounded-lg border overflow-hidden">
+          <Table>
+            <TableHeader className="bg-muted/50">
+              <TableRow>
+                <TableHead>{traces_table_date()}</TableHead>
+                <TableHead>{traces_table_type()}</TableHead>
+                <TableHead>{traces_table_user()}</TableHead>
+                <TableHead>{traces_table_metadata()}</TableHead>
+              </TableRow>
+            </TableHeader>
+
+            <TableBody>
+              {isLoading && <SkeletonRows />}
+
+              {showEmpty && (
+                <TableRow>
+                  <TableCell colSpan={4}>
+                    <div className="flex flex-col items-center justify-center py-10 text-center">
+                      <div className="text-sm font-medium">
+                        {traces_empty_title()}
+                      </div>
+                      <div className="text-xs text-muted-foreground mt-1">
+                        {traces_empty_description()}
+                      </div>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              )}
+
+              {!isLoading && !showEmpty &&
+                events.map((e) => {
+                  const helper = TRACE[e.type];
+
+                  return (
+                    <TableRow key={e.id}>
+                      <TableCell>
+                        {format(new Date(e.createdAt), "PPP p")}
+                      </TableCell>
+
+                      <TableCell>
+                        <span className={`inline-flex rounded-full px-2 py-0.5 text-xs ${helper?.color}`}>
+                          {helper?.label ?? e.type}
+                        </span>
+                      </TableCell>
+
+                      <TableCell>
+                        <UserMini user={e.user} />
+                      </TableCell>
+
+                      <TableCell>
+                        {helper?.meta ? (
+                          helper.meta(e.metadata)
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            —
+                          </span>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+            </TableBody>
+
+            <TableFooter className="bg-muted/50">
+              <TableRow>
+                <TableCell colSpan={2}>
+                  {isLoading ? (
+                    <div className="h-4 w-24 rounded bg-muted animate-pulse" />
+                  ) : (
+                    <>
+                      {traces_page} {page} / {totalPages}
+                    </>
+                  )}
+                </TableCell>
+
+                <TableCell colSpan={2}>
+                  <div className="flex justify-end gap-2">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger>
+                        <Button size="sm" variant="outline">
+                          {traces_rows()}: {pageSize}
+                        </Button>
+                      </DropdownMenuTrigger>
+
+                      <DropdownMenuContent>
+                        {PAGE_SIZES.map((s) => (
+                          <DropdownMenuItem key={s} onClick={() => setPageSize(s)}>
+                            {s}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+
+                    <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={page === 1}
+                    onClick={prevPage}
+                    >
+                      {traces_prev()}
+                    </Button>
+
+                    <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={events.length < pageSize}
+                    onClick={nextPage}
+                    >
+                      {traces_next()}
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            </TableFooter>
+          </Table>
+        </div>
+      </CardContent>
+    </Card>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -775,7 +1030,8 @@ function UsersSection() {
 								isAdmin: user.isAdmin,
 								hasApiKey: !!user.hasApiKey,
 								devices: [],
-								messageCount: 0,
+                messageCount: 0,
+								language: 'es' as Language
 							};
 
 							return (

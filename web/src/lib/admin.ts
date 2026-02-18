@@ -158,41 +158,89 @@ export function useEditTenant() {
 	};
 }
 
-// Admin Trace
+// ---------- Admin Trace ----------
+
 export type TraceType =
-	Parameters<typeof apiClient.admin.trace.get>[0]['$query']['type'] extends
-		| (infer T)[]
-		| null
-		| undefined
-		? T : never;
+  Parameters<
+    typeof apiClient.admin.trace.get
+  >[0]['$query']['type'] extends
+    | (infer T)[]
+    | null
+    | undefined
+    ? T
+    : never;
 
 export type AdminTraceParams = {
-	type?: TraceType[] | null;
-	userId?: string[] | null;
-	from?: Date | null;
-	to?: Date | null;
-	cursor?: Date | null;
-	limit?: number;
+  type?: TraceType[] | null;
+  userId?: string[] | null;
+  from?: Date | null;
+  to?: Date | null;
+  cursor?: Date | null;
+  limit?: number;
 };
 
-export async function getAdminTrace(params: AdminTraceParams = {}) {
-	return await withAuthRetry((headers) =>
-		apiClient.admin.trace.get({
-			$headers: headers,
-			$query: {
-				limit: params.limit ?? 100,
-				...params,
-			},
-		}),
-	);
+export async function getAdminTrace(
+  params: AdminTraceParams = {}
+) {
+  return await withAuthRetry(headers => {
+    const query: Parameters<typeof apiClient.admin.trace.get>[0]['$query'] = {limit: params.limit ?? 100,};
+
+    if (params.type?.length) query.type = params.type;
+    if (params.userId?.length) query.userId = params.userId;
+    if (params.from) query.from = params.from;
+    if (params.to) query.to = params.to;
+    if (params.cursor) query.cursor = params.cursor;
+
+    return apiClient.admin.trace.get({
+      $headers: headers,
+      $query: query,
+    });
+  });
 }
 
 export type AdminTrace = Awaited<ReturnType<typeof getAdminTrace>>;
 
-export function useAdminTrace(params: AdminTraceParams = {}) {
-	return useQuery<AdminTrace>({
-		queryKey: ['admin', 'trace', params],
-		queryFn: () => getAdminTrace(params),
-		staleTime: 60_000,
-	});
+export function useAdminTrace(
+  params: AdminTraceParams = {}
+) {
+  return useQuery<AdminTrace>({
+    queryKey: ['admin', 'trace', params],
+    queryFn: () => getAdminTrace(params),
+    staleTime: 60_000,
+  });
+}
+
+// ---------- Admin Trace Count ----------
+
+export type AdminTraceCountParams = AdminTraceParams;
+
+export async function getAdminTraceCount(
+  params: AdminTraceCountParams = {}
+) {
+  return await withAuthRetry(headers => {
+    const query: Parameters<typeof apiClient.admin.trace.count.get>[0]['$query'] = {limit: params.limit ?? 100};
+
+    if (params.type?.length) query.type = params.type;
+    if (params.userId?.length) query.userId = params.userId;
+    if (params.from) query.from = params.from;
+    if (params.to) query.to = params.to;
+    if (params.cursor) query.cursor = params.cursor;
+
+    return apiClient.admin.trace.count.get({
+      $headers: headers,
+      $query: query,
+    });
+  });
+}
+
+export type AdminTraceCount = Awaited<ReturnType<typeof getAdminTraceCount>>;
+
+export function useAdminTraceCount(
+  params: AdminTraceCountParams = {}
+) {
+  return useQuery<AdminTraceCount>({
+    queryKey: ['admin', 'trace', 'count', params],
+    queryFn: () => getAdminTraceCount(params),
+    staleTime: 60_000,
+  });
 }

@@ -444,7 +444,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
       {/* DISCLAIMER — storage approximation */}
       <div
         className={cn(
-          "flex items-start gap-3 rounded-lg border px-3 py-2 w-fit",
+          "flex items-start gap-3 rounded-lg border px-3 py-2 w-full",
           "border-amber-500/30 bg-amber-500/10",
           "text-amber-700 dark:text-amber-300",
           "text-xs leading-relaxed"
@@ -462,7 +462,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
           </p>
         </div>
       </div>
-
     </div>
   );
 }

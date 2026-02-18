@@ -237,6 +237,45 @@
 			"tenant_name": "Nombre de la Empresa",
 			"tenant_logo": "Logo de la Empresa"
 		},
+		"traces": {
+      "title": "Registro de eventos",
+      "description": "Monitorea la actividad del sistema.",
+      "filters": {
+        "type": "Filtrar tipo",
+        "all": "Todos",
+        "from": "Desde",
+        "to": "Hasta",
+        "clear": "Limpiar"
+      },
+      "table": {
+        "date": "Fecha",
+        "type": "Tipo",
+        "user": "Usuario",
+        "metadata": "Metadatos"
+      },
+      "empty": {
+        "title": "No se encontraron eventos",
+        "description": "Intentá ajustar los filtros o el rango de fechas."
+      },
+      "pagination": {
+        "page": "Página",
+        "rows": "Filas",
+        "prev": "Anterior",
+        "next": "Siguiente"
+      },
+      "user": {
+        "system": "sistema"
+      },
+      "metadata": {
+        "provider": "Proveedor",
+        "file": "Archivo"
+      },
+      "types": {
+        "credential_added": "Credencial agregada",
+        "credential_removed": "Credencial eliminada",
+        "ingest_failed": "Fallo de ingestión"
+      }
+    },
 		"users": {
 			"title": "Usuarios",
 			"description": "Gestioná los usuarios que forman parte de tu empresa en Nexata.",
