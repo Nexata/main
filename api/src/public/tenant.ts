@@ -54,6 +54,7 @@ export const tenantRouter = new Elysia({ prefix: '/tenant' })
 					to: body.email,
 					template: Template.TENANT_CREATION,
 					data: {
+						displayName: body.displayName,
 						confirmUrl: `${requireEnv('DEPLOYMENT_URL')}/public/tenant/${requestId}`,
 					},
 					language,

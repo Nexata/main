@@ -12,6 +12,7 @@ import {
 	user,
 } from '@api/schema';
 import { ErrorCode } from '@api/utils/error';
+import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import dayjs from 'dayjs';
 import { and, desc, eq, isNull, lte, sql, sum } from 'drizzle-orm';
 
@@ -289,13 +290,36 @@ export async function generateBillForTenant(
 	return { billId, amount };
 }
 
+export type TenantDueForBilling = {
+	slug: string;
+	plan: Plan;
+	logoUrl: string | null;
+	displayName: string | null;
+	admins: { email: string; language: string; displayName: string | null }[];
+};
+
 export async function getTenantsDueForBilling(): Promise<
-	{ slug: string; plan: Plan }[]
+	TenantDueForBilling[]
 > {
 	const now = dayjs().endOf('day').toDate();
 
 	return db
-		.select({ slug: tenant.slug, plan: tenant.plan })
+		.select({
+			slug: tenant.slug,
+			plan: tenant.plan,
+			logoUrl: tenant.logoUrl,
+			displayName: tenant.displayName,
+			admins: jsonAgg(
+				jsonBuildObject({
+					email: user.email,
+					language: user.language,
+					displayName: user.displayName,
+				}),
+				{ filterWhere: user.id },
+			),
+		})
 		.from(tenant)
-		.where(lte(tenant.billingAt, now));
+		.leftJoin(user, and(eq(user.slug, tenant.slug), eq(user.isAdmin, true)))
+		.where(lte(tenant.billingAt, now))
+		.groupBy(tenant.slug);
 }

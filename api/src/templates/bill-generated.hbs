@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta charset="utf-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+</head>
+<body style="margin: 0; padding: 0; background-color: #141425; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; -webkit-font-smoothing: antialiased;">
+	<table width="100%" cellpadding="0" cellspacing="0" style="background-color: #141425; padding: 32px 0;">
+		<tr>
+			<td align="center">
+				<table width="600" cellpadding="0" cellspacing="0" style="max-width: 600px; width: 100%;">
+					<tr>
+						<td align="center" style="padding: 32px 0 24px;">
+							<img src="https://files.nexata.app/logo.png" alt="Nexata" style="height: 40px;" />
+						</td>
+					</tr>
+					{{#if logoUrl}}
+					<tr>
+						<td align="center" style="padding: 0 0 16px;">
+							<img src="{{logoUrl}}" alt="{{tenantDisplayName}}" style="max-height: 48px; max-width: 200px;" />
+						</td>
+					</tr>
+					{{/if}}
+					<tr>
+						<td style="background-color: #252540; border-radius: 12px; padding: 32px; border: 1px solid rgba(255,255,255,0.1);">
+							<h2 style="margin: 0 0 4px; color: #f9f9fc; font-size: 20px; font-weight: 600;">{{t.greeting}}{{#if displayName}}, {{displayName}}{{/if}}</h2>
+							<p style="color: #9e9eb5; font-size: 15px; line-height: 1.6; margin: 12px 0 0;">{{t.body}}{{#if tenantDisplayName}} (<strong style="color: #f9f9fc;">{{tenantDisplayName}}</strong>){{/if}}</p>
+
+							<table width="100%" cellpadding="0" cellspacing="0" style="background-color: rgba(255,255,255,0.05); border-radius: 8px; margin: 20px 0; border: 1px solid rgba(255,255,255,0.08);">
+								<tr>
+									<td style="padding: 16px;">
+										<p style="margin: 0 0 8px; color: #f9f9fc; font-size: 14px;"><strong>{{t.amountLabel}}:</strong> <span style="color: #2db4c8; font-weight: 600;">${{amount}}</span></p>
+										<p style="margin: 0 0 8px; color: #f9f9fc; font-size: 14px;"><strong>{{t.planLabel}}:</strong> <span style="color: #9e9eb5;">{{plan}}</span></p>
+										<p style="margin: 0; color: #f9f9fc; font-size: 14px;"><strong>{{t.dateLabel}}:</strong> <span style="color: #9e9eb5;">{{date}}</span></p>
+									</td>
+								</tr>
+							</table>
+
+							<div style="text-align: center; margin: 32px 0;">
+								<a href="{{redirect}}" style="display: inline-block; background-color: #2db4c8; color: #1f1f1f; padding: 12px 32px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 14px;">
+									{{t.buttonText}}
+								</a>
+							</div>
+
+							<p style="color: #9e9eb5; font-size: 13px; margin: 0;">{{t.closing}}</p>
+						</td>
+					</tr>
+					<tr>
+						<td align="center" style="padding: 24px 0 0;">
+							<p style="color: #9e9eb5; font-size: 13px; margin: 0;">&mdash; {{t.teamSignature}}</p>
+						</td>
+					</tr>
+				</table>
+			</td>
+		</tr>
+	</table>
+</body>
+</html>

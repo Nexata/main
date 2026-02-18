@@ -83,8 +83,8 @@ No test scripts are currently configured in package.json. Run individual tests u
   ```
 - `httpError()` **returns** an `HttpError` instance — call sites must **throw** it:
   ```typescript
-  throw httpError(HttpCode.NotFound, ErrorCode.THREAD_NOT_FOUND, activeUser.language as Language)
-  throw httpError(HttpCode.Forbidden, ErrorCode.NO_CREDENTIAL_FOUND)
+  throw httpError(HttpCode.NOT_FOUND, ErrorCode.THREAD_NOT_FOUND, activeUser.language as Language)
+  throw httpError(HttpCode.FORBIDDEN, ErrorCode.NO_CREDENTIAL_FOUND)
   ```
 - The error response body is `{ code: string, text: string }` where `text` is a localized message
 - **Language sourcing by context:**
@@ -97,9 +97,9 @@ No test scripts are currently configured in package.json. Run individual tests u
   3. Add Spanish translation in `src/locales/es/error.json`
 - **Dynamic error code resolution** (e.g. `blockReason` from ingest):
   ```typescript
-  throw httpError(HttpCode.PreconditionFailed, ErrorCode[blockReason as keyof typeof ErrorCode], language)
+  throw httpError(HttpCode.PRECONDITION_FAILED, ErrorCode[blockReason as keyof typeof ErrorCode], language)
   ```
-- Available `HttpCode` values: `BadRequest` (400), `Unauthorized` (401), `PaymentRequired` (402), `Forbidden` (403), `NotFound` (404), `MethodNotAllowed` (405), `Conflict` (409), `PreconditionFailed` (412), `UnprocessableEntity` (422), `InternalServerError` (500)
+- Available `HttpCode` values: `BAD_REQUEST` (400), `UNAUTHORIZED` (401), `PAYMENT_REQUIRED` (402), `FORBIDDEN` (403), `NOT_FOUND` (404), `METHOD_NOT_ALLOWED` (405), `CONFLICT` (409), `PRECONDITION_FAILED` (412), `UNPROCESSABLE_ENTITY` (422), `INTERNAL_SERVER_ERROR` (500)
 - Use the `log` function from `@api/utils/env`:
   ```typescript
   log('error', 'message')
@@ -142,7 +142,7 @@ No test scripts are currently configured in package.json. Run individual tests u
 
 ### AI/ML Model Patterns
 - Models configured with fallback chains using `ai-fallback`: `createFallback({ models: [...], ... })`
-- Available models: `MODEL` (general), `REASONING_MODEL`, `VLM_MODEL` (vision), `EMBEDDING_MODEL`
+- Available models: `MODEL` (general), `LIGHT_MODEL` (lightweight/fast), `REASONING_MODEL`, `VLM_MODEL` (vision), `EMBEDDING_MODEL`
 - Use `generateText()` with `jsonSchema` output for structured LLM responses
 - Use `embedMany()` for batch embedding generation
 - Configure `FALLBACK_BEHAVIOR` with error handlers and retry logic
@@ -165,7 +165,7 @@ No test scripts are currently configured in package.json. Run individual tests u
 ### Billing and Rate Limiting
 - Track usage in cache with keys like `tenant:usage:{slug}`
 - Check `count.used + 1 >= count.limit` before allowing operations
-- Throw `HttpError.MethodNotAllowed('MESSAGE_LIMIT_REACHED')` for quota exceeded
+- Throw `httpError(HttpCode.METHOD_NOT_ALLOWED, ErrorCode.MESSAGE_LIMIT_REACHED, language)` for quota exceeded
 - Use `bill` schema for billing records with `createdAt` descending index
 - Track billable events separately for analytics
 
@@ -173,11 +173,11 @@ No test scripts are currently configured in package.json. Run individual tests u
 - Use provider-specific clients (e.g., `Dropbox.fromRequest(activeUser, credentialId)`)
 - Store credentials with `provider`, `scopes`, and token expiration
 - Use `getTokensForUser()` helper to retrieve valid tokens
-- Handle external service errors with `HttpError.Conflict('EXTERNAL_ERROR')`
+- Handle external service errors with `httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR)`
 - Implement file categorization enums for integrations
 
 ### Naming Conventions
-- Files: `kebab-case` for utilities, `camelCase` for router modules
+- Files: `kebab-case` (e.g., `token-refresh.ts`, `credential-permission.ts`)
 - Variables/functions: `camelCase`
 - Constants: `SCREAMING_SNAKE_CASE`
 - Types/Interfaces: `PascalCase`
@@ -387,18 +387,25 @@ Nexata uses Handlebars templates with per-locale JSON files for multilingual ema
 ```
 src/
   locales/
+    index.ts                # Barrel: exports `locales` record keyed by language → template name
     en/                     # English locale
       template-name.json    # Translatable strings + subject
     es/                     # Spanish locale
       template-name.json
   templates/
+    index.ts                # Barrel: exports `templates` record keyed by template name
     template-name.hbs       # Handlebars HTML template
   utils/
     mail.ts                 # compileTemplate, sendMail, sendTemplateMail
 ```
 
 #### Template Enum
-All templates are registered in the `Template` enum in `src/utils/mail.ts`. Add new entries when creating new templates.
+All templates are registered in the `Template` enum in `src/utils/mail.ts`. When adding a new template:
+1. Create the `.hbs` file in `src/templates/`
+2. Create locale JSON files in `src/locales/en/` and `src/locales/es/`
+3. Add the `.hbs` import to `src/templates/index.ts` and register it in the `templates` record
+4. Add the locale JSON imports to `src/locales/index.ts` and register them in the `locales` record
+5. Add the enum entry to `Template` in `src/utils/mail.ts`
 
 #### Locale JSON Format
 Each locale file must include a `subject` key (used as the email subject by `sendTemplateMail`) and any other translatable strings referenced via `{{t.key}}` in the `.hbs` template:

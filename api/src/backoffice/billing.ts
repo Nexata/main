@@ -4,6 +4,7 @@ import {
 	billableEvent,
 	chunk,
 	file,
+	type Language,
 	user,
 } from '@api/schema';
 import {
@@ -11,8 +12,11 @@ import {
 	getTenantsDueForBilling,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { sendTemplateMail, Template } from '@api/utils/mail';
+import { Nullish, tObject } from '@api/utils/type';
+import dayjs from 'dayjs';
 import { eq, sql } from 'drizzle-orm';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
 	.put(
@@ -55,16 +59,42 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	)
 	.put(
 		'/generate-bills',
-		async () => {
+		async ({ body }) => {
+			const redirect = body.redirect ?? 'https://nexata.app';
 			const dueTenants = await getTenantsDueForBilling();
 			return await Promise.all(
 				dueTenants.map(async (t) => {
 					const result = await generateBillForTenant(t.slug, t.plan);
+
+					if (result.amount !== 0) {
+						await Promise.all(
+							t.admins.map((admin) =>
+								sendTemplateMail({
+									to: admin.email,
+									template: Template.BILL_GENERATED,
+									data: {
+										displayName: admin.displayName,
+										logoUrl: t.logoUrl,
+										tenantDisplayName: t.displayName,
+										amount: result.amount.toFixed(2),
+										plan: t.plan,
+										date: dayjs().format('YYYY-MM-DD'),
+										redirect,
+									},
+									language: admin.language as Language,
+								}),
+							),
+						);
+					}
+
 					return { slug: t.slug, ...result };
 				}),
 			);
 		},
 		{
+			body: tObject({
+				redirect: Nullish(t.String({ format: 'uri' })),
+			}),
 			detail: {
 				summary: 'Generate billing',
 				description:
