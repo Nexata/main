@@ -2,6 +2,7 @@ import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
 import {
 	BillableEventType,
+	BillSource,
 	bill,
 	billableEvent,
 	PLANS,
@@ -111,27 +112,30 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 			const newLimits = PLANS[body.plan];
 			const currentLimits = PLANS[currentPlan];
 
-			if (newLimits.baseBill < currentLimits.baseBill) {
-				const unpaidBills = await db
-					.select({ id: bill.id })
-					.from(bill)
-					.where(and(eq(bill.slug, activeUser.slug), eq(bill.paid, false)))
-					.limit(1);
-
-				if (unpaidBills.length > 0)
+			if (newLimits.storageLimit !== null) {
+				const storageUsage = await getStorageUsage(activeUser.slug);
+				if (storageUsage > newLimits.storageLimit)
 					throw httpError(
 						HttpCode.PRECONDITION_FAILED,
-						ErrorCode.PLAN_CHANGE_UNPAID_BILLS,
+						ErrorCode.STORAGE_LIMIT_REACHED,
 						activeUser.language,
 					);
 			}
+
+			await db
+				.delete(bill)
+				.where(and(eq(bill.slug, activeUser.slug), eq(bill.paid, false)));
 
 			await db
 				.update(tenant)
 				.set({ plan: body.plan })
 				.where(eq(tenant.slug, activeUser.slug));
 
-			await generateBillForTenant(activeUser.slug, body.plan);
+			await generateBillForTenant(
+				activeUser.slug,
+				body.plan,
+				BillSource.PLAN_CHANGE,
+			);
 
 			if (currentLimits.hasApiAccess && !newLimits.hasApiAccess) {
 				const usersWithKeys = await db

@@ -7,7 +7,7 @@ import Elysia from 'elysia';
 export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 	'/refresh',
 	async () => {
-		const oneHourFromNow = new Date(Date.now() + 60 * 60 * 1000);
+		const fourHoursFromNow = new Date(Date.now() + 4 * 60 * 60 * 1000);
 
 		const credentialsToRefresh = await db
 			.select({
@@ -22,7 +22,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 			.where(
 				and(
 					isNotNull(credential.refreshTokenExpiresAt),
-					lte(credential.refreshTokenExpiresAt, oneHourFromNow),
+					lte(credential.refreshTokenExpiresAt, fourHoursFromNow),
 				),
 			);
 
@@ -50,7 +50,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 		detail: {
 			summary: 'Refresh credentials',
 			description:
-				'Refreshes refresh tokens that will expire in the next 1 hour. Access tokens are refreshed on-demand when credentials are used. Expected to run chronologically every 1 hour.',
+				'Refreshes refresh tokens that will expire in the next 4 hours. Access tokens are refreshed on-demand when credentials are used. Expected to run chronologically every 4 hours.',
 		},
 	},
 );

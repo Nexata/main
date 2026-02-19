@@ -1,6 +1,7 @@
 import { cache, db } from '@api/env';
 import {
 	BillableEventType,
+	BillSource,
 	bill,
 	billableEvent,
 	chunk,
@@ -14,7 +15,7 @@ import {
 import { ErrorCode } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import dayjs from 'dayjs';
-import { and, desc, eq, isNull, lte, sql, sum } from 'drizzle-orm';
+import { and, eq, isNull, lte, or, sql, sum } from 'drizzle-orm';
 
 const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
 const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
@@ -155,21 +156,26 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	const cached = await cache.get<boolean>(UNPAID_KEY(slug));
 	if (cached !== null) return cached;
 
-	const latestBill = (
+	const graceCutoff = dayjs().subtract(3, 'day').format('YYYY-MM-DD');
+
+	const unpaidBill = (
 		await db
-			.select({ paid: bill.paid })
+			.select({ id: bill.id })
 			.from(bill)
 			.where(
 				and(
 					eq(bill.slug, slug),
 					eq(bill.paid, false),
-					lte(bill.createdAt, dayjs().subtract(2, 'days').toISOString()),
+					or(
+						eq(bill.source, BillSource.PLAN_CHANGE),
+						lte(bill.createdAt, graceCutoff),
+					),
 				),
 			)
-			.orderBy(desc(bill.createdAt))
+			.limit(1)
 	).at(0);
 
-	const unpaid = Boolean(latestBill?.paid);
+	const unpaid = Boolean(unpaidBill);
 	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 60 * 60 });
 	return unpaid;
 }
@@ -245,6 +251,7 @@ export function calculateBillAmount(plan: Plan, details: BillDetails): number {
 export async function generateBillForTenant(
 	slug: string,
 	plan: Plan,
+	source: BillSource = BillSource.PERIODIC,
 ): Promise<{ billId: string; amount: number }> {
 	const consumption = await db
 		.select({
@@ -270,6 +277,7 @@ export async function generateBillForTenant(
 			slug,
 			amount: amount.toString(),
 			plan,
+			source,
 			paid: amount === 0,
 			details,
 		}),

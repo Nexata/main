@@ -6,10 +6,21 @@ import {
 	index,
 	json,
 	numeric,
+	pgEnum,
 	pgTable,
 	uuid,
 	varchar,
 } from 'drizzle-orm/pg-core';
+
+export enum BillSource {
+	PERIODIC = 'periodic',
+	PLAN_CHANGE = 'plan_change',
+}
+
+export const BillSourceEnum = pgEnum(
+	'bill_source',
+	Object.values(BillSource) as [BillSource],
+);
 
 export const bill = pgTable(
 	'bill',
@@ -22,6 +33,7 @@ export const bill = pgTable(
 		paid: boolean().notNull().default(false),
 		amount: numeric().notNull(),
 		plan: PlanEnum().notNull(),
+		source: BillSourceEnum().notNull().default(BillSource.PERIODIC),
 		details: json().notNull(),
 	},
 	(table) => [index('bill_created_at_desc').on(desc(table.createdAt))],

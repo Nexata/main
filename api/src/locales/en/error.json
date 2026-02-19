@@ -38,7 +38,6 @@
 	"UNSUPPORTED_FILE_TYPE": "This file type is not supported",
 	"STORAGE_LIMIT_REACHED": "Storage limit has been reached",
 	"EMBED_LIMIT_REACHED": "Embedding limit has been reached",
-	"PLAN_CHANGE_UNPAID_BILLS": "Cannot downgrade plan with unpaid bills",
 	"PLAN_CHANGE_NOT_ALLOWED": "This plan change is not allowed",
 	"TENANT_CREATION_EXPIRED": "Tenant creation request has expired or is invalid",
 	"SLUG_UNAVAILABLE": "This slug is not available"
