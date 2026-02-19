@@ -159,12 +159,17 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 		await db
 			.select({ paid: bill.paid })
 			.from(bill)
-			.where(eq(bill.slug, slug))
+			.where(
+				and(
+					eq(bill.slug, slug),
+					eq(bill.paid, false),
+					lte(bill.createdAt, dayjs().subtract(2, 'days').toISOString()),
+				),
+			)
 			.orderBy(desc(bill.createdAt))
-			.limit(1)
 	).at(0);
 
-	const unpaid = latestBill ? !latestBill.paid : false;
+	const unpaid = Boolean(latestBill?.paid);
 	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 60 * 60 });
 	return unpaid;
 }
