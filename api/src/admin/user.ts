@@ -60,7 +60,7 @@ export const userRouter = new Elysia({ prefix: '/user' })
 					data: {
 						tenantDisplayName: t?.displayName ?? activeUser.slug,
 						logoUrl: t?.logoUrl,
-						redirect: body.redirect ?? 'https://nexata.app',
+						redirect: body.redirect,
 					},
 					language: activeUser.language as Language,
 				});

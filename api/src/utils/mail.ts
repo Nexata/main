@@ -7,6 +7,7 @@ import Handlebars from 'handlebars';
 export enum Template {
 	BILL_GENERATED = 'bill-generated',
 	FEEDBACK_UPDATED = 'feedback-updated',
+	SYNC_FAILED = 'sync-failed',
 	TENANT_CREATION = 'tenant-creation',
 	USER_INVITED = 'user-invited',
 }
@@ -22,6 +23,25 @@ function getLocale(
 	);
 }
 
+function interpolateLocale(
+	locale: Record<string, string>,
+	data: Record<string, unknown>,
+): Record<string, string> {
+	const dataKeys = Object.keys(data);
+	const interpolated: Record<string, string> = {};
+	for (const [key, value] of Object.entries(locale)) {
+		interpolated[key] = dataKeys.some(
+			(k) =>
+				value.includes(`{{${k}`) ||
+				value.includes(`{{#if ${k}`) ||
+				value.includes(`{{#each ${k}`),
+		)
+			? Handlebars.compile(value)(data)
+			: value;
+	}
+	return interpolated;
+}
+
 export function compileTemplate(
 	template: Template,
 	data: Record<string, unknown>,
@@ -31,8 +51,9 @@ export function compileTemplate(
 	if (!source) throw new Error(`Missing template source for ${template}`);
 
 	const locale = getLocale(template, language);
+	const resolved = interpolateLocale(locale, data);
 	const compiled = Handlebars.compile(source);
-	return compiled({ t: locale, ...data });
+	return compiled({ t: resolved, ...data });
 }
 
 export async function sendMail(options: {

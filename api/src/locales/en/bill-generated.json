@@ -1,7 +1,7 @@
 {
 	"subject": "You have a pending bill",
-	"greeting": "Hi",
-	"body": "A new bill has been generated for your organization. Your platform access is blocked until the bill is paid.",
+	"greeting": "Hi, {{displayName}}",
+	"body": "A new bill has been generated for your organization ({{tenantDisplayName}}). Your platform access is blocked until the bill is paid.",
 	"amountLabel": "Amount",
 	"planLabel": "Plan",
 	"dateLabel": "Date",

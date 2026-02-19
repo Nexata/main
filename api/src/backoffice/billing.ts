@@ -60,7 +60,6 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	.put(
 		'/generate-bills',
 		async ({ body }) => {
-			const redirect = body.redirect ?? 'https://nexata.app';
 			const dueTenants = await getTenantsDueForBilling();
 			return await Promise.all(
 				dueTenants.map(async (t) => {
@@ -75,11 +74,11 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 									data: {
 										displayName: admin.displayName,
 										logoUrl: t.logoUrl,
-										tenantDisplayName: t.displayName,
+										tenantDisplayName: t.displayName ?? t.slug,
 										amount: result.amount.toFixed(2),
 										plan: t.plan,
 										date: dayjs().format('YYYY-MM-DD'),
-										redirect,
+										redirect: body.redirect,
 									},
 									language: admin.language as Language,
 								}),
@@ -93,7 +92,9 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		},
 		{
 			body: tObject({
-				redirect: Nullish(t.String({ format: 'uri' })),
+				redirect: Nullish(
+					t.String({ format: 'uri', default: 'https://nexata.app' }),
+				),
 			}),
 			detail: {
 				summary: 'Generate billing',

@@ -1,6 +1,6 @@
 {
 	"subject": "Confirm your Nexata organization",
-	"greeting": "Hi",
+	"greeting": "Hi, {{displayName}}",
 	"body": "Click the button below to confirm the creation of your organization.",
 	"buttonText": "Confirm creation",
 	"closing": "This link expires in 1 hour.",

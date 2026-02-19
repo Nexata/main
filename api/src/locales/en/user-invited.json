@@ -1,7 +1,7 @@
 {
 	"subject": "You've been invited to join a Nexata organization",
 	"greeting": "Hi",
-	"body": "You have been invited to join",
+	"body": "You have been invited to join {{tenantDisplayName}}.",
 	"buttonText": "Get started",
 	"closing": "If you didn't expect this invitation, you can safely ignore this email.",
 	"teamSignature": "The Nexata Team"

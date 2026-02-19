@@ -4,6 +4,7 @@ import billGenerated from '@api/templates/bill-generated.hbs' with {
 import feedbackUpdated from '@api/templates/feedback-updated.hbs' with {
 	type: 'text',
 };
+import syncFailed from '@api/templates/sync-failed.hbs' with { type: 'text' };
 import tenantCreation from '@api/templates/tenant-creation.hbs' with {
 	type: 'text',
 };
@@ -12,6 +13,7 @@ import userInvited from '@api/templates/user-invited.hbs' with { type: 'text' };
 export const templates: Record<string, string> = {
 	'bill-generated': billGenerated,
 	'feedback-updated': feedbackUpdated,
+	'sync-failed': syncFailed,
 	'tenant-creation': tenantCreation,
 	'user-invited': userInvited,
 };

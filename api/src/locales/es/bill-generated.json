@@ -1,7 +1,7 @@
 {
 	"subject": "Tienes una factura pendiente",
-	"greeting": "Hola",
-	"body": "Se ha generado una nueva factura para tu organización. El acceso a la plataforma está bloqueado hasta que se realice el pago.",
+	"greeting": "Hola, {{displayName}}",
+	"body": "Se ha generado una nueva factura para tu organización ({{tenantDisplayName}}). El acceso a la plataforma está bloqueado hasta que se realice el pago.",
 	"amountLabel": "Monto",
 	"planLabel": "Plan",
 	"dateLabel": "Fecha",

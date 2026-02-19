@@ -1,0 +1,10 @@
+{
+	"subject": "Some of your files failed to sync",
+	"greeting": "Hi, {{displayName}}",
+	"body": "We encountered issues syncing {{fileCount}} of your files. Here are the details:",
+	"fileNameLabel": "File",
+	"providerLabel": "Source",
+	"ctaText": "View your files",
+	"closing": "If the issue persists, please check your connected accounts or contact support.",
+	"teamSignature": "The Nexata Team"
+}
