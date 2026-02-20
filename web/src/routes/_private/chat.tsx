@@ -42,17 +42,25 @@ export function NexataChat() {
 		status,
 		setStreaming,
 		finishStreaming,
+		hydrateChat,
 	} = useChatUIStore();
 
 	const isNewChat = status === 'new';
 	const isHydrating = status === 'hydrating';
 	const isStreaming = status === 'streaming';
 
+	useEffect(() => {
+    if (!activeThreadId) return;
+    if (status !== 'idle') return;
+
+		hydrateChat(activeThreadId);
+	}, [activeThreadId]);
+
 	// ----------------------------
 	// Thread Hydration
 	// ----------------------------
 
-	const shouldLoadThread = isHydrating && !!activeThreadId;
+	const shouldLoadThread = !!activeThreadId;
 	const { data: threadMessages } = useThreadById(shouldLoadThread ? activeThreadId : null);
 
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
@@ -96,7 +104,6 @@ export function NexataChat() {
 
 	useEffect(() => {
 		if (!isHydrating) return;
-		if (!hydratedMessages.length) return;
 
 		setMessages(hydratedMessages);
 		finishStreaming();

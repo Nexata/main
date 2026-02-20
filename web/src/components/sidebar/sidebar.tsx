@@ -142,7 +142,6 @@ export default function Sidebar() {
     title: string | null;
   } | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // Edit Thread
   const [editingTitle, setEditingTitle] = useState("");
@@ -258,18 +257,23 @@ export default function Sidebar() {
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ duration: 0.4, ease: "easeInOut" }}
                 />
-                <motion.div
-                  className="h-8 w-px bg-border"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.4, ease: "easeInOut", delay: 0.15 }}
-                />
-                <TenantLogo
-                  loading={tenantLoading}
-                  logoUrl={myTenant?.logoUrl}
-                  displayName={myTenant?.displayName}
-                />
+
+                {myTenant?.logoUrl && (
+                  <>
+                    <motion.div
+                      className="h-8 w-px bg-border"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.4, ease: "easeInOut", delay: 0.15 }}
+                    />
+                    <TenantLogo
+                      loading={tenantLoading}
+                      logoUrl={myTenant.logoUrl}
+                      displayName={myTenant.displayName}
+                    />
+                  </>
+                )}
               </div>
             )}
 
