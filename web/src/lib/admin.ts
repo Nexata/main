@@ -1,25 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { apiClient, withAuthRetry } from '@/api';
 
-// Messages Consumption
-export async function getBillingMessages() {
-	return await withAuthRetry((headers) =>
-		apiClient.admin.billing.messages.get({
-			$headers: headers,
-		}),
-	);
-}
-
-export type BillingMessages = Awaited<ReturnType<typeof getBillingMessages>>;
-
-export function useBillingMessages() {
-	return useQuery<BillingMessages>({
-		queryKey: ['admin', 'billing', 'messages'],
-		queryFn: getBillingMessages,
-		staleTime: 60_000,
-	});
-}
-
 // Consumptions
 export async function getBillingUsage() {
 	return await withAuthRetry((headers) =>

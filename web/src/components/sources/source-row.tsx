@@ -74,8 +74,8 @@ export function SourceRow({
                 variant="outline"
                 className="cursor-pointer"
                 onClick={async () => {
-                  const url = await source.connect()
-                  window.open(url, "_blank", "noopener,noreferrer")
+                  const url = await source.connect();
+                  window.location.href = url;
                 }}
               >
                 {settings_sources_connect()}

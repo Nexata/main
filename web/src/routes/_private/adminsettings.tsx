@@ -42,7 +42,6 @@ import { UpgradePlanModal } from '@/components/upgrade-plan/upgrade-plan';
 import UserSection from '@/components/user-section/user-section';
 import {
   useAdminTraceCount,
-	useBillingMessages,
 	useBillingUsage,
 	useCreateUser,
 	useDeleteUser,
@@ -210,10 +209,6 @@ function AdminSettingsPage() {
 function CompanyOverviewSection() {
 	const _navigate = useNavigate();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-	const { data: billingMessages, isLoading: billingLoading } =
-		useBillingMessages();
-	const used = billingMessages?.count ?? 0;
-	const total = billingMessages?.limit ?? 0;
 	const [editingTenant, setEditingTenant] = useState(false);
 	const [tenantDisplayName, setTenantDisplayName] = useState('');
 	const [tenantLogo, setTenantLogo] = useState<File | null>(null);
@@ -227,6 +222,9 @@ function CompanyOverviewSection() {
 
   const storageUsed = usage?.storage?.used ?? 0;
   const storageTotal = usage?.storage?.limit ?? 0;
+
+  const messageUsed = usage?.messages?.used ?? 0;
+  const messageTotal = usage?.messages?.limit ?? 0;
 
 	useEffect(() => {
 		if (myTenant) {
@@ -353,10 +351,10 @@ function CompanyOverviewSection() {
 				<div className="space-y-4">
 					<UsageBar
 						label={admin_company_overview_message_balance()}
-						used={used}
-						total={total}
+						used={messageUsed}
+						total={messageTotal}
 						colorClass="bg-primary"
-						loading={billingLoading}
+						loading={usageLoading}
 					/>
 
 					<UsageBar
