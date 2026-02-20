@@ -148,7 +148,7 @@
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer.",
 		"theme": "Cambiar tema",
 		"settings": "Configuracion",
-		"help": "Ayuda",
+		"tenant_switch": "Cambiar Empresa",
 		"feedback": "Enviar feedback"
 	},
 	"user_input": {

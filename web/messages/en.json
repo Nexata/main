@@ -148,7 +148,7 @@
 		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone.",
 		"theme": "Toggle theme",
 		"settings": "Settings",
-		"help": "Help",
+		"tenant_switch": "Switch Tenant",
 		"feedback": "Send feedback"
 	},
 	"user_input": {

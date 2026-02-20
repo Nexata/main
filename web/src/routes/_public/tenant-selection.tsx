@@ -10,22 +10,8 @@ import {
   'tenant-selection.userFallback' as tenant_selection_userFallback,
   'tenant-selection.welcome' as tenant_selection_welcome
 } from "@/paraglide/messages.js";
-
-type Session = {
-	at: string;
-	rt: string;
-	user: {
-		id: string;
-		email: string;
-		displayName?: string;
-		pfpUrl?: string | null;
-	};
-	tenant: {
-		slug: string;
-		displayName: string;
-		logoUrl?: string | null;
-	};
-};
+import { saveTenantSessions, type Session } from '@/lib/tenant-session';
+import { useQueryClient } from '@tanstack/react-query';
 
 export const Route = createFileRoute('/_public/tenant-selection')({
 	validateSearch: (search: Record<string, unknown>) => {
@@ -47,6 +33,8 @@ function stringToColor(str: string) {
 
 export default function TenantSelectionPage() {
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
   React.useEffect(() => {
     document.title = tenant_selection_title();
   }, []);
@@ -62,6 +50,13 @@ export default function TenantSelectionPage() {
     }
   }, [encoded]);
 
+  // Save Tenants
+  React.useEffect(() => {
+    if (sessions?.length) {
+      saveTenantSessions(sessions);
+    }
+  }, [sessions]);
+
   React.useEffect(() => {
     if (!sessions?.length) {
       navigate({ to: '/login' });
@@ -73,10 +68,12 @@ export default function TenantSelectionPage() {
   const user = sessions[0]?.user;
   if (!user) return;
 
-	function selectSession(session: Session) {
-		saveTokens(session.at, session.rt);
-		navigate({ to: '/chat' });
-	}
+  function selectSession(session: Session) {
+    saveTokens(session.at, session.rt);
+    queryClient.clear();
+
+    navigate({ to: "/chat", replace: true });
+  }
 
 	return (
 		<motion.div

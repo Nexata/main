@@ -1,22 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import React from 'react';
 import { saveTokens } from '@/lib/auth';
-
-type Session = {
-	at: string;
-	rt: string;
-	user: {
-		id: string;
-		email: string;
-		displayName?: string;
-		pfpUrl?: string | null;
-	};
-	tenant: {
-		slug: string;
-		displayName: string;
-		logoUrl?: string | null;
-	};
-};
+import type { Session } from '@/lib/tenant-session';
 
 export const Route = createFileRoute('/_public/callback')({
 	component: CallbackPage,
