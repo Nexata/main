@@ -19,6 +19,13 @@
 		"created_at": "Fecha de creación"
 	},
 
+	"tenant-selection": {
+    "title": "Nexata | Seleccionar tenant",
+    "welcome": "Bienvenido {name}",
+    "selectPrompt": "Seleccioná el tenant al que querés ingresar",
+    "userFallback": "Usuario"
+	},
+
 	"months": {
 		"january": "Enero",
 		"february": "Febrero",

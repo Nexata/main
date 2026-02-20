@@ -81,7 +81,7 @@ export async function getMyTenant() {
 		}),
 	);
 }
-export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>[number];
+export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>;
 
 export function useMyTenant() {
 	return useQuery<
@@ -92,7 +92,7 @@ export function useMyTenant() {
 		queryKey: ['my-tenant'],
 		queryFn: getMyTenant,
 		staleTime: Infinity,
-		select: (data) => data?.[0] ?? null,
+		select: (data) => data ?? null,
 	});
 }
 

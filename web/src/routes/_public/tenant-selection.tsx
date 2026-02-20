@@ -4,6 +4,12 @@ import { Card, CardContent } from '@/components/ui/card';
 import { saveTokens } from '@/lib/auth';
 import { Separator } from '@/components/ui/separator';
 import React from 'react';
+import {
+  'tenant-selection.selectPrompt' as tenant_selection_selectPrompt,
+  'tenant-selection.title' as tenant_selection_title,
+  'tenant-selection.userFallback' as tenant_selection_userFallback,
+  'tenant-selection.welcome' as tenant_selection_welcome
+} from "@/paraglide/messages.js";
 
 type Session = {
 	at: string;
@@ -22,6 +28,14 @@ type Session = {
 };
 
 export const Route = createFileRoute('/_public/tenant-selection')({
+	validateSearch: (search: Record<string, unknown>) => {
+		return {
+			sessions:
+				typeof search.sessions === 'string'
+					? search.sessions
+					: undefined,
+		};
+	},
 	component: TenantSelectionPage,
 });
 
@@ -33,9 +47,11 @@ function stringToColor(str: string) {
 
 export default function TenantSelectionPage() {
   const navigate = useNavigate();
-  const { sessions: encoded } = useSearch({
-    from: '/_public/tenant-selection',
-  });
+  React.useEffect(() => {
+    document.title = tenant_selection_title();
+  }, []);
+
+  const { sessions: encoded } = useSearch({ from: '/_public/tenant-selection' });
 
   const sessions: Session[] | null = React.useMemo(() => {
     try {
@@ -71,19 +87,8 @@ export default function TenantSelectionPage() {
 		>
 			<Card className="rounded-2xl border shadow-xl">
 				<CardContent className="p-8 space-y-6">
-
-					{/* Logo */}
-					{/*<div className="flex justify-center">
-						<img
-							src="/nexata_logo.png"
-							alt="Nexata"
-							className="h-12 object-contain"
-						/>
-					</div>*/}
-
 					{/* User greeting */}
 					<div className="flex flex-col items-center gap-3">
-
 						{user.pfpUrl ? (
 							<img
 								src={user.pfpUrl}
@@ -103,7 +108,7 @@ export default function TenantSelectionPage() {
 						)}
 
 						<h2 className="text-xl font-semibold text-center">
-							Bienvenido {user.displayName ?? ''}
+              {tenant_selection_welcome({name: user.displayName ??  tenant_selection_userFallback()})}
 						</h2>
 
 						<p className="text-sm text-muted-foreground">
@@ -111,7 +116,7 @@ export default function TenantSelectionPage() {
 						</p>
 						<Separator className="my-1" />
 						<p className="text-sm opacity-70 text-center">
-							Seleccioná el tenant al que querés ingresar
+              {tenant_selection_selectPrompt()}
             </p>
 					</div>
 
