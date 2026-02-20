@@ -503,7 +503,9 @@ export namespace Dropbox {
 			? 'OK'
 			: results.ok && results.failed
 				? 'PARTIAL'
-				: 'FAILED';
+				: results.failed
+					? 'FAILED'
+					: 'UNMODIFIED';
 	}
 
 	async function getDirInfo(

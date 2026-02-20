@@ -9,6 +9,7 @@ import {
 	PROVIDER_LABELS,
 	user,
 } from '@api/schema';
+import { requireEnv } from '@api/utils/env';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish } from '@api/utils/type';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
@@ -149,6 +150,9 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			synced: results.filter(
 				(r) => r.status === 'fulfilled' && r.value === 'OK',
 			).length,
+			unmodified: results.filter(
+				(r) => r.status === 'fulfilled' && r.value === 'UNMODIFIED',
+			).length,
 			partial: results.filter(
 				(r) => r.status === 'fulfilled' && r.value === 'PARTIAL',
 			).length,
@@ -163,7 +167,10 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 		body: t.Optional(
 			t.Object({
 				redirect: Nullish(
-					t.String({ format: 'uri', default: 'https://nexata.app' }),
+					t.String({
+						format: 'uri',
+						default: requireEnv('DEFAULT_REDIRECT_URL'),
+					}),
 				),
 			}),
 		),

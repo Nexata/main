@@ -740,7 +740,9 @@ export namespace Drive {
 			? 'OK'
 			: results.ok && results.failed
 				? 'PARTIAL'
-				: 'FAILED';
+				: results.failed
+					? 'FAILED'
+					: 'UNMODIFIED';
 	}
 
 	export async function refreshTokens(

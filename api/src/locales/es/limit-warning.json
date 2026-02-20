@@ -1,0 +1,13 @@
+{
+	"subject": "Tu uso se acerca al límite",
+	"greeting": "Hola, {{displayName}}",
+	"body": "Tu organización ({{tenantDisplayName}}) se está acercando a uno o más límites del plan. Considera actualizar tu plan o reducir el uso para evitar interrupciones.",
+	"typeMessages": "Mensajes",
+	"typeStorage": "Almacenamiento (MB)",
+	"typeEmbeds": "Tokens de embebido",
+	"usedLabel": "Usado",
+	"limitLabel": "Límite",
+	"buttonText": "Ver uso",
+	"closing": "Puedes gestionar tu plan y uso desde la configuración de facturación.",
+	"teamSignature": "El equipo de Nexata"
+}

@@ -1,0 +1,7 @@
+{
+	"subject": "Has sido eliminado de una organización en Nexata",
+	"greeting": "Hola",
+	"body": "Has sido eliminado de {{tenantDisplayName}}. Ya no tendrás acceso a los datos y recursos de la organización.",
+	"closing": "Si crees que esto fue un error, por favor contacta al administrador de tu organización.",
+	"teamSignature": "El equipo de Nexata"
+}

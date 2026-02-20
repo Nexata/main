@@ -11,6 +11,7 @@ import {
 	generateBillForTenant,
 	getTenantsDueForBilling,
 } from '@api/utils/billing';
+import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish, tObject } from '@api/utils/type';
@@ -93,7 +94,10 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			body: tObject({
 				redirect: Nullish(
-					t.String({ format: 'uri', default: 'https://nexata.app' }),
+					t.String({
+						format: 'uri',
+						default: requireEnv('DEFAULT_REDIRECT_URL'),
+					}),
 				),
 			}),
 			detail: {

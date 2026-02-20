@@ -1,0 +1,8 @@
+{
+	"subject": "Your Nexata account has been deleted",
+	"greeting": "We're sorry to see you go",
+	"body": "Your account has been successfully deleted from {{tenantDisplayName}}. All your data has been removed.",
+	"buttonText": "Visit Nexata",
+	"closing": "If you ever want to come back, we'll be here. Thank you for being part of our community.",
+	"teamSignature": "The Nexata Team"
+}

@@ -7,9 +7,12 @@ import Handlebars from 'handlebars';
 export enum Template {
 	BILL_GENERATED = 'bill-generated',
 	FEEDBACK_UPDATED = 'feedback-updated',
+	LIMIT_WARNING = 'limit-warning',
 	SYNC_FAILED = 'sync-failed',
 	TENANT_CREATION = 'tenant-creation',
 	USER_INVITED = 'user-invited',
+	USER_LEFT = 'user-left',
+	USER_REMOVED = 'user-removed',
 }
 
 const FROM = '"Nexata" <noreply@nexata.app>';

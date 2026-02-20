@@ -1,4 +1,5 @@
 import { cache, db } from '@api/env';
+import { locales } from '@api/locales';
 import {
 	BillableEventType,
 	BillSource,
@@ -6,16 +7,22 @@ import {
 	billableEvent,
 	chunk,
 	file,
+	type Language,
 	PLANS,
 	Plan,
+	TraceType,
 	tenant,
+	trace,
 	USAGE_BASED_PRICING,
 	user,
 } from '@api/schema';
-import { ErrorCode } from '@api/utils/error';
+import { log, requireEnv } from '@api/utils/env';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { sendTemplateMail, Template } from '@api/utils/mail';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
+import { captureException } from '@sentry/bun';
 import dayjs from 'dayjs';
-import { and, eq, isNull, lte, or, sql, sum } from 'drizzle-orm';
+import { and, eq, gte, isNull, lte, or, sql, sum } from 'drizzle-orm';
 
 const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
 const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
@@ -23,6 +30,15 @@ const EMBED_KEY = (slug: string) => `tenant:${slug}:embed-usage`;
 const MESSAGE_KEY = (slug: string) => `tenant:${slug}:message-usage`;
 const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
 const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
+const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
+
+const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {
+	message: 'typeMessages',
+	storage: 'typeStorage',
+	embed: 'typeEmbeds',
+};
+
+const LIMIT_WARN_THRESHOLD = 0.95;
 
 export async function getTenantPlan(slug: string): Promise<Plan> {
 	const cached = await cache.get<Plan>(PLAN_KEY(slug));
@@ -134,6 +150,7 @@ export async function incrementStorageUsage(
 ): Promise<void> {
 	const key = STORAGE_KEY(slug);
 	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaMB);
+	checkAndNotifyLimits(slug, 'storage');
 }
 
 export async function incrementEmbedUsage(
@@ -142,6 +159,7 @@ export async function incrementEmbedUsage(
 ): Promise<void> {
 	const key = EMBED_KEY(slug);
 	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaTokens);
+	checkAndNotifyLimits(slug, 'embed');
 }
 
 export async function incrementMessageUsage(
@@ -150,6 +168,7 @@ export async function incrementMessageUsage(
 ): Promise<void> {
 	const key = MESSAGE_KEY(slug);
 	if (await cache.exists(key)) await cache.incrbyfloat(key, deltaCredits);
+	checkAndNotifyLimits(slug, 'message');
 }
 
 export async function hasUnpaidBill(slug: string): Promise<boolean> {
@@ -178,6 +197,159 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	const unpaid = Boolean(unpaidBill);
 	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 60 * 60 });
 	return unpaid;
+}
+
+type BreachedLimit = {
+	type: 'message' | 'storage' | 'embed';
+	used: string;
+	limit: string;
+	percentage: number;
+};
+
+async function checkAndNotifyLimits(
+	slug: string,
+	type: BreachedLimit['type'],
+): Promise<void> {
+	try {
+		if (await cache.exists(LIMIT_WARN_KEY(slug))) return;
+
+		const plan = await getTenantPlan(slug);
+		const limits = PLANS[plan];
+
+		let breached: BreachedLimit | null = null;
+
+		if (type === 'message' && limits.messageLimit !== null) {
+			const [messageUsage, refillMessages] = await Promise.all([
+				getMessageUsage(slug),
+				getRefillMessages(slug),
+			]);
+			const effectiveLimit = limits.messageLimit + refillMessages;
+			const ratio = effectiveLimit > 0 ? messageUsage / effectiveLimit : 0;
+			if (ratio >= LIMIT_WARN_THRESHOLD)
+				breached = {
+					type: 'message',
+					used: Math.round(messageUsage).toString(),
+					limit: Math.round(effectiveLimit).toString(),
+					percentage: Math.min(Math.round(ratio * 100), 100),
+				};
+		} else if (type === 'storage' && limits.storageLimit !== null) {
+			const storageUsage = await getStorageUsage(slug);
+			const ratio =
+				limits.storageLimit > 0 ? storageUsage / limits.storageLimit : 0;
+			if (ratio >= LIMIT_WARN_THRESHOLD)
+				breached = {
+					type: 'storage',
+					used: Math.round(storageUsage).toString(),
+					limit: Math.round(limits.storageLimit).toString(),
+					percentage: Math.min(Math.round(ratio * 100), 100),
+				};
+		} else if (type === 'embed' && limits.embedLimit !== null) {
+			const embedUsage = await getEmbedUsage(slug);
+			const ratio = limits.embedLimit > 0 ? embedUsage / limits.embedLimit : 0;
+			if (ratio >= LIMIT_WARN_THRESHOLD)
+				breached = {
+					type: 'embed',
+					used: Math.round(embedUsage).toString(),
+					limit: Math.round(limits.embedLimit).toString(),
+					percentage: Math.min(Math.round(ratio * 100), 100),
+				};
+		}
+
+		if (!breached) return;
+
+		const existingTrace = (
+			await db
+				.select({ id: trace.id })
+				.from(trace)
+				.where(
+					and(
+						eq(trace.type, TraceType.LIMIT_WARNING),
+						eq(sql`${trace.metadata}->>'slug'`, slug),
+						gte(trace.createdAt, dayjs().subtract(1, 'month').toDate()),
+					),
+				)
+				.limit(1)
+		).at(0);
+
+		if (existingTrace) {
+			await cache.set(LIMIT_WARN_KEY(slug), true, { ex: 12 * 60 * 60 });
+			return;
+		}
+
+		const tenantInfo = (
+			await db
+				.select({
+					displayName: tenant.displayName,
+					logoUrl: tenant.logoUrl,
+				})
+				.from(tenant)
+				.where(eq(tenant.slug, slug))
+		).at(0);
+
+		if (!tenantInfo)
+			throw httpError(HttpCode.NOT_FOUND, ErrorCode.TENANT_NOT_FOUND);
+
+		const admins = await db
+			.select({
+				id: user.id,
+				email: user.email,
+				displayName: user.displayName,
+				language: user.language,
+			})
+			.from(user)
+			.where(and(eq(user.slug, slug), eq(user.isAdmin, true)));
+
+		if (!admins.length) return;
+
+		await Promise.allSettled(
+			admins.map((admin) => {
+				const lang = admin.language as Language;
+				const locale =
+					locales[lang]?.['limit-warning'] ??
+					locales.en?.['limit-warning'] ??
+					{};
+
+				return sendTemplateMail({
+					to: admin.email,
+					template: Template.LIMIT_WARNING,
+					data: {
+						displayName: admin.displayName ?? admin.email,
+						tenantDisplayName: tenantInfo.displayName ?? slug,
+						logoUrl: tenantInfo.logoUrl,
+						limits: [
+							{
+								label:
+									locale[LIMIT_TYPE_LOCALE_KEY[breached.type] ?? ''] ??
+									breached.type,
+								used: breached.used,
+								limit: breached.limit,
+								percentage: breached.percentage,
+							},
+						],
+						redirect: requireEnv('DEFAULT_REDIRECT_URL'),
+					},
+					language: lang,
+				});
+			}),
+		);
+
+		await db.insert(trace).values({
+			type: TraceType.LIMIT_WARNING,
+			metadata: {
+				slug,
+				limits: [breached.type],
+			},
+		});
+
+		await cache.set(LIMIT_WARN_KEY(slug), true, { ex: 12 * 60 * 60 });
+
+		log('log', `Limit warning sent for tenant ${slug}: ${breached.type}`);
+	} catch (error) {
+		captureException(error, {
+			tags: { source: 'checkAndNotifyLimits' },
+			extra: { slug, type },
+		});
+	}
 }
 
 export async function checkTenantCanIngest(
@@ -298,6 +470,7 @@ export async function generateBillForTenant(
 		MESSAGE_KEY(slug),
 		REFILL_KEY(slug),
 		UNPAID_KEY(slug),
+		LIMIT_WARN_KEY(slug),
 	);
 
 	return { billId, amount };

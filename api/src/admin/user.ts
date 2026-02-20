@@ -1,7 +1,15 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
-import { filePermission, type Language, tenant, user } from '@api/schema';
+import {
+	filePermission,
+	type Language,
+	TraceType,
+	tenant,
+	trace,
+	user,
+} from '@api/schema';
 import { userCacheKey } from '@api/utils/auth';
+import { requireEnv } from '@api/utils/env';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { uploadUserPfp } from '@api/utils/s3';
 import { Nullish, tObject } from '@api/utils/type';
@@ -79,7 +87,10 @@ export const userRouter = new Elysia({ prefix: '/user' })
 					isAdmin: t.Optional(t.BooleanString({ default: false })),
 					sendMail: t.BooleanString({ default: true }),
 					redirect: Nullish(
-						t.String({ format: 'uri', default: 'https://nexata.app' }),
+						t.String({
+							format: 'uri',
+							default: requireEnv('DEFAULT_REDIRECT_URL'),
+						}),
 					),
 				}),
 			]),
@@ -123,7 +134,7 @@ export const userRouter = new Elysia({ prefix: '/user' })
 	.delete(
 		'/:id',
 		async ({ params: { id }, activeUser }) => {
-			await Promise.all([
+			const [[, deletedUsers]] = await Promise.all([
 				db.batch([
 					db
 						.delete(filePermission)
@@ -148,12 +159,50 @@ export const userRouter = new Elysia({ prefix: '/user' })
 					db
 						.delete(user)
 						.where(and(eq(user.id, id), eq(user.slug, activeUser.slug)))
-						.returning({ userId: user.id }),
+						.returning({
+							userId: user.id,
+							email: user.email,
+							displayName: user.displayName,
+							language: user.language,
+						}),
 				]),
 				cache.del(userCacheKey(activeUser.slug, id)),
+				cache.del(`apikey:${id}`),
 			]);
 
 			await s3.delete(`t/${activeUser.slug}/u/${id}`);
+
+			const deletedUser = deletedUsers.at(0);
+			if (deletedUser) {
+				const [t] = await db.batch([
+					db
+						.select({
+							displayName: tenant.displayName,
+							logoUrl: tenant.logoUrl,
+						})
+						.from(tenant)
+						.where(eq(tenant.slug, activeUser.slug))
+						.limit(1),
+					db.insert(trace).values({
+						userId: activeUser.id,
+						type: TraceType.USER_DELETED,
+						metadata: {
+							email: deletedUser.email,
+							displayName: deletedUser.displayName,
+						},
+					}),
+				]);
+
+				await sendTemplateMail({
+					to: deletedUser.email,
+					template: Template.USER_REMOVED,
+					data: {
+						tenantDisplayName: t.at(0)?.displayName ?? activeUser.slug,
+						logoUrl: t.at(0)?.logoUrl,
+					},
+					language: deletedUser.language as Language,
+				});
+			}
 
 			return id;
 		},

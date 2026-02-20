@@ -7,12 +7,16 @@ import {
 	Language,
 	PLANS,
 	type Plan,
+	TraceType,
 	tenant,
+	trace,
 	user,
 } from '@api/schema';
 import { userCacheKey } from '@api/utils/auth';
 import { getTenantPlan } from '@api/utils/billing';
+import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { sendTemplateMail, Template } from '@api/utils/mail';
 import { deleteTenantData, uploadUserPfp } from '@api/utils/s3';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { tObject } from '@api/utils/type';
@@ -139,12 +143,14 @@ export const meRouter = new Elysia({ prefix: '/me' })
 	)
 	.delete(
 		'/',
-		async ({ activeUser: { id, slug } }) => {
+		async ({ activeUser }) => {
+			const { id, slug, email, displayName, language } = activeUser;
+
 			await Promise.all([
 				db.delete(user).where(eq(user.id, id)),
-				cache.del(userCacheKey(slug, id)),
+				cache.del(userCacheKey(slug, id), `apikey:${id}`),
+				s3.delete(`t/${slug}/u/${id}`),
 			]);
-			await s3.delete(`t/${slug}/u/${id}`);
 
 			const remaining = (
 				await db
@@ -153,10 +159,45 @@ export const meRouter = new Elysia({ prefix: '/me' })
 					.where(eq(user.slug, slug))
 			).at(0);
 
+			let tenantDisplayName = slug;
+			let logoUrl: string | null = null;
+
 			if (!remaining?.count) {
 				await deleteTenantData(slug);
 				await db.delete(tenant).where(eq(tenant.slug, slug));
+			} else {
+				const t = (
+					await db
+						.select({
+							displayName: tenant.displayName,
+							logoUrl: tenant.logoUrl,
+						})
+						.from(tenant)
+						.where(eq(tenant.slug, slug))
+						.limit(1)
+				).at(0);
+
+				tenantDisplayName = t?.displayName ?? slug;
+				logoUrl = t?.logoUrl ?? null;
 			}
+
+			await Promise.all([
+				db.insert(trace).values({
+					userId: id,
+					type: TraceType.USER_DELETED,
+					metadata: { email, displayName },
+				}),
+				sendTemplateMail({
+					to: email,
+					template: Template.USER_LEFT,
+					data: {
+						tenantDisplayName,
+						logoUrl,
+						redirect: requireEnv('DEFAULT_REDIRECT_URL'),
+					},
+					language: language as Language,
+				}),
+			]);
 
 			return id;
 		},

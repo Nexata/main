@@ -15,6 +15,8 @@ export enum TraceType {
 	CREDENTIAL_ADDED = 'credential_added',
 	CREDENTIAL_REMOVED = 'credential_removed',
 	INGEST_FAILED = 'ingest_failed',
+	LIMIT_WARNING = 'limit_warning',
+	USER_DELETED = 'user_deleted',
 }
 
 export const TraceTypeEnum = pgEnum(
