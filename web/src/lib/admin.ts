@@ -251,3 +251,23 @@ export function useSetBillingPlan() {
     return res;
   };
 }
+
+// ---------- Billing Last Bill ----------
+
+export async function getBillingLastBill() {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing["last-bill"].get({
+      $headers: headers,
+    }),
+  );
+}
+
+export type BillingLastBill = Awaited<ReturnType<typeof getBillingLastBill>>;
+
+export function useBillingLastBill() {
+  return useQuery<BillingLastBill>({
+    queryKey: ['admin', 'billing', 'last-bill'],
+    queryFn: getBillingLastBill,
+    staleTime: 60_000,
+  });
+}

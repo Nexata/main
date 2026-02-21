@@ -140,7 +140,8 @@ import {
   'admin.company_overview.plans.free' as admin_company_overview_plans_free,
   'admin.company_overview.plans.business' as admin_company_overview_plans_business,
   'admin.company_overview.plans.pay_as_you_go' as admin_company_overview_plans_pay_as_you_go,
-  'admin.company_overview.plans.personal' as admin_company_overview_plans_personal
+  'admin.company_overview.plans.personal' as admin_company_overview_plans_personal,
+  'admin.company_overview.billing' as admin_company_overview_billing
 } from '@/paraglide/messages.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -215,7 +216,8 @@ function AdminSettingsPage() {
 /* -------------------------------------------------------------------------- */
 
 function CompanyOverviewSection() {
-	const _navigate = useNavigate();
+  const _navigate = useNavigate();
+	const queryClient = useQueryClient();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 	const [editingTenant, setEditingTenant] = useState(false);
 	const [tenantDisplayName, setTenantDisplayName] = useState('');
@@ -254,26 +256,24 @@ function CompanyOverviewSection() {
       color: "bg-emerald-500/10 text-emerald-600",
       Icon: Sparkles,
     },
-
     personal: {
       label: admin_company_overview_plans_personal(),
       color: "bg-amber-500/10 text-amber-600",
       Icon: Gem,
     },
-
     business: {
       label: admin_company_overview_plans_business(),
       color: "bg-primary/10 text-primary",
       Icon: Crown,
     },
-
     pay_as_you_go: {
       label: admin_company_overview_plans_pay_as_you_go(),
       color: "bg-violet-500/10 text-violet-600",
       Icon: Diamond,
     },
   };
-	const planUI = myTenant ? PLAN_UI[myTenant.plan] : null;
+  const planUI = myTenant ? PLAN_UI[myTenant.plan] : null;
+	const isPayAsYouGo = myTenant?.plan === 'pay_as_you_go';
 
 	return (
 		<Card className="bg-sidebar">
@@ -431,37 +431,43 @@ function CompanyOverviewSection() {
 					</div>
 
 					<div className="flex gap-2">
-						{/* Billing Comentado hasta que habilitemos Pay as You Go*/}
-						{/*<Button
-							size="sm"
-							onClick={() => navigate({ to: '/billing' })}
-							className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white"
-						>
-							<CreditCard className="h-4 w-4 mr-2" />
-							{admin_company_overview_billing()}
-						</Button>*/}
+            {!isPayAsYouGo && (
+              <>
+                {/* Upgrade */}
+                <Button
+                  size="sm"
+                  className="cursor-pointer bg-orange-500/90 hover:bg-orange-500 text-white"
+                  onClick={() => setUpgradePlanOpen(true)}
+                >
+                  <TrendingUp className="h-4 w-4 mr-2" />
+                  {admin_company_overview_upgrade_plan()}
+                </Button>
 
-						{/* Upgrade */}
-						<Button
-							size="sm"
-							className="cursor-pointer bg-orange-500/90 hover:bg-orange-500 text-white"
-							onClick={() => setUpgradePlanOpen(true)}
-						>
-							<TrendingUp className="h-4 w-4 mr-2" />
-							{admin_company_overview_upgrade_plan()}
-						</Button>
+                {/* Buy messages */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="cursor-pointer"
+                  onClick={() => setBuyMessagesOpen(true)}
+                >
+                  <MessageSquarePlus className="mr-2 h-4 w-4" />
+                  {admin_company_overview_buy_messages()}
+                </Button>
+              </>
+            )}
 
-						{/* Buy messages */}
-						<Button
-							size="sm"
-							variant="outline"
-							className="cursor-pointer"
-							onClick={() => setBuyMessagesOpen(true)}
-						>
-							<MessageSquarePlus className="mr-2 h-4 w-4" />
-							{admin_company_overview_buy_messages()}
-						</Button>
-					</div>
+            {/* Billing */}
+            {isPayAsYouGo && (
+              <Button
+                size="sm"
+                onClick={() => _navigate({ to: '/billing' })}
+                className="cursor-pointer bg-emerald-500 hover:bg-emerald-600 text-white"
+              >
+                <TrendingUp className="h-4 w-4 mr-2" />
+                {admin_company_overview_billing()}
+              </Button>
+            )}
+          </div>
 				</div>
 
 				<BuyMessagesModal
@@ -470,9 +476,16 @@ function CompanyOverviewSection() {
 				/>
 
 				<UpgradePlanModal
-					open={upgradePlanOpen}
-					onOpenChange={setUpgradePlanOpen}
-				/>
+          open={upgradePlanOpen}
+          onOpenChange={(open) => {
+            setUpgradePlanOpen(open);
+            if (!open) {
+              queryClient.invalidateQueries({
+                queryKey: ['my-tenant'],
+              });
+            }
+          }}
+        />
 			</CardContent>
 		</Card>
 	);

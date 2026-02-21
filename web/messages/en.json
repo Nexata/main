@@ -125,6 +125,70 @@
       "toast_success_description": "The files were successfully ingested",
       "toast_error_title": "Ingestion failed",
       "toast_error_description": "Something went wrong during processing"
+    },
+
+    "upgrade_plan_modal": {
+      "title": "Choose the ideal plan for your team",
+      "subtitle": "You can change or upgrade your plan at any time.",
+      "current_plan": "Current Plan",
+      "upgrade_button": "Upgrade Plan",
+      "downgrade_button": "Downgrade Plan",
+      "contact": "Contact us",
+      "plans": {
+        "personal": {
+          "title": "Personal",
+          "price": "$19.99 / month",
+          "description": "Perfect for individual use or small teams.",
+          "features": {
+            "messages": "150 messages per month",
+            "storage": "1024 MB of storage",
+            "embeddings": "1024 MB of embeddings / month"
+          }
+        },
+        "business": {
+          "title": "Business",
+          "price": "$200 / month",
+          "description": "Designed for teams and intensive usage.",
+          "features": {
+            "messages": "1500 messages per month",
+            "storage": "15 GB of storage",
+            "embeddings": "15 GB of embeddings / month"
+          }
+        },
+        "custom": {
+          "title": "Custom plan",
+          "price": "Custom pricing",
+          "description": "Advanced solutions for specific needs.",
+          "features": {
+            "custom_plans": "Fully customized plans",
+            "external_integrations": "External provider integrations",
+            "data_sources": "Connection to private data sources"
+          }
+        }
+      },
+      "warnings": {
+        "downgrade_not_allowed": {
+          "title": "Downgrade Not Allowed",
+          "description": "Downgrading to the Free plan is not available from your current membership."
+        },
+        "downgrade_not_available": {
+          "title": "Downgrade Not Available",
+          "description": "You cannot downgrade your plan at this moment because your current monthly membership is still active. When your billing cycle ends, instead of paying the next monthly invoice, you will be able to choose a lower plan. You will be notified when your membership payment is due, and at that time you can proceed with the downgrade."
+        },
+        "confirm_downgrade": {
+          "title": "Confirm Plan Downgrade",
+          "description": "You are about to downgrade your current plan. This action will permanently remove your stored data, message balance, embeddings, and storage. You will need to reconnect your integrations and re-upload your information after the downgrade is completed. Please confirm that you understand the consequences before proceeding."
+        },
+        "confirm_upgrade": {
+          "title": "Confirm Plan Upgrade",
+          "description": "You are about to upgrade your current membership. Your current plan will be cancelled immediately and a new invoice will be generated for the selected plan. Any remaining messages, embeddings, and storage from your current billing cycle will be lost. Once the new invoice is paid, your plan will be automatically upgraded and your new limits will be applied."
+        }
+      },
+      "actions": {
+        "cancel": "Cancel",
+        "confirm": "Confirm",
+        "acknowledge": "I understand"
+      }
     }
 	},
 

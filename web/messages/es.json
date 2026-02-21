@@ -125,6 +125,70 @@
       "toast_success_description": "Los archivos fueron correctamente ingeridos",
       "toast_error_title": "Falló la ingesta",
       "toast_error_description": "Ocurrió un error durante el proceso"
+    },
+
+    "upgrade_plan_modal": {
+      "title": "Elegí el plan ideal para tu equipo",
+      "subtitle": "Podés cambiar o escalar tu plan en cualquier momento.",
+      "current_plan": "Plan Actual",
+      "upgrade_button": "Actualizar Plan",
+      "downgrade_button": "Degradar Plan",
+      "contact": "Contactanos",
+      "plans": {
+        "personal": {
+          "title": "Personal",
+          "price": "$19.99 / mes",
+          "description": "Ideal para uso individual o pequeños equipos.",
+          "features": {
+            "messages": "150 mensajes por mes",
+            "storage": "1024 MB de almacenamiento",
+            "embeddings": "1024 MB de embeddings / mes"
+          }
+        },
+        "business": {
+          "title": "Business",
+          "price": "$199.99 / mes",
+          "description": "Pensado para equipos y uso intensivo.",
+          "features": {
+            "messages": "1500 mensajes por mes",
+            "storage": "15 GB de almacenamiento",
+            "embeddings": "15 GB de embeddings / mes"
+          }
+        },
+        "custom": {
+          "title": "Plan personalizado",
+          "price": "A medida",
+          "description": "Soluciones avanzadas para necesidades específicas.",
+          "features": {
+            "custom_plans": "Planes totalmente personalizados",
+            "external_integrations": "Integraciones con proveedores externos",
+            "data_sources": "Conexión a fuentes de datos propias"
+          }
+        }
+      },
+      "warnings": {
+        "downgrade_not_allowed": {
+          "title": "Degradación no permitida",
+          "description": "No podés degradar al plan Free desde tu membresía actual."
+        },
+        "downgrade_not_available": {
+          "title": "Degradación no disponible",
+          "description": "No podés degradar tu plan en este momento porque tu membresía mensual actual sigue activa. Cuando termine el ciclo de facturación, en lugar de pagar la próxima factura mensual, vas a poder elegir un plan inferior. Se te notificará cuando tu pago esté por vencer y en ese momento podrás proceder con la degradación."
+        },
+        "confirm_downgrade": {
+          "title": "Confirmar degradación de plan",
+          "description": "Estás a punto de degradar tu plan actual. Esta acción eliminará permanentemente tus datos almacenados, saldo de mensajes, embeddings y almacenamiento. Vas a tener que reconectar tus integraciones y volver a subir tu información una vez que la degradación se complete. Confirmá que entendés las consecuencias antes de continuar."
+        },
+        "confirm_upgrade": {
+          "title": "Confirmar actualización de plan",
+          "description": "Estás a punto de actualizar tu membresía actual. Tu plan vigente será cancelado inmediatamente y se generará una nueva factura para el plan seleccionado. Cualquier mensaje restante, embeddings o almacenamiento de tu ciclo actual se perderán. Una vez que la nueva factura sea abonada, tu plan se actualizará automáticamente y se aplicarán los nuevos límites."
+        }
+      },
+      "actions": {
+        "cancel": "Cancelar",
+        "confirm": "Confirmar",
+        "acknowledge": "Entiendo"
+      }
     }
 	},
 
