@@ -29,7 +29,7 @@ const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
 const EMBED_KEY = (slug: string) => `tenant:${slug}:embed-usage`;
 const MESSAGE_KEY = (slug: string) => `tenant:${slug}:message-usage`;
 const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
-const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
+export const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
 const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
 
 const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {

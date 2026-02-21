@@ -39,6 +39,7 @@
 	"STORAGE_LIMIT_REACHED": "Storage limit has been reached",
 	"EMBED_LIMIT_REACHED": "Embedding limit has been reached",
 	"PLAN_CHANGE_NOT_ALLOWED": "This plan change is not allowed",
+	"BILL_NOT_FOUND": "Bill not found",
 	"TENANT_CREATION_EXPIRED": "Tenant creation request has expired or is invalid",
 	"SLUG_UNAVAILABLE": "This slug is not available"
 }
