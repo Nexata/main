@@ -13,8 +13,8 @@ export default function UserSection({
     me: Me | null;
     collapsed: boolean;
     loading?: boolean;
-    disableHoverScale?: boolean; 
-    disableClick?: boolean; 
+    disableHoverScale?: boolean;
+    disableClick?: boolean;
 }) {
     const navigate = useNavigate();
     const size = collapsed ? 28 : 32;
@@ -28,7 +28,7 @@ export default function UserSection({
     // Skeleton
     if (loading) {
         return (
-            <div className={`mt-2 rounded-lg p-2 flex items-center gap-3 ${ collapsed ? "justify-center" : "" }`}>
+            <div className={`rounded-lg p-2 flex items-center gap-3 ${ collapsed ? "justify-center" : "" }`}>
                 <div
                     className="rounded-full bg-muted animate-pulse shrink-0"
                     style={{
@@ -58,7 +58,7 @@ export default function UserSection({
                 if(disableClick) return;
                 navigate({ to: "/user" })
             }}
-            className={`mt-2 rounded-lg p-2 flex items-center gap-3 cursor-pointer hover:bg-[var(--muted)/60] transition-colors ${collapsed ? "justify-center" : ""}`}>
+            className={`rounded-lg p-2 flex items-center gap-3 cursor-pointer hover:bg-[var(--muted)/60] transition-colors ${collapsed ? "justify-center" : ""}`}>
             {me.pfpUrl ? (
                 <div
                     className="rounded-full overflow-hidden shrink-0"

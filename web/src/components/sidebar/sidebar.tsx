@@ -1,12 +1,11 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   Pencil,
   Trash2,
   Settings,
-  HelpCircle,
   MessageSquareText,
   Loader2,
   Building2,
@@ -502,6 +501,7 @@ export default function Sidebar() {
                     <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
                       <Button
                         variant="outline"
+                        onClick={() => navigate({ to: "/feedback" })}
                         className={cn(
                           "h-10 rounded-lg cursor-pointer transition-all duration-200",
                           isCollapsed ? "w-10" : "w-full"
@@ -554,7 +554,7 @@ export default function Sidebar() {
 
               </motion.div>
 
-              <div className="mt-3">
+              <div className="mt-4">
                 <UserSection
                   me={me ?? null}
                   collapsed={isCollapsed}

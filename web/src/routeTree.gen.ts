@@ -17,6 +17,7 @@ import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicCallbackRouteImport } from './routes/_public/callback'
 import { Route as PrivateUserRouteImport } from './routes/_private/user'
 import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
+import { Route as PrivateFeedbackRouteImport } from './routes/_private/feedback'
 import { Route as PrivateCredentialCallbackRouteImport } from './routes/_private/credential-callback'
 import { Route as PrivateChatRouteImport } from './routes/_private/chat'
 import { Route as PrivateBillingRouteImport } from './routes/_private/billing'
@@ -60,6 +61,11 @@ const PrivateSettingsRoute = PrivateSettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => PrivateRouteRoute,
 } as any)
+const PrivateFeedbackRoute = PrivateFeedbackRouteImport.update({
+  id: '/feedback',
+  path: '/feedback',
+  getParentRoute: () => PrivateRouteRoute,
+} as any)
 const PrivateCredentialCallbackRoute =
   PrivateCredentialCallbackRouteImport.update({
     id: '/credential-callback',
@@ -88,6 +94,7 @@ export interface FileRoutesByFullPath {
   '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/credential-callback': typeof PrivateCredentialCallbackRoute
+  '/feedback': typeof PrivateFeedbackRoute
   '/settings': typeof PrivateSettingsRoute
   '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByTo {
   '/billing': typeof PrivateBillingRoute
   '/chat': typeof PrivateChatRoute
   '/credential-callback': typeof PrivateCredentialCallbackRoute
+  '/feedback': typeof PrivateFeedbackRoute
   '/settings': typeof PrivateSettingsRoute
   '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
@@ -115,6 +123,7 @@ export interface FileRoutesById {
   '/_private/billing': typeof PrivateBillingRoute
   '/_private/chat': typeof PrivateChatRoute
   '/_private/credential-callback': typeof PrivateCredentialCallbackRoute
+  '/_private/feedback': typeof PrivateFeedbackRoute
   '/_private/settings': typeof PrivateSettingsRoute
   '/_private/user': typeof PrivateUserRoute
   '/_public/callback': typeof PublicCallbackRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/chat'
     | '/credential-callback'
+    | '/feedback'
     | '/settings'
     | '/user'
     | '/callback'
@@ -141,6 +151,7 @@ export interface FileRouteTypes {
     | '/billing'
     | '/chat'
     | '/credential-callback'
+    | '/feedback'
     | '/settings'
     | '/user'
     | '/callback'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '/_private/billing'
     | '/_private/chat'
     | '/_private/credential-callback'
+    | '/_private/feedback'
     | '/_private/settings'
     | '/_private/user'
     | '/_public/callback'
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PrivateSettingsRouteImport
       parentRoute: typeof PrivateRouteRoute
     }
+    '/_private/feedback': {
+      id: '/_private/feedback'
+      path: '/feedback'
+      fullPath: '/feedback'
+      preLoaderRoute: typeof PrivateFeedbackRouteImport
+      parentRoute: typeof PrivateRouteRoute
+    }
     '/_private/credential-callback': {
       id: '/_private/credential-callback'
       path: '/credential-callback'
@@ -262,6 +281,7 @@ interface PrivateRouteRouteChildren {
   PrivateBillingRoute: typeof PrivateBillingRoute
   PrivateChatRoute: typeof PrivateChatRoute
   PrivateCredentialCallbackRoute: typeof PrivateCredentialCallbackRoute
+  PrivateFeedbackRoute: typeof PrivateFeedbackRoute
   PrivateSettingsRoute: typeof PrivateSettingsRoute
   PrivateUserRoute: typeof PrivateUserRoute
 }
@@ -271,6 +291,7 @@ const PrivateRouteRouteChildren: PrivateRouteRouteChildren = {
   PrivateBillingRoute: PrivateBillingRoute,
   PrivateChatRoute: PrivateChatRoute,
   PrivateCredentialCallbackRoute: PrivateCredentialCallbackRoute,
+  PrivateFeedbackRoute: PrivateFeedbackRoute,
   PrivateSettingsRoute: PrivateSettingsRoute,
   PrivateUserRoute: PrivateUserRoute,
 }

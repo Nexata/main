@@ -491,5 +491,79 @@
 				"subtitle": "Irreversible and destructive actions"
 			}
 		}
-	}
+	},
+
+	"feedback": {
+    "title": "My Feedback",
+    "subtitle": "Manage your reports",
+    "back_to_chat": "Back to chat",
+    "filters": {
+      "type": "Type",
+      "status": "Status",
+      "all": "All",
+      "clear": "Clear filters"
+    },
+    "create": "Create Feedback",
+    "empty": "There are no feedback entries yet",
+    "pagination": {
+      "previous": "Previous",
+      "next": "Next",
+      "page_of": "Page {current} of {total}"
+    },
+    "types": {
+      "bug_report": "Bug Report",
+      "feature_request": "Feature Request",
+      "question": "Question",
+      "other": "Other"
+    },
+    "statuses": {
+      "pending": "Pending",
+      "in_review": "In Review",
+      "wontfix": "Won't Fix",
+      "solved": "Solved"
+    },
+    "modal": {
+      "view_title": "Feedback Details",
+      "create_title": "New Feedback",
+      "view_description": "View the submitted information.",
+      "create_description": "Share a problem or suggestion.",
+      "comment_label": "Submitted comment",
+      "comment_placeholder": "Describe your feedback in detail...",
+      "no_content": "No content",
+      "no_files": "No files",
+      "saved_files": "Saved files",
+      "remove_file": "Click to remove",
+      "select_category": "Select a category",
+      "type_required": "You must select a type.",
+      "team_response": "Team response",
+      "no_response": "There is no response associated with this feedback yet.",
+      "send": "Send feedback",
+      "update": "Save changes",
+      "loading_create_title": "Sending feedback...",
+      "loading_create_desc": "Processing your request.",
+      "loading_update_title": "Updating feedback...",
+      "loading_update_desc": "Saving your changes.",
+      "success_create_title": "Feedback sent",
+      "success_create_desc": "Thank you for helping us improve.",
+      "success_update_title": "Feedback updated",
+      "success_update_desc": "Changes were saved successfully.",
+      "error_title": "Unexpected error",
+      "error_desc": "We couldn't complete the operation."
+    },
+    "delete": {
+      "title": "Delete Feedback",
+      "description": "This action will permanently delete the selected feedback. It cannot be recovered once confirmed.",
+      "loading_title": "Deleting feedback...",
+      "loading_desc": "We are processing the deletion. This will only take a moment.",
+      "success_title": "Feedback deleted",
+      "success_desc": "The feedback was successfully deleted and is no longer available.",
+      "error_title": "We couldn't delete the feedback",
+      "error_desc": "An unexpected error occurred. Please try again."
+    },
+    "actions": {
+      "view": "View details",
+      "edit": "Edit feedback",
+      "delete": "Delete feedback"
+    }
+  }
 }

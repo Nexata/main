@@ -491,5 +491,79 @@
 				"subtitle": "Acciones irreversibles y destructivas"
 			}
 		}
-	}
+	},
+
+	"feedback": {
+    "title": "Mis Feedbacks",
+    "subtitle": "Gestiona tus reportes",
+    "back_to_chat": "Volver al chat",
+    "filters": {
+      "type": "Tipo",
+      "status": "Estado",
+      "all": "Todos",
+      "clear": "Borrar filtros"
+    },
+    "create": "Crear Feedback",
+    "empty": "No hay feedbacks todavía",
+    "pagination": {
+      "previous": "Anterior",
+      "next": "Siguiente",
+      "page_of": "Página {current} de {total}"
+    },
+    "types": {
+      "bug_report": "Reporte de Bug",
+      "feature_request": "Solicitud de Feature",
+      "question": "Pregunta",
+      "other": "Otro"
+    },
+    "statuses": {
+      "pending": "Pendiente",
+      "in_review": "En revisión",
+      "wontfix": "No se resolverá",
+      "solved": "Resuelto"
+    },
+    "modal": {
+      "view_title": "Detalle del Feedback",
+      "create_title": "Nuevo Feedback",
+      "view_description": "Visualiza la información enviada.",
+      "create_description": "Comparte un problema o sugerencia.",
+      "comment_label": "Comentario enviado",
+      "comment_placeholder": "Describe el detalle de tu feedback...",
+      "no_content": "Sin contenido",
+      "no_files": "Sin archivos",
+      "saved_files": "Archivos guardados",
+      "remove_file": "Click para remover",
+      "select_category": "Selecciona una categoría",
+      "type_required": "Debes seleccionar un tipo.",
+      "team_response": "Respuesta del equipo",
+      "no_response": "Todavía no hay una respuesta asociada a este feedback.",
+      "send": "Enviar feedback",
+      "update": "Guardar cambios",
+      "loading_create_title": "Enviando feedback...",
+      "loading_create_desc": "Procesando tu solicitud.",
+      "loading_update_title": "Actualizando feedback...",
+      "loading_update_desc": "Guardando los cambios realizados.",
+      "success_create_title": "Feedback enviado",
+      "success_create_desc": "Gracias por ayudarnos a mejorar.",
+      "success_update_title": "Feedback actualizado",
+      "success_update_desc": "Los cambios se guardaron correctamente.",
+      "error_title": "Error inesperado",
+      "error_desc": "No pudimos completar la operación."
+    },
+    "delete": {
+      "title": "Eliminar Feedback",
+      "description": "Esta acción eliminará permanentemente el feedback seleccionado. No podrá recuperarse una vez confirmado.",
+      "loading_title": "Eliminando feedback...",
+      "loading_desc": "Estamos procesando la eliminación. Esto tomará solo un momento.",
+      "success_title": "Feedback eliminado",
+      "success_desc": "El feedback fue eliminado correctamente y ya no estará disponible.",
+      "error_title": "No pudimos eliminar el feedback",
+      "error_desc": "Ocurrió un problema inesperado. Por favor intenta nuevamente."
+    },
+    "actions": {
+      "view": "Ver detalles",
+      "edit": "Editar feedback",
+      "delete": "Eliminar feedback"
+    }
+  }
 }
