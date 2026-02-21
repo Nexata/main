@@ -242,7 +242,13 @@
 			"billing": "Billing & usage",
 			"edit": "Edit Company",
 			"tenant_name": "Company Name",
-			"tenant_logo": "Company Logo"
+			"tenant_logo": "Company Logo",
+			"plans": {
+        "free": "Free",
+        "personal": "Personal",
+        "business": "Business",
+        "pay_as_you_go": "Pay as you go"
+      }
 		},
 		"traces": {
       "title": "Event trace",

@@ -226,3 +226,28 @@ export function useAdminTraceCount(
     staleTime: 60_000,
   });
 }
+
+export type BillingPlan = Parameters<typeof apiClient.admin.billing.plan.put>[0]['plan'];
+
+export async function setBillingPlan(plan: BillingPlan) {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing.plan.put({
+      $headers: headers,
+      plan,
+    }),
+  );
+}
+
+export function useSetBillingPlan() {
+  const queryClient = useQueryClient();
+
+  return async (plan: BillingPlan) => {
+    const res = await setBillingPlan(plan);
+
+    await queryClient.invalidateQueries({
+      queryKey: ['admin', 'billing'],
+    });
+
+    return res;
+  };
+}

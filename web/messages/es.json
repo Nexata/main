@@ -242,7 +242,13 @@
 			"billing": "Facturación y uso",
 			"edit": "Editar Empresa",
 			"tenant_name": "Nombre de la Empresa",
-			"tenant_logo": "Logo de la Empresa"
+			"tenant_logo": "Logo de la Empresa",
+			"plans": {
+        "free": "Gratis",
+        "personal": "Personal",
+        "business": "Business",
+        "pay_as_you_go": "Pago por uso"
+      }
 		},
 		"traces": {
       "title": "Registro de eventos",

@@ -82,6 +82,7 @@ export async function getMyTenant() {
 	);
 }
 export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>;
+export type Plan = MyTenant["plan"];
 
 export function useMyTenant() {
 	return useQuery<

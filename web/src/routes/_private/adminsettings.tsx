@@ -11,7 +11,11 @@ import {
 	Trash,
   TrendingUp,
   Calendar as CalendarIcon  ,
-  Filter
+  Filter,
+  Gem,
+  Crown,
+  Sparkles,
+  Diamond,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
@@ -50,7 +54,7 @@ import {
 	useUsers,
   type TraceType,
 } from '@/lib/admin';
-import { useMyTenant, type Language } from '@/lib/user';
+import { useMyTenant, type Language, type Plan } from '@/lib/user';
 import { UsageBar } from '@/components/usage-bar/usage-bar'
 import { useAdminTrace } from '@/lib/admin';
 import { format } from 'date-fns';
@@ -133,6 +137,10 @@ import {
   'admin.traces.types.credential_added' as traces_type_credential_added,
   'admin.traces.types.credential_removed' as traces_type_credential_removed,
   'admin.traces.types.ingest_failed' as traces_type_ingest_failed,
+  'admin.company_overview.plans.free' as admin_company_overview_plans_free,
+  'admin.company_overview.plans.business' as admin_company_overview_plans_business,
+  'admin.company_overview.plans.pay_as_you_go' as admin_company_overview_plans_pay_as_you_go,
+  'admin.company_overview.plans.personal' as admin_company_overview_plans_personal
 } from '@/paraglide/messages.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
@@ -231,7 +239,41 @@ function CompanyOverviewSection() {
 			setTenantDisplayName(myTenant.displayName ?? '');
 			setTenantLogo(null);
 		}
-	}, [myTenant]);
+  }, [myTenant]);
+
+	const PLAN_UI: Record<
+    Plan,
+    {
+      label: string;
+      color: string;
+      Icon: React.ComponentType<any>;
+    }
+  > = {
+    free: {
+      label: admin_company_overview_plans_free(),
+      color: "bg-emerald-500/10 text-emerald-600",
+      Icon: Sparkles,
+    },
+
+    personal: {
+      label: admin_company_overview_plans_personal(),
+      color: "bg-amber-500/10 text-amber-600",
+      Icon: Gem,
+    },
+
+    business: {
+      label: admin_company_overview_plans_business(),
+      color: "bg-primary/10 text-primary",
+      Icon: Crown,
+    },
+
+    pay_as_you_go: {
+      label: admin_company_overview_plans_pay_as_you_go(),
+      color: "bg-violet-500/10 text-violet-600",
+      Icon: Diamond,
+    },
+  };
+	const planUI = myTenant ? PLAN_UI[myTenant.plan] : null;
 
 	return (
 		<Card className="bg-sidebar">
@@ -380,9 +422,12 @@ function CompanyOverviewSection() {
 						<span className="text-sm text-muted-foreground">
 							{admin_company_overview_current_plan()}
 						</span>
-						<span className="ml-2 inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-sm font-medium text-primary">
-							Business 500
-						</span>
+						{planUI && (
+              <span className={`ml-2 inline-flex items-center gap-1 rounded-full px-3 py-1 text-sm font-medium ${planUI.color}`}>
+                <planUI.Icon className="w-3.5 h-3.5" />
+                {planUI.label}
+              </span>
+            )}
 					</div>
 
 					<div className="flex gap-2">
