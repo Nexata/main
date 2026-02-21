@@ -1,7 +1,8 @@
+import { createHmac } from 'node:crypto';
 import { cache, db } from '@api/env';
 import { bill, Language } from '@api/schema';
 import { UNPAID_KEY } from '@api/utils/billing';
-import { requireEnv } from '@api/utils/env';
+import { log, requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { getUsdArsQuote } from '@api/utils/quote';
 import { Nullish, tObject } from '@api/utils/type';
@@ -75,11 +76,32 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 	)
 	.post(
 		'/callback',
-		async ({ query }) => {
-			if (query.topic !== 'payment') return false;
+		async ({ query, body, headers }) => {
+			const dataId = query['data.id'];
+			const type = query.type ?? body.type;
 
-			const paymentService = new Payment(MP_CLIENT(query.id));
-			const payment = await paymentService.get({ id: query.id });
+			if (type !== 'payment' && type !== 'order') return;
+
+			const xSignature = headers['x-signature'];
+			const xRequestId = headers['x-request-id'];
+			if (xSignature && xRequestId) {
+				const parts = Object.fromEntries(
+					xSignature.split(',').map((p) => p.split('=', 2) as [string, string]),
+				);
+				const manifest = `id:${dataId};request-id:${xRequestId};ts:${parts.ts};`;
+				const hmac = createHmac('sha256', requireEnv('MP_WEBHOOK_KEY'))
+					.update(manifest)
+					.digest('hex');
+
+				if (hmac !== parts.v1) {
+					log('warn', 'MP webhook signature mismatch');
+					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
+				}
+			}
+
+			const paymentId = body.data?.id ?? dataId;
+			const paymentService = new Payment(MP_CLIENT(paymentId));
+			const payment = await paymentService.get({ id: paymentId });
 
 			if (payment.status !== 'approved' || !payment.external_reference)
 				throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
@@ -98,11 +120,23 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 				throw httpError(HttpCode.NOT_FOUND, ErrorCode.BILL_NOT_FOUND);
 
 			await cache.del(UNPAID_KEY(updated.slug));
-
-			return true;
 		},
 		{
 			detail: { summary: 'Mercado pago callback', hide: true },
-			query: tObject({ topic: t.String(), id: t.String() }),
+			query: tObject({ 'data.id': t.String(), type: Nullish(t.String()) }),
+			headers: tObject({
+				'x-signature': Nullish(t.String()),
+				'x-request-id': Nullish(t.String()),
+			}),
+			body: t.Object({
+				action: t.String(),
+				api_version: t.String(),
+				data: t.Object({ id: t.String() }),
+				date_created: t.String(),
+				id: t.Union([t.String(), t.Number()]),
+				live_mode: t.Boolean(),
+				type: t.String(),
+				user_id: t.Union([t.String(), t.Number()]),
+			}),
 		},
 	);
