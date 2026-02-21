@@ -6,12 +6,14 @@ export function UsageBar({
 	total,
 	colorClass,
 	loading = false,
+	unit,
 }: {
 	label: string;
 	used: number;
 	total: number;
 	colorClass: string;
 	loading?: boolean;
+	unit?: string;
 }) {
 	const percentage = !loading && total > 0 ? Math.min((used / total) * 100, 100) : 0;
 	const textColorClass = colorClass.replace('bg-', 'text-');
@@ -26,7 +28,7 @@ export function UsageBar({
 					<div className="h-4 w-20 rounded bg-muted animate-pulse" />
 				) : (
 					<span className={`font-medium ${textColorClass}`}>
-						{used} / {total}
+						{used} / {total}{unit ? ` ${unit}` : ''}
 					</span>
 				)}
 			</div>

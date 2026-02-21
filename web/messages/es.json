@@ -142,17 +142,17 @@
           "features": {
             "messages": "150 mensajes por mes",
             "storage": "1024 MB de almacenamiento",
-            "embeddings": "1024 MB de embeddings / mes"
+            "embeddings": "375M de tokens para embeddings / mes"
           }
         },
         "business": {
           "title": "Business",
-          "price": "$199.99 / mes",
+          "price": "$99.99 / mes",
           "description": "Pensado para equipos y uso intensivo.",
           "features": {
-            "messages": "1500 mensajes por mes",
-            "storage": "15 GB de almacenamiento",
-            "embeddings": "15 GB de embeddings / mes"
+            "messages": "1000 mensajes por mes",
+            "storage": "10 GB de almacenamiento",
+            "embeddings": "3750M de tokens para embeddings / mes"
           }
         },
         "custom": {

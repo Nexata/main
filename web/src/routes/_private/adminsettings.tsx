@@ -401,8 +401,9 @@ function CompanyOverviewSection() {
 
 					<UsageBar
 						label={admin_company_overview_embeddings_balance()}
-						used={embeddingsUsed}
-						total={embeddingsTotal}
+						used={embeddingsUsed / 1_000_000}
+            total={embeddingsTotal / 1_000_000}
+						unit="M"
 						colorClass="bg-indigo-500"
 						loading={usageLoading}
 					/>
@@ -411,7 +412,8 @@ function CompanyOverviewSection() {
 						label={admin_company_overview_storage_balance()}
 						used={storageUsed}
 						total={storageTotal}
-						colorClass="bg-emerald-500"
+            colorClass="bg-emerald-500"
+						unit="MB"
 						loading={usageLoading}
 					/>
 				</div>
