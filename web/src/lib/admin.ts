@@ -46,7 +46,8 @@ export type CreateUserInput = {
 	displayName?: string;
 	apiKey?: string;
 	pfp?: File;
-	isAdmin?: boolean;
+  isAdmin?: boolean;
+  sendMail: boolean;
 };
 
 export async function createUser(data: CreateUserInput) {

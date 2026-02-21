@@ -86,6 +86,7 @@ function SettingsPage() {
 	}, []);
 	const navigate = useNavigate();
 
+	const { data: me } = useMe();
 	const [credentials, setCredentials] = useState<CredentialItem[] | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [deleteModal, setDeleteModal] = useState<{
@@ -151,14 +152,16 @@ function SettingsPage() {
 					</div>
 
 					<div className="flex gap-3">
-						<Button
-							variant="destructive"
-							onClick={() => navigate({ to: '/adminsettings' })}
-							className="gap-2 cursor-pointer"
-						>
-							<SettingsIcon className="h-4 w-4" />
-							{settings_actions_admin_panel()}
-						</Button>
+  					{me?.isAdmin && (
+              <Button
+                variant="destructive"
+                onClick={() => navigate({ to: '/adminsettings' })}
+                className="gap-2 cursor-pointer"
+              >
+                <SettingsIcon className="h-4 w-4" />
+                {settings_actions_admin_panel()}
+              </Button>
+            )}
 
 						<Button
 							variant="outline"

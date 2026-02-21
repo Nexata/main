@@ -502,10 +502,6 @@ function TraceEventsSection() {
         );
       },
     },
-    message_sent: {
-      label: 'message_sent',
-      color: "bg-blue-500/10 text-blue-600",
-    },
     file_ingested: {
       label: 'file_ingested',
       color: "bg-violet-500/10 text-violet-600",
@@ -513,6 +509,14 @@ function TraceEventsSection() {
     file_deleted: {
       label: 'file_deleted',
       color: "bg-zinc-500/10 text-zinc-600",
+    },
+    limit_warning: {
+      label: "limit_warning",
+      color: "bg-yellow-500/10 text-yellow-600",
+    },
+    user_deleted: {
+      label: "user_deleted",
+      color: "bg-red-500/10 text-red-600",
     },
   };
 
@@ -873,7 +877,8 @@ function UsersSection() {
 
 		await createUserFn({
 			email: inviteEmail,
-			isAdmin: inviteIsAdmin,
+      isAdmin: inviteIsAdmin,
+			sendMail: true
 		});
 
 		setInviteEmail('');
