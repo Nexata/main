@@ -2,6 +2,7 @@ import type { Language } from '@api/schema';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 
 export async function getUsdArsQuote(language?: Language): Promise<number> {
+	return 2; // TODO: REMOVE. THIS IS FOR TESTING PURPOSES ONLY
 	const res = await fetch('https://dolarapi.com/v1/dolares');
 
 	if (!res.ok)

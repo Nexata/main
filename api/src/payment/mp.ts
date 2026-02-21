@@ -93,10 +93,8 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 					.update(manifest)
 					.digest('hex');
 
-				if (hmac !== parts.v1) {
-					log('warn', 'MP webhook signature mismatch');
+				if (hmac !== parts.v1)
 					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
-				}
 			}
 
 			const paymentId = body.data?.id ?? dataId;
