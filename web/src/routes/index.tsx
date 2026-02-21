@@ -4,7 +4,7 @@ import { isAuthenticated } from '@/lib/auth';
 export const Route = createFileRoute('/')({
 	beforeLoad: () => {
 		throw redirect({
-			to: isAuthenticated() ? '/chat' : '/login',
+			to: isAuthenticated() ? '/chat' : '/home',
 		});
 	},
 });

@@ -14,6 +14,7 @@ import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as PublicTenantSelectionRouteImport } from './routes/_public/tenant-selection'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
+import { Route as PublicHomeRouteImport } from './routes/_public/home'
 import { Route as PublicCallbackRouteImport } from './routes/_public/callback'
 import { Route as PrivateUserRouteImport } from './routes/_private/user'
 import { Route as PrivateSettingsRouteImport } from './routes/_private/settings'
@@ -44,6 +45,11 @@ const PublicTenantSelectionRoute = PublicTenantSelectionRouteImport.update({
 const PublicLoginRoute = PublicLoginRouteImport.update({
   id: '/login',
   path: '/login',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicHomeRoute = PublicHomeRouteImport.update({
+  id: '/home',
+  path: '/home',
   getParentRoute: () => PublicRouteRoute,
 } as any)
 const PublicCallbackRoute = PublicCallbackRouteImport.update({
@@ -98,6 +104,7 @@ export interface FileRoutesByFullPath {
   '/settings': typeof PrivateSettingsRoute
   '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
+  '/home': typeof PublicHomeRoute
   '/login': typeof PublicLoginRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
 }
@@ -111,6 +118,7 @@ export interface FileRoutesByTo {
   '/settings': typeof PrivateSettingsRoute
   '/user': typeof PrivateUserRoute
   '/callback': typeof PublicCallbackRoute
+  '/home': typeof PublicHomeRoute
   '/login': typeof PublicLoginRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
 }
@@ -127,6 +135,7 @@ export interface FileRoutesById {
   '/_private/settings': typeof PrivateSettingsRoute
   '/_private/user': typeof PrivateUserRoute
   '/_public/callback': typeof PublicCallbackRoute
+  '/_public/home': typeof PublicHomeRoute
   '/_public/login': typeof PublicLoginRoute
   '/_public/tenant-selection': typeof PublicTenantSelectionRoute
 }
@@ -142,6 +151,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/user'
     | '/callback'
+    | '/home'
     | '/login'
     | '/tenant-selection'
   fileRoutesByTo: FileRoutesByTo
@@ -155,6 +165,7 @@ export interface FileRouteTypes {
     | '/settings'
     | '/user'
     | '/callback'
+    | '/home'
     | '/login'
     | '/tenant-selection'
   id:
@@ -170,6 +181,7 @@ export interface FileRouteTypes {
     | '/_private/settings'
     | '/_private/user'
     | '/_public/callback'
+    | '/_public/home'
     | '/_public/login'
     | '/_public/tenant-selection'
   fileRoutesById: FileRoutesById
@@ -215,6 +227,13 @@ declare module '@tanstack/react-router' {
       path: '/login'
       fullPath: '/login'
       preLoaderRoute: typeof PublicLoginRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/home': {
+      id: '/_public/home'
+      path: '/home'
+      fullPath: '/home'
+      preLoaderRoute: typeof PublicHomeRouteImport
       parentRoute: typeof PublicRouteRoute
     }
     '/_public/callback': {
@@ -302,12 +321,14 @@ const PrivateRouteRouteWithChildren = PrivateRouteRoute._addFileChildren(
 
 interface PublicRouteRouteChildren {
   PublicCallbackRoute: typeof PublicCallbackRoute
+  PublicHomeRoute: typeof PublicHomeRoute
   PublicLoginRoute: typeof PublicLoginRoute
   PublicTenantSelectionRoute: typeof PublicTenantSelectionRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicCallbackRoute: PublicCallbackRoute,
+  PublicHomeRoute: PublicHomeRoute,
   PublicLoginRoute: PublicLoginRoute,
   PublicTenantSelectionRoute: PublicTenantSelectionRoute,
 }
