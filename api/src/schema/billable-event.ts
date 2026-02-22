@@ -31,9 +31,11 @@ export const billableEvent = pgTable(
 		id: uuid().primaryKey().defaultRandom(),
 		type: BillableEventTypeEnum().notNull(),
 		consumption: numeric().notNull(),
-		billId: uuid().references(() => bill.id),
-		userId: uuid().references(() => user.id),
-		slug: varchar({ length: 32 }).references(() => tenant.slug),
+		billId: uuid().references(() => bill.id, { onDelete: 'cascade' }),
+		userId: uuid().references(() => user.id, { onDelete: 'set null' }),
+		slug: varchar({ length: 32 }).references(() => tenant.slug, {
+			onDelete: 'cascade',
+		}),
 		createdAt: date().notNull().defaultNow(),
 	},
 	(t) => [

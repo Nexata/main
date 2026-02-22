@@ -10,7 +10,7 @@ export const filePermission = pgTable(
 		fileId: uuid()
 			.notNull()
 			.references(() => file.id, { onDelete: 'cascade' }),
-		userId: uuid().references(() => user.id),
+		userId: uuid().references(() => user.id, { onDelete: 'cascade' }),
 		email: varchar({ length: 320 }),
 		inferred: boolean().notNull().default(false),
 		isAdmin: boolean().notNull().default(false),
