@@ -22,6 +22,18 @@ export const MessageRoleEnum = pgEnum(
 	Object.values(MessageRole) as [MessageRole],
 );
 
+export enum FinishReason {
+	COMPLETE = 'complete',
+	STOPPED = 'stopped',
+	ERROR = 'error',
+	LENGTH = 'length',
+}
+
+export const FinishReasonEnum = pgEnum(
+	'finish_reason',
+	Object.values(FinishReason) as [FinishReason],
+);
+
 export const message = pgTable(
 	'message',
 	{
@@ -29,6 +41,7 @@ export const message = pgTable(
 		role: MessageRoleEnum().notNull().default(MessageRole.USER),
 		content: jsonb().notNull(),
 		extraReason: boolean().notNull().default(false),
+		finishReason: FinishReasonEnum(),
 		threadId: uuid()
 			.notNull()
 			.references(() => thread.id, { onDelete: 'cascade' }),

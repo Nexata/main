@@ -14,6 +14,7 @@ import { NexataFile } from '@api/file';
 import {
 	BillableEventType,
 	billableEvent,
+	FinishReason,
 	file,
 	type MessageRole,
 	message,
@@ -23,8 +24,9 @@ import { checkTenantCanChat, incrementMessageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import { encode } from '@toon-format/toon';
-import { type ModelMessage, stepCountIs, streamText } from 'ai';
+import { consumeStream, type ModelMessage, stepCountIs, streamText } from 'ai';
 import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
@@ -33,7 +35,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.use(threadRouter)
 	.post(
 		'/',
-		async ({ body, activeUser }) => {
+		async ({ body, activeUser, request }) => {
 			const creditsToUse = body.extraReason ? 2 : 1;
 			const chatBlock = await checkTenantCanChat(activeUser.slug, creditsToUse);
 
@@ -132,6 +134,109 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				? undefined
 				: await generateThreadTitle(body.prompt, languagePreference);
 
+			const mapFinishReason = (aiReason: string): FinishReason =>
+				aiReason === 'stop'
+					? FinishReason.COMPLETE
+					: aiReason === 'length'
+						? FinishReason.LENGTH
+						: FinishReason.ERROR;
+
+			const persistChat = async (
+				responseMessages: ModelMessage[],
+				reason: FinishReason,
+			) => {
+				if (editedMessage && body.threadId)
+					await db
+						.delete(message)
+						.where(
+							and(
+								eq(message.threadId, body.threadId),
+								or(
+									eq(message.id, editedMessage.id),
+									gte(
+										message.createdAt,
+										db
+											.select({ createdAt: message.createdAt })
+											.from(message)
+											.where(eq(message.id, editedMessage.id)),
+									),
+								),
+							),
+						);
+
+				if (!body.threadId)
+					await createThread(
+						activeUser.id,
+						body.prompt,
+						threadId,
+						threadTitle,
+						activeUser.language,
+					);
+
+				const messagesToAppend = [
+					fileSystemMessage,
+					userMessage,
+					...responseMessages,
+				].filter((x) => typeof x !== 'undefined');
+
+				const shouldBill = reason !== FinishReason.ERROR;
+
+				const baseDate = new Date();
+				const messageValues = messagesToAppend.map((m, i) => ({
+					id:
+						'id' in m && typeof m.id === 'string' ? m.id : crypto.randomUUID(),
+					threadId,
+					role: m.role as MessageRole,
+					content: m.content,
+					finishReason:
+						m.role === 'assistant' || m.role === 'tool' ? reason : undefined,
+					createdAt: new Date(baseDate.getTime() + i),
+				}));
+
+				const insertQuery = shouldBill
+					? db
+							.with(
+								db.$with('billing').as(
+									db.insert(billableEvent).values({
+										type: BillableEventType.MESSAGE,
+										consumption: creditsToUse.toString(),
+										userId: activeUser.id,
+										slug: activeUser.slug,
+									}),
+								),
+							)
+							.insert(message)
+							.values(messageValues)
+							.returning({ id: message.id, role: message.role })
+					: db
+							.insert(message)
+							.values(messageValues)
+							.returning({ id: message.id, role: message.role });
+
+				const insertedMessages = await insertQuery;
+
+				const afterInsert: Promise<unknown>[] = [
+					cache.set(threadId, [...threadMessages, ...insertedMessages], {
+						ex: 60 * 5,
+					}),
+				];
+
+				if (shouldBill)
+					afterInsert.push(
+						incrementMessageUsage(activeUser.slug, creditsToUse),
+					);
+
+				await Promise.all(afterInsert);
+
+				if (fileIds.length)
+					await db
+						.update(file)
+						.set({ messageId: userMessage.id })
+						.where(
+							and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)),
+						);
+			};
+
 			// Final streaming
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
@@ -139,6 +244,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					...activeUser,
 					languagePreference,
 				}),
+				abortSignal: request.signal,
 				stopWhen: stepCountIs(25),
 				tools: await getTools(activeUser, body.threadId, fileIds),
 				experimental_transform: redactReasoningTransform(),
@@ -149,88 +255,37 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							content: m.content,
 						}) as ModelMessage,
 				),
-				onFinish: async ({ finishReason, response: { messages } }) => {
-					if (finishReason !== 'stop')
-						throw new Error('FINISH_REASON_NOT_STOP');
-
-					if (editedMessage && body.threadId)
-						await db
-							.delete(message)
-							.where(
-								and(
-									eq(message.threadId, body.threadId),
-									or(
-										eq(message.id, editedMessage.id),
-										gte(
-											message.createdAt,
-											db
-												.select({ createdAt: message.createdAt })
-												.from(message)
-												.where(eq(message.id, editedMessage.id)),
-										),
-									),
-								),
-							);
-
-					if (!body.threadId)
-						await createThread(
-							activeUser.id,
-							body.prompt,
-							threadId,
-							threadTitle,
-							activeUser.language,
-						);
-
-					const messagesToAppend = [
-						fileSystemMessage,
-						userMessage,
-						...messages,
-					].filter((x) => typeof x !== 'undefined');
-
-					const baseDate = new Date();
-					const insertedMessages = await db
-						.with(
-							db.$with('billing').as(
-								db.insert(billableEvent).values({
-									type: BillableEventType.MESSAGE,
-									consumption: creditsToUse.toString(),
-									userId: activeUser.id,
-									slug: activeUser.slug,
-								}),
-							),
-						)
-						.insert(message)
-						.values(
-							messagesToAppend.map((m, i) => ({
-								id: 'id' in m && m.id ? m.id : crypto.randomUUID(),
-								threadId,
-								role: m.role as MessageRole,
-								content: m.content,
-								createdAt: new Date(baseDate.getTime() + i),
-							})),
-						)
-						.returning({ id: message.id, role: message.role });
-
-					await Promise.all([
-						cache.set(threadId, [...threadMessages, ...insertedMessages], {
-							ex: 60 * 5,
+				onFinish: async ({
+					finishReason: aiFinishReason,
+					response: { messages: responseMessages },
+				}) => {
+					await persistChat(
+						responseMessages,
+						mapFinishReason(aiFinishReason),
+					).catch((error) =>
+						captureException(error, {
+							tags: { source: 'chat:onFinish' },
+							extra: { threadId, finishReason: aiFinishReason },
 						}),
-						incrementMessageUsage(activeUser.slug, creditsToUse),
-					]);
-
-					// Update files with messageId if we have one
-					if (fileIds.length)
-						await db
-							.update(file)
-							.set({ messageId: userMessage.id })
-							.where(
-								and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)),
-							);
+					);
+				},
+				onAbort: async ({ steps }) => {
+					const responseMessages = steps.flatMap(
+						(step) => step.response.messages,
+					);
+					await persistChat(responseMessages, FinishReason.STOPPED).catch(
+						(error) =>
+							captureException(error, {
+								tags: { source: 'chat:onAbort' },
+								extra: { threadId },
+							}),
+					);
 				},
 			});
 
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
+				consumeSseStream: consumeStream,
 				messageMetadata: ({ part }) => {
 					if (part.type === 'start') return { threadId, threadTitle };
 				},
