@@ -99,7 +99,7 @@ export const authPlugin =
 						{ ...activeUser, clientSecret } as ActiveUser & {
 							clientSecret: string;
 						},
-						{ ex: 3600 },
+						{ ex: 12 * 60 * 60 },
 					);
 					return { activeUser };
 				}
@@ -139,7 +139,7 @@ export const authPlugin =
 
 				if (!cachedToken)
 					await cache.set(`device:${payload.id}:${fingerprint}`, at, {
-						ex: 60 * 60,
+						ex: 12 * 60 * 60,
 					});
 
 				const activeUser = await getCachedUser(payload.slug, payload.id);

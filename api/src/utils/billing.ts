@@ -22,7 +22,17 @@ import { sendTemplateMail, Template } from '@api/utils/mail';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { captureException } from '@sentry/bun';
 import dayjs from 'dayjs';
-import { and, eq, gte, isNull, lte, or, sql, sum } from 'drizzle-orm';
+import {
+	and,
+	eq,
+	gte,
+	isNull,
+	lte,
+	notExists,
+	or,
+	sql,
+	sum,
+} from 'drizzle-orm';
 
 const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
 const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
@@ -138,7 +148,7 @@ export async function getMessageUsage(
 	).at(0);
 
 	const usage = Number(result?.consumption ?? 0);
-	await cache.set(MESSAGE_KEY(slug), usage, { ex: 60 * 60 });
+	await cache.set(MESSAGE_KEY(slug), usage, { ex: 12 * 60 * 60 });
 	return usage;
 }
 
@@ -165,7 +175,7 @@ export async function getRefillMessages(
 	).at(0);
 
 	const usage = Number(result?.consumption ?? 0);
-	await cache.set(REFILL_KEY(slug), usage, { ex: 60 * 60 });
+	await cache.set(REFILL_KEY(slug), usage, { ex: 12 * 60 * 60 });
 	return usage;
 }
 
@@ -220,7 +230,7 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	).at(0);
 
 	const unpaid = Boolean(unpaidBill);
-	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 60 * 60 });
+	await cache.set(UNPAID_KEY(slug), unpaid, { ex: 12 * 60 * 60 });
 	return unpaid;
 }
 
@@ -513,6 +523,7 @@ export async function getTenantsDueForBilling(): Promise<
 	TenantDueForBilling[]
 > {
 	const now = dayjs().endOf('day').toDate();
+	const graceCutoff = dayjs().subtract(3, 'day').format('YYYY-MM-DD');
 
 	return db
 		.select({
@@ -531,6 +542,25 @@ export async function getTenantsDueForBilling(): Promise<
 		})
 		.from(tenant)
 		.leftJoin(user, and(eq(user.slug, tenant.slug), eq(user.isAdmin, true)))
-		.where(lte(tenant.billingAt, now))
+		.where(
+			and(
+				lte(tenant.billingAt, now),
+				notExists(
+					db
+						.select({ id: bill.id })
+						.from(bill)
+						.where(
+							and(
+								eq(bill.slug, tenant.slug),
+								eq(bill.paid, false),
+								or(
+									eq(bill.source, BillSource.PLAN_CHANGE),
+									lte(bill.createdAt, graceCutoff),
+								),
+							),
+						),
+				),
+			),
+		)
 		.groupBy(tenant.slug);
 }
