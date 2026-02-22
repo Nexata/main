@@ -45,11 +45,9 @@ const imageToTextOutput = tObject({
 
 export async function imgToChunks(
 	f: FileLike,
-	raw?: { width: number; height: number; channels: 1 | 2 | 3 | 4 },
+	raw?: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
 ): Promise<ToStringChunksResult> {
-	const image = raw
-		? await sharp(f, { raw }).png().toBuffer()
-		: new Uint8Array(f);
+	const image = raw ? await sharp(f).png().toBuffer() : new Uint8Array(f);
 
 	const res = await generateText({
 		model: VLM_MODEL,
