@@ -28,6 +28,7 @@ import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import { embed } from 'ai';
 import { s3 } from 'bun';
 import {
@@ -304,6 +305,11 @@ export namespace NexataFile {
 
 			return 'OK';
 		} catch (error) {
+			captureException(error, {
+				tags: { source: 'NexataFile.ingest' },
+				extra: { ...data },
+			});
+
 			await db.insert(trace).values({
 				userId: data.userId,
 				type: TraceType.INGEST_FAILED,

@@ -656,7 +656,11 @@ export namespace Drive {
 					dirId,
 				);
 				stats[result.toLowerCase() as keyof typeof stats]++;
-			} catch {
+			} catch (error) {
+				captureException(error, {
+					tags: { source: 'Drive.ingestDirectory' },
+					extra: { userId, entry },
+				});
 				stats.failed++;
 			}
 		}

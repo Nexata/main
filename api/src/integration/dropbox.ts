@@ -420,7 +420,11 @@ export namespace Dropbox {
 				);
 
 				stats[result.toLowerCase() as keyof typeof stats]++;
-			} catch {
+			} catch (error) {
+				captureException(error, {
+					tags: { source: 'Dropbox.ingestDirectory' },
+					extra: { userId, entry },
+				});
 				stats.failed++;
 			}
 		}
