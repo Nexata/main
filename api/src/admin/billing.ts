@@ -28,15 +28,15 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	.get(
 		'/usage',
 		async ({ activeUser }) => {
-			const plan = await getTenantPlan(activeUser.slug);
+			const plan = await getTenantPlan(activeUser.slug, true);
 			const limits = PLANS[plan];
 
 			const [storageUsage, embedUsage, messageUsage, refillMessages] =
 				await Promise.all([
-					getStorageUsage(activeUser.slug),
-					getEmbedUsage(activeUser.slug),
-					getMessageUsage(activeUser.slug),
-					getRefillMessages(activeUser.slug),
+					getStorageUsage(activeUser.slug, true),
+					getEmbedUsage(activeUser.slug, true),
+					getMessageUsage(activeUser.slug, true),
+					getRefillMessages(activeUser.slug, true),
 				]);
 
 			return {
@@ -122,14 +122,15 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					);
 			}
 
-			await db
-				.delete(bill)
-				.where(and(eq(bill.slug, activeUser.slug), eq(bill.paid, false)));
-
-			await db
-				.update(tenant)
-				.set({ plan: body.plan })
-				.where(eq(tenant.slug, activeUser.slug));
+			await Promise.all([
+				db
+					.delete(bill)
+					.where(and(eq(bill.slug, activeUser.slug), eq(bill.paid, false))),
+				db
+					.update(tenant)
+					.set({ plan: body.plan })
+					.where(eq(tenant.slug, activeUser.slug)),
+			]);
 
 			await generateBillForTenant(
 				activeUser.slug,
@@ -143,7 +144,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					.from(user)
 					.where(and(eq(user.slug, activeUser.slug), isNotNull(user.apiKey)));
 
-				if (usersWithKeys.length > 0)
+				if (usersWithKeys.length)
 					await cache.del(...usersWithKeys.map((u) => `apikey:${u.id}`));
 			}
 

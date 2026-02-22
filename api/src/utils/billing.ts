@@ -40,9 +40,14 @@ const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {
 
 const LIMIT_WARN_THRESHOLD = 0.95;
 
-export async function getTenantPlan(slug: string): Promise<Plan> {
-	const cached = await cache.get<Plan>(PLAN_KEY(slug));
-	if (cached) return cached;
+export async function getTenantPlan(
+	slug: string,
+	skipCache = false,
+): Promise<Plan> {
+	if (!skipCache) {
+		const cached = await cache.get<Plan>(PLAN_KEY(slug));
+		if (cached) return cached;
+	}
 
 	const result = (
 		await db
@@ -56,9 +61,14 @@ export async function getTenantPlan(slug: string): Promise<Plan> {
 	return plan;
 }
 
-export async function getStorageUsage(slug: string): Promise<number> {
-	const cached = await cache.get<number>(STORAGE_KEY(slug));
-	if (cached) return cached;
+export async function getStorageUsage(
+	slug: string,
+	skipCache = false,
+): Promise<number> {
+	if (!skipCache) {
+		const cached = await cache.get<number>(STORAGE_KEY(slug));
+		if (cached) return cached;
+	}
 
 	const result = (
 		await db
@@ -76,9 +86,14 @@ export async function getStorageUsage(slug: string): Promise<number> {
 	return usage;
 }
 
-export async function getEmbedUsage(slug: string): Promise<number> {
-	const cached = await cache.get<number>(EMBED_KEY(slug));
-	if (cached) return cached;
+export async function getEmbedUsage(
+	slug: string,
+	skipCache = false,
+): Promise<number> {
+	if (!skipCache) {
+		const cached = await cache.get<number>(EMBED_KEY(slug));
+		if (cached) return cached;
+	}
 
 	const result = (
 		await db
@@ -99,9 +114,14 @@ export async function getEmbedUsage(slug: string): Promise<number> {
 	return usage;
 }
 
-export async function getMessageUsage(slug: string): Promise<number> {
-	const cached = await cache.get<number>(MESSAGE_KEY(slug));
-	if (cached) return cached;
+export async function getMessageUsage(
+	slug: string,
+	skipCache = false,
+): Promise<number> {
+	if (!skipCache) {
+		const cached = await cache.get<number>(MESSAGE_KEY(slug));
+		if (cached) return cached;
+	}
 
 	const result = (
 		await db
@@ -122,9 +142,14 @@ export async function getMessageUsage(slug: string): Promise<number> {
 	return usage;
 }
 
-export async function getRefillMessages(slug: string): Promise<number> {
-	const cached = await cache.get<number>(REFILL_KEY(slug));
-	if (cached) return cached;
+export async function getRefillMessages(
+	slug: string,
+	skipCache = false,
+): Promise<number> {
+	if (!skipCache) {
+		const cached = await cache.get<number>(REFILL_KEY(slug));
+		if (cached) return cached;
+	}
 
 	const result = (
 		await db

@@ -38,6 +38,9 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 			if (!b)
 				throw httpError(HttpCode.NOT_FOUND, ErrorCode.BILL_NOT_FOUND, language);
 
+			const unit_price = 100; // FIXME: Intentional value for testing now.
+			// Actual value = Number(b.amount) * (await getUsdArsQuote());
+
 			const preferenceService = new Preference(MP_CLIENT(billId));
 			const preference = await preferenceService.create({
 				body: {
@@ -59,7 +62,15 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 							description: `Nexata ${formatPlan(b.plan)}`,
 							picture_url: 'https://files.nexata.app/logo.png',
 							quantity: 1,
-							unit_price: Number(b.amount) * (await getUsdArsQuote()),
+							unit_price,
+							currency_id: 'ARS',
+						},
+						{
+							id: `${billId}-fee`,
+							title: 'Transaction fee',
+							description: 'Mercado Pago transaction fee (5%)',
+							quantity: 1,
+							unit_price: unit_price * 0.05,
 							currency_id: 'ARS',
 						},
 					],
