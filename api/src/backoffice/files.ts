@@ -12,6 +12,7 @@ import {
 import { requireEnv } from '@api/utils/env';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
@@ -145,7 +146,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			}
 		}
 
-		return {
+		const response = {
 			total: results.length,
 			synced: results.filter(
 				(r) => r.status === 'fulfilled' && r.value === 'OK',
@@ -162,6 +163,9 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 					(r.status === 'fulfilled' && r.value === 'FAILED'),
 			).length,
 		};
+
+		throw new Error(JSON.stringify(response));
+		return response;
 	},
 	{
 		body: t.Optional(
