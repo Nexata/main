@@ -24,7 +24,11 @@ import {
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import { checkTenantCanIngest } from '@api/utils/billing';
-import { getTokensForUser, userHasCredential } from '@api/utils/credential';
+import {
+	ensureFreshTokens,
+	getTokensForUser,
+	userHasCredential,
+} from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { drive, type drive_v3 } from '@googleapis/drive';
@@ -725,6 +729,7 @@ export namespace Drive {
 				.select({
 					refreshToken: credential.refreshToken,
 					accessToken: credential.accessToken,
+					accessTokenExpiresAt: credential.accessTokenExpiresAt,
 				})
 				.from(credential)
 				.where(
@@ -738,7 +743,16 @@ export namespace Drive {
 
 		if (!tokens) throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST);
 
-		const drv = fromTokens(tokens.accessToken, tokens.refreshToken);
+		const { at, rt } = await ensureFreshTokens(
+			credentialId,
+			OauthProvider.GOOGLE,
+			tokens.accessToken,
+			tokens.refreshToken,
+			tokens.accessTokenExpiresAt,
+			slug,
+		);
+
+		const drv = fromTokens(at, rt);
 		const results = await ingest(drv, userId, slug, credentialId, selection);
 
 		return !results.failed && results.ok

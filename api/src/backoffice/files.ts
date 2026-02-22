@@ -164,7 +164,6 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			).length,
 		};
 
-		throw new Error(JSON.stringify(response));
 		return response;
 	},
 	{
