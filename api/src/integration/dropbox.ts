@@ -8,6 +8,7 @@ import {
 	type IngestSelection,
 	type NexataListDir,
 	type NexataListDirEntry,
+	resolveNexataSelection,
 } from '@api/integration/lib';
 import {
 	credential,
@@ -666,6 +667,53 @@ export const dropboxRouter = new Elysia({ prefix: '/dropbox' })
 				selection: t.Array(
 					tObject({
 						id: t.String(),
+						isDir: t.Boolean({
+							description: 'Whether the item is a directory',
+						}),
+					}),
+				),
+			}),
+		},
+	)
+	.post(
+		'/re-ingest',
+		async ({ activeUser, body }) => {
+			const blockReason = await checkTenantCanIngest(activeUser.slug);
+			if (blockReason) {
+				if (blockReason === 'PAYMENT_REQUIRED')
+					throw httpError(
+						HttpCode.PAYMENT_REQUIRED,
+						ErrorCode.PAYMENT_REQUIRED,
+						activeUser.language,
+					);
+
+				throw httpError(
+					HttpCode.PRECONDITION_FAILED,
+					ErrorCode[blockReason as keyof typeof ErrorCode],
+					activeUser.language,
+				);
+			}
+
+			const resolved = await resolveNexataSelection(
+				body.selection,
+				FileHost.DROPBOX,
+			);
+
+			return Dropbox.ingest(
+				await Dropbox.fromRequest(activeUser, body.credentialId, true),
+				activeUser.id,
+				activeUser.slug,
+				body.credentialId,
+				resolved,
+			);
+		},
+		{
+			detail: { summary: 'Re-ingest from dropbox' },
+			body: tObject({
+				credentialId: t.String({ format: 'uuid' }),
+				selection: t.Array(
+					tObject({
+						id: t.String({ format: 'uuid' }),
 						isDir: t.Boolean({
 							description: 'Whether the item is a directory',
 						}),

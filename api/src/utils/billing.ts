@@ -477,6 +477,7 @@ export async function generateBillForTenant(
 
 	const amount = calculateBillAmount(plan, details);
 	const billId = crypto.randomUUID();
+	const isPaid = amount === 0;
 
 	await db.batch([
 		db.insert(bill).values({
@@ -485,17 +486,21 @@ export async function generateBillForTenant(
 			amount: amount.toString(),
 			plan,
 			source,
-			paid: amount === 0,
+			paid: isPaid,
 			details,
 		}),
 		db
 			.update(billableEvent)
 			.set({ billId })
 			.where(and(eq(billableEvent.slug, slug), isNull(billableEvent.billId))),
-		db
-			.update(tenant)
-			.set({ billingAt: dayjs().add(1, 'month').toDate() })
-			.where(eq(tenant.slug, slug)),
+		...(isPaid
+			? [
+					db
+						.update(tenant)
+						.set({ billingAt: dayjs().add(1, 'month').toDate() })
+						.where(eq(tenant.slug, slug)),
+				]
+			: []),
 	]);
 
 	await cache.del(

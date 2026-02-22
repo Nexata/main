@@ -9,6 +9,7 @@ import {
 	type IngestSelection,
 	type NexataListDir,
 	type NexataListDirEntry,
+	resolveNexataSelection,
 } from '@api/integration/lib';
 import {
 	credential,
@@ -866,6 +867,53 @@ export const driveRouter = new Elysia({ prefix: '/drive' })
 				selection: t.Array(
 					tObject({
 						id: t.String(),
+						isDir: t.Boolean({
+							description: 'Whether the item is a directory',
+						}),
+					}),
+				),
+			}),
+		},
+	)
+	.post(
+		'/re-ingest',
+		async ({ activeUser, body }) => {
+			const blockReason = await checkTenantCanIngest(activeUser.slug);
+			if (blockReason) {
+				const lang = activeUser.language as Language;
+				if (blockReason === 'PAYMENT_REQUIRED')
+					throw httpError(
+						HttpCode.PAYMENT_REQUIRED,
+						ErrorCode.PAYMENT_REQUIRED,
+						lang,
+					);
+				throw httpError(
+					HttpCode.PRECONDITION_FAILED,
+					ErrorCode[blockReason as keyof typeof ErrorCode],
+					lang,
+				);
+			}
+
+			const resolved = await resolveNexataSelection(
+				body.selection,
+				FileHost.DRIVE,
+			);
+
+			return Drive.ingest(
+				await Drive.fromRequest(activeUser, body.credentialId, true),
+				activeUser.id,
+				activeUser.slug,
+				body.credentialId,
+				resolved,
+			);
+		},
+		{
+			detail: { summary: 'Re-ingest from drive' },
+			body: tObject({
+				credentialId: t.String({ format: 'uuid' }),
+				selection: t.Array(
+					tObject({
+						id: t.String({ format: 'uuid' }),
 						isDir: t.Boolean({
 							description: 'Whether the item is a directory',
 						}),

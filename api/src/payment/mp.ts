@@ -1,6 +1,6 @@
 import { createHmac } from 'node:crypto';
 import { cache, db } from '@api/env';
-import { bill, Language } from '@api/schema';
+import { bill, Language, tenant } from '@api/schema';
 import { UNPAID_KEY } from '@api/utils/billing';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -121,13 +121,23 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 					.where(
 						and(eq(bill.id, payment.external_reference), eq(bill.paid, false)),
 					)
-					.returning({ slug: bill.slug })
+					.returning({ slug: bill.slug, createdAt: bill.createdAt })
 			).at(0);
 
 			if (!updated)
 				throw httpError(HttpCode.NOT_FOUND, ErrorCode.BILL_NOT_FOUND);
 
-			await cache.del(UNPAID_KEY(updated.slug));
+			const billDate = dayjs(updated.createdAt);
+			const isLatePayment = dayjs().diff(billDate, 'day') > 4;
+			const newBillingAt = (isLatePayment ? dayjs() : billDate).add(1, 'month');
+
+			await Promise.all([
+				db
+					.update(tenant)
+					.set({ billingAt: newBillingAt.toDate() })
+					.where(eq(tenant.slug, updated.slug)),
+				cache.del(UNPAID_KEY(updated.slug)),
+			]);
 		},
 		{
 			detail: { summary: 'Mercado pago callback', hide: true },
