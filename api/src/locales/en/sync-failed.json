@@ -4,6 +4,7 @@
 	"body": "We encountered issues syncing {{fileCount}} of your files. Here are the details:",
 	"fileNameLabel": "File",
 	"providerLabel": "Source",
+	"andMore": "...and {{extraCount}} more",
 	"ctaText": "View your files",
 	"closing": "If the issue persists, please check your connected accounts or contact support.",
 	"teamSignature": "The Nexata Team"

@@ -125,13 +125,18 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 						const files = failedByUser.get(u.id);
 						if (!files?.length) return;
 
+						const MAX_FILES = 3;
+						const extraCount =
+							files.length > MAX_FILES ? files.length - MAX_FILES : 0;
+
 						await sendTemplateMail({
 							to: u.email,
 							template: Template.SYNC_FAILED,
 							data: {
 								displayName: u.displayName ?? u.email,
-								files,
+								files: files.slice(0, MAX_FILES),
 								fileCount: files.length,
+								extraCount,
 								redirect: body?.redirect,
 							},
 							language: u.language as Language,

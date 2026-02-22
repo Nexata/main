@@ -4,6 +4,7 @@
 	"body": "Encontramos problemas al sincronizar {{fileCount}} de tus archivos. Aquí están los detalles:",
 	"fileNameLabel": "Archivo",
 	"providerLabel": "Origen",
+	"andMore": "...y {{extraCount}} más",
 	"ctaText": "Ver tus archivos",
 	"closing": "Si el problema persiste, revisa tus cuentas conectadas o contacta a soporte.",
 	"teamSignature": "El equipo de Nexata"
