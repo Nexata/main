@@ -230,7 +230,8 @@ export namespace NexataFile {
 			.groupBy(file.id, user.id, thread.id, credential.id, chunk.id)
 			.orderBy(similarity ? desc(similarity) : desc(file.createdAt))
 			.limit(similarity ? 10 : 25)
-			.offset(((input.page ?? 1) - 1) * (similarity ? 10 : 25));
+			.offset(((input.page ?? 1) - 1) * (similarity ? 10 : 25))
+			.$withCache(false);
 	}
 
 	export async function ingest(
