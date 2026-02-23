@@ -10,6 +10,7 @@ import {
 	type Language,
 	PLANS,
 	Plan,
+	REFILL_PRICING,
 	TraceType,
 	tenant,
 	trace,
@@ -28,19 +29,20 @@ import {
 	gte,
 	isNull,
 	lte,
+	ne,
 	notExists,
 	or,
 	sql,
 	sum,
 } from 'drizzle-orm';
 
-const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
-const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
-const EMBED_KEY = (slug: string) => `tenant:${slug}:embed-usage`;
-const MESSAGE_KEY = (slug: string) => `tenant:${slug}:message-usage`;
-const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
+export const PLAN_KEY = (slug: string) => `tenant:${slug}:plan`;
+export const STORAGE_KEY = (slug: string) => `tenant:${slug}:storage-usage`;
+export const EMBED_KEY = (slug: string) => `tenant:${slug}:embed-usage`;
+export const MESSAGE_KEY = (slug: string) => `tenant:${slug}:message-usage`;
+export const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
 export const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
-const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
+export const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
 
 const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {
 	message: 'typeMessages',
@@ -220,6 +222,7 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 				and(
 					eq(bill.slug, slug),
 					eq(bill.paid, false),
+					ne(bill.source, BillSource.REFILL),
 					or(
 						eq(bill.source, BillSource.PLAN_CHANGE),
 						lte(bill.createdAt, graceCutoff),
@@ -455,6 +458,12 @@ export function calculateBillAmount(plan: Plan, details: BillDetails): number {
 	return Math.round(amount * 100) / 100;
 }
 
+export function calculateRefillAmount(messages: number): number {
+	const discount = REFILL_PRICING.discounts.find((d) => d.value === messages);
+	const rate = discount ? 1 - discount.rate : 1;
+	return messages * REFILL_PRICING.perMessage * rate;
+}
+
 export async function generateBillForTenant(
 	slug: string,
 	plan: Plan,
@@ -558,6 +567,7 @@ export async function getTenantsDueForBilling(): Promise<
 							and(
 								eq(bill.slug, tenant.slug),
 								eq(bill.paid, false),
+								ne(bill.source, BillSource.REFILL),
 								or(
 									eq(bill.source, BillSource.PLAN_CHANGE),
 									lte(bill.createdAt, graceCutoff),

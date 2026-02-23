@@ -15,6 +15,7 @@ import {
 export enum BillSource {
 	PERIODIC = 'periodic',
 	PLAN_CHANGE = 'plan_change',
+	REFILL = 'refill',
 }
 
 export const BillSourceEnum = pgEnum(

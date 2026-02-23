@@ -61,6 +61,14 @@ export const USAGE_BASED_PRICING = {
 	embedPerToken: 0.04 / 1000000,
 };
 
+export const REFILL_PRICING = {
+	perMessage: USAGE_BASED_PRICING.perMessage,
+	discounts: [
+		{ value: 100, rate: 0.2 },
+		{ value: 1000, rate: 0.2 },
+	],
+};
+
 export const PlanEnum = pgEnum('plan', Object.values(Plan) as [Plan]);
 
 export const tenant = pgTable(

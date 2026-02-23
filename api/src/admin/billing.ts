@@ -1,16 +1,16 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
 import {
-	BillableEventType,
 	BillSource,
 	bill,
-	billableEvent,
 	PLANS,
 	Plan,
+	REFILL_PRICING,
 	tenant,
 	user,
 } from '@api/schema';
 import {
+	calculateRefillAmount,
 	generateBillForTenant,
 	getEmbedUsage,
 	getMessageUsage,
@@ -20,7 +20,7 @@ import {
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
-import { and, desc, eq, isNotNull } from 'drizzle-orm';
+import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
@@ -64,22 +64,65 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				await db
 					.select()
 					.from(bill)
-					.where(eq(bill.slug, activeUser.slug))
+					.where(
+						and(
+							eq(bill.slug, activeUser.slug),
+							ne(bill.source, BillSource.REFILL),
+						),
+					)
 					.orderBy(desc(bill.createdAt))
 					.limit(1)
-			)[0]!,
+			).at(0),
 		{ detail: { summary: 'Read last bill' } },
+	)
+	.get(
+		'/last-refill-bill',
+		async ({ activeUser }) =>
+			(
+				await db
+					.select()
+					.from(bill)
+					.where(
+						and(
+							eq(bill.slug, activeUser.slug),
+							eq(bill.source, BillSource.REFILL),
+						),
+					)
+					.orderBy(desc(bill.createdAt))
+					.limit(1)
+			).at(0),
+		{ detail: { summary: 'Read last refill bill' } },
 	)
 	.put(
 		'/refill',
 		async ({ activeUser, body }) => {
-			await db.insert(billableEvent).values({
-				type: BillableEventType.REFILL,
+			const plan = await getTenantPlan(activeUser.slug);
+			const limits = PLANS[plan];
+
+			if (limits.messageLimit === null)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.REFILL_NOT_ALLOWED,
+					activeUser.language,
+				);
+
+			const amount = calculateRefillAmount(body.messages);
+			const billId = crypto.randomUUID();
+
+			await db.insert(bill).values({
+				id: billId,
 				slug: activeUser.slug,
-				userId: activeUser.id,
-				consumption: body.messages.toString(),
+				amount: amount.toString(),
+				plan,
+				source: BillSource.REFILL,
+				paid: false,
+				details: {
+					messages: body.messages,
+					perMessage: REFILL_PRICING.perMessage,
+				},
 			});
-			await cache.del(`tenant:${activeUser.slug}:refill-messages`);
+
+			return { billId, amount };
 		},
 		{
 			detail: { summary: 'Refill with messages' },

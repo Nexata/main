@@ -1,7 +1,14 @@
 import { createHmac } from 'node:crypto';
 import { cache, db } from '@api/env';
-import { bill, Language, tenant } from '@api/schema';
-import { UNPAID_KEY } from '@api/utils/billing';
+import {
+	BillableEventType,
+	BillSource,
+	bill,
+	billableEvent,
+	Language,
+	tenant,
+} from '@api/schema';
+import { REFILL_KEY, UNPAID_KEY } from '@api/utils/billing';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
@@ -40,6 +47,11 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 			const unit_price = 100; // FIXME: Intentional value for testing now.
 			// Actual value = Number(b.amount) * (await getUsdArsQuote());
 
+			const description =
+				b.source === BillSource.REFILL
+					? `Nexata refill (x${(b.details as { messages: number }).messages})`
+					: `Nexata ${formatPlan(b.plan)}`;
+
 			const preferenceService = new Preference(MP_CLIENT(billId));
 			const preference = await preferenceService.create({
 				body: {
@@ -58,7 +70,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 						{
 							id: billId,
 							title: 'Nexata',
-							description: `Nexata ${formatPlan(b.plan)}`,
+							description,
 							picture_url: 'https://files.nexata.app/logo.png',
 							quantity: 1,
 							unit_price,
@@ -121,11 +133,29 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 					.where(
 						and(eq(bill.id, payment.external_reference), eq(bill.paid, false)),
 					)
-					.returning({ slug: bill.slug, createdAt: bill.createdAt })
+					.returning({
+						slug: bill.slug,
+						createdAt: bill.createdAt,
+						source: bill.source,
+						details: bill.details,
+					})
 			).at(0);
 
 			if (!updated)
 				throw httpError(HttpCode.NOT_FOUND, ErrorCode.BILL_NOT_FOUND);
+
+			if (updated.source === BillSource.REFILL) {
+				const details = updated.details as { messages: number };
+				await Promise.all([
+					db.insert(billableEvent).values({
+						type: BillableEventType.REFILL,
+						slug: updated.slug,
+						consumption: details.messages.toString(),
+					}),
+					cache.del(REFILL_KEY(updated.slug)),
+				]);
+				return;
+			}
 
 			const billDate = dayjs(updated.createdAt);
 			const isLatePayment = dayjs().diff(billDate, 'day') > 4;
