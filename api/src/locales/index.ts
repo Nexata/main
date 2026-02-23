@@ -1,6 +1,7 @@
 import enBillGenerated from '@api/locales/en/bill-generated.json' with {
 	type: 'json',
 };
+import enBillPaid from '@api/locales/en/bill-paid.json' with { type: 'json' };
 import enFeedbackUpdated from '@api/locales/en/feedback-updated.json' with {
 	type: 'json',
 };
@@ -23,6 +24,7 @@ import enUserRemoved from '@api/locales/en/user-removed.json' with {
 import esBillGenerated from '@api/locales/es/bill-generated.json' with {
 	type: 'json',
 };
+import esBillPaid from '@api/locales/es/bill-paid.json' with { type: 'json' };
 import esFeedbackUpdated from '@api/locales/es/feedback-updated.json' with {
 	type: 'json',
 };
@@ -46,6 +48,7 @@ import esUserRemoved from '@api/locales/es/user-removed.json' with {
 export const locales: Record<string, Record<string, Record<string, string>>> = {
 	en: {
 		'bill-generated': enBillGenerated,
+		'bill-paid': enBillPaid,
 		'feedback-updated': enFeedbackUpdated,
 		'limit-warning': enLimitWarning,
 		'sync-failed': enSyncFailed,
@@ -56,6 +59,7 @@ export const locales: Record<string, Record<string, Record<string, string>>> = {
 	},
 	es: {
 		'bill-generated': esBillGenerated,
+		'bill-paid': esBillPaid,
 		'feedback-updated': esFeedbackUpdated,
 		'limit-warning': esLimitWarning,
 		'sync-failed': esSyncFailed,

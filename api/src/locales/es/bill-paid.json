@@ -1,0 +1,8 @@
+{
+	"subject": "Pago confirmado",
+	"greeting": "Hola, {{displayName}}",
+	"bodyPeriodic": "El pago para {{tenantDisplayName}} ha sido confirmado. El acceso completo a la plataforma ha sido restaurado.",
+	"bodyRefill": "El pago de recarga para {{tenantDisplayName}} ha sido confirmado. Se han añadido {{messages}} mensajes adicionales a la cuenta.",
+	"closing": "Gracias por el pago.",
+	"teamSignature": "El equipo de Nexata"
+}

@@ -1,6 +1,7 @@
 import billGenerated from '@api/templates/bill-generated.hbs' with {
 	type: 'text',
 };
+import billPaid from '@api/templates/bill-paid.hbs' with { type: 'text' };
 import feedbackUpdated from '@api/templates/feedback-updated.hbs' with {
 	type: 'text',
 };
@@ -17,6 +18,7 @@ import userRemoved from '@api/templates/user-removed.hbs' with { type: 'text' };
 
 export const templates: Record<string, string> = {
 	'bill-generated': billGenerated,
+	'bill-paid': billPaid,
 	'feedback-updated': feedbackUpdated,
 	'limit-warning': limitWarning,
 	'sync-failed': syncFailed,

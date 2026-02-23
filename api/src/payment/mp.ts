@@ -7,11 +7,14 @@ import {
 	billableEvent,
 	Language,
 	tenant,
+	user,
 } from '@api/schema';
 import { REFILL_KEY, UNPAID_KEY } from '@api/utils/billing';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish, tObject } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import dayjs from 'dayjs';
 import { and, eq } from 'drizzle-orm';
 import Elysia, { t } from 'elysia';
@@ -154,20 +157,60 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 					}),
 					cache.del(REFILL_KEY(updated.slug)),
 				]);
-				return;
+			} else {
+				const billDate = dayjs(updated.createdAt);
+				const isLatePayment = dayjs().diff(billDate, 'day') > 4;
+				const newBillingAt = (isLatePayment ? dayjs() : billDate).add(
+					1,
+					'month',
+				);
+
+				await Promise.all([
+					db
+						.update(tenant)
+						.set({ billingAt: newBillingAt.toDate() })
+						.where(eq(tenant.slug, updated.slug)),
+					cache.del(UNPAID_KEY(updated.slug)),
+				]);
 			}
 
-			const billDate = dayjs(updated.createdAt);
-			const isLatePayment = dayjs().diff(billDate, 'day') > 4;
-			const newBillingAt = (isLatePayment ? dayjs() : billDate).add(1, 'month');
-
-			await Promise.all([
+			const [tenantInfo, admins] = await Promise.all([
 				db
-					.update(tenant)
-					.set({ billingAt: newBillingAt.toDate() })
-					.where(eq(tenant.slug, updated.slug)),
-				cache.del(UNPAID_KEY(updated.slug)),
+					.select({ displayName: tenant.displayName, logoUrl: tenant.logoUrl })
+					.from(tenant)
+					.where(eq(tenant.slug, updated.slug))
+					.then((r) => r.at(0)),
+				db
+					.select({
+						email: user.email,
+						displayName: user.displayName,
+						language: user.language,
+					})
+					.from(user)
+					.where(and(eq(user.slug, updated.slug), eq(user.isAdmin, true))),
 			]);
+
+			if (tenantInfo && admins.length) {
+				const isRefill = updated.source === BillSource.REFILL;
+				Promise.allSettled(
+					admins.map((admin) =>
+						sendTemplateMail({
+							to: admin.email,
+							template: Template.BILL_PAID,
+							data: {
+								displayName: admin.displayName ?? admin.email,
+								tenantDisplayName: tenantInfo.displayName ?? updated.slug,
+								logoUrl: tenantInfo.logoUrl,
+								isRefill,
+								messages: isRefill
+									? (updated.details as { messages: number }).messages
+									: undefined,
+							},
+							language: admin.language as Language,
+						}),
+					),
+				).catch((error) => captureException(error));
+			}
 		},
 		{
 			detail: { summary: 'Mercado pago callback', hide: true },

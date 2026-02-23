@@ -6,6 +6,7 @@ import Handlebars from 'handlebars';
 
 export enum Template {
 	BILL_GENERATED = 'bill-generated',
+	BILL_PAID = 'bill-paid',
 	FEEDBACK_UPDATED = 'feedback-updated',
 	LIMIT_WARNING = 'limit-warning',
 	SYNC_FAILED = 'sync-failed',
