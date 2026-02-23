@@ -3,6 +3,7 @@ import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
+import { Outlook } from '@api/integration/microsoft';
 import { OauthScope } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
@@ -154,6 +155,7 @@ export const getTools = async (
 			c.refreshToken,
 			c.accessTokenExpiresAt,
 			activeUser.slug,
+			activeUser.language,
 		);
 
 		return create(at, rt);
@@ -233,6 +235,32 @@ export const getTools = async (
 				(credentials) => credentials,
 				async (c, input) =>
 					Gmail.read(await freshClient(c, Gmail.fromTokens), input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const outlookCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.OUTLOOK,
+	);
+	if (outlookCredentials.length)
+		tools = {
+			...tools,
+			OutlookSearch: toolify(
+				Outlook.searchDescription,
+				Outlook.searchInput,
+				outlookCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					Outlook.search(await freshClient(c, Outlook.fromTokens), input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			OutlookRead: toolify(
+				Outlook.readDescription,
+				Outlook.readInput,
+				outlookCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					Outlook.read(await freshClient(c, Outlook.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
