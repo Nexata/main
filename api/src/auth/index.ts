@@ -1,5 +1,6 @@
 import { dropboxRouter } from '@api/auth/dropbox';
 import { googleRouter } from '@api/auth/google';
+import { microsoftRouter } from '@api/auth/microsoft';
 import { cache, db } from '@api/env';
 import { device, user } from '@api/schema';
 import { type ActiveUser, jwtPlugin, userCacheKey } from '@api/utils/auth';
@@ -156,6 +157,7 @@ export const authRouter = new Elysia({
 })
 	.use(googleRouter)
 	.use(dropboxRouter)
+	.use(microsoftRouter)
 	.use(jwtPlugin)
 	.post(
 		'/refresh-token',
