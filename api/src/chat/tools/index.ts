@@ -3,7 +3,7 @@ import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
-import { Outlook } from '@api/integration/microsoft';
+import { Outlook, OutlookCalendar } from '@api/integration/microsoft';
 import { OauthScope } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
@@ -261,6 +261,50 @@ export const getTools = async (
 				(credentials) => credentials,
 				async (c, input) =>
 					Outlook.read(await freshClient(c, Outlook.fromTokens), input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const outlookCalendarCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.OUTLOOK_CALENDAR,
+	);
+	if (outlookCalendarCredentials.length)
+		tools = {
+			...tools,
+			OutlookCalendarList: toolify(
+				OutlookCalendar.listDescription,
+				OutlookCalendar.listInput,
+				outlookCalendarCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					OutlookCalendar.list(
+						await freshClient(c, OutlookCalendar.fromTokens),
+						input,
+					),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			OutlookCalendarEvents: toolify(
+				OutlookCalendar.eventsDescription,
+				OutlookCalendar.eventsInput,
+				outlookCalendarCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					OutlookCalendar.events(
+						await freshClient(c, OutlookCalendar.fromTokens),
+						input,
+					),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			OutlookCalendarRead: toolify(
+				OutlookCalendar.readDescription,
+				OutlookCalendar.readInput,
+				outlookCalendarCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					OutlookCalendar.read(
+						await freshClient(c, OutlookCalendar.fromTokens),
+						input,
+					),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};

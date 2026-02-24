@@ -1,0 +1,4 @@
+-- ALTER TABLE "credential" ALTER COLUMN "scope" SET DATA TYPE text;
+-- DROP TYPE "public"."oauth_scope";
+-- CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outlook', 'microsoft_calendar', 'onedrive', 'dropbox');
+-- ALTER TABLE "credential" ALTER COLUMN "scope" SET DATA TYPE "public"."oauth_scope" USING "scope"::"public"."oauth_scope";
