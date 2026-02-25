@@ -3,7 +3,11 @@ import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
-import { MicrosoftCalendar, Outlook } from '@api/integration/microsoft';
+import {
+	MicrosoftCalendar,
+	OneDrive,
+	Outlook,
+} from '@api/integration/microsoft';
 import { OauthScope } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
@@ -336,6 +340,32 @@ export const getTools = async (
 						await freshClient(c, MicrosoftCalendar.fromTokens),
 						input,
 					),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	const oneDriveCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.ONE_DRIVE,
+	);
+	if (oneDriveCredentials.length)
+		tools = {
+			...tools,
+			OneDriveSearch: toolify(
+				OneDrive.searchDescription,
+				OneDrive.searchInput,
+				oneDriveCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					OneDrive.search(await freshClient(c, OneDrive.fromTokens), input),
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+			OneDriveListDir: toolify(
+				OneDrive.listDirDescription,
+				OneDrive.listDirInput,
+				oneDriveCredentials,
+				(credentials) => credentials,
+				async (c, input) =>
+					OneDrive.listDir(await freshClient(c, OneDrive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};

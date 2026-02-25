@@ -1,6 +1,7 @@
 import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
 import { Drive } from '@api/integration/google/drive';
+import { OneDrive } from '@api/integration/microsoft/onedrive';
 import { externalDir, FileHost, file } from '@api/schema';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -66,6 +67,7 @@ export type ProviderIngestor = (
 export const providerIngestors: Partial<Record<FileHost, ProviderIngestor>> = {
 	[FileHost.DROPBOX]: Dropbox.ingestFromCredential,
 	[FileHost.DRIVE]: Drive.ingestFromCredential,
+	[FileHost.ONE_DRIVE]: OneDrive.ingestFromCredential,
 };
 
 export async function resolveNexataSelection(
