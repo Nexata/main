@@ -246,7 +246,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				abortSignal: request.signal,
 				stopWhen: stepCountIs(50),
-				tools: await getTools(activeUser, body.threadId, fileIds),
+				tools: await getTools(
+					activeUser,
+					body.threadId,
+					fileIds,
+					body.interactive ?? true,
+				),
 				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(
 					(m) =>
@@ -319,6 +324,16 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				files: Nullish(t.Files(), {
 					description: 'Files to attach to this message.',
 				}),
+				interactive: Nullish(
+					t.Union([
+						t.Boolean({ default: true }),
+						t.BooleanString({ default: true }),
+					]),
+					{
+						description:
+							'If true, includes approval-requiring tools like re-ingestion in the toolset.',
+					},
+				),
 			}),
 		},
 	)

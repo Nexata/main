@@ -3,7 +3,7 @@ import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
-import { Outlook, OutlookCalendar } from '@api/integration/microsoft';
+import { MicrosoftCalendar, Outlook } from '@api/integration/microsoft';
 import { OauthScope } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
@@ -28,48 +28,57 @@ const toolify = <
 	inputSchema: TInput,
 	context: TMultiContext,
 	wrapper: (ctx: TMultiContext) => TContext[] | TContext,
-	execute: (ctx: TContext, input: Static<TInput>) => Promise<TOutput>,
+	execute:
+		| ((ctx: TContext, input: Static<TInput>) => Promise<TOutput>)
+		| undefined,
 	mold?: (output: TOutput, ctx: TMultiContext, i: number) => TResult,
+	options?: { needsApproval?: boolean },
 ) =>
 	tool({
+		needsApproval: options?.needsApproval,
 		toModelOutput: (op) => ({ type: 'text', value: encode(op.output) }),
 		description,
 		// @ts-expect-error
 		inputSchema: jsonSchema<Static<TInput>>(inputSchema),
 		// @ts-expect-error
-		execute: async (input) => {
-			const inputValidationErrors = [...Value.Errors(inputSchema, input)];
-			if (inputValidationErrors.length) return { inputValidationErrors };
+		execute: execute
+			? async (input: Static<TInput>) => {
+					const inputValidationErrors = [...Value.Errors(inputSchema, input)];
+					if (inputValidationErrors.length) return { inputValidationErrors };
 
-			try {
-				const ctxs = wrapper(context);
+					try {
+						const ctxs = wrapper(context);
 
-				if (!Array.isArray(ctxs))
-					return mold
-						? mold(await execute(ctxs, input), context, 0)
-						: await execute(ctxs, input);
+						if (!Array.isArray(ctxs))
+							return mold
+								? mold(await execute(ctxs, input), context, 0)
+								: await execute(ctxs, input);
 
-				const res = await Promise.all(ctxs.map((ctx) => execute(ctx, input)));
-				return mold
-					? res.length === 1
-						? mold(res[0]!, context, 0)
-						: res.map((output, i) => mold(output, context, i))
-					: res;
-			} catch (error) {
-				captureException(error, {
-					tags: { source: 'tool' },
-					extra: { input },
-				});
+						const res = await Promise.all(
+							ctxs.map((ctx) => execute(ctx, input)),
+						);
+						return mold
+							? res.length === 1
+								? mold(res[0]!, context, 0)
+								: res.map((output, i) => mold(output, context, i))
+							: res;
+					} catch (error) {
+						captureException(error, {
+							tags: { source: 'tool' },
+							extra: { input },
+						});
 
-				throw error;
-			}
-		},
+						throw error;
+					}
+				}
+			: undefined,
 	});
 
 export const getTools = async (
 	activeUser: ActiveUser,
 	threadId: string | null = null,
 	fileIds: string[] | null = null,
+	interactive = true,
 ) => {
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
@@ -140,6 +149,28 @@ export const getTools = async (
 				{ activeUser, fileIds },
 				(ctx) => ctx,
 				async (ctx, input) => Nexata.listFilesOnMessage(ctx, input),
+			),
+		};
+	}
+
+	if (interactive) {
+		tools = {
+			...tools,
+			NexataReingest: toolify(
+				Nexata.reingestDescription,
+				Nexata.reingestInput,
+				activeUser,
+				(au) => au,
+				async (au, input) => Nexata.reingest(au, input),
+				undefined,
+				{ needsApproval: true },
+			),
+			NexataAskQuestions: toolify(
+				Nexata.askQuestionsDescription,
+				Nexata.askQuestionsInput,
+				activeUser,
+				(au) => au,
+				undefined,
 			),
 		};
 	}
@@ -265,44 +296,44 @@ export const getTools = async (
 			),
 		};
 
-	const outlookCalendarCredentials = credentials.filter(
-		(c) => c.scope === OauthScope.OUTLOOK_CALENDAR,
+	const microsoftCalendarCredentials = credentials.filter(
+		(c) => c.scope === OauthScope.MICROSOFT_CALENDAR,
 	);
-	if (outlookCalendarCredentials.length)
+	if (microsoftCalendarCredentials.length)
 		tools = {
 			...tools,
-			OutlookCalendarList: toolify(
-				OutlookCalendar.listDescription,
-				OutlookCalendar.listInput,
-				outlookCalendarCredentials,
+			MicrosoftCalendarList: toolify(
+				MicrosoftCalendar.listDescription,
+				MicrosoftCalendar.listInput,
+				microsoftCalendarCredentials,
 				(credentials) => credentials,
 				async (c, input) =>
-					OutlookCalendar.list(
-						await freshClient(c, OutlookCalendar.fromTokens),
+					MicrosoftCalendar.list(
+						await freshClient(c, MicrosoftCalendar.fromTokens),
 						input,
 					),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
-			OutlookCalendarEvents: toolify(
-				OutlookCalendar.eventsDescription,
-				OutlookCalendar.eventsInput,
-				outlookCalendarCredentials,
+			MicrosoftCalendarEvents: toolify(
+				MicrosoftCalendar.eventsDescription,
+				MicrosoftCalendar.eventsInput,
+				microsoftCalendarCredentials,
 				(credentials) => credentials,
 				async (c, input) =>
-					OutlookCalendar.events(
-						await freshClient(c, OutlookCalendar.fromTokens),
+					MicrosoftCalendar.events(
+						await freshClient(c, MicrosoftCalendar.fromTokens),
 						input,
 					),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
-			OutlookCalendarRead: toolify(
-				OutlookCalendar.readDescription,
-				OutlookCalendar.readInput,
-				outlookCalendarCredentials,
+			MicrosoftCalendarRead: toolify(
+				MicrosoftCalendar.readDescription,
+				MicrosoftCalendar.readInput,
+				microsoftCalendarCredentials,
 				(credentials) => credentials,
 				async (c, input) =>
-					OutlookCalendar.read(
-						await freshClient(c, OutlookCalendar.fromTokens),
+					MicrosoftCalendar.read(
+						await freshClient(c, MicrosoftCalendar.fromTokens),
 						input,
 					),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),

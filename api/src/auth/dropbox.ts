@@ -1,3 +1,4 @@
+import { authPlugin } from '@api/auth';
 import {
 	authorizeOauthCallback,
 	createOauthRedirect,
@@ -10,7 +11,7 @@ import { OauthProvider, realOauthScopes } from '@api/schema';
 import { jwtPlugin } from '@api/utils/auth';
 import { warnEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
-import { Elysia } from 'elysia';
+import { Elysia, t } from 'elysia';
 import { oauth2 } from 'elysia-oauth2';
 
 const DROPBOX_CLIENT_CREDENTIALS: Oauth2Credentials = [
@@ -38,29 +39,6 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 		{
 			detail: { summary: 'Dropbox OAuth (login)' },
 			query: oauthLoginExtendedState,
-		},
-	)
-	.get(
-		'/',
-		async ({ oauth2, query }) =>
-			createOauthRedirect(query, async (q) => {
-				if (!q) throw httpError(HttpCode.BAD_REQUEST, ErrorCode.NO_SCOPES);
-
-				const url = oauth2.createURL('Dropbox', [
-					'account_info.read',
-					'openid',
-					'profile',
-					'email',
-					...realOauthScopes[q.scope],
-				]);
-
-				url.searchParams.set('token_access_type', 'offline');
-				url.searchParams.set('prompt', 'consent');
-				return url;
-			}),
-		{
-			detail: { summary: 'Dropbox OAuth (credential)' },
-			query: oauthCredentialExtendedState(OauthProvider.DROPBOX),
 		},
 	)
 	.get(
@@ -94,4 +72,34 @@ export const dropboxRouter = new Elysia({ prefix: `/dropbox` })
 				},
 			),
 		{ detail: { summary: 'Dropbox OAuth Callback', hide: true } },
+	)
+	.use(authPlugin())
+	.get(
+		'/',
+		async ({ oauth2, query, activeUser }) =>
+			createOauthRedirect(
+				query,
+				async (q) => {
+					if (!q) throw httpError(HttpCode.BAD_REQUEST, ErrorCode.NO_SCOPES);
+
+					const url = oauth2.createURL('Dropbox', [
+						'account_info.read',
+						'openid',
+						'profile',
+						'email',
+						...realOauthScopes[q.scope],
+					]);
+
+					url.searchParams.set('token_access_type', 'offline');
+					url.searchParams.set('prompt', 'consent');
+					return url;
+				},
+				activeUser.id,
+			),
+		{
+			detail: { summary: 'Dropbox OAuth (credential)' },
+			query: t.Omit(oauthCredentialExtendedState(OauthProvider.DROPBOX), [
+				'userId',
+			]),
+		},
 	);

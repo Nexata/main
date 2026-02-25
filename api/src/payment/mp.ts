@@ -13,6 +13,7 @@ import { REFILL_KEY, UNPAID_KEY } from '@api/utils/billing';
 import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sendTemplateMail, Template } from '@api/utils/mail';
+import { getUsdArsQuote } from '@api/utils/quote';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import dayjs from 'dayjs';
@@ -47,8 +48,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 			if (!b)
 				throw httpError(HttpCode.NOT_FOUND, ErrorCode.BILL_NOT_FOUND, language);
 
-			const unit_price = 100; // FIXME: Intentional value for testing now.
-			// Actual value = Number(b.amount) * (await getUsdArsQuote());
+			const unit_price = Number(b.amount) * (await getUsdArsQuote());
 
 			const description =
 				b.source === BillSource.REFILL

@@ -1,5 +1,5 @@
 {
-  "id": "9c4954e0-8b93-485d-97e0-c97d5ce03d6d",
+  "id": "1849f688-519c-4864-91b9-769039ffd2e8",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -47,6 +47,14 @@
           "typeSchema": "public",
           "primaryKey": false,
           "notNull": true
+        },
+        "source": {
+          "name": "source",
+          "type": "bill_source",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'periodic'"
         },
         "details": {
           "name": "details",
@@ -171,7 +179,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         },
         "billable_event_user_id_user_id_fk": {
@@ -184,7 +192,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "set null",
           "onUpdate": "no action"
         },
         "billable_event_slug_tenant_slug_fk": {
@@ -197,7 +205,7 @@
           "columnsTo": [
             "slug"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1066,7 +1074,7 @@
           "columnsTo": [
             "id"
           ],
-          "onDelete": "no action",
+          "onDelete": "cascade",
           "onUpdate": "no action"
         }
       },
@@ -1112,6 +1120,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "finish_reason": {
+          "name": "finish_reason",
+          "type": "finish_reason",
+          "typeSchema": "public",
+          "primaryKey": false,
+          "notNull": false
         },
         "thread_id": {
           "name": "thread_id",
@@ -1501,6 +1516,15 @@
     }
   },
   "enums": {
+    "public.bill_source": {
+      "name": "bill_source",
+      "schema": "public",
+      "values": [
+        "periodic",
+        "plan_change",
+        "refill"
+      ]
+    },
     "public.billable_event_type": {
       "name": "billable_event_type",
       "schema": "public",
@@ -1529,7 +1553,7 @@
         "drive",
         "calendar",
         "outlook",
-        "outlook_calendar",
+        "microsoft_calendar",
         "onedrive",
         "dropbox"
       ]
@@ -1564,6 +1588,16 @@
         "dropbox"
       ]
     },
+    "public.finish_reason": {
+      "name": "finish_reason",
+      "schema": "public",
+      "values": [
+        "complete",
+        "stopped",
+        "error",
+        "length"
+      ]
+    },
     "public.message_role": {
       "name": "message_role",
       "schema": "public",
@@ -1592,7 +1626,9 @@
         "file_deleted",
         "credential_added",
         "credential_removed",
-        "ingest_failed"
+        "ingest_failed",
+        "limit_warning",
+        "user_deleted"
       ]
     },
     "public.language": {

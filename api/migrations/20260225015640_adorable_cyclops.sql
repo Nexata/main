@@ -1,14 +1,16 @@
 CREATE EXTENSION IF NOT EXISTS "vector";
 
+CREATE TYPE "public"."bill_source" AS ENUM('periodic', 'plan_change', 'refill');
 CREATE TYPE "public"."billable_event_type" AS ENUM('embed', 'storage', 'message', 'refill');
 CREATE TYPE "public"."oauth_provider" AS ENUM('google', 'microsoft', 'dropbox', 'notion');
-CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outlook', 'outlook_calendar', 'onedrive', 'dropbox');
+CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outlook', 'microsoft_calendar', 'onedrive', 'dropbox');
 CREATE TYPE "public"."feedback_status" AS ENUM('pending', 'in_review', 'wontfix', 'solved');
 CREATE TYPE "public"."feedback_type" AS ENUM('bug_report', 'feature_request', 'question', 'other');
 CREATE TYPE "public"."file_host" AS ENUM('nexata', 'drive', 'one_drive', 'dropbox');
+CREATE TYPE "public"."finish_reason" AS ENUM('complete', 'stopped', 'error', 'length');
 CREATE TYPE "public"."message_role" AS ENUM('system', 'user', 'assistant', 'tool');
 CREATE TYPE "public"."plan" AS ENUM('free', 'personal', 'business', 'pay_as_you_go');
-CREATE TYPE "public"."trace_type" AS ENUM('file_ingested', 'file_deleted', 'credential_added', 'credential_removed', 'ingest_failed');
+CREATE TYPE "public"."trace_type" AS ENUM('file_ingested', 'file_deleted', 'credential_added', 'credential_removed', 'ingest_failed', 'limit_warning', 'user_deleted');
 CREATE TYPE "public"."language" AS ENUM('en', 'es');
 CREATE TABLE "bill" (
 	"id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,
@@ -17,6 +19,7 @@ CREATE TABLE "bill" (
 	"paid" boolean DEFAULT false NOT NULL,
 	"amount" numeric NOT NULL,
 	"plan" "plan" NOT NULL,
+	"source" "bill_source" DEFAULT 'periodic' NOT NULL,
 	"details" json NOT NULL
 );
 
@@ -128,6 +131,7 @@ CREATE TABLE "message" (
 	"role" "message_role" DEFAULT 'user' NOT NULL,
 	"content" jsonb NOT NULL,
 	"extra_reason" boolean DEFAULT false NOT NULL,
+	"finish_reason" "finish_reason",
 	"thread_id" uuid NOT NULL,
 	"created_at" timestamp DEFAULT now() NOT NULL
 );
@@ -169,9 +173,9 @@ CREATE TABLE "user" (
 );
 
 ALTER TABLE "bill" ADD CONSTRAINT "bill_slug_tenant_slug_fk" FOREIGN KEY ("slug") REFERENCES "public"."tenant"("slug") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_bill_id_bill_id_fk" FOREIGN KEY ("bill_id") REFERENCES "public"."bill"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
-ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_slug_tenant_slug_fk" FOREIGN KEY ("slug") REFERENCES "public"."tenant"("slug") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_bill_id_bill_id_fk" FOREIGN KEY ("bill_id") REFERENCES "public"."bill"("id") ON DELETE cascade ON UPDATE no action;
+ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;
+ALTER TABLE "billable_event" ADD CONSTRAINT "billable_event_slug_tenant_slug_fk" FOREIGN KEY ("slug") REFERENCES "public"."tenant"("slug") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "chunk" ADD CONSTRAINT "chunk_file_id_file_id_fk" FOREIGN KEY ("file_id") REFERENCES "public"."file"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "credential" ADD CONSTRAINT "credential_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "credential_permission" ADD CONSTRAINT "credential_permission_credential_id_credential_id_fk" FOREIGN KEY ("credential_id") REFERENCES "public"."credential"("id") ON DELETE cascade ON UPDATE no action;
@@ -184,7 +188,7 @@ ALTER TABLE "file" ADD CONSTRAINT "file_message_id_message_id_fk" FOREIGN KEY ("
 ALTER TABLE "file" ADD CONSTRAINT "file_external_dir_id_external_dir_id_fk" FOREIGN KEY ("external_dir_id") REFERENCES "public"."external_dir"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "file" ADD CONSTRAINT "file_credential_id_credential_id_fk" FOREIGN KEY ("credential_id") REFERENCES "public"."credential"("id") ON DELETE no action ON UPDATE no action;
 ALTER TABLE "file_permission" ADD CONSTRAINT "file_permission_file_id_file_id_fk" FOREIGN KEY ("file_id") REFERENCES "public"."file"("id") ON DELETE cascade ON UPDATE no action;
-ALTER TABLE "file_permission" ADD CONSTRAINT "file_permission_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE no action ON UPDATE no action;
+ALTER TABLE "file_permission" ADD CONSTRAINT "file_permission_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "message" ADD CONSTRAINT "message_thread_id_thread_id_fk" FOREIGN KEY ("thread_id") REFERENCES "public"."thread"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "thread" ADD CONSTRAINT "thread_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE cascade ON UPDATE no action;
 ALTER TABLE "trace" ADD CONSTRAINT "trace_user_id_user_id_fk" FOREIGN KEY ("user_id") REFERENCES "public"."user"("id") ON DELETE set null ON UPDATE no action;

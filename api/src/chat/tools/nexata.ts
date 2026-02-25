@@ -1,11 +1,32 @@
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { OauthProvider, OauthScope, user } from '@api/schema';
+import { providerIngestors } from '@api/integration/lib';
+import {
+	credential,
+	credentialPermission,
+	FileHost,
+	file,
+	filePermission,
+	OauthProvider,
+	OauthScope,
+	user,
+} from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import { getCredentialsForUser } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Static } from '@sinclair/typebox';
-import { and, eq, ilike, isNotNull, or, type SQL } from 'drizzle-orm';
+import {
+	and,
+	eq,
+	exists,
+	ilike,
+	isNotNull,
+	not,
+	or,
+	type SQL,
+} from 'drizzle-orm';
 import { t } from 'elysia';
 
 export namespace Nexata {
@@ -119,4 +140,212 @@ export namespace Nexata {
 				),
 			);
 	}
+
+	export const [reingestDescription, reingestInput] = [
+		'Nexata tool to re-ingest (refresh / update) an already ingested file by its Nexata file ID. This re-fetches the file content from its source and re-processes it. Only use this tool when the user explicitly requests a file re-ingestion or when the latest up-to-date data is explicitly required. Do not use this tool proactively.',
+		tObject({
+			fileId: t.String({
+				format: 'uuid',
+				description: 'The Nexata file UUID to re-ingest.',
+			}),
+		}),
+	];
+
+	export async function reingest(
+		activeUser: ActiveUser,
+		input: Static<typeof reingestInput>,
+	) {
+		const existing = (
+			await db
+				.select({
+					id: file.id,
+					provider: file.provider,
+					externalId: file.externalId,
+					credentialId: file.credentialId,
+					userId: file.userId,
+					name: file.name,
+					slug: user.slug,
+				})
+				.from(file)
+				.innerJoin(user, eq(user.id, file.userId))
+				.where(
+					and(
+						eq(file.id, input.fileId),
+						not(eq(file.provider, FileHost.NEXATA)),
+						activeUser.isAdmin
+							? eq(user.slug, activeUser.slug)
+							: or(
+									exists(
+										db
+											.select({ credentialId: credential.id })
+											.from(credential)
+											.where(
+												and(
+													eq(credential.id, file.credentialId),
+													or(
+														eq(credential.userId, activeUser.id),
+														exists(
+															db
+																.select({
+																	userId: credentialPermission.userId,
+																})
+																.from(credentialPermission)
+																.where(
+																	and(
+																		eq(
+																			credentialPermission.credentialId,
+																			credential.id,
+																		),
+																		eq(
+																			credentialPermission.userId,
+																			activeUser.id,
+																		),
+																	),
+																),
+														),
+													),
+												),
+											),
+									),
+									eq(file.userId, activeUser.id),
+									exists(
+										db
+											.select({ id: filePermission.id })
+											.from(filePermission)
+											.where(
+												and(
+													eq(filePermission.fileId, file.id),
+													or(
+														eq(filePermission.userId, activeUser.id),
+														eq(filePermission.email, activeUser.email),
+													),
+												),
+											),
+									),
+								),
+					),
+				)
+		).at(0);
+
+		if (!existing)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language,
+			);
+
+		if (!existing.externalId || !existing.credentialId)
+			throw httpError(
+				HttpCode.UNPROCESSABLE_ENTITY,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language,
+			);
+
+		const blockReason = await checkTenantCanIngest(activeUser.slug);
+		if (blockReason)
+			throw httpError(
+				blockReason === ErrorCode.PAYMENT_REQUIRED
+					? HttpCode.PAYMENT_REQUIRED
+					: HttpCode.PRECONDITION_FAILED,
+				ErrorCode[blockReason as keyof typeof ErrorCode],
+				activeUser.language,
+			);
+
+		const ingestor = providerIngestors[existing.provider];
+		if (!ingestor)
+			throw httpError(
+				HttpCode.UNPROCESSABLE_ENTITY,
+				ErrorCode.EXTERNAL_ERROR,
+				activeUser.language,
+			);
+
+		const result = await ingestor(
+			existing.userId,
+			existing.slug,
+			existing.credentialId,
+			[{ isDir: false, id: existing.externalId }],
+		);
+
+		return { fileId: existing.id, name: existing.name, result };
+	}
+
+	const choiceOption = t.Object({
+		value: t.String(),
+		recommended: t.Boolean({ default: false }),
+	});
+
+	export const [askQuestionsDescription, askQuestionsInput] = [
+		'Nexata tool to ask the user one or more structured questions when clarification or input is needed before proceeding. Only use when user input is genuinely required to continue — do not ask unnecessary questions.',
+		tObject({
+			questions: t.Array(
+				t.Union([
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('multiple_choice'),
+						data: t.Array(choiceOption, { minItems: 2 }),
+					}),
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('multi_select'),
+						data: t.Array(choiceOption, { minItems: 2 }),
+					}),
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('boolean'),
+					}),
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('text'),
+						data: Nullish(
+							t.Object({
+								placeholder: Nullish(t.String()),
+							}),
+						),
+					}),
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('number'),
+						data: Nullish(
+							t.Object({
+								min: Nullish(t.Number()),
+								max: Nullish(t.Number()),
+							}),
+						),
+					}),
+					t.Object({
+						question: t.String({ description: 'The question to ask.' }),
+						recommendation: Nullish(t.String(), {
+							description:
+								'A suggestion or note from the agent for this question.',
+						}),
+						type: t.Literal('date'),
+					}),
+				]),
+				{
+					minItems: 1,
+					description: 'Array of questions to present to the user.',
+				},
+			),
+		}),
+	];
 }

@@ -23,7 +23,7 @@ export enum OauthScope {
 	DRIVE = 'drive',
 	CALENDAR = 'calendar',
 	OUTLOOK = 'outlook',
-	OUTLOOK_CALENDAR = 'outlook_calendar',
+	MICROSOFT_CALENDAR = 'microsoft_calendar',
 	ONE_DRIVE = 'onedrive',
 	DROPBOX = 'dropbox',
 }
@@ -36,7 +36,7 @@ export const scopesPerProvider: Record<OauthProvider, OauthScope[]> = {
 	],
 	[OauthProvider.MICROSOFT]: [
 		OauthScope.OUTLOOK,
-		OauthScope.OUTLOOK_CALENDAR,
+		OauthScope.MICROSOFT_CALENDAR,
 		OauthScope.ONE_DRIVE,
 	],
 	[OauthProvider.DROPBOX]: [OauthScope.DROPBOX],
@@ -48,7 +48,7 @@ export const realOauthScopes: Record<OauthScope, string[]> = {
 	[OauthScope.DRIVE]: ['https://www.googleapis.com/auth/drive.readonly'],
 	[OauthScope.CALENDAR]: ['https://www.googleapis.com/auth/calendar.readonly'],
 	[OauthScope.OUTLOOK]: ['Mail.Read'],
-	[OauthScope.OUTLOOK_CALENDAR]: ['Calendars.Read'],
+	[OauthScope.MICROSOFT_CALENDAR]: ['Calendars.Read'],
 	[OauthScope.ONE_DRIVE]: ['Files.Read.All', 'Sites.Read.All'],
 	[OauthScope.DROPBOX]: ['files.metadata.read', 'files.content.read'],
 } as const;

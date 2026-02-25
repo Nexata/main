@@ -16,7 +16,7 @@ import type {
 } from '@microsoft/microsoft-graph-types';
 import { Elysia, type Static, t } from 'elysia';
 
-export namespace OutlookCalendar {
+export namespace MicrosoftCalendar {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
 		credentialId: string,
@@ -131,7 +131,7 @@ export namespace OutlookCalendar {
 	];
 
 	export const [listDescription, listInput] = [
-		'Lists all Outlook calendars the user has access to, including shared calendars.',
+		'Lists all Microsoft calendars the user has access to, including shared calendars.',
 		t.Object({}),
 	];
 
@@ -184,7 +184,7 @@ export namespace OutlookCalendar {
 	];
 
 	export const [eventsDescription, eventsInput] = [
-		'Lists or searches Outlook calendar events. When startDateTime and endDateTime are provided, uses calendarView to expand recurring events into individual instances. Otherwise lists event series. Supports filtering by subject query, time range, and cancelled status.',
+		'Lists or searches Microsoft calendar events. When startDateTime and endDateTime are provided, uses calendarView to expand recurring events into individual instances. Otherwise lists event series. Supports filtering by subject query, time range, and cancelled status.',
 		t.Union([
 			t.Object({
 				nextLink: t.String({
@@ -301,7 +301,7 @@ export namespace OutlookCalendar {
 	];
 
 	export const [readDescription, readInput] = [
-		'Reads a single Outlook calendar event by ID, returning full details including body, attendees, online meeting info, and attachments metadata.',
+		'Reads a single Microsoft calendar event by ID, returning full details including body, attendees, online meeting info, and attachments metadata.',
 		t.Object({
 			eventId: t.String({
 				description: 'The event ID to retrieve',
@@ -368,7 +368,7 @@ export namespace OutlookCalendar {
 	}
 }
 
-export const outlookCalendarRouter = new Elysia({ prefix: '/outlook-calendar' })
+export const microsoftCalendarRouter = new Elysia({ prefix: '/calendar' })
 	.use(authPlugin())
 	.get(
 		'/list/:credentialId',
@@ -380,18 +380,18 @@ export const outlookCalendarRouter = new Elysia({ prefix: '/outlook-calendar' })
 					ErrorCode.NO_CREDENTIAL_PERMISSION,
 					activeUser.language as Language,
 				);
-			return OutlookCalendar.list(
-				await OutlookCalendar.fromRequest(activeUser, credentialId),
+			return MicrosoftCalendar.list(
+				await MicrosoftCalendar.fromRequest(activeUser, credentialId),
 				query,
 			);
 		},
 		{
 			detail: {
-				summary: 'List Outlook calendars',
-				description: OutlookCalendar.listDescription,
+				summary: 'List Microsoft calendars',
+				description: MicrosoftCalendar.listDescription,
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
-			query: OutlookCalendar.listInput,
+			query: MicrosoftCalendar.listInput,
 		},
 	)
 	.get(
@@ -404,18 +404,18 @@ export const outlookCalendarRouter = new Elysia({ prefix: '/outlook-calendar' })
 					ErrorCode.NO_CREDENTIAL_PERMISSION,
 					activeUser.language as Language,
 				);
-			return OutlookCalendar.events(
-				await OutlookCalendar.fromRequest(activeUser, credentialId),
+			return MicrosoftCalendar.events(
+				await MicrosoftCalendar.fromRequest(activeUser, credentialId),
 				query,
 			);
 		},
 		{
 			detail: {
-				summary: 'List Outlook calendar events',
-				description: OutlookCalendar.eventsDescription,
+				summary: 'List Microsoft calendar events',
+				description: MicrosoftCalendar.eventsDescription,
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
-			query: OutlookCalendar.eventsInput,
+			query: MicrosoftCalendar.eventsInput,
 		},
 	)
 	.get(
@@ -428,17 +428,17 @@ export const outlookCalendarRouter = new Elysia({ prefix: '/outlook-calendar' })
 					ErrorCode.NO_CREDENTIAL_PERMISSION,
 					activeUser.language as Language,
 				);
-			return OutlookCalendar.read(
-				await OutlookCalendar.fromRequest(activeUser, credentialId),
+			return MicrosoftCalendar.read(
+				await MicrosoftCalendar.fromRequest(activeUser, credentialId),
 				query,
 			);
 		},
 		{
 			detail: {
-				summary: 'Read Outlook calendar event',
-				description: OutlookCalendar.readDescription,
+				summary: 'Read Microsoft calendar event',
+				description: MicrosoftCalendar.readDescription,
 			},
 			params: tObject({ credentialId: t.String({ format: 'uuid' }) }),
-			query: OutlookCalendar.readInput,
+			query: MicrosoftCalendar.readInput,
 		},
 	);

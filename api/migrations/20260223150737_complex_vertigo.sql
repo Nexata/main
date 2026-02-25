@@ -1,1 +1,0 @@
-ALTER TYPE "public"."bill_source" ADD VALUE 'refill';
