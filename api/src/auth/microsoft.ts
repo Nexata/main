@@ -1,4 +1,3 @@
-import { authPlugin } from '@api/auth';
 import {
 	authorizeOauthCallback,
 	createOauthRedirect,
@@ -7,6 +6,7 @@ import {
 	oauthCredentialExtendedState,
 	oauthLoginExtendedState,
 } from '@api/auth/lib';
+import { authPlugin } from '@api/auth/plugin';
 import { IS_PRODUCTION } from '@api/env';
 import { OauthProvider, realOauthScopes } from '@api/schema';
 import { jwtPlugin } from '@api/utils/auth';
