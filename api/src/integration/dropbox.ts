@@ -504,16 +504,59 @@ export namespace Dropbox {
 				)
 		).at(0);
 
-		if (!tokens) throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST);
+		if (!tokens) {
+			captureException(new Error('Credential not found during Dropbox sync'), {
+				tags: { source: 'Dropbox.ingestFromCredential' },
+				extra: { userId, credentialId },
+			});
+			if (selection.length)
+				await db.insert(trace).values(
+					selection.map((item) => ({
+						userId,
+						type: TraceType.INGEST_FAILED,
+						metadata: {
+							provider: FileHost.DROPBOX,
+							externalId: item.id,
+							name: item.id,
+							error: 'CREDENTIAL_LOST',
+						},
+					})),
+				);
+			return 'FAILED';
+		}
 
-		const { at, rt } = await ensureFreshTokens(
-			credentialId,
-			OauthProvider.DROPBOX,
-			tokens.accessToken,
-			tokens.refreshToken,
-			tokens.accessTokenExpiresAt,
-			slug,
-		);
+		let at: string;
+		let rt: string;
+		try {
+			({ at, rt } = await ensureFreshTokens(
+				credentialId,
+				OauthProvider.DROPBOX,
+				tokens.accessToken,
+				tokens.refreshToken,
+				tokens.accessTokenExpiresAt,
+				slug,
+			));
+		} catch (error) {
+			captureException(error, {
+				tags: { source: 'Dropbox.ingestFromCredential' },
+				extra: { userId, credentialId },
+			});
+			if (selection.length)
+				await db.insert(trace).values(
+					selection.map((item) => ({
+						userId,
+						type: TraceType.INGEST_FAILED,
+						metadata: {
+							provider: FileHost.DROPBOX,
+							externalId: item.id,
+							name: item.id,
+							error:
+								error instanceof Error ? error.message : 'TOKEN_REFRESH_FAILED',
+						},
+					})),
+				);
+			return 'FAILED';
+		}
 
 		const dpx = fromTokens(at, rt);
 		const results = await ingest(dpx, userId, slug, credentialId, selection);

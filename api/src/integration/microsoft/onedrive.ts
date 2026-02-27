@@ -677,16 +677,59 @@ export namespace OneDrive {
 				)
 		).at(0);
 
-		if (!tokens) throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST);
+		if (!tokens) {
+			captureException(new Error('Credential not found during OneDrive sync'), {
+				tags: { source: 'OneDrive.ingestFromCredential' },
+				extra: { userId, credentialId },
+			});
+			if (selection.length)
+				await db.insert(trace).values(
+					selection.map((item) => ({
+						userId,
+						type: TraceType.INGEST_FAILED,
+						metadata: {
+							provider: FileHost.ONE_DRIVE,
+							externalId: item.id,
+							name: item.id,
+							error: 'CREDENTIAL_LOST',
+						},
+					})),
+				);
+			return 'FAILED';
+		}
 
-		const { at, rt } = await ensureFreshTokens(
-			credentialId,
-			OauthProvider.MICROSOFT,
-			tokens.accessToken,
-			tokens.refreshToken,
-			tokens.accessTokenExpiresAt,
-			slug,
-		);
+		let at: string;
+		let rt: string;
+		try {
+			({ at, rt } = await ensureFreshTokens(
+				credentialId,
+				OauthProvider.MICROSOFT,
+				tokens.accessToken,
+				tokens.refreshToken,
+				tokens.accessTokenExpiresAt,
+				slug,
+			));
+		} catch (error) {
+			captureException(error, {
+				tags: { source: 'OneDrive.ingestFromCredential' },
+				extra: { userId, credentialId },
+			});
+			if (selection.length)
+				await db.insert(trace).values(
+					selection.map((item) => ({
+						userId,
+						type: TraceType.INGEST_FAILED,
+						metadata: {
+							provider: FileHost.ONE_DRIVE,
+							externalId: item.id,
+							name: item.id,
+							error:
+								error instanceof Error ? error.message : 'TOKEN_REFRESH_FAILED',
+						},
+					})),
+				);
+			return 'FAILED';
+		}
 
 		const client = fromTokens(at, rt);
 		const results = await ingest(client, userId, slug, credentialId, selection);

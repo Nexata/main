@@ -88,7 +88,7 @@ export async function createOauthRedirect(
 	if (!state) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
 
 	await cache.set(state, userId ? { ...query, userId } : query, { ex: 3600 });
-	return { url: url.href };
+	return url.href;
 }
 
 export async function authorizeOauthCallback(
