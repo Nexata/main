@@ -134,12 +134,6 @@ async function refreshGoogleTokens(
 		refreshToken: credentials.refresh_token ?? tokens.refreshToken,
 	};
 
-	captureException({
-		note: 'luka',
-		t: credentials.refresh_token ?? tokens.refreshToken,
-		newTokens,
-	});
-
 	if (options?.slug)
 		await Promise.all([
 			db
