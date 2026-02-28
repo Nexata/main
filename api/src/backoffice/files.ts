@@ -7,11 +7,15 @@ import {
 	file,
 	type Language,
 	PROVIDER_LABELS,
+	TraceType,
+	trace,
 	user,
 } from '@api/schema';
+import { ensureFreshTokens } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish } from '@api/utils/type';
+import { captureException } from '@sentry/bun';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
@@ -63,8 +67,73 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			...filesToSync.map((f) => ({ ...f, isDir: false as const })),
 		];
 
+		const uniqueCredentialIds = [
+			...new Set(allItems.map((item) => item.credentialId).filter(Boolean)),
+		] as string[];
+
+		const failedCredentialIds = new Set<string>();
+
+		if (uniqueCredentialIds.length) {
+			const credentialRows = await db
+				.select({
+					id: credential.id,
+					provider: credential.provider,
+					accessToken: credential.accessToken,
+					refreshToken: credential.refreshToken,
+					accessTokenExpiresAt: credential.accessTokenExpiresAt,
+					slug: user.slug,
+				})
+				.from(credential)
+				.innerJoin(user, eq(user.id, credential.userId))
+				.where(inArray(credential.id, uniqueCredentialIds));
+
+			await Promise.allSettled(
+				credentialRows.map(async (cred) => {
+					try {
+						await ensureFreshTokens(
+							cred.id,
+							cred.provider,
+							cred.accessToken,
+							cred.refreshToken,
+							cred.accessTokenExpiresAt,
+							cred.slug,
+						);
+					} catch (error) {
+						captureException(error, {
+							tags: { source: 'sync.ensureFreshTokens' },
+							extra: { credentialId: cred.id },
+						});
+						failedCredentialIds.add(cred.id);
+					}
+				}),
+			);
+		}
+
+		const itemsToSync: typeof allItems = [];
+		const failedItems: typeof allItems = [];
+
+		for (const item of allItems) {
+			if (item.credentialId && failedCredentialIds.has(item.credentialId))
+				failedItems.push(item);
+			else itemsToSync.push(item);
+		}
+
+		if (failedItems.length)
+			await db.insert(trace).values(
+				failedItems.map((item) => ({
+					userId: item.userId,
+					type: TraceType.INGEST_FAILED,
+					metadata: {
+						provider: item.provider,
+						externalId: item.isDir ? item.externalId : item.externalId!,
+						name: item.name,
+						error: 'TOKEN_REFRESH_FAILED',
+					},
+				})),
+			);
+
 		const results = await Promise.allSettled(
-			allItems.map((item) =>
+			itemsToSync.map((item) =>
 				providerIngestors[item.provider]!(
 					item.userId,
 					item.slug,
@@ -84,9 +153,18 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			{ name: string; provider: string }[]
 		>();
 
+		for (const item of failedItems) {
+			const existing = failedByUser.get(item.userId) ?? [];
+			existing.push({
+				name: item.name,
+				provider: PROVIDER_LABELS[item.provider] ?? item.provider,
+			});
+			failedByUser.set(item.userId, existing);
+		}
+
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i]!;
-			const item = allItems[i]!;
+			const item = itemsToSync[i]!;
 			const isFailed =
 				result.status === 'rejected' ||
 				(result.status === 'fulfilled' && result.value === 'FAILED') ||
@@ -151,7 +229,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 		}
 
 		return {
-			total: results.length,
+			total: results.length + failedItems.length,
 			synced: results.filter(
 				(r) => r.status === 'fulfilled' && r.value === 'OK',
 			).length,
@@ -161,11 +239,12 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			partial: results.filter(
 				(r) => r.status === 'fulfilled' && r.value === 'PARTIAL',
 			).length,
-			failed: results.filter(
-				(r) =>
-					r.status === 'rejected' ||
-					(r.status === 'fulfilled' && r.value === 'FAILED'),
-			).length,
+			failed:
+				results.filter(
+					(r) =>
+						r.status === 'rejected' ||
+						(r.status === 'fulfilled' && r.value === 'FAILED'),
+				).length + failedItems.length,
 		};
 	},
 	{
