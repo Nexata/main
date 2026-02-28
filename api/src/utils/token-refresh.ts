@@ -5,6 +5,7 @@ import { invalidateCredentialCache } from '@api/utils/credential';
 import { requireEnv, warnEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { auth } from '@googleapis/gmail';
+import { captureException } from '@sentry/bun';
 import * as arctic from 'arctic';
 import { and, eq } from 'drizzle-orm';
 import { DropboxAuth } from 'dropbox';
@@ -132,6 +133,12 @@ async function refreshGoogleTokens(
 			: new Date(Date.now() + 3600 * 1000),
 		refreshToken: credentials.refresh_token ?? tokens.refreshToken,
 	};
+
+	captureException({
+		note: 'luka',
+		t: credentials.refresh_token ?? tokens.refreshToken,
+		newTokens,
+	});
 
 	if (options?.slug)
 		await Promise.all([
