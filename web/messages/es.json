@@ -200,7 +200,7 @@
 		"subtitle": "Accedé a tu cuenta de Nexata",
 		"oauth": {
 			"google": "Google",
-			"microsoft": "Outlook",
+			"microsoft": "Microsoft",
 			"dropbox": "Dropbox"
 		}
 	},

@@ -8,7 +8,6 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { isAuthenticated } from '@/lib/auth';
-import { getDropboxLoginUrl, getGoogleLoginUrl } from '@/lib/oauth';
 import {
 	'login.meta.title' as login_meta_title,
 	'login.oauth.dropbox' as login_oauth_dropbox,
@@ -17,6 +16,8 @@ import {
 	'login.subtitle' as login_subtitle,
 	'login.title' as login_title,
 } from '@/paraglide/messages.js';
+import { apiClient } from '@/api';
+import { getFingerprint } from '@/lib/fingerprint';
 
 export const Route = createFileRoute('/_public/login')({
 	beforeLoad: () => {
@@ -48,12 +49,6 @@ function LoginPage() {
 							alt="Nexata"
 							className="h-10 w-auto object-contain"
 						/>
-						<div className="h-8 w-px bg-border" />
-						<img
-							src="/company_logo.png"
-							alt="Empresa"
-							className="h-8 w-auto object-contain opacity-80"
-						/>
 					</div>
 
 					{/* Title */}
@@ -66,36 +61,58 @@ function LoginPage() {
 
 					{/* OAuth */}
 					<div className="flex flex-col gap-3">
-						<Button
+            <Button
+            variant="outline"
+            className="h-11 gap-3 cursor-pointer"
+              onClick={async () => {
+                const fingerprint = await getFingerprint();
+                const url = await apiClient.auth.microsoft.login.get({
+                  $query: {
+                    fingerprint: fingerprint,
+                  },
+                });
+								window.location.href = url.data as string;
+							}}
+            >
+              <IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
+							{login_oauth_microsoft()}
+            </Button>
+
+          		<Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
-							onClick={async () => {
-								var url = await getGoogleLoginUrl();
-								window.location.href = url;
+              onClick={async () => {
+                const fingerprint = await getFingerprint();
+                const url = await apiClient.auth.google.login.get({
+                  $query: {
+                    fingerprint: fingerprint,
+                  },
+                });
+								window.location.href = url.data as string;
 							}}
 						>
 							<FcGoogle className="h-5 w-5" />
 							{login_oauth_google()}
 						</Button>
 
-						<Button variant="outline" className="h-11 gap-3 cursor-pointer">
-							<IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
-							{login_oauth_microsoft()}
-						</Button>
-
 						<Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
 							onClick={async () => {
-								var url = await getDropboxLoginUrl();
-								window.location.href = url;
+                const fingerprint = await getFingerprint();
+                const url = await apiClient.auth.dropbox.login.get({
+                  $query: {
+                    fingerprint: fingerprint,
+                  },
+                });
+								window.location.href = url.data as string;
 							}}
 						>
 							<SiDropbox className="h-5 w-5 text-[#0061FF]" />
 							{login_oauth_dropbox()}
 						</Button>
 
-						<Separator className="my-1" />
+						{/*<Separator className="my-1" />*/}
 					</div>
 				</CardContent>
 			</Card>

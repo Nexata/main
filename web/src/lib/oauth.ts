@@ -1,26 +1,7 @@
 import { API_BASE_URL } from '@/api';
-import { getFingerprint } from './fingerprint';
 import { getMe } from './user';
 
-const FLOW = 'login';
-const FRONTEND_CALLBACK = `${import.meta.env.VITE_FRONT_URL}/callback`;
 const FRONTEND_CREDENTIAL_CALLBACK = `${import.meta.env.VITE_FRONT_URL}/credential-callback`;
-
-export async function getGoogleLoginUrl() {
-	const fingerprint = await getFingerprint();
-
-	return `${API_BASE_URL}/auth/google/login?flow=${FLOW}&fingerprint=${fingerprint}&redirect=${encodeURIComponent(
-		FRONTEND_CALLBACK,
-	)}`;
-}
-
-export async function getDropboxLoginUrl() {
-	const fingerprint = await getFingerprint();
-
-	return `${API_BASE_URL}/auth/dropbox/login?flow=${FLOW}&fingerprint=${fingerprint}&redirect=${encodeURIComponent(
-		FRONTEND_CALLBACK,
-	)}`;
-}
 
 export async function getGoogleCredentialUrl(scope: string) {
 	const user = await getMe();

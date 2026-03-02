@@ -21,6 +21,7 @@ import {
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sources"
+import { TypingText } from "../typing-text/typing-text"
 
 /* -------------------------------------------------------------------------- */
 /*                                   Styles                                    */
@@ -145,20 +146,29 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           const fileBuffer = buffer.filter(b => b.part.type === "file")
 
           blocks.push(
-            <div
+            <motion.div
               key={bubbleKey}
-              className={cn(chatBubbleVariants({ isUser, animation }))}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: "easeOut" }}
+              className={cn(chatBubbleVariants({ isUser, animation: "none" }))}
             >
               {/* TEXT */}
               {textBuffer.map(({ part, globalIndex }, i) => {
                 const isStreamingPart = shouldAnimateTyping && part === lastStreamingTextPart
-                const content = isStreamingPart ? typedContent : part.text
 
                 return (
                   <div key={`text-${i}`}>
-                    <span className="inline">
-                      <MarkdownRenderer>{content}</MarkdownRenderer>
-                    </span>
+                    {isStreamingPart ? (
+                      <TypingText
+                        text={part.text}
+                        isActive={shouldAnimateTyping}
+                      />
+                    ) : (
+                      <span className="inline">
+                        <MarkdownRenderer>{part.text}</MarkdownRenderer>
+                      </span>
+                    )}
                   </div>
                 )
               })}
@@ -176,7 +186,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   </div>
                 )
               })}
-            </div>
+            </motion.div>
           )
 
           buffer = []

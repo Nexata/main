@@ -8,6 +8,7 @@ import {
   type ListDriveDirInput,
   type IngestPayload,
 } from "./file";
+import { apiClient } from '@/api';
 
 type OauthProvider = `${CredentialItem['provider']}`;
 type OauthScope = `${CredentialItem['scope']}`;
