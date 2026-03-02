@@ -21,7 +21,7 @@ import { Elysia, t } from 'elysia';
 
 const SYNC_FAIL_CACHE_KEY = (userId: string) => `sync-fail-notified:${userId}`;
 
-const SYNC_FAIL_COOLDOWN = 24 * 60 * 60;
+const SYNC_FAIL_COOLDOWN = 23 * 60 * 60;
 
 export const filesRouter = new Elysia({ prefix: '/files' }).put(
 	'/sync',
