@@ -42,5 +42,6 @@
 	"REFILL_NOT_ALLOWED": "Las recargas de mensajes no están disponibles para tu plan",
 	"BILL_NOT_FOUND": "Factura no encontrada",
 	"TENANT_CREATION_EXPIRED": "La solicitud de creación de la organización ha expirado o es inválida",
-	"SLUG_UNAVAILABLE": "Este identificador no está disponible"
+	"SLUG_UNAVAILABLE": "Este identificador no está disponible",
+	"CREDENTIAL_HAS_FILES": "Esta credencial no se puede eliminar porque tiene archivos ingestados"
 }

@@ -108,7 +108,6 @@ export const authPlugin =
 
 				const at = authorization?.split(' ')[1];
 				const payload = await jwt.verify(at);
-				console.log(payload);
 
 				if (!at || !payload)
 					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_TOKEN);

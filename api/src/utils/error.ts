@@ -71,6 +71,8 @@ export enum ErrorCode {
 
 	TENANT_CREATION_EXPIRED = 'TENANT_CREATION_EXPIRED',
 	SLUG_UNAVAILABLE = 'SLUG_UNAVAILABLE',
+
+	CREDENTIAL_HAS_FILES = 'CREDENTIAL_HAS_FILES',
 }
 
 const errorLocales: Record<Language, Record<string, string>> = {

@@ -4,6 +4,7 @@ import { db } from '@api/env';
 import {
 	credential,
 	credentialPermission,
+	type Language,
 	TraceType,
 	trace,
 	user,
@@ -12,7 +13,9 @@ import {
 	getCredentialsForUser,
 	invalidateCredentialCache,
 } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
+import { NeonDbError } from '@neondatabase/serverless';
 import { and, eq, exists, inArray, or } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
@@ -25,49 +28,60 @@ export const credentialRouter = new Elysia({
 	.delete(
 		'/:id',
 		async ({ params: { id }, activeUser }) => {
-			const [[deletionResult]] = await Promise.all([
-				db.batch([
-					db
-						.delete(credential)
-						.where(
-							and(
-								eq(credential.id, id),
-								!activeUser.isAdmin
-									? or(
-											eq(credential.userId, activeUser.id),
-											exists(
+			try {
+				const [[deletionResult]] = await Promise.all([
+					db.batch([
+						db
+							.delete(credential)
+							.where(
+								and(
+									eq(credential.id, id),
+									!activeUser.isAdmin
+										? or(
+												eq(credential.userId, activeUser.id),
+												exists(
+													db
+														.select({ id: user.id })
+														.from(credentialPermission)
+														.where(
+															and(
+																eq(credentialPermission.credentialId, id),
+																eq(credentialPermission.userId, activeUser.id),
+																eq(credentialPermission.isAdmin, true),
+															),
+														),
+												),
+											)
+										: inArray(
+												credential.userId,
 												db
 													.select({ id: user.id })
-													.from(credentialPermission)
-													.where(
-														and(
-															eq(credentialPermission.credentialId, id),
-															eq(credentialPermission.userId, activeUser.id),
-															eq(credentialPermission.isAdmin, true),
-														),
-													),
+													.from(user)
+													.where(eq(user.slug, activeUser.slug)),
 											),
-										)
-									: inArray(
-											credential.userId,
-											db
-												.select({ id: user.id })
-												.from(user)
-												.where(eq(user.slug, activeUser.slug)),
-										),
-							),
-						)
-						.returning({ credentialId: credential.id }),
-					db.insert(trace).values({
-						userId: activeUser.id,
-						type: TraceType.CREDENTIAL_REMOVED,
-						metadata: { credentialId: id },
-					}),
-				]),
-				invalidateCredentialCache(activeUser.slug, id),
-			]);
+								),
+							)
+							.returning({ credentialId: credential.id }),
+						db.insert(trace).values({
+							userId: activeUser.id,
+							type: TraceType.CREDENTIAL_REMOVED,
+							metadata: { credentialId: id },
+						}),
+					]),
+					invalidateCredentialCache(activeUser.slug, id),
+				]);
 
-			return deletionResult;
+				return deletionResult;
+			} catch (error) {
+				if (error instanceof NeonDbError && error.code === '23503') {
+					throw httpError(
+						HttpCode.CONFLICT,
+						ErrorCode.CREDENTIAL_HAS_FILES,
+						activeUser.language as Language,
+					);
+				}
+				throw error;
+			}
 		},
 		{
 			detail: { summary: 'Delete credential by ID' },

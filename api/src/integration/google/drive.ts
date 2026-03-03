@@ -173,7 +173,7 @@ export namespace Drive {
 		return {
 			id: f.id!,
 			name: f.name ?? 'Unknown',
-			alreadyIngested: false,
+			nexataId: null,
 			url:
 				f.webViewLink ??
 				(isFolder
@@ -270,10 +270,10 @@ export namespace Drive {
 			cursor: res.data.nextPageToken ?? null,
 			entries: entries.map((e) => ({
 				...e,
-				alreadyIngested:
+				nexataId:
 					e.ext === 'dir'
-						? ingestedDirs.includes(e.id)
-						: ingestedFiles.includes(e.id),
+						? (ingestedDirs.get(e.id) ?? null)
+						: (ingestedFiles.get(e.id) ?? null),
 			})),
 		};
 	}
@@ -317,10 +317,10 @@ export namespace Drive {
 
 		return entries.map((e) => ({
 			...e,
-			alreadyIngested:
+			nexataId:
 				e.ext === 'dir'
-					? ingestedDirs.includes(e.id)
-					: ingestedFiles.includes(e.id),
+					? (ingestedDirs.get(e.id) ?? null)
+					: (ingestedFiles.get(e.id) ?? null),
 		}));
 	}
 
@@ -559,7 +559,7 @@ export namespace Drive {
 		return {
 			id: res.data.id!,
 			name: res.data.name!,
-			alreadyIngested: false,
+			nexataId: null,
 			url:
 				res.data.webViewLink ??
 				`https://drive.google.com/drive/folders/${res.data.id}`,

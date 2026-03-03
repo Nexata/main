@@ -9,7 +9,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 export type NexataListDirEntry = {
 	id: string;
 	name: string;
-	alreadyIngested: boolean;
+	nexataId: string | null;
 	url?: string;
 	size?: number; // in MB
 	path?: string;
@@ -21,22 +21,22 @@ export type NexataListDirEntry = {
 export async function getIngestedFileIds(
 	ids: string[],
 	provider: FileHost,
-): Promise<string[]> {
-	if (!ids.length) return [];
+): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
 	const rows = await db
-		.select({ externalId: file.externalId })
+		.select({ id: file.id, externalId: file.externalId })
 		.from(file)
 		.where(and(eq(file.provider, provider), inArray(file.externalId, ids)));
-	return rows.map((r) => r.externalId!);
+	return new Map(rows.map((r) => [r.externalId!, r.id]));
 }
 
 export async function getIngestedDirIds(
 	ids: string[],
 	provider: FileHost,
-): Promise<string[]> {
-	if (!ids.length) return [];
+): Promise<Map<string, string>> {
+	if (!ids.length) return new Map();
 	const rows = await db
-		.select({ externalId: externalDir.externalId })
+		.select({ id: externalDir.id, externalId: externalDir.externalId })
 		.from(externalDir)
 		.where(
 			and(
@@ -44,7 +44,7 @@ export async function getIngestedDirIds(
 				inArray(externalDir.externalId, ids),
 			),
 		);
-	return rows.map((r) => r.externalId);
+	return new Map(rows.map((r) => [r.externalId, r.id]));
 }
 
 export type NexataListDir = {

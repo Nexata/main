@@ -160,7 +160,7 @@ export namespace OneDrive {
 		return {
 			id: makeCompoundId(item),
 			name: item.name ?? 'Unknown',
-			alreadyIngested: false,
+			nexataId: null,
 			url: item.webUrl ?? undefined,
 			size: item.size ? item.size / (1024 * 1024) : undefined,
 			path: item.parentReference?.id ?? undefined,
@@ -183,10 +183,10 @@ export namespace OneDrive {
 
 		return entries.map((e) => ({
 			...e,
-			alreadyIngested:
+			nexataId:
 				e.ext === 'dir'
-					? ingestedDirs.includes(e.id)
-					: ingestedFiles.includes(e.id),
+					? (ingestedDirs.get(e.id) ?? null)
+					: (ingestedFiles.get(e.id) ?? null),
 		}));
 	}
 
@@ -502,7 +502,7 @@ export namespace OneDrive {
 		return {
 			id: makeCompoundId(item),
 			name: item.name ?? 'Unknown',
-			alreadyIngested: false,
+			nexataId: null,
 			url: item.webUrl ?? undefined,
 			ext: 'dir',
 			updatedAt: item.lastModifiedDateTime

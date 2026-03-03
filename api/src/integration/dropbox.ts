@@ -157,10 +157,10 @@ export namespace Dropbox {
 			cursor: res.result.has_more ? (res.result.cursor ?? null) : null,
 			entries: entries.map((e) => ({
 				...e,
-				alreadyIngested:
+				nexataId:
 					e.ext === 'dir'
-						? ingestedDirs.includes(e.id)
-						: ingestedFiles.includes(e.id),
+						? (ingestedDirs.get(e.id) ?? null)
+						: (ingestedFiles.get(e.id) ?? null),
 			})),
 		};
 	}
@@ -232,10 +232,10 @@ export namespace Dropbox {
 			cursor: res.result.has_more ? res.result.cursor : null,
 			entries: entries.map((e) => ({
 				...e,
-				alreadyIngested:
+				nexataId:
 					e.ext === 'dir'
-						? ingestedDirs.includes(e.id)
-						: ingestedFiles.includes(e.id),
+						? (ingestedDirs.get(e.id) ?? null)
+						: (ingestedFiles.get(e.id) ?? null),
 			})),
 		};
 	}
@@ -586,7 +586,7 @@ export namespace Dropbox {
 			url: `https://www.dropbox.com/home${e.path_lower}`,
 			path: e.path_display,
 			ext: 'dir',
-			alreadyIngested: false,
+			nexataId: null,
 		};
 	}
 
@@ -610,7 +610,7 @@ export namespace Dropbox {
 			ext: e.name.split('.').pop(),
 			// @ts-expect-error
 			updatedAt: e.server_modified ? new Date(e.server_modified) : undefined,
-			alreadyIngested: false,
+			nexataId: null,
 		};
 	}
 }

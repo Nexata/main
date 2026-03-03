@@ -42,5 +42,6 @@
 	"REFILL_NOT_ALLOWED": "Message refills are not available for your plan",
 	"BILL_NOT_FOUND": "Bill not found",
 	"TENANT_CREATION_EXPIRED": "Tenant creation request has expired or is invalid",
-	"SLUG_UNAVAILABLE": "This slug is not available"
+	"SLUG_UNAVAILABLE": "This slug is not available",
+	"CREDENTIAL_HAS_FILES": "This credential cannot be deleted because it has files ingested"
 }
