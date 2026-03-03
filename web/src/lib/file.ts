@@ -165,6 +165,58 @@ export function useIngestFromDrive() {
 }
 
 /* ======================================================
+ONEDRIVE
+====================================================== */
+
+// List directory
+export async function listOneDriveDir(
+  credentialId: string,
+  input?: ListDriveDirInput
+) {
+  const query = normalizeDirInput(input);
+
+  return withAuthRetry((headers) =>
+    apiClient.integration.microsoft.onedrive[credentialId]!.get({
+      $headers: headers,
+      $query: query,
+    })
+  );
+}
+
+export type OneDriveDir = Awaited<ReturnType<typeof listDriveDir>>;
+
+export function useOneDriveDir(
+  credentialId?: string,
+ input?: ListDriveDirInput
+) {
+  return useQuery({
+    queryKey: [
+      "onedrive-dir",
+      credentialId,
+      JSON.stringify(input ?? {}),
+    ],
+    queryFn: () => listOneDriveDir(credentialId!, input),
+    enabled: !!credentialId,
+  });
+}
+
+// Ingest
+export async function ingestFromOneDrive(payload: IngestPayload) {
+  return withAuthRetry((headers) =>
+    apiClient.integration.microsoft.onedrive.ingest.post({
+      $headers: headers,
+      ...payload,
+    })
+  );
+}
+
+export function useIngestFromOneDrive() {
+  return useMutation({
+    mutationFn: ingestFromOneDrive,
+  });
+}
+
+/* ======================================================
    PLATFORM FILES
 ====================================================== */
 

@@ -191,6 +191,7 @@ export function CredentialPermissions({
                               size="sm"
                               variant="destructive"
                               className="cursor-pointer"
+                              disabled={user.accessLevel === 'tenant-admin'}
                               onClick={() => handleDeletePermission(user.id)}
                             >
                               {common_delete()}
