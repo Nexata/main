@@ -46,6 +46,7 @@ import {
 } from "@/paraglide/messages.js";
 import { infoToast } from "../info-toast/info-toast";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
+import { useDeleteFiles } from "@/lib/file";
 
 /* =========================
    TYPES
@@ -63,6 +64,7 @@ type Entry = {
   ext: string;
   updatedAt: string;
   size?: number;
+  nexataId?: string | null | undefined;
 };
 
 type Crumb = { id: string; name: string };
@@ -98,7 +100,7 @@ function SkeletonRow() {
 export function StorageFileTree({ credentialId, source }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
-
+  const [initialIngested, setInitialIngested] = useState<Set<string>>(new Set());
   const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: components_file_tree_root() }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
@@ -106,6 +108,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const current = history[historyIndex];
 
+  const deleteMutation = useDeleteFiles();
   const { data: usage } = useBillingUsage();
   const storageUsed = usage?.storage?.used ?? 0;
   const storageLimit = usage?.storage?.limit ?? 1;
@@ -130,6 +133,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
       } while (cursor);
 
       setEntries(all);
+
+      const initiallySelected = new Set(all.filter(e => e.nexataId).map(e => e.id));
+      setSelected(initiallySelected);
+      setInitialIngested(initiallySelected);
     } finally {
       setLoading(false);
     }
@@ -206,37 +213,54 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   /* SAVE SELECTION */
   async function handleConfirm() {
-  	if (!source.ingest || selectedFiles.length === 0) return;
+    if (!source.ingest) return;
 
-  	const toastId = infoToast.loading({
-  		title: components_file_tree_toast_loading_title(),
-      description: components_file_tree_toast_loading_description({ count: selectedFiles.length }),
-  	});
+    const currentlySelected = new Set(selected);
 
-  	try {
-  		await source.ingest({
-  			credentialId,
-  			selection: selectedFiles.map(file => ({
-  				id: file.id,
-  				isDir: file.ext === "dir",
-  			})),
-  		});
+    const toIngest = entries.filter(e => currentlySelected.has(e.id) && !initialIngested.has(e.id));
+    const toDelete = entries.filter(e => initialIngested.has(e.id) && !currentlySelected.has(e.id));
 
-  		infoToast.success(toastId, {
-  			title: components_file_tree_toast_success_title(),
-  			description: components_file_tree_toast_success_description(),
-  		});
+    if (toIngest.length === 0 && toDelete.length === 0) return;
 
-  		setSelected(new Set());
+    const toastId = infoToast.loading({
+      title: components_file_tree_toast_loading_title(),
+      description: components_file_tree_toast_loading_description({count: toIngest.length}),
+    });
+
+    try {
+      if (toIngest.length > 0) {
+        await source.ingest({
+          credentialId,
+          selection: toIngest.map(file => ({
+            id: file.id,
+            isDir: file.ext === "dir",
+          })),
+        });
+      }
+
+      if (toDelete.length > 0) {
+        await deleteMutation.mutateAsync({
+          ids: toDelete
+            .map(f => f.nexataId)
+            .filter((id): id is string => !!id),
+        });
+      }
+
+      infoToast.success(toastId, {
+        title: components_file_tree_toast_success_title(),
+        description: components_file_tree_toast_success_description(),
+      });
+
+      setSelected(new Set());
       fetchDir(current?.id);
-  	} catch (err) {
-  		console.error(err);
+    } catch (err) {
+      console.error(err);
 
-  		infoToast.error(toastId, {
-  			title: components_file_tree_toast_error_title(),
-  			description: components_file_tree_toast_error_description(),
-  		});
-  	}
+      infoToast.error(toastId, {
+        title: components_file_tree_toast_error_title(),
+        description: components_file_tree_toast_error_description(),
+      });
+    }
   }
 
   /* UI */
