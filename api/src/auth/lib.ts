@@ -80,15 +80,14 @@ export type OauthExtendedState =
 export async function createOauthRedirect(
 	query: OauthExtendedState,
 	urlFunc: (q: OauthCredentialExtendedState | false) => Promise<URL>,
-	userId?: string,
 ) {
 	const url = await urlFunc(query.flow === 'credential' && query);
 
 	const state = url.searchParams.get('state');
 	if (!state) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
 
-	await cache.set(state, userId ? { ...query, userId } : query, { ex: 3600 });
-	return url.href;
+	await cache.set(state, query, { ex: 3600 });
+	return redirect(url.href);
 }
 
 export async function authorizeOauthCallback(
