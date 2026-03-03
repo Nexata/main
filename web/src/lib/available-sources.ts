@@ -3,8 +3,10 @@ import { getDropboxCredentialUrl, getGoogleCredentialUrl, getMicrosoftCredential
 import {
   listDriveDir,
   listDropboxDir,
+  listOneDriveDir,
   ingestFromDrive,
   ingestFromDropbox,
+  ingestFromOneDrive,
   type ListDriveDirInput,
   type IngestPayload,
 } from "./file";
@@ -101,8 +103,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		scope: 'onedrive',
 		connect: async () => getMicrosoftCredentialUrl('onedrive'),
 		kind: 'storage',
-		getFileTree: async (_credentialId) => {
-			return [];
-		},
+    getFileTree: (credentialId, input) => listOneDriveDir(credentialId, input),
+		ingest: ingestFromOneDrive,
 	},
 ];
