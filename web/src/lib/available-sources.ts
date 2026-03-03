@@ -1,5 +1,5 @@
 import type { CredentialItem } from '@/lib/credential';
-import { getDropboxCredentialUrl, getGoogleCredentialUrl } from '@/lib/oauth';
+import { getDropboxCredentialUrl, getGoogleCredentialUrl, getMicrosoftCredentialUrl } from '@/lib/oauth';
 import {
   listDriveDir,
   listDropboxDir,
@@ -8,7 +8,6 @@ import {
   type ListDriveDirInput,
   type IngestPayload,
 } from "./file";
-import { apiClient } from '@/api';
 
 type OauthProvider = `${CredentialItem['provider']}`;
 type OauthScope = `${CredentialItem['scope']}`;
@@ -57,7 +56,7 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 		name: 'Outlook',
 		icon: '/datasource_icons/outlook.png',
 		scope: 'outlook',
-		connect: async () => '',
+		connect: async () => getMicrosoftCredentialUrl('outlook'),
 		kind: 'dynamic',
 	},
 	{
@@ -66,7 +65,7 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 		name: 'Outlook Calendar',
 		icon: '/datasource_icons/ocalendar.png',
 		scope: 'outlook_calendar',
-		connect: async () => '',
+		connect: async () => getMicrosoftCredentialUrl('outlook_calendar'),
 		kind: 'dynamic',
 	},
 ];
@@ -100,7 +99,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		name: 'OneDrive',
 		icon: '/datasource_icons/onedrive.png',
 		scope: 'onedrive',
-		connect: async () => '',
+		connect: async () => getMicrosoftCredentialUrl('onedrive'),
 		kind: 'storage',
 		getFileTree: async (_credentialId) => {
 			return [];

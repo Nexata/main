@@ -6,7 +6,7 @@ import { IoLogoMicrosoft } from 'react-icons/io5';
 import { SiDropbox } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { Separator } from '@/components/ui/separator';
+import { getDropboxLoginUrl, getGoogleLoginUrl, getMicrosoftLoginUrl } from '@/lib/oauth';
 import { isAuthenticated } from '@/lib/auth';
 import {
 	'login.meta.title' as login_meta_title,
@@ -65,30 +65,20 @@ function LoginPage() {
             variant="outline"
             className="h-11 gap-3 cursor-pointer"
               onClick={async () => {
-                const fingerprint = await getFingerprint();
-                const url = await apiClient.auth.microsoft.login.get({
-                  $query: {
-                    fingerprint: fingerprint,
-                  },
-                });
-								window.location.href = url.data as string;
+                var url = await getMicrosoftLoginUrl();
+								window.location.href = url;
 							}}
             >
               <IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
 							{login_oauth_microsoft()}
             </Button>
 
-          		<Button
+            <Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
               onClick={async () => {
-                const fingerprint = await getFingerprint();
-                const url = await apiClient.auth.google.login.get({
-                  $query: {
-                    fingerprint: fingerprint,
-                  },
-                });
-								window.location.href = url.data as string;
+                var url = await getGoogleLoginUrl();
+								window.location.href = url;
 							}}
 						>
 							<FcGoogle className="h-5 w-5" />
@@ -99,13 +89,8 @@ function LoginPage() {
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
 							onClick={async () => {
-                const fingerprint = await getFingerprint();
-                const url = await apiClient.auth.dropbox.login.get({
-                  $query: {
-                    fingerprint: fingerprint,
-                  },
-                });
-								window.location.href = url.data as string;
+  							var url = await getDropboxLoginUrl();
+   						  window.location.href = url;
 							}}
 						>
 							<SiDropbox className="h-5 w-5 text-[#0061FF]" />
