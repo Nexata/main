@@ -641,7 +641,7 @@ export function FilesManagementSection() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMassDelete}>
+            <AlertDialogAction onClick={handleMassDelete} variant={'destructive'}>
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>

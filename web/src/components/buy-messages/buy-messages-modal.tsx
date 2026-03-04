@@ -16,22 +16,42 @@ import {
   'components.buy_messages_modal.custom.buy_button' as components_buy_messages_modal_custom_buy_button
 } from '@/paraglide/messages.js';
 import { useMemo, useState } from "react";
-
+import { useCreateBillingRefill, useGetPaymentMpCheckout } from "@/lib/admin";
+import { getLocale } from "@/paraglide/runtime";
 
 type BuyMessagesModalProps = {
-    open: boolean;
-    onOpenChange: (open: boolean) => void;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 };
 
 export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) {
-    const PRICE_PER_MESSAGE = 0.13;
-    const [customAmount, setCustomAmount] = useState<string>("");
+  const BASE_PRICE = 0.10;
+  const DISCOUNT = 0.20;
+  const PACK_PRICE = parseFloat((BASE_PRICE * (1 - DISCOUNT)).toFixed(4));
 
-    const totalPrice = useMemo(() => {
-        const qty = Number(customAmount);
-        if (!qty || qty <= 0) return null;
-        return qty * PRICE_PER_MESSAGE;
-    }, [customAmount]);
+  const PACK_100  = { qty: 100,  unit: PACK_PRICE, total: parseFloat((100  * PACK_PRICE).toFixed(2)), originalTotal: parseFloat((100  * BASE_PRICE).toFixed(2)) };
+  const PACK_1000 = { qty: 1000, unit: PACK_PRICE, total: parseFloat((1000 * PACK_PRICE).toFixed(2)), originalTotal: parseFloat((1000 * BASE_PRICE).toFixed(2)) };
+
+  const [customAmount, setCustomAmount] = useState<string>("");
+  const refill = useCreateBillingRefill();
+  const getCheckout = useGetPaymentMpCheckout();
+
+  const handleBuy = async (messages: number) => {
+    if (!messages || messages <= 0) return;
+
+    const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
+    const language = getLocale();
+
+    const { billId } = await refill(messages);
+    const checkout = await getCheckout(billId, redirect, language);
+    if (checkout?.init_point) window.open(checkout.init_point, "_self");
+  };
+
+  const totalPrice = useMemo(() => {
+    const qty = Number(customAmount);
+    if (!qty || qty <= 0) return null;
+    return qty * BASE_PRICE;
+  }, [customAmount]);
 
 
     return (
@@ -44,7 +64,7 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
             max-h-[90vh]
             overflow-y-auto
             px-6 sm:px-8
-            py-8 sm:py-10
+            py-5 sm:py-6
             "
             >
                 <DialogHeader className="space-y-0">
@@ -54,65 +74,61 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
                     </div>
                 </DialogHeader>
 
-                <div className="mt-3 rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed">
+                <div className="mt-2 rounded-xl border border-border bg-muted/30 p-4 text-sm leading-relaxed">
                     <p>{components_buy_messages_modal_info_line_1()}</p>
                     <p className="mt-2 text-muted-foreground">{components_buy_messages_modal_info_line_2()}</p>
                 </div>
 
-                <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-2.5">
+                <div className="mt-2 grid grid-cols-1 md:grid-cols-2 gap-2.5">
                     {/* Pack 100 */}
-                    <div className="rounded-xl border border-border bg-muted/40 p-4 hover:bg-muted/50 transition-colors flex flex-col justify-between">
+                    <div className="relative rounded-xl border border-border bg-muted/40 p-5 hover:bg-muted/60 transition-colors flex flex-col justify-between gap-4">
+                        <span className="absolute top-3 right-3 inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/25">
+                            20% OFF
+                        </span>
                         <div className="flex items-center gap-3">
-                            <Package className="h-5 w-5 text-muted-foreground" />
+                            <Package className="h-5 w-5 text-muted-foreground shrink-0" />
                             <div>
-                                <p className="font-medium">Pack 100</p>
-                                <p className="text-sm text-muted-foreground">
-                                $0.12 por mensaje
-                                </p>
+                                <p className="font-semibold text-base">Pack 100</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-xs text-muted-foreground line-through">${BASE_PRICE.toFixed(2)} / msg</span>
+                                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">${PACK_PRICE.toFixed(2)} / msg</span>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="mt-2.5 flex items-center justify-between">
-                            <p className="font-semibold">$12.00</p>
-                            <Button size="sm" className="cursor-pointer">{components_buy_messages_modal_custom_buy_button()}</Button>
-                        </div>
-                    </div>
-
-                    {/* Pack 500 (destacado) */}
-                    <div className="rounded-xl border border-primary/40 bg-primary/10 p-4 ring-1 ring-primary/20 flex flex-col justify-between">
-                        <div className="flex items-center gap-3">
-                            <Zap className="h-5 w-5 text-primary" />
+                        <div className="flex items-center justify-between">
                             <div>
-                                <p className="font-medium">Pack 500</p>
-                                <p className="text-sm text-muted-foreground">
-                                $0.09 por mensaje
-                                </p>
+                              <p className="text-xs text-muted-foreground line-through">${PACK_100.originalTotal.toFixed(2)}</p>
+                              <p className="text-lg font-bold">${PACK_100.total.toFixed(2)}</p>
                             </div>
-                        </div>
-
-                        <div className="mt-2.5 flex items-center justify-between">
-                            <p className="font-semibold">$45.00</p>
-                            <Button size="sm" className="cursor-pointer" variant="default">
+                            <Button size="sm" className="cursor-pointer" onClick={() => handleBuy(PACK_100.qty)}>
                                 {components_buy_messages_modal_custom_buy_button()}
                             </Button>
                         </div>
                     </div>
 
-                    {/* Pack 1500 */}
-                    <div className="rounded-xl border border-border bg-muted/40 p-4 hover:bg-muted/50 transition-colors flex flex-col justify-between">
+                    {/* Pack 1000 — destacado */}
+                    <div className="relative rounded-xl border border-primary/40 bg-primary/5 p-5 ring-1 ring-primary/20 flex flex-col justify-between gap-4">
+                        <span className="absolute top-3 right-3 inline-flex items-center rounded-full bg-emerald-500/15 px-2 py-0.5 text-[11px] font-semibold text-emerald-600 dark:text-emerald-400 ring-1 ring-emerald-500/25">
+                            20% OFF
+                        </span>
                         <div className="flex items-center gap-3">
-                            <Package className="h-5 w-5 text-muted-foreground" />
+                            <Zap className="h-5 w-5 text-primary shrink-0" />
                             <div>
-                                <p className="font-medium">Pack 1500</p>
-                                <p className="text-sm text-muted-foreground">
-                                $0.06 por mensaje
-                                </p>
+                                <p className="font-semibold text-base">Pack 1000</p>
+                                <div className="flex items-center gap-1.5 mt-0.5">
+                                  <span className="text-xs text-muted-foreground line-through">${BASE_PRICE.toFixed(2)} / msg</span>
+                                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">${PACK_PRICE.toFixed(2)} / msg</span>
+                                </div>
                             </div>
                         </div>
-
-                        <div className="mt-2.5 flex items-center justify-between">
-                            <p className="font-semibold">$90.00</p>
-                            <Button size="sm" className="cursor-pointer">{components_buy_messages_modal_custom_buy_button()}</Button>
+                        <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-xs text-muted-foreground line-through">${PACK_1000.originalTotal.toFixed(2)}</p>
+                              <p className="text-lg font-bold">${PACK_1000.total.toFixed(2)}</p>
+                            </div>
+                            <Button size="sm" variant="default" className="cursor-pointer" onClick={() => handleBuy(PACK_1000.qty)}>
+                              {components_buy_messages_modal_custom_buy_button()}
+                            </Button>
                         </div>
                     </div>
                 </div>
@@ -123,7 +139,7 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
                     <p className="text-sm font-medium">{components_buy_messages_modal_custom_title()}</p>
 
                     <div className="flex flex-col sm:flex-row sm:items-end gap-3 w-full">
-                        <div className="w-full sm:max-w-[220px]">
+                        <div className="w-full sm:max-w-55">
                             <label className="text-xs text-muted-foreground">{components_buy_messages_modal_custom_input_label()}</label>
                             <Input
                             type="number"
@@ -137,19 +153,19 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
 
                         <div className="flex flex-row items-center gap-4 flex-1">
                             <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                                <span className="font-medium">
-                                ${PRICE_PER_MESSAGE}{components_buy_messages_modal_custom_price_per_message()}
-                                </span>
+                              <span className="font-medium">
+                                ${BASE_PRICE.toFixed(2)}{components_buy_messages_modal_custom_price_per_message()}
+                              </span>
 
-                                <span className="h-3 w-px bg-border" />
+                              <span className="h-3 w-px bg-border" />
 
-                                <span className="font-semibold text-foreground">
-                                    Total:{" "}
-                                    {totalPrice !== null ? `$${totalPrice.toFixed(2)}` : "-"}
-                                </span>
+                              <span className="font-semibold text-foreground">
+                                Total:{" "}
+                                {totalPrice !== null ? `$${totalPrice.toFixed(2)}` : "-"}
+                              </span>
                             </span>
 
-                            <Button className="h-9 cursor-pointer ml-auto">
+                            <Button className="h-9 cursor-pointer ml-auto" onClick={() => handleBuy(Number(customAmount))}>
                                 <CreditCard className="h-4 w-4 mr-2" />
                                 {components_buy_messages_modal_custom_buy_button()}
                             </Button>

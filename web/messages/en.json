@@ -93,7 +93,7 @@
 			"title": "Buy additional messages",
 			"subtitle": "Add extra messages to your account instantly.",
 			"info": {
-				"line_1": "Messages are credited automatically to your account once the purchase is confirmed. Usage is billed together with your monthly invoice at the end of the period.",
+				"line_1": "Messages are credited automatically to your account once the purchase is confirmed. You will be able to see the usage on your invoice in the section Administrator Panel → Billing.",
 				"line_2": "Ideal for usage spikes, campaigns, or one-time needs without changing your current plan."
 			},
 			"custom": {

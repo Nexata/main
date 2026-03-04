@@ -271,3 +271,39 @@ export function useBillingLastBill() {
     staleTime: 60_000,
   });
 }
+
+// ---------- Billing Refill ----------
+
+export async function createBillingRefill(messages: number) {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing.refill.put({
+      $headers: headers,
+      messages,
+    }),
+  );
+}
+
+export type BillingRefill = Awaited<ReturnType<typeof createBillingRefill>>;
+
+export function useCreateBillingRefill() {
+  return async (messages: number) => {
+    return await createBillingRefill(messages);
+  };
+}
+
+// ---------- Payment MP Checkout ----------
+
+export async function getPaymentMpCheckout(billId: string, redirect?: string, language?: string) {
+  return await withAuthRetry(headers =>
+    apiClient.payment.mp[billId]!.get({
+      $headers: { ...headers, ...(language ? { language } : {}) },
+      $query: redirect ? { redirect } : {},
+    }),
+  );
+}
+
+export function useGetPaymentMpCheckout() {
+  return async (billId: string, redirect?: string, language?: string) => {
+    return await getPaymentMpCheckout(billId, redirect, language);
+  };
+}
