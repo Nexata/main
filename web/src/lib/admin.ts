@@ -271,3 +271,99 @@ export function useBillingLastBill() {
     staleTime: 60_000,
   });
 }
+
+// ---------- Billing Refill ----------
+
+export async function createBillingRefill(messages: number) {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing.refill.put({
+      $headers: headers,
+      messages,
+    }),
+  );
+}
+
+export type BillingRefill = Awaited<ReturnType<typeof createBillingRefill>>;
+
+export function useCreateBillingRefill() {
+  return async (messages: number) => {
+    return await createBillingRefill(messages);
+  };
+}
+
+// ---------- Payment MP Checkout ----------
+
+export async function getPaymentMpCheckout(billId: string, redirect?: string, language?: string) {
+  return await withAuthRetry(headers =>
+    apiClient.payment.mp[billId]!.get({
+      $headers: { ...headers, ...(language ? { language } : {}) },
+      $query: redirect ? { redirect } : {},
+    }),
+  );
+}
+
+export function useGetPaymentMpCheckout() {
+  return async (billId: string, redirect?: string, language?: string) => {
+    return await getPaymentMpCheckout(billId, redirect, language);
+  };
+}
+
+// ---------- Billing Bills ----------
+
+export async function getBillingBills() {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing.bills.get({
+      $headers: headers,
+    }),
+  );
+}
+
+export type BillingBills = Awaited<ReturnType<typeof getBillingBills>>;
+
+export function useBillingBills() {
+  return useQuery<BillingBills>({
+    queryKey: ['admin', 'billing', 'bills'],
+    queryFn: getBillingBills,
+    staleTime: 60_000,
+  });
+}
+
+// ---------- Billing Last Refill Bill ----------
+
+export async function getBillingLastRefillBill() {
+  return await withAuthRetry(headers =>
+    apiClient.admin.billing["last-refill-bill"].get({
+      $headers: headers,
+    }),
+  );
+}
+
+export type BillingLastRefillBill = Awaited<ReturnType<typeof getBillingLastRefillBill>>;
+
+export function useBillingLastRefillBill() {
+  return useQuery<BillingLastRefillBill>({
+    queryKey: ['admin', 'billing', 'last-refill-bill'],
+    queryFn: getBillingLastRefillBill,
+    staleTime: 60_000,
+  });
+}
+
+// ---------- USD/ARS Quote ----------
+
+export async function getUsdArsQuote() {
+  return await withAuthRetry(headers =>
+    apiClient.public["usd-ars-quote"].get({
+      $headers: headers,
+    }),
+  );
+}
+
+export type UsdArsQuote = Awaited<ReturnType<typeof getUsdArsQuote>>;
+
+export function useUsdArsQuote() {
+  return useQuery<UsdArsQuote>({
+    queryKey: ['public', 'usd-ars-quote'],
+    queryFn: getUsdArsQuote,
+    staleTime: 5 * 60_000,
+  });
+}

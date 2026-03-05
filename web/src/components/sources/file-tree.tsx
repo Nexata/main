@@ -46,6 +46,7 @@ import {
 } from "@/paraglide/messages.js";
 import { infoToast } from "../info-toast/info-toast";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
+import { useDeleteFiles } from "@/lib/file";
 
 /* =========================
    TYPES
@@ -63,6 +64,7 @@ type Entry = {
   ext: string;
   updatedAt: string;
   size?: number;
+  nexataId?: string | null | undefined;
 };
 
 type Crumb = { id: string; name: string };
@@ -98,22 +100,23 @@ function SkeletonRow() {
 export function StorageFileTree({ credentialId, source }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
-
   const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: components_file_tree_root() }]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [ingestedMap, setIngestedMap] = useState<Map<string, string>>(new Map());
+  const [selectedForIngest, setSelectedForIngest] = useState<Map<string, Entry>>(new Map());
+  const [markedForDelete, setMarkedForDelete] = useState<Map<string, string>>(new Map());
 
   const current = history[historyIndex];
 
+  const deleteMutation = useDeleteFiles();
   const { data: usage } = useBillingUsage();
   const storageUsed = usage?.storage?.used ?? 0;
   const storageLimit = usage?.storage?.limit ?? 1;
 
   /* FETCH */
   async function fetchDir(folderId?: string) {
-    if (!folderId) return;
-    if (!source.getFileTree || !credentialId) return;
+    if (!folderId || !source.getFileTree || !credentialId) return;
 
     setLoading(true);
 
@@ -122,7 +125,9 @@ export function StorageFileTree({ credentialId, source }: Props) {
       let all: Entry[] = [];
 
       do {
-        const input = cursor ? { pageToken: cursor } : folderId === "root" ? {} : { path: folderId };
+        const input = cursor
+          ? { pageToken: cursor }
+          : folderId === "root" ? {} : { path: folderId };
         const res = await source.getFileTree(credentialId, input as any);
 
         all = [...all, ...(res.entries ?? [])];
@@ -130,6 +135,24 @@ export function StorageFileTree({ credentialId, source }: Props) {
       } while (cursor);
 
       setEntries(all);
+
+      setIngestedMap(prev => {
+        const merged = new Map(prev);
+        for (const entry of all) {
+          if (entry.nexataId) merged.set(entry.id, entry.nexataId);
+        }
+        return merged;
+      });
+
+      setSelectedForIngest(prev => {
+        const ingestedIds = new Set(all.filter(e => e.nexataId).map(e => e.id));
+        const hasOverlap = [...ingestedIds].some(id => prev.has(id));
+        if (!hasOverlap) return prev;
+        const next = new Map(prev);
+        for (const id of ingestedIds) next.delete(id);
+        return next;
+      });
+
     } finally {
       setLoading(false);
     }
@@ -178,65 +201,121 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }
 
   /* SELECTION */
-  function toggle(id: string) {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
+  function toggle(file: Entry) {
+    if (ingestedMap.has(file.id)) {
+      setMarkedForDelete(prev => {
+        const next = new Map(prev);
+        markedForDelete.has(file.id)
+          ? next.delete(file.id)
+          : next.set(file.id, ingestedMap.get(file.id)!);
+        return next;
+      });
+      return;
+    }
+
+    setSelectedForIngest(prev => {
+      const next = new Map(prev);
+      next.has(file.id) ? next.delete(file.id) : next.set(file.id, file);
       return next;
     });
   }
 
   function toggleAll() {
-    selected.size === entries.length
-      ? setSelected(new Set())
-      : setSelected(new Set(entries.map(e => e.id)));
+    if (entries.length === 0) return;
+
+    const allVisibleSelected = entries.every(file =>
+      ingestedMap.has(file.id)
+        ? !markedForDelete.has(file.id)
+        : selectedForIngest.has(file.id)
+    );
+
+    const nextSelectedForIngest = new Map(selectedForIngest);
+    const nextMarkedForDelete = new Map(markedForDelete);
+
+    if (allVisibleSelected) {
+      for (const file of entries) {
+        if (ingestedMap.has(file.id)) {
+          nextMarkedForDelete.set(file.id, ingestedMap.get(file.id)!);
+        } else {
+          nextSelectedForIngest.delete(file.id);
+        }
+      }
+    } else {
+      for (const file of entries) {
+        if (ingestedMap.has(file.id)) {
+          nextMarkedForDelete.delete(file.id);
+        } else {
+          nextSelectedForIngest.set(file.id, file);
+        }
+      }
+    }
+
+    setSelectedForIngest(nextSelectedForIngest);
+    setMarkedForDelete(nextMarkedForDelete);
   }
 
   /* STORAGE */
-  const selectedFiles = useMemo(
-    () => entries.filter(e => selected.has(e.id)),
-    [entries, selected]
+  const pendingIngestCount = selectedForIngest.size;
+  const pendingIngestSize = useMemo(
+    () => Array.from(selectedForIngest.values()).reduce((s, f) => s + (f.size ?? 0), 0),
+    [selectedForIngest]
   );
-
-  const selectedSize = selectedFiles.reduce((s, f) => s + (f.size ?? 0), 0);
-  const remaining = storageLimit - (storageUsed + selectedSize);
+  const remaining = storageLimit - (storageUsed + pendingIngestSize);
 
   const formatMB = (n: number) => `${n.toFixed(2)} MB`;
   const formatDate = (d: string) => new Date(d).toLocaleDateString();
 
   /* SAVE SELECTION */
   async function handleConfirm() {
-  	if (!source.ingest || selectedFiles.length === 0) return;
+    if (!source.ingest) return;
 
-  	const toastId = infoToast.loading({
-  		title: components_file_tree_toast_loading_title(),
-      description: components_file_tree_toast_loading_description({ count: selectedFiles.length }),
-  	});
+    const toIngestIds = Array.from(selectedForIngest.keys());
+    const toDeleteIds = Array.from(markedForDelete.values());
 
-  	try {
-  		await source.ingest({
-  			credentialId,
-  			selection: selectedFiles.map(file => ({
-  				id: file.id,
-  				isDir: file.ext === "dir",
-  			})),
-  		});
+    if (toIngestIds.length === 0 && toDeleteIds.length === 0) return;
 
-  		infoToast.success(toastId, {
-  			title: components_file_tree_toast_success_title(),
-  			description: components_file_tree_toast_success_description(),
-  		});
+    const toastId = infoToast.loading({
+      title: components_file_tree_toast_loading_title(),
+      description: components_file_tree_toast_loading_description({
+        count: toIngestIds.length,
+      }),
+    });
 
-  		setSelected(new Set());
-      fetchDir(current?.id);
-  	} catch (err) {
-  		console.error(err);
+    try {
+      await Promise.all([
+        toIngestIds.length > 0
+          ? source.ingest({
+              credentialId,
+              selection: toIngestIds.map(id => {
+                const file = entries.find(e => e.id === id);
+                return { id, isDir: file?.ext === "dir"};
+              }),
+            })
+          : Promise.resolve(),
 
-  		infoToast.error(toastId, {
-  			title: components_file_tree_toast_error_title(),
-  			description: components_file_tree_toast_error_description(),
-  		});
-  	}
+        toDeleteIds.length > 0
+          ? deleteMutation.mutateAsync({ ids: toDeleteIds })
+          : Promise.resolve(),
+      ]);
+
+      infoToast.success(toastId, {
+        title: components_file_tree_toast_success_title(),
+        description: components_file_tree_toast_success_description(),
+      });
+
+      setSelectedForIngest(new Map());
+      setMarkedForDelete(new Map());
+
+      await fetchDir(current?.id);
+
+    } catch (err) {
+      console.error(err);
+
+      infoToast.error(toastId, {
+        title: components_file_tree_toast_error_title(),
+        description: components_file_tree_toast_error_description(),
+      });
+    }
   }
 
   /* UI */
@@ -296,7 +375,14 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
           <div className="flex items-center gap-2 text-[11px]">
             <Checkbox
-              checked={selected.size === entries.length && entries.length > 0}
+              checked={
+                entries.length > 0 &&
+                entries.every(file =>
+                  ingestedMap.has(file.id)
+                    ? !markedForDelete.has(file.id)
+                    : selectedForIngest.has(file.id)
+                )
+              }
               onCheckedChange={toggleAll}
             />
             <span className="text-muted-foreground">{components_file_tree_select_all()}</span>
@@ -348,8 +434,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
                   >
                     <div className="flex items-center gap-2 min-w-0">
                       <Checkbox
-                        checked={selected.has(file.id)}
-                        onCheckedChange={() => toggle(file.id)}
+                      checked={ingestedMap.has(file.id) ? !markedForDelete.has(file.id) : selectedForIngest.has(file.id)}
+                      onCheckedChange={() => toggle(file)}
                       />
 
                       {getIcon(file.ext)}
@@ -391,14 +477,14 @@ export function StorageFileTree({ credentialId, source }: Props) {
           <div className="flex items-center gap-3 text-muted-foreground">
             <span>
               <span className="font-medium text-foreground">
-                {selectedFiles.length}
+                {pendingIngestCount}
               </span>{" "}
               {components_file_tree_selected()}
             </span>
 
             <Separator orientation="vertical" />
 
-            <span>{formatMB(selectedSize)}</span>
+            <span>{formatMB(pendingIngestSize)}</span>
 
             <Separator orientation="vertical" />
 
@@ -416,8 +502,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => setSelected(new Set())}
-              disabled={selected.size === 0}
+              onClick={() => {
+                setSelectedForIngest(new Map());
+                setMarkedForDelete(new Map());
+              }}
+              disabled={selectedForIngest.size === 0 && markedForDelete.size === 0}
             >
               {common_cancel()}
             </Button>
@@ -426,7 +515,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
               <AsyncConfirmButton
                	size="sm"
                	onClick={handleConfirm}
-               	disabled={selected.size === 0 || remaining < 0}
+               	disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || remaining < 0}
               >
                 {common_confirm()}
               </AsyncConfirmButton>

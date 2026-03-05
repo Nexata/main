@@ -52,6 +52,10 @@ import {
 	useEditTenant,
 	useEditUser,
 	useUsers,
+  useBillingBills,
+  useBillingLastBill,
+  useBillingLastRefillBill,
+  useUsdArsQuote,
   type TraceType,
 } from '@/lib/admin';
 import { useMyTenant, type Language, type Plan } from '@/lib/user';
@@ -144,6 +148,7 @@ import {
   'admin.company_overview.billing' as admin_company_overview_billing
 } from '@/paraglide/messages.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
@@ -158,6 +163,7 @@ function AdminSettingsPage() {
 		document.title = admin_meta_title();
 	}, []);
 	const navigate = useNavigate();
+  const { data: usdArsQuote } = useUsdArsQuote();
 
 	return (
 		<div className="flex flex-col gap-6 px-4 py-6 max-w-screen-2xl mx-auto">
@@ -205,6 +211,7 @@ function AdminSettingsPage() {
 			<div className="h-px bg-border" />
 
       <CompanyOverviewSection />
+      <BillingSection usdArsQuote={usdArsQuote as number | null | undefined} />
 			<TraceEventsSection />
 			<UsersSection />
 		</div>
@@ -493,6 +500,318 @@ function CompanyOverviewSection() {
 	);
 }
 
+/* -------------------------------------------------------------------------- */
+/*                              BillingSection                                */
+/* -------------------------------------------------------------------------- */
+
+type BillingSectionProps = { usdArsQuote: number | null | undefined; };
+
+function BillingSection({ usdArsQuote }: BillingSectionProps) {
+  const { data: lastBill, isLoading: lastBillLoading } = useBillingLastBill();
+  const { data: lastRefillBill, isLoading: lastRefillLoading } = useBillingLastRefillBill();
+  const { data: bills } = useBillingBills();
+  const [showARS, setShowARS] = useState(false);
+
+  useEffect(() => {
+    if (bills !== undefined) console.log("[bills]", bills);
+  }, [bills]);
+
+  const quote = usdArsQuote ?? null;
+
+  const formatAmount = (amount: string | number) => {
+    const usd = parseFloat(String(amount));
+    if (showARS && quote) {
+      return "$" + (usd * quote).toLocaleString("es-AR", { maximumFractionDigits: 0 });
+    }
+    return "USD " + usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const formatDate = (date: string) =>
+    new Date(date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+
+  const SOURCE_LABEL: Record<string, string> = {
+    plan_change: "Cambio de plan",
+    refill: "Recarga",
+  };
+
+  const PLAN_COLOR: Record<string, string> = {
+    free: "bg-emerald-500/10 text-emerald-600",
+    personal: "bg-amber-500/10 text-amber-600",
+    business: "bg-primary/10 text-primary",
+    pay_as_you_go: "bg-violet-500/10 text-violet-600",
+  };
+
+  // Animated amount — fades + slides on currency switch
+  const AnimatedAmount = ({ value }: { value: string }) => (
+    <AnimatePresence mode="wait">
+      <motion.span
+        key={value}
+        initial={{ opacity: 0, y: 6 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -6 }}
+        transition={{ duration: 0.18, ease: "easeOut" }}
+        className="tabular-nums"
+      >
+        {value}
+      </motion.span>
+    </AnimatePresence>
+  );
+
+  const BillCardSkeleton = () => (
+    <div className="rounded-xl border border-border bg-background p-5 space-y-4 animate-pulse shadow-sm">
+      <div className="flex items-center justify-between">
+        <div className="h-3 w-28 rounded bg-muted" />
+        <div className="h-5 w-16 rounded-full bg-muted" />
+      </div>
+      <div className="flex items-end justify-between">
+        <div className="h-7 w-24 rounded bg-muted" />
+        <div className="h-3 w-20 rounded bg-muted" />
+      </div>
+      <Separator />
+      <div className="space-y-2">
+        <div className="flex justify-between">
+          <div className="h-3 w-10 rounded bg-muted" />
+          <div className="h-5 w-20 rounded-full bg-muted" />
+        </div>
+        <div className="flex justify-between">
+          <div className="h-3 w-14 rounded bg-muted" />
+          <div className="h-3 w-16 rounded bg-muted" />
+        </div>
+      </div>
+      <Separator />
+      <div className="space-y-2">
+        <div className="h-3 w-12 rounded bg-muted" />
+        {[1, 2, 3].map(i => (
+          <div key={i} className="flex justify-between">
+            <div className="h-3 w-16 rounded bg-muted opacity-60" />
+            <div className="h-3 w-12 rounded bg-muted" />
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+
+  return (
+    <Card className="bg-sidebar">
+      <CardContent className="p-6 space-y-6">
+
+        {/* Header */}
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <h2 className="text-lg font-semibold">Facturación</h2>
+            <p className="text-sm text-muted-foreground">
+              Historial de facturas y recargas de mensajes.
+            </p>
+          </div>
+
+          {/* Currency toggle */}
+          <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 shrink-0">
+            {/* Segmented control style */}
+            <div className="flex items-center rounded-md bg-muted p-0.5 gap-0.5">
+              <button
+                onClick={() => setShowARS(false)}
+                disabled={!quote}
+                className={cn(
+                  "relative px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 outline-none",
+                  !showARS
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                USD
+              </button>
+              <button
+                onClick={() => setShowARS(true)}
+                disabled={!quote}
+                className={cn(
+                  "relative px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 outline-none",
+                  showARS
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground",
+                  !quote && "opacity-40 cursor-not-allowed"
+                )}
+              >
+                ARS
+              </button>
+            </div>
+
+            {quote && (
+              <span className="text-[10px] text-muted-foreground border-l border-border pl-3 tabular-nums">
+                <strong>1 USD = ARS {quote.toLocaleString("es-AR")}</strong>
+              </span>
+            )}
+          </div>
+        </div>
+
+        <Separator />
+
+        {/* Last bills row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          {/* Last Bill */}
+          {lastBillLoading ? <BillCardSkeleton /> : (
+            <div className="rounded-xl border border-border bg-background shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Última factura
+                </p>
+                {lastBill && (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
+                    {lastBill.paid ? "Pagada" : "Pendiente"}
+                  </span>
+                )}
+              </div>
+
+              {lastBill ? (
+                <div className="space-y-3">
+                  <div className="flex items-end justify-between">
+                    <span className="text-2xl font-bold overflow-hidden">
+                      <AnimatedAmount value={formatAmount(lastBill.amount)} />
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(lastBill.createdAt)}</span>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Plan</span>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastBill.plan] ?? "bg-muted text-muted-foreground"}`}>
+                        {lastBill.plan}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Origen</span>
+                      <span className="font-medium">{SOURCE_LABEL[lastBill.source] ?? lastBill.source}</span>
+                    </div>
+                  </div>
+
+                  {lastBill.details && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">Detalle</p>
+                        {"baseBill" in lastBill.details && (
+                          <div className="flex justify-between">
+                            <span>Base</span>
+                            <span className="text-foreground font-medium overflow-hidden">
+                              <AnimatedAmount value={formatAmount(lastBill.details.baseBill as number)} />
+                            </span>
+                          </div>
+                        )}
+                        {"message" in lastBill.details && (
+                          <div className="flex justify-between">
+                            <span>Mensajes</span>
+                            <span className="text-foreground font-medium overflow-hidden">
+                              <AnimatedAmount value={formatAmount(lastBill.details.message as number)} />
+                            </span>
+                          </div>
+                        )}
+                        {"storage" in lastBill.details && (
+                          <div className="flex justify-between">
+                            <span>Storage</span>
+                            <span className="text-foreground font-medium overflow-hidden">
+                              <AnimatedAmount value={formatAmount((lastBill.details.storage as number).toFixed(4))} />
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sin datos aún</p>
+              )}
+            </div>
+          )}
+
+          {/* Last Refill Bill */}
+          {lastRefillLoading ? <BillCardSkeleton /> : (
+            <div className="rounded-xl border border-border bg-background shadow-sm p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                  Última recarga
+                </p>
+                {lastRefillBill && (
+                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastRefillBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
+                    {lastRefillBill.paid ? "Pagada" : "Pendiente"}
+                  </span>
+                )}
+              </div>
+
+              {lastRefillBill ? (
+                <div className="space-y-3">
+                  <div className="flex items-end justify-between">
+                    <span className="text-2xl font-bold overflow-hidden">
+                      <AnimatedAmount value={formatAmount(lastRefillBill.amount)} />
+                    </span>
+                    <span className="text-xs text-muted-foreground">{formatDate(lastRefillBill.createdAt)}</span>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-1.5 text-sm">
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Plan</span>
+                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastRefillBill.plan] ?? "bg-muted text-muted-foreground"}`}>
+                        {lastRefillBill.plan}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Origen</span>
+                      <span className="font-medium">{SOURCE_LABEL[lastRefillBill.source] ?? lastRefillBill.source}</span>
+                    </div>
+                  </div>
+
+                  {lastRefillBill.details && (
+                    <>
+                      <Separator />
+                      <div className="space-y-1.5 text-xs text-muted-foreground">
+                        <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">Detalle</p>
+                        {"messages" in lastRefillBill.details && (
+                          <div className="flex justify-between">
+                            <span>Mensajes recargados</span>
+                            <span className="text-foreground font-medium tabular-nums">{(lastRefillBill.details as any).messages}</span>
+                          </div>
+                        )}
+                        {"perMessage" in lastRefillBill.details && (
+                          <div className="flex justify-between">
+                            <span>Precio por mensaje</span>
+                            <span className="text-foreground font-medium overflow-hidden">
+                              <AnimatedAmount value={formatAmount((lastRefillBill.details as any).perMessage)} />
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Sin datos aún</p>
+              )}
+            </div>
+          )}
+
+        </div>
+
+        <Separator />
+
+        {/* Bills list */}
+        <div className="space-y-2">
+          <p className="text-sm font-medium">Todas las facturas</p>
+          {bills ? (
+            <pre className="text-xs text-foreground whitespace-pre-wrap break-all rounded-xl border border-border bg-muted/30 p-4">
+              {JSON.stringify(bills, null, 2)}
+            </pre>
+          ) : (
+            <p className="text-sm text-muted-foreground">Sin datos aún</p>
+          )}
+        </div>
+
+      </CardContent>
+    </Card>
+  );
+}
 /* -------------------------------------------------------------------------- */
 /*                              Traces Table                                  */
 /* -------------------------------------------------------------------------- */

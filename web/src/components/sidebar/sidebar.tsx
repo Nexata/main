@@ -240,7 +240,7 @@ export default function Sidebar() {
   // User + Tenant info
   const { data: me, isLoading: meLoading } = useMe();
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-  console.log(myTenant);
+
   return (
     <>
       <MotionDiv
@@ -616,7 +616,7 @@ function ThreadTitle({
   }
 
   const animated = useTypingText(title, isTyping);
-  const visibleText = isTyping ? animated : truncateText(title, 22);
+  const visibleText = truncateText(isTyping ? animated : title, 22);
 
   return (
     <TooltipProvider>
