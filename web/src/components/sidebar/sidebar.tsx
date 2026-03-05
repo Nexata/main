@@ -616,7 +616,7 @@ function ThreadTitle({
   }
 
   const animated = useTypingText(title, isTyping);
-  const visibleText = isTyping ? animated : truncateText(title, 22);
+  const visibleText = truncateText(isTyping ? animated : title, 22);
 
   return (
     <TooltipProvider>
