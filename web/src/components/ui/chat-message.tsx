@@ -159,16 +159,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                 return (
                   <div key={`text-${i}`}>
-                    {isStreamingPart ? (
-                      <TypingText
-                        text={part.text}
-                        isActive={shouldAnimateTyping}
-                      />
-                    ) : (
-                      <span className="inline">
-                        <MarkdownRenderer>{part.text}</MarkdownRenderer>
-                      </span>
-                    )}
+                    <MarkdownRenderer>{part.text}</MarkdownRenderer>
                   </div>
                 )
               })}

@@ -207,7 +207,12 @@ const COMPONENTS = {
     "td",
     "px-4 py-3 [&[align=center]]:text-center [&[align=right]]:text-right"
   ),
-  p: withClass("p", "whitespace-pre-wrap"),
+  p: ({ node, ...props }: any) => (
+    <p
+      className="whitespace-pre-wrap animate-in fade-in-0 duration-800"
+      {...props}
+    />
+  ),
   hr: withClass("hr", "border-foreground/20"),
 }
 
