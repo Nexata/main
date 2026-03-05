@@ -10,8 +10,6 @@ import {
   Ban,
   Globe,
 } from "lucide-react"
-
-import { useTypingText } from "@/hooks/use-typing-text"
 import { cn } from "@/lib/utils"
 import {
   Collapsible,
@@ -21,7 +19,6 @@ import {
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sources"
-import { TypingText } from "../typing-text/typing-text"
 
 /* -------------------------------------------------------------------------- */
 /*                                   Styles                                    */
@@ -70,30 +67,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const isAssistant = message.role === "assistant"
 
   const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
-  const lastStreamingTextPart = [...message.parts]
-    .reverse()
-    .find(
-      (p): p is Extract<typeof p, { type: "text" }> =>
-        p.type === "text" && p.state === "streaming"
-    )
-
-  const shouldAnimateTyping =
-    isAssistant &&
-    !disableTypingAnimation &&
-    textParts.some((p) => p.state === "streaming")
-
-  const typedContent = useTypingText(
-    lastStreamingTextPart?.text ?? "",
-    shouldAnimateTyping,
-    4
-  )
-
-  const lastTextPartGlobalIndex = (() => {
-    for (let i = message.parts.length - 1; i >= 0; i--) {
-      if (message.parts[i]?.type === "text") return i
-    }
-    return -1
-  })()
 
   const createdAt =
     typeof message.metadata === "object" &&
@@ -109,6 +82,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   // Helper para FilePreview
   function filePartToBrowserFile(part: any): File {
+    if (!part.url) {
+      return new File(
+        [],
+        part.filename ?? "Unknown",
+        { type: part.mediaType ?? "application/octet-stream" }
+      )
+    }
+
     const base64 = part.url.split(",")[1]
     const bytes = atob(base64)
     const array = new Uint8Array(bytes.length)
@@ -155,8 +136,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             >
               {/* TEXT */}
               {textBuffer.map(({ part, globalIndex }, i) => {
-                const isStreamingPart = shouldAnimateTyping && part === lastStreamingTextPart
-
                 return (
                   <div key={`text-${i}`}>
                     <MarkdownRenderer>{part.text}</MarkdownRenderer>
@@ -297,7 +276,12 @@ function ToolRenderer({
   const StatusIcon = getStatusIcon(part.state)
 
   return (
-    <div className="w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3">
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.25, ease: "easeOut" }}
+      className="w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3"
+    >
       <div className="flex items-center justify-between gap-4">
 
         {/* LEFT SIDE */}
@@ -339,7 +323,7 @@ function ToolRenderer({
         {/* STATUS ICON */}
         <StatusIcon />
       </div>
-    </div>
+    </motion.div>
   )
 }
 

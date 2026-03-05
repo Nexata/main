@@ -22,10 +22,30 @@ export const Route = createFileRoute('/_private/chat')({
 type UIParts = UIMessage['parts'];
 
 function normalizeParts(content: unknown): UIParts {
-	if (!content) return [];
-	if (Array.isArray(content)) return content as UIParts;
-	if (typeof content === 'string') return [{ type: 'text', text: content }];
-	return [];
+  if (!content) return [];
+  if (typeof content === 'string') return [{ type: 'text', text: content }];
+  if (!Array.isArray(content)) return [];
+  console.log('[normalizeParts] raw parts:', JSON.stringify(content, null, 2)); // ← agregá esto
+  return content.map((part: any) => {
+    if (part.type === 'tool-call' && part.toolName) {
+      return {
+        type: `tool-${part.toolName}`,
+        toolCallId: part.toolCallId,
+        state: 'output-available',
+        input: part.input ?? {},
+        output: part.output ?? null,
+      };
+    }
+    if (part.type === 'file') {
+      return {
+        type: 'file',
+        filename: part.filename ?? part.name ?? 'Unknown',
+        mediaType: part.mediaType ?? part.mimeType ?? 'application/octet-stream',
+        url: part.url ?? '',
+      };
+    }
+    return part;
+  }) as UIParts;
 }
 
 export function NexataChat() {

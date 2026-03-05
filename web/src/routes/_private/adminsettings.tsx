@@ -796,7 +796,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
         <Separator />
 
-        {/* Bills list — pending console.log */}
+        {/* Bills list */}
         <div className="space-y-2">
           <p className="text-sm font-medium">Todas las facturas</p>
           {bills ? (

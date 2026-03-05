@@ -240,7 +240,7 @@ export default function Sidebar() {
   // User + Tenant info
   const { data: me, isLoading: meLoading } = useMe();
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-  console.log(myTenant);
+
   return (
     <>
       <MotionDiv
