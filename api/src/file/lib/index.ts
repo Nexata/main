@@ -79,6 +79,8 @@ export async function stringToChunks(
 	fileId: string,
 	chunks: ToStringChunksResult['chunks'],
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
+	if (!chunks.length) return [[], 0];
+
 	const res = await embedMany({
 		model: EMBEDDING_MODEL,
 		values: chunks.map((c) => c.text),

@@ -1,4 +1,4 @@
-import { EMBEDDING_SIZE, VLM_MODEL } from '@api/env';
+import { VLM_MODEL } from '@api/env';
 import {
 	type FileLike,
 	mdSplitter,
@@ -27,7 +27,6 @@ const imageToTextOutput = tObject({
 	}),
 	description: t.Union([
 		t.String({
-			maxLength: EMBEDDING_SIZE,
 			description:
 				'A large description of the image, emphasizing its key semantic features. This will be vectorized and used for semantic search.',
 		}),
@@ -47,7 +46,17 @@ export async function imgToChunks(
 	f: FileLike,
 	raw?: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
 ): Promise<ToStringChunksResult> {
-	const image = raw ? await sharp(f).png().toBuffer() : new Uint8Array(f);
+	const image = raw
+		? await sharp(f, {
+				raw: {
+					width: raw.width!,
+					height: raw.height!,
+					channels: raw.channels!,
+				},
+			})
+				.png()
+				.toBuffer()
+		: new Uint8Array(f);
 
 	const res = await generateText({
 		model: VLM_MODEL,

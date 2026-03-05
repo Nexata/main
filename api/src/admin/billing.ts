@@ -19,8 +19,8 @@ import {
 	getTenantPlan,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
-import { tObject } from '@api/utils/type';
-import { and, desc, eq, isNotNull, ne } from 'drizzle-orm';
+import { Nullish, tObject } from '@api/utils/type';
+import { and, desc, eq, isNotNull, lt, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const billingRouter = new Elysia({ prefix: '/billing' })
@@ -131,13 +131,31 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 	)
 	.get(
 		'/bills',
-		({ activeUser }) =>
+		({ activeUser, query }) =>
 			db
 				.select()
 				.from(bill)
-				.where(eq(bill.slug, activeUser.slug))
-				.orderBy(desc(bill.createdAt)),
-		{ detail: { summary: 'List bills' } },
+				.where(
+					and(
+						eq(bill.slug, activeUser.slug),
+						query.cursor ? lt(bill.createdAt, query.cursor) : undefined,
+					),
+				)
+				.orderBy(desc(bill.createdAt))
+				.limit(query.limit),
+		{
+			detail: { summary: 'List bills' },
+			query: tObject({
+				cursor: Nullish(t.String({ format: 'date' }), {
+					description:
+						'Cursor for pagination, based on createdAt prop (creation date).',
+				}),
+				limit: t.Number({
+					default: 100,
+					description: 'Limit for pagination.',
+				}),
+			}),
+		},
 	)
 	.put(
 		'/plan',

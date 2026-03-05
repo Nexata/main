@@ -300,7 +300,7 @@ export namespace NexataFile {
 						userId: data.userId,
 						slug: data.slug,
 					}),
-					db.insert(chunk).values(chunks),
+					...(chunks.length ? [db.insert(chunk).values(chunks)] : []),
 				]),
 			]);
 
