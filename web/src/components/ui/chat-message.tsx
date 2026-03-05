@@ -9,6 +9,7 @@ import {
   X,
   Ban,
   Globe,
+  Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import {
@@ -211,45 +212,61 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 /* -------------------------------------------------------------------------- */
 
 const ReasoningBlock = ({
-  reasoning,
   streaming,
 }: {
   reasoning: string
   streaming?: boolean
 }) => {
-  const [isOpen, setIsOpen] = useState(false)
+  if (!streaming) return null
 
   return (
-    <div className="w-full sm:max-w-[85%]">
-      <Collapsible
-        open={isOpen}
-        onOpenChange={setIsOpen}
-        className="rounded-lg border bg-muted/50"
-      >
-        <div className="flex items-center p-2">
-          <CollapsibleTrigger className="flex items-center gap-2 text-md">
-            <ChevronRight className="h-4 w-4 transition-transform data-[state=open]:rotate-90" />
-            Thinking
-            {streaming && <Loader2 className="h-3 w-3 animate-spin" />}
-          </CollapsibleTrigger>
-        </div>
+    <motion.div
+      initial={{ opacity: 0, scale: 0.98, y: 6 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      exit={{ opacity: 0, scale: 0.98, y: -4 }}
+      transition={{ duration: 0.4, ease: "easeOut" }}
+      className="relative flex items-center gap-3 w-full sm:max-w-[85%] rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 overflow-hidden"
+    >
+      <motion.div
+        className="absolute inset-0 bg-linear-to-r from-transparent via-violet-400/10 to-transparent"
+        animate={{ x: ["-100%", "100%"] }}
+        transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+      />
 
-        <CollapsibleContent>
-          <motion.div
-            initial={false}
-            animate={isOpen ? "open" : "closed"}
-            variants={{
-              open: { height: "auto", opacity: 1 },
-              closed: { height: 0, opacity: 0 },
+      <div className="relative shrink-0">
+        <motion.div
+          className="absolute inset-0 rounded-full bg-violet-500/30 blur-sm"
+          animate={{ scale: [1, 1.4, 1], opacity: [0.4, 0.8, 0.4] }}
+          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+        />
+        <Sparkles className="relative h-4 w-4 text-violet-400" />
+      </div>
+
+      <div className="relative flex flex-col min-w-0">
+        <span className="text-sm font-semibold text-violet-400">
+          Deep Reasoning
+        </span>
+        <span className="text-xs text-violet-400/60">
+          Analyzing with extended thinking...
+        </span>
+      </div>
+
+      <div className="relative flex items-center gap-1 ml-auto shrink-0">
+        {[0, 1, 2].map((i) => (
+          <motion.span
+            key={i}
+            className="block h-1.5 w-1.5 rounded-full bg-violet-400/70"
+            animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.2, 0.8] }}
+            transition={{
+              duration: 1.4,
+              repeat: Infinity,
+              delay: i * 0.25,
+              ease: "easeInOut",
             }}
-            transition={{ duration: 0.25 }}
-            className="border-t p-2 text-xs whitespace-pre-wrap"
-          >
-            {reasoning}
-          </motion.div>
-        </CollapsibleContent>
-      </Collapsible>
-    </div>
+          />
+        ))}
+      </div>
+    </motion.div>
   )
 }
 
