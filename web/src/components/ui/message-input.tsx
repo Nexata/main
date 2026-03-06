@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, Info, Loader2, Mic, Paperclip, Square, Brain } from "lucide-react"
+import { ArrowUp, Info, Loader2, Paperclip, Square, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
 import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
@@ -61,6 +61,7 @@ export function MessageInput({
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
   const resolvedPlaceholder = placeholder ?? common_ask_nexy()
   const [brainMode, setBrainMode] = useState(false)
+  const [dismissedWarning, setDismissedWarning] = useState(false)
 
   const {
     isListening,
@@ -82,6 +83,10 @@ export function MessageInput({
       setShowInterruptPrompt(false)
     }
   }, [isGenerating])
+
+  useEffect(() => {
+    if (brainMode) setDismissedWarning(false)
+  }, [brainMode])
 
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
@@ -469,7 +474,7 @@ export function MessageInput({
       />
 
       <AnimatePresence>
-        {brainMode && (
+        {brainMode && !dismissedWarning && (
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
@@ -487,9 +492,18 @@ export function MessageInput({
             >
               <Info className="mt-0.5 h-4 w-4 shrink-0 opacity-90" />
 
-              <p className="text-center sm:text-left">
+              <p className="text-center sm:text-left flex-1">
                 {common_brain_description()}
               </p>
+
+              <button
+                type="button"
+                onClick={() => setDismissedWarning(true)}
+                className="ml-1 shrink-0 rounded-md p-0.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
+                aria-label="Dismiss"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
             </div>
           </motion.div>
         )}
