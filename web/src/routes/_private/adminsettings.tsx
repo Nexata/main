@@ -660,11 +660,11 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                   Última factura
                 </p>
-                {lastBill && (
+                {lastBill ? (
                   <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
                     {lastBill.paid ? "Pagada" : "Pendiente"}
                   </span>
-                )}
+                ) : null}
               </div>
 
               {lastBill ? (

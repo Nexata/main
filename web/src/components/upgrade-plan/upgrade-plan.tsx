@@ -45,6 +45,8 @@ import {
 import { useBillingLastBill, useSetBillingPlan } from "@/lib/admin";
 import { useMyTenant, type Plan } from "@/lib/user";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
+import { useGetPaymentMpCheckout } from "@/lib/admin";
+import { getLocale } from "@/paraglide/runtime";
 
 type UpgradePlanModalProps = {
   open: boolean;
@@ -62,6 +64,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
   const { data: lastBill } = useBillingLastBill();
   const { data: tenant } = useMyTenant();
   const setPlan = useSetBillingPlan();
+  const getCheckout = useGetPaymentMpCheckout();
 
   const currentPlan = tenant?.plan as Plan | undefined;
 
@@ -149,7 +152,19 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
 
   const confirm = async () => {
     if (!selectedPlan) return;
-    await setPlan(selectedPlan);
+
+    const res = await setPlan(selectedPlan);
+
+    if (isUpgrade && res?.billId) {
+      const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
+      const language = getLocale();
+      const checkout = await getCheckout(res.billId, redirect, language);
+      if (checkout?.init_point) {
+        window.open(checkout.init_point, "_self");
+        return;
+      }
+    }
+
     onOpenChange(false);
   };
 
