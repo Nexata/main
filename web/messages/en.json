@@ -42,6 +42,10 @@
 	},
 
 	"components": {
+  	"reasoning_block": {
+      "title": "Deep Reasoning",
+      "description": "Analyzing with extended thinking..."
+    },
 		"credentials": {
 			"permissions": {
 			  "view_credentials": "View Permissions",

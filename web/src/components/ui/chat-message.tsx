@@ -14,6 +14,10 @@ import { cn } from "@/lib/utils"
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sources"
+import {
+  'components.reasoning_block.title' as components_reasoning_block_title,
+  'components.reasoning_block.description' as components_reasoning_block_description,
+} from '@/paraglide/messages.js';
 
 /* -------------------------------------------------------------------------- */
 /*                                   Styles                                    */
@@ -235,10 +239,10 @@ const ReasoningBlock = ({
 
       <div className="relative flex flex-col min-w-0">
         <span className="text-sm font-semibold text-violet-400">
-          Deep Reasoning
+          {components_reasoning_block_title()}
         </span>
         <span className="text-xs text-violet-400/60">
-          Analyzing with extended thinking...
+          {components_reasoning_block_description()}
         </span>
       </div>
 

@@ -42,6 +42,10 @@
 	},
 
 	"components": {
+	  "reasoning_block": {
+      "title": "Razonamiento profundo",
+      "description": "Analizando con pensamiento extendido..."
+    },
 		"credentials": {
 			"permissions": {
      	  "view_credentials": "Ver Permisos",
