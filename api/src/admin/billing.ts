@@ -193,7 +193,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					.where(eq(tenant.slug, activeUser.slug)),
 			]);
 
-			await generateBillForTenant(
+			const b = await generateBillForTenant(
 				activeUser.slug,
 				body.plan,
 				BillSource.PLAN_CHANGE,
@@ -209,7 +209,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					await cache.del(...usersWithKeys.map((u) => `apikey:${u.id}`));
 			}
 
-			return { plan: body.plan };
+			return { plan: body.plan, billId: b.billId };
 		},
 		{
 			detail: { summary: 'Change tenant plan' },
