@@ -16,6 +16,8 @@ import {
   Crown,
   Sparkles,
   Diamond,
+  CreditCard,
+  Loader2,
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
@@ -57,6 +59,7 @@ import {
   useBillingLastRefillBill,
   useUsdArsQuote,
   type TraceType,
+  useGetPaymentMpCheckout,
 } from '@/lib/admin';
 import { useMyTenant, type Language, type Plan } from '@/lib/user';
 import { UsageBar } from '@/components/usage-bar/usage-bar'
@@ -145,7 +148,41 @@ import {
   'admin.company_overview.plans.business' as admin_company_overview_plans_business,
   'admin.company_overview.plans.pay_as_you_go' as admin_company_overview_plans_pay_as_you_go,
   'admin.company_overview.plans.personal' as admin_company_overview_plans_personal,
-  'admin.company_overview.billing' as admin_company_overview_billing
+  'admin.company_overview.billing' as admin_company_overview_billing,
+  'admin.billing.title' as admin_billing_title,
+  'admin.billing.description' as admin_billing_description,
+  'admin.billing.currency_toggle.quote_label' as admin_billing_quote_label,
+  'admin.billing.last_bill.title' as admin_billing_last_bill_title,
+  'admin.billing.last_bill.paid' as admin_billing_last_bill_paid,
+  'admin.billing.last_bill.pending' as admin_billing_last_bill_pending,
+  'admin.billing.last_bill.no_data' as admin_billing_last_bill_no_data,
+  'admin.billing.last_bill.plan_label' as admin_billing_last_bill_plan_label,
+  'admin.billing.last_bill.source_label' as admin_billing_last_bill_source_label,
+  'admin.billing.last_bill.detail_title' as admin_billing_last_bill_detail_title,
+  'admin.billing.last_bill.detail_base' as admin_billing_last_bill_detail_base,
+  'admin.billing.last_bill.detail_messages' as admin_billing_last_bill_detail_messages,
+  'admin.billing.last_bill.detail_storage' as admin_billing_last_bill_detail_storage,
+  'admin.billing.last_refill.title' as admin_billing_last_refill_title,
+  'admin.billing.last_refill.messages_recharged' as admin_billing_last_refill_messages_recharged,
+  'admin.billing.last_refill.price_per_message' as admin_billing_last_refill_price_per_message,
+  'admin.billing.sources.plan_change' as admin_billing_sources_plan_change,
+  'admin.billing.sources.refill' as admin_billing_sources_refill,
+  'admin.billing.bills_list.title' as admin_billing_bills_list_title,
+  'admin.billing.bills_list.col_date' as admin_billing_bills_list_col_date,
+  'admin.billing.bills_list.col_source' as admin_billing_bills_list_col_source,
+  'admin.billing.bills_list.col_plan' as admin_billing_bills_list_col_plan,
+  'admin.billing.bills_list.col_detail' as admin_billing_bills_list_col_detail,
+  'admin.billing.bills_list.col_amount' as admin_billing_bills_list_col_amount,
+  'admin.billing.bills_list.col_status' as admin_billing_bills_list_col_status,
+  'admin.billing.bills_list.empty_title' as admin_billing_bills_list_empty_title,
+  'admin.billing.bills_list.empty_description' as admin_billing_bills_list_empty_description,
+  'admin.billing.bills_list.end_title' as admin_billing_bills_list_end_title,
+  'admin.billing.bills_list.end_description' as admin_billing_bills_list_end_description,
+  'admin.billing.bills_list.pay_tooltip' as admin_billing_bills_list_pay_tooltip,
+  'admin.billing.bills_list.page_label' as admin_billing_bills_list_page_label,
+  'admin.billing.bills_list.prev' as admin_billing_bills_list_prev,
+  'admin.billing.bills_list.next' as admin_billing_bills_list_next,
+  'admin.billing.last_bill.no_data_description' as admin_billing_last_bill_no_data_description,
 } from '@/paraglide/messages.js';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { cn } from '@/lib/utils';
@@ -509,20 +546,18 @@ type BillingSectionProps = { usdArsQuote: number | null | undefined; };
 function BillingSection({ usdArsQuote }: BillingSectionProps) {
   const { data: lastBill, isLoading: lastBillLoading } = useBillingLastBill();
   const { data: lastRefillBill, isLoading: lastRefillLoading } = useBillingLastRefillBill();
+  const getCheckout = useGetPaymentMpCheckout();
   const [showARS, setShowARS] = useState(false);
   const BILLS_PAGE_SIZE = 5;
   const [billsCursorStack, setBillsCursorStack] = useState<(string | null)[]>([null]);
   const [billsPage, setBillsPage] = useState(1);
   const billsCursor = billsCursorStack[billsPage - 1] ?? null;
+  const [payingBillId, setPayingBillId] = useState<string | null>(null);
 
   const { data: bills, isLoading: billsLoading } = useBillingBills({
     cursor: billsCursor ?? undefined,
     limit: BILLS_PAGE_SIZE,
   });
-
-  useEffect(() => {
-    if (bills !== undefined) console.log("[bills]", bills);
-  }, [bills]);
 
   const quote = usdArsQuote ?? null;
 
@@ -535,8 +570,8 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
   const formatDate = (date: string) => new Date(date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
 
   const SOURCE_LABEL: Record<string, string> = {
-    plan_change: "Cambio de plan",
-    refill: "Recarga",
+    plan_change: admin_billing_sources_plan_change(),
+    refill: admin_billing_sources_refill(),
   };
 
   const PLAN_COLOR: Record<string, string> = {
@@ -546,7 +581,6 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
     pay_as_you_go: "bg-violet-500/10 text-violet-600",
   };
 
-  // Animated amount — fades + slides on currency switch
   const AnimatedAmount = ({ value }: { value: string }) => (
     <AnimatePresence mode="wait">
       <motion.span
@@ -596,6 +630,27 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
     </div>
   );
 
+  const BillCardEmpty = ({ title }: { title: string }) => (
+    <div className="rounded-xl border border-border bg-background shadow-sm p-5 space-y-4">
+      <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+        {title}
+      </p>
+      <div className="flex flex-col items-center justify-center py-6 gap-3">
+        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-muted">
+          <CreditCard className="w-5 h-5 text-muted-foreground opacity-50" />
+        </div>
+        <div className="text-center space-y-1">
+          <p className="text-sm font-medium text-foreground">
+            {admin_billing_last_bill_no_data()}
+          </p>
+          <p className="text-xs text-muted-foreground">
+            {admin_billing_last_bill_no_data_description()}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+
   return (
     <Card className="bg-sidebar">
       <CardContent className="p-6 space-y-6">
@@ -603,15 +658,12 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
         {/* Header */}
         <div className="flex items-start justify-between gap-4">
           <div>
-            <h2 className="text-lg font-semibold">Facturación</h2>
-            <p className="text-sm text-muted-foreground">
-              Historial de facturas y recargas de mensajes.
-            </p>
+            <h2 className="text-lg font-semibold">{admin_billing_title()}</h2>
+            <p className="text-sm text-muted-foreground">{admin_billing_description()}</p>
           </div>
 
           {/* Currency toggle */}
           <div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 shrink-0">
-            {/* Segmented control style */}
             <div className="flex items-center rounded-md bg-muted p-0.5 gap-0.5">
               <button
                 onClick={() => setShowARS(false)}
@@ -642,7 +694,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
             {quote && (
               <span className="text-[10px] text-muted-foreground border-l border-border pl-3 tabular-nums">
-                <strong>1 USD = ARS {quote.toLocaleString("es-AR")}</strong>
+                <strong>{admin_billing_quote_label({ quote: quote.toLocaleString("es-AR") })}</strong>
               </span>
             )}
           </div>
@@ -654,146 +706,144 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
 
           {/* Last Bill */}
-          {lastBillLoading ? <BillCardSkeleton /> : (
+          {lastBillLoading ? <BillCardSkeleton /> : !lastBill ? (
+            <BillCardEmpty title={admin_billing_last_bill_title()} />
+          ) : (
             <div className="rounded-xl border border-border bg-background shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Última factura
+                  {admin_billing_last_bill_title()}
                 </p>
-                {lastBill ? (
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
-                    {lastBill.paid ? "Pagada" : "Pendiente"}
-                  </span>
-                ) : null}
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
+                  {lastBill.paid ? admin_billing_last_bill_paid() : admin_billing_last_bill_pending()}
+                </span>
               </div>
 
-              {lastBill ? (
-                <div className="space-y-3">
-                  <div className="flex items-end justify-between">
-                    <span className="text-2xl font-bold overflow-hidden">
-                      <AnimatedAmount value={formatAmount(lastBill.amount)} />
-                    </span>
-                    <span className="text-xs text-muted-foreground">{formatDate(lastBill.createdAt)}</span>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Plan</span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastBill.plan] ?? "bg-muted text-muted-foreground"}`}>
-                        {lastBill.plan}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Origen</span>
-                      <span className="font-medium">{SOURCE_LABEL[lastBill.source] ?? lastBill.source}</span>
-                    </div>
-                  </div>
-
-                  {lastBill.details && (
-                    <>
-                      <Separator />
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
-                        <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">Detalle</p>
-                        {"baseBill" in lastBill.details && (
-                          <div className="flex justify-between">
-                            <span>Base</span>
-                            <span className="text-foreground font-medium overflow-hidden">
-                              <AnimatedAmount value={formatAmount(lastBill.details.baseBill as number)} />
-                            </span>
-                          </div>
-                        )}
-                        {"message" in lastBill.details && (
-                          <div className="flex justify-between">
-                            <span>Mensajes</span>
-                            <span className="text-foreground font-medium overflow-hidden">
-                              <AnimatedAmount value={formatAmount(lastBill.details.message as number)} />
-                            </span>
-                          </div>
-                        )}
-                        {"storage" in lastBill.details && (
-                          <div className="flex justify-between">
-                            <span>Storage</span>
-                            <span className="text-foreground font-medium overflow-hidden">
-                              <AnimatedAmount value={formatAmount((lastBill.details.storage as number).toFixed(4))} />
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+              <div className="space-y-3">
+                <div className="flex items-end justify-between">
+                  <span className="text-2xl font-bold overflow-hidden">
+                    <AnimatedAmount value={formatAmount(lastBill.amount)} />
+                  </span>
+                  <span className="text-xs text-muted-foreground">{formatDate(lastBill.createdAt)}</span>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin datos aún</p>
-              )}
+
+                <Separator />
+
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{admin_billing_last_bill_plan_label()}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastBill.plan] ?? "bg-muted text-muted-foreground"}`}>
+                      {lastBill.plan}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{admin_billing_last_bill_source_label()}</span>
+                    <span className="font-medium">{SOURCE_LABEL[lastBill.source] ?? lastBill.source}</span>
+                  </div>
+                </div>
+
+                {lastBill.details && (
+                  <>
+                    <Separator />
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">
+                        {admin_billing_last_bill_detail_title()}
+                      </p>
+                      {"baseBill" in lastBill.details && (
+                        <div className="flex justify-between">
+                          <span>{admin_billing_last_bill_detail_base()}</span>
+                          <span className="text-foreground font-medium overflow-hidden">
+                            <AnimatedAmount value={formatAmount(lastBill.details.baseBill as number)} />
+                          </span>
+                        </div>
+                      )}
+                      {"message" in lastBill.details && (
+                        <div className="flex justify-between">
+                          <span>{admin_billing_last_bill_detail_messages()}</span>
+                          <span className="text-foreground font-medium overflow-hidden">
+                            <AnimatedAmount value={formatAmount(lastBill.details.message as number)} />
+                          </span>
+                        </div>
+                      )}
+                      {"storage" in lastBill.details && (
+                        <div className="flex justify-between">
+                          <span>{admin_billing_last_bill_detail_storage()}</span>
+                          <span className="text-foreground font-medium overflow-hidden">
+                            <AnimatedAmount value={formatAmount((lastBill.details.storage as number).toFixed(4))} />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
           {/* Last Refill Bill */}
-          {lastRefillLoading ? <BillCardSkeleton /> : (
+          {lastRefillLoading ? <BillCardSkeleton /> : !lastRefillBill ? (
+            <BillCardEmpty title={admin_billing_last_refill_title()} />
+          ) : (
             <div className="rounded-xl border border-border bg-background shadow-sm p-5 space-y-4">
               <div className="flex items-center justify-between">
                 <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                  Última recarga
+                  {admin_billing_last_refill_title()}
                 </p>
-                {lastRefillBill && (
-                  <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastRefillBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
-                    {lastRefillBill.paid ? "Pagada" : "Pendiente"}
-                  </span>
-                )}
+                <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${lastRefillBill.paid ? "bg-emerald-500/10 text-emerald-600" : "bg-rose-500/10 text-rose-600"}`}>
+                  {lastRefillBill.paid ? admin_billing_last_bill_paid() : admin_billing_last_bill_pending()}
+                </span>
               </div>
 
-              {lastRefillBill ? (
-                <div className="space-y-3">
-                  <div className="flex items-end justify-between">
-                    <span className="text-2xl font-bold overflow-hidden">
-                      <AnimatedAmount value={formatAmount(lastRefillBill.amount)} />
-                    </span>
-                    <span className="text-xs text-muted-foreground">{formatDate(lastRefillBill.createdAt)}</span>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Plan</span>
-                      <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastRefillBill.plan] ?? "bg-muted text-muted-foreground"}`}>
-                        {lastRefillBill.plan}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Origen</span>
-                      <span className="font-medium">{SOURCE_LABEL[lastRefillBill.source] ?? lastRefillBill.source}</span>
-                    </div>
-                  </div>
-
-                  {lastRefillBill.details && (
-                    <>
-                      <Separator />
-                      <div className="space-y-1.5 text-xs text-muted-foreground">
-                        <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">Detalle</p>
-                        {"messages" in lastRefillBill.details && (
-                          <div className="flex justify-between">
-                            <span>Mensajes recargados</span>
-                            <span className="text-foreground font-medium tabular-nums">{(lastRefillBill.details as any).messages}</span>
-                          </div>
-                        )}
-                        {"perMessage" in lastRefillBill.details && (
-                          <div className="flex justify-between">
-                            <span>Precio por mensaje</span>
-                            <span className="text-foreground font-medium overflow-hidden">
-                              <AnimatedAmount value={formatAmount((lastRefillBill.details as any).perMessage)} />
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    </>
-                  )}
+              <div className="space-y-3">
+                <div className="flex items-end justify-between">
+                  <span className="text-2xl font-bold overflow-hidden">
+                    <AnimatedAmount value={formatAmount(lastRefillBill.amount)} />
+                  </span>
+                  <span className="text-xs text-muted-foreground">{formatDate(lastRefillBill.createdAt)}</span>
                 </div>
-              ) : (
-                <p className="text-sm text-muted-foreground">Sin datos aún</p>
-              )}
+
+                <Separator />
+
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{admin_billing_last_bill_plan_label()}</span>
+                    <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastRefillBill.plan] ?? "bg-muted text-muted-foreground"}`}>
+                      {lastRefillBill.plan}
+                    </span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">{admin_billing_last_bill_source_label()}</span>
+                    <span className="font-medium">{SOURCE_LABEL[lastRefillBill.source] ?? lastRefillBill.source}</span>
+                  </div>
+                </div>
+
+                {lastRefillBill.details && (
+                  <>
+                    <Separator />
+                    <div className="space-y-1.5 text-xs text-muted-foreground">
+                      <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">
+                        {admin_billing_last_bill_detail_title()}
+                      </p>
+                      {"messages" in lastRefillBill.details && (
+                        <div className="flex justify-between">
+                          <span>{admin_billing_last_refill_messages_recharged()}</span>
+                          <span className="text-foreground font-medium tabular-nums">
+                            {(lastRefillBill.details as any).messages}
+                          </span>
+                        </div>
+                      )}
+                      {"perMessage" in lastRefillBill.details && (
+                        <div className="flex justify-between">
+                          <span>{admin_billing_last_refill_price_per_message()}</span>
+                          <span className="text-foreground font-medium overflow-hidden">
+                            <AnimatedAmount value={formatAmount((lastRefillBill.details as any).perMessage)} />
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  </>
+                )}
+              </div>
             </div>
           )}
 
@@ -803,18 +853,18 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
         {/* Bills list */}
         <div className="space-y-3">
-          <p className="text-sm font-medium">Todas las facturas</p>
+          <p className="text-sm font-medium">{admin_billing_bills_list_title()}</p>
 
           <div className="rounded-lg border overflow-hidden">
             <Table>
               <TableHeader className="bg-muted/50">
                 <TableRow>
-                  <TableHead>Fecha</TableHead>
-                  <TableHead>Origen</TableHead>
-                  <TableHead>Plan</TableHead>
-                  <TableHead>Detalle</TableHead>
-                  <TableHead className="text-right">Monto</TableHead>
-                  <TableHead className="text-center">Estado</TableHead>
+                  <TableHead>{admin_billing_bills_list_col_date()}</TableHead>
+                  <TableHead>{admin_billing_bills_list_col_source()}</TableHead>
+                  <TableHead>{admin_billing_bills_list_col_plan()}</TableHead>
+                  <TableHead>{admin_billing_bills_list_col_detail()}</TableHead>
+                  <TableHead className="text-right">{admin_billing_bills_list_col_amount()}</TableHead>
+                  <TableHead className="text-center">{admin_billing_bills_list_col_status()}</TableHead>
                 </TableRow>
               </TableHeader>
 
@@ -834,8 +884,16 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                   <TableRow>
                     <TableCell colSpan={6}>
                       <div className="flex flex-col items-center justify-center py-10 text-center">
-                        <p className="text-sm font-medium">Sin facturas</p>
-                        <p className="text-xs text-muted-foreground mt-1">No hay facturas registradas aún.</p>
+                        <p className="text-sm font-medium">
+                          {billsPage > 1
+                            ? admin_billing_bills_list_end_title()
+                            : admin_billing_bills_list_empty_title()}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {billsPage > 1
+                            ? admin_billing_bills_list_end_description()
+                            : admin_billing_bills_list_empty_description()}
+                        </p>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -848,7 +906,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                     if ('messages' in d && 'perMessage' in d)
                       return `${d.messages} msg × ${formatAmount(d.perMessage)}`
                     if ('baseBill' in d)
-                      return `Base: ${formatAmount(d.baseBill)}`
+                      return `${admin_billing_last_bill_detail_base()}: ${formatAmount(d.baseBill)}`
                     return '—'
                   })()
 
@@ -879,9 +937,40 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                       </TableCell>
 
                       <TableCell className="text-center">
-                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${bill.paid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
-                          {bill.paid ? 'Pagada' : 'Pendiente'}
-                        </span>
+                        {bill.paid ? (
+                          <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-emerald-500/10 text-emerald-600">
+                            {admin_billing_last_bill_paid()}
+                          </span>
+                        ) : (
+                          <div className="flex items-center justify-center gap-2">
+                            <span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-500/10 text-rose-600">
+                              {admin_billing_last_bill_pending()}
+                            </span>
+                            <TooltipUi>
+                              <TooltipTrigger>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-primary hover:bg-primary/10"
+                                  disabled={payingBillId === bill.id}
+                                  onClick={async () => {
+                                    setPayingBillId(bill.id);
+                                    try {
+                                      const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
+                                      const checkout = await getCheckout(bill.id, redirect);
+                                      if (checkout?.init_point) window.open(checkout.init_point, "_self");
+                                    } finally {
+                                      setPayingBillId(null);
+                                    }
+                                  }}
+                                >
+                                  {payingBillId === bill.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CreditCard className="h-4 w-4" />}
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>{admin_billing_bills_list_pay_tooltip()}</TooltipContent>
+                            </TooltipUi>
+                          </div>
+                        )}
                       </TableCell>
                     </TableRow>
                   )
@@ -892,7 +981,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                 <TableRow>
                   <TableCell colSpan={3}>
                     <span className="text-xs text-muted-foreground">
-                      Página {billsPage}
+                      {admin_billing_bills_list_page_label({ page: billsPage })}
                     </span>
                   </TableCell>
                   <TableCell colSpan={3}>
@@ -903,7 +992,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                         disabled={billsPage === 1}
                         onClick={() => setBillsPage(p => p - 1)}
                       >
-                        Anterior
+                        {admin_billing_bills_list_prev()}
                       </Button>
                       <Button
                         size="sm"
@@ -920,7 +1009,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                           setBillsPage(p => p + 1)
                         }}
                       >
-                        Siguiente
+                        {admin_billing_bills_list_next()}
                       </Button>
                     </div>
                   </TableCell>
@@ -934,6 +1023,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
     </Card>
   );
 }
+
 /* -------------------------------------------------------------------------- */
 /*                              Traces Table                                  */
 /* -------------------------------------------------------------------------- */

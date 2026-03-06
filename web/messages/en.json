@@ -314,6 +314,54 @@
         "pay_as_you_go": "Pay as you go"
       }
 		},
+		"billing": {
+      "title": "Billing",
+      "description": "Invoice history and message top-ups.",
+      "currency_toggle": {
+        "quote_label": "1 USD = ARS {quote}"
+      },
+      "last_bill": {
+        "title": "Last invoice",
+        "paid": "Paid",
+        "pending": "Pending",
+        "no_data": "No data yet",
+        "plan_label": "Plan",
+        "source_label": "Source",
+        "detail_title": "Detail",
+        "detail_base": "Base",
+        "detail_messages": "Messages",
+        "detail_storage": "Storage",
+        "no_data_description": "No activity has been recorded in this category yet."
+      },
+      "last_refill": {
+        "title": "Last top-up",
+        "messages_recharged": "Messages recharged",
+        "price_per_message": "Price per message"
+      },
+      "sources": {
+        "plan_change": "Plan change",
+        "refill": "Top-up"
+      },
+      "bills_list": {
+        "title": "All invoices",
+        "col_date": "Date",
+        "col_source": "Source",
+        "col_plan": "Plan",
+        "col_detail": "Detail",
+        "col_amount": "Amount",
+        "col_status": "Status",
+        "detail_base": "Base: {base}",
+        "detail_messages": "{count} msg × {price}",
+        "empty_title": "No invoices",
+        "empty_description": "No invoices have been recorded yet.",
+        "end_title": "No more invoices",
+        "end_description": "You've reached the end of your billing history.",
+        "pay_tooltip": "Pay invoice",
+        "page_label": "Page {page}",
+        "prev": "Previous",
+        "next": "Next"
+      }
+    },
 		"traces": {
       "title": "Event trace",
       "description": "Monitor system activity.",

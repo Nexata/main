@@ -314,6 +314,54 @@
         "pay_as_you_go": "Pago por uso"
       }
 		},
+		"billing": {
+      "title": "Facturación",
+      "description": "Historial de facturas y recargas de mensajes.",
+      "currency_toggle": {
+        "quote_label": "1 USD = ARS {quote}"
+      },
+      "last_bill": {
+        "title": "Última factura",
+        "paid": "Pagada",
+        "pending": "Pendiente",
+        "no_data": "Sin datos aún",
+        "plan_label": "Plan",
+        "source_label": "Origen",
+        "detail_title": "Detalle",
+        "detail_base": "Base",
+        "detail_messages": "Mensajes",
+        "detail_storage": "Storage",
+        "no_data_description": "Aún no se registraron movimientos en esta categoría."
+      },
+      "last_refill": {
+        "title": "Última recarga",
+        "messages_recharged": "Mensajes recargados",
+        "price_per_message": "Precio por mensaje"
+      },
+      "sources": {
+        "plan_change": "Cambio de plan",
+        "refill": "Recarga"
+      },
+      "bills_list": {
+        "title": "Todas las facturas",
+        "col_date": "Fecha",
+        "col_source": "Origen",
+        "col_plan": "Plan",
+        "col_detail": "Detalle",
+        "col_amount": "Monto",
+        "col_status": "Estado",
+        "detail_base": "Base: {base}",
+        "detail_messages": "{count} msg × {price}",
+        "empty_title": "Sin facturas",
+        "empty_description": "No hay facturas registradas aún.",
+        "end_title": "No hay más facturas",
+        "end_description": "Llegaste al final del historial de facturación.",
+        "pay_tooltip": "Pagar factura",
+        "page_label": "Página {page}",
+        "prev": "Anterior",
+        "next": "Siguiente"
+      }
+    },
 		"traces": {
       "title": "Registro de eventos",
       "description": "Monitorea la actividad del sistema.",
