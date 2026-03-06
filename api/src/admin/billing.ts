@@ -72,7 +72,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					)
 					.orderBy(desc(bill.createdAt))
 					.limit(1)
-			).at(0),
+			)[0]!,
 		{ detail: { summary: 'Read last bill' } },
 	)
 	.get(
@@ -90,7 +90,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					)
 					.orderBy(desc(bill.createdAt))
 					.limit(1)
-			).at(0),
+			)[0]!,
 		{ detail: { summary: 'Read last refill bill' } },
 	)
 	.put(
