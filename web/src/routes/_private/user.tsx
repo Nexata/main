@@ -13,7 +13,8 @@ import {
 	RotateCw,
   Trash2,
   Smartphone,
-  Monitor
+  Monitor,
+  Building2
 } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { UAParser } from 'ua-parser-js';
@@ -116,9 +117,11 @@ import {
   'user.profile.info.messages_used' as user_profile_info_messages_used,
   'user.profile.devices.cant_delete' as user_profile_devices_cant_delete,
   'user.profile.devices.current' as user_profile_devices_current,
-  'user.profile.api_keys.actions.not_enabled' as user_profile_api_keys_actions_not_enabled
+  'user.profile.api_keys.actions.not_enabled' as user_profile_api_keys_actions_not_enabled,
+  'sidebar.tenant_switch' as sidebar_tenant_switch,
 } from '@/paraglide/messages.js';
 import { isLocale, setLocale } from '@/paraglide/runtime';
+import { getTenantSessions } from '@/lib/tenant-session';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
@@ -165,7 +168,17 @@ export default function ProfilePage() {
 		if (isLocale(lang)) setLocale(lang, { reload: false });
 
 		updateMe({ language: lang });
-	};
+  };
+
+	// Cambio de Tenant
+	const [tenantCount, setTenantCount] = useState(0);
+
+  useEffect(() => {
+    const sessions = getTenantSessions();
+    setTenantCount(Array.isArray(sessions) ? sessions.length : 0);
+  }, []);
+
+  const canSwitchTenant = tenantCount > 1;
 
 	// Skeleton Loading
 	if (meLoading) return <ProfileSkeleton />;
@@ -326,7 +339,23 @@ export default function ProfilePage() {
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
 						{profile_back_to_chat()}
-					</Button>
+          </Button>
+
+          <Button
+            variant="outline"
+            className="cursor-pointer"
+            disabled={!canSwitchTenant}
+            onClick={() => {
+              if (!canSwitchTenant) return;
+              const sessions = getTenantSessions();
+              if (!sessions?.length) return;
+              const encoded = encodeURIComponent(btoa(JSON.stringify(sessions)));
+              navigate({ to: "/tenant-selection", search: { sessions: encoded } });
+            }}
+          >
+            <Building2 className="h-4 w-4 mr-2" />
+            {sidebar_tenant_switch()}
+          </Button>
 
 					<Button
 						className="cursor-pointer"

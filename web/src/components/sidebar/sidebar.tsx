@@ -7,8 +7,7 @@ import {
   Trash2,
   Settings,
   MessageSquareText,
-  Loader2,
-  Building2,
+  Loader2
 } from "lucide-react";
 import {
   IoSunny,
@@ -30,7 +29,6 @@ import {
   "sidebar.search" as sidebar_search,
   "sidebar.theme" as sidebar_theme,
   "sidebar.settings" as sidebar_settings,
-  "sidebar.tenant_switch" as sidebar_tenant_switch,
   "sidebar.feedback" as sidebar_feedback
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
@@ -42,7 +40,6 @@ import { useChatUIStore } from '@/lib/chat.store';
 import { useTypingText } from '@/hooks/use-typing-text';
 import { useSyncLocale } from "@/hooks/use-sync-language";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
-import { getTenantSessions } from "@/lib/tenant-session";
 
 export default function Sidebar() {
   const navigate = useNavigate()
@@ -228,15 +225,6 @@ export default function Sidebar() {
     setTheme(theme === "dark" ? "light" : "dark");
   };
 
-  // Tenant Switch
-  const [tenantCount, setTenantCount] = useState(0);
-
-  useEffect(() => {
-    const sessions = getTenantSessions();
-    setTenantCount(Array.isArray(sessions) ? sessions.length : 0);
-  }, []);
-  const canSwitchTenant = tenantCount > 1;
-
   // User + Tenant info
   const { data: me, isLoading: meLoading } = useMe();
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
@@ -404,6 +392,7 @@ export default function Sidebar() {
                           title={chat.title ?? "New Chat"}
                           isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
                           isSaving={savingThreads.has(chat.id ?? "")}
+                          sidebarWidth={sidebarWidth}
                         />
 
                         {chat.id !== null && (
@@ -515,43 +504,6 @@ export default function Sidebar() {
                     </TooltipContent>
                   </Tooltip>
                 </div>
-
-                {/* Switch tenant */}
-                <div className={cn(isCollapsed ? "" : "flex-1")}>
-                  <Tooltip>
-                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
-                      <Button
-                        variant="outline"
-                        disabled={!canSwitchTenant}
-                        onClick={() => {
-                          if (!canSwitchTenant) return;
-
-                          const sessions = getTenantSessions();
-                          if (!sessions?.length) return;
-
-                          const encoded = encodeURIComponent(btoa(JSON.stringify(sessions)));
-
-                          navigate({
-                            to: "/tenant-selection",
-                            search: { sessions: encoded },
-                          });
-                        }}
-                        className={cn(
-                          "h-10 rounded-lg transition-all duration-200 cursor-pointer",
-                          isCollapsed ? "w-10" : "w-full",
-                          !canSwitchTenant && "opacity-50 cursor-not-allowed"
-                        )}
-                      >
-                        <Building2 className="w-5 h-5" />
-                      </Button>
-                    </TooltipTrigger>
-
-                    <TooltipContent side={isCollapsed ? "right" : "top"}>
-                      {sidebar_tenant_switch()}
-                    </TooltipContent>
-                  </Tooltip>
-                </div>
-
               </motion.div>
 
               <div className="mt-4">
@@ -564,9 +516,6 @@ export default function Sidebar() {
 
             </div>
           </TooltipProvider>
-
-
-
         </div>
 
         {!isCollapsed && (
@@ -605,10 +554,12 @@ function ThreadTitle({
   title,
   isTyping,
   isSaving,
+  sidebarWidth
 }: {
   title: string;
   isTyping: boolean;
   isSaving: boolean;
+  sidebarWidth: number;
 }) {
   function truncateText(text: string, max = 32) {
     if (text.length <= max) return text;
@@ -616,7 +567,9 @@ function ThreadTitle({
   }
 
   const animated = useTypingText(title, isTyping);
-  const visibleText = truncateText(isTyping ? animated : title, 22);
+  const extraChars = sidebarWidth > 250 ? Math.floor((sidebarWidth - 250) / 12) : 0;
+  const maxChars = Math.floor((sidebarWidth - 80) / 8) + extraChars;
+  const visibleText = truncateText(isTyping ? animated : title, maxChars);
 
   return (
     <TooltipProvider>
