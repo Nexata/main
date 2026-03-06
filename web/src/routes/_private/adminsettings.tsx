@@ -742,40 +742,40 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                   </div>
                 </div>
 
-                {lastBill.details && (
+                {lastBill.details ? (
                   <>
                     <Separator />
                     <div className="space-y-1.5 text-xs text-muted-foreground">
                       <p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">
                         {admin_billing_last_bill_detail_title()}
                       </p>
-                      {"baseBill" in lastBill.details && (
+                      {"baseBill" in lastBill.details ? (
                         <div className="flex justify-between">
                           <span>{admin_billing_last_bill_detail_base()}</span>
                           <span className="text-foreground font-medium overflow-hidden">
                             <AnimatedAmount value={formatAmount(lastBill.details.baseBill as number)} />
                           </span>
                         </div>
-                      )}
-                      {"message" in lastBill.details && (
+                      ) : null}
+                      {"message" in lastBill.details && lastBill.plan === "pay_as_you_go" ? (
                         <div className="flex justify-between">
                           <span>{admin_billing_last_bill_detail_messages()}</span>
                           <span className="text-foreground font-medium overflow-hidden">
                             <AnimatedAmount value={formatAmount(lastBill.details.message as number)} />
                           </span>
                         </div>
-                      )}
-                      {"storage" in lastBill.details && (
+                      ) : null}
+                      {"storage" in lastBill.details && lastBill.plan === "pay_as_you_go" ? (
                         <div className="flex justify-between">
                           <span>{admin_billing_last_bill_detail_storage()}</span>
                           <span className="text-foreground font-medium overflow-hidden">
                             <AnimatedAmount value={formatAmount((lastBill.details.storage as number).toFixed(4))} />
                           </span>
                         </div>
-                      )}
+                      ) : null}
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           )}
@@ -817,7 +817,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                   </div>
                 </div>
 
-                {lastRefillBill.details && (
+                {lastRefillBill.details ? (
                   <>
                     <Separator />
                     <div className="space-y-1.5 text-xs text-muted-foreground">
@@ -842,7 +842,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
                       )}
                     </div>
                   </>
-                )}
+                ) : null}
               </div>
             </div>
           )}
