@@ -1,9 +1,8 @@
-import React, { useState } from "react"
+import React from "react"
 import type { UIMessage } from "@ai-sdk/react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
 import {
-  ChevronRight,
   Loader2,
   Check,
   X,
@@ -12,11 +11,6 @@ import {
   Sparkles,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible"
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sources"
@@ -65,9 +59,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   disableTypingAnimation,
 }) => {
   const isUser = message.role === "user"
-  const isAssistant = message.role === "assistant"
-
-  const textParts = message.parts.filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
 
   const createdAt =
     typeof message.metadata === "object" &&

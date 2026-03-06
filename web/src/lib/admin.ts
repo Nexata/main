@@ -310,20 +310,29 @@ export function useGetPaymentMpCheckout() {
 
 // ---------- Billing Bills ----------
 
-export async function getBillingBills() {
+export type BillingBillsParams = {
+  cursor?: string | null;
+  limit?: number;
+};
+
+export async function getBillingBills(params: BillingBillsParams = {}) {
   return await withAuthRetry(headers =>
     apiClient.admin.billing.bills.get({
       $headers: headers,
+      $query: {
+        ...(params.cursor ? { cursor: params.cursor } : {}),
+        ...(params.limit ? { limit: params.limit } : {}),
+      },
     }),
   );
 }
 
 export type BillingBills = Awaited<ReturnType<typeof getBillingBills>>;
 
-export function useBillingBills() {
+export function useBillingBills(params: BillingBillsParams = {}) {
   return useQuery<BillingBills>({
-    queryKey: ['admin', 'billing', 'bills'],
-    queryFn: getBillingBills,
+    queryKey: ['admin', 'billing', 'bills', params],
+    queryFn: () => getBillingBills(params),
     staleTime: 60_000,
   });
 }

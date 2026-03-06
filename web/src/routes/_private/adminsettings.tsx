@@ -509,8 +509,16 @@ type BillingSectionProps = { usdArsQuote: number | null | undefined; };
 function BillingSection({ usdArsQuote }: BillingSectionProps) {
   const { data: lastBill, isLoading: lastBillLoading } = useBillingLastBill();
   const { data: lastRefillBill, isLoading: lastRefillLoading } = useBillingLastRefillBill();
-  const { data: bills } = useBillingBills();
   const [showARS, setShowARS] = useState(false);
+  const BILLS_PAGE_SIZE = 5;
+  const [billsCursorStack, setBillsCursorStack] = useState<(string | null)[]>([null]);
+  const [billsPage, setBillsPage] = useState(1);
+  const billsCursor = billsCursorStack[billsPage - 1] ?? null;
+
+  const { data: bills, isLoading: billsLoading } = useBillingBills({
+    cursor: billsCursor ?? undefined,
+    limit: BILLS_PAGE_SIZE,
+  });
 
   useEffect(() => {
     if (bills !== undefined) console.log("[bills]", bills);
@@ -520,14 +528,11 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
   const formatAmount = (amount: string | number) => {
     const usd = parseFloat(String(amount));
-    if (showARS && quote) {
-      return "$" + (usd * quote).toLocaleString("es-AR", { maximumFractionDigits: 0 });
-    }
+    if (showARS && quote) return "$" + (usd * quote).toLocaleString("es-AR", { maximumFractionDigits: 0 });
     return "USD " + usd.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
   };
 
-  const formatDate = (date: string) =>
-    new Date(date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
+  const formatDate = (date: string) => new Date(date).toLocaleDateString("es-AR", { day: "2-digit", month: "short", year: "numeric" });
 
   const SOURCE_LABEL: Record<string, string> = {
     plan_change: "Cambio de plan",
@@ -797,15 +802,132 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
         <Separator />
 
         {/* Bills list */}
-        <div className="space-y-2">
+        <div className="space-y-3">
           <p className="text-sm font-medium">Todas las facturas</p>
-          {bills ? (
-            <pre className="text-xs text-foreground whitespace-pre-wrap break-all rounded-xl border border-border bg-muted/30 p-4">
-              {JSON.stringify(bills, null, 2)}
-            </pre>
-          ) : (
-            <p className="text-sm text-muted-foreground">Sin datos aún</p>
-          )}
+
+          <div className="rounded-lg border overflow-hidden">
+            <Table>
+              <TableHeader className="bg-muted/50">
+                <TableRow>
+                  <TableHead>Fecha</TableHead>
+                  <TableHead>Origen</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Detalle</TableHead>
+                  <TableHead className="text-right">Monto</TableHead>
+                  <TableHead className="text-center">Estado</TableHead>
+                </TableRow>
+              </TableHeader>
+
+              <TableBody>
+                {billsLoading && Array.from({ length: BILLS_PAGE_SIZE }).map((_, i) => (
+                  <TableRow key={i} className="h-12">
+                    <TableCell><div className="h-3 w-24 rounded bg-muted animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 w-20 rounded-full bg-muted animate-pulse" /></TableCell>
+                    <TableCell><div className="h-4 w-20 rounded-full bg-muted animate-pulse" /></TableCell>
+                    <TableCell><div className="h-3 w-32 rounded bg-muted animate-pulse" /></TableCell>
+                    <TableCell><div className="h-3 w-16 rounded bg-muted animate-pulse ml-auto" /></TableCell>
+                    <TableCell><div className="h-4 w-16 rounded-full bg-muted animate-pulse mx-auto" /></TableCell>
+                  </TableRow>
+                ))}
+
+                {!billsLoading && (!bills || bills.length === 0) && (
+                  <TableRow>
+                    <TableCell colSpan={6}>
+                      <div className="flex flex-col items-center justify-center py-10 text-center">
+                        <p className="text-sm font-medium">Sin facturas</p>
+                        <p className="text-xs text-muted-foreground mt-1">No hay facturas registradas aún.</p>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )}
+
+                {!billsLoading && bills?.map((bill) => {
+                  const detailText = (() => {
+                    if (!bill.details) return '—'
+                    const d = bill.details as any
+                    if ('messages' in d && 'perMessage' in d)
+                      return `${d.messages} msg × ${formatAmount(d.perMessage)}`
+                    if ('baseBill' in d)
+                      return `Base: ${formatAmount(d.baseBill)}`
+                    return '—'
+                  })()
+
+                  return (
+                    <TableRow key={bill.id}>
+                      <TableCell className="text-sm tabular-nums">
+                        {formatDate(bill.createdAt)}
+                      </TableCell>
+
+                      <TableCell>
+                        <span className="text-sm">
+                          {SOURCE_LABEL[bill.source] ?? bill.source}
+                        </span>
+                      </TableCell>
+
+                      <TableCell>
+                        <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[bill.plan] ?? 'bg-muted text-muted-foreground'}`}>
+                          {bill.plan}
+                        </span>
+                      </TableCell>
+
+                      <TableCell className="text-xs text-muted-foreground">
+                        {detailText}
+                      </TableCell>
+
+                      <TableCell className="text-right font-medium tabular-nums">
+                        <AnimatedAmount value={formatAmount(bill.amount)} />
+                      </TableCell>
+
+                      <TableCell className="text-center">
+                        <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${bill.paid ? 'bg-emerald-500/10 text-emerald-600' : 'bg-rose-500/10 text-rose-600'}`}>
+                          {bill.paid ? 'Pagada' : 'Pendiente'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+
+              <TableFooter className="bg-muted/50">
+                <TableRow>
+                  <TableCell colSpan={3}>
+                    <span className="text-xs text-muted-foreground">
+                      Página {billsPage}
+                    </span>
+                  </TableCell>
+                  <TableCell colSpan={3}>
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={billsPage === 1}
+                        onClick={() => setBillsPage(p => p - 1)}
+                      >
+                        Anterior
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!bills || bills.length < BILLS_PAGE_SIZE}
+                        onClick={() => {
+                          const last = bills?.[bills.length - 1]
+                          if (!last) return
+                          setBillsCursorStack(prev => {
+                            const copy = [...prev]
+                            copy[billsPage] = last.createdAt
+                            return copy
+                          })
+                          setBillsPage(p => p + 1)
+                        }}
+                      >
+                        Siguiente
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              </TableFooter>
+            </Table>
+          </div>
         </div>
 
       </CardContent>
