@@ -62,11 +62,11 @@ export const DINAMIC_DATA_SOURCES: SourceConfig[] = [
 		kind: 'dynamic',
 	},
 	{
-		id: 'outlook_calendar',
+		id: 'microsoft_calendar',
 		provider: 'microsoft',
 		name: 'Outlook Calendar',
 		icon: '/datasource_icons/ocalendar.png',
-		scope: 'outlook_calendar',
+		scope: 'microsoft_calendar',
 		connect: async () => getMicrosoftCredentialUrl('outlook_calendar'),
 		kind: 'dynamic',
 	},
