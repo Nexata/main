@@ -25,7 +25,7 @@ type BuyMessagesModalProps = {
 };
 
 export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) {
-  const BASE_PRICE = 0.10;
+  const BASE_PRICE = 0.09;
   const DISCOUNT = 0.20;
   const PACK_PRICE = parseFloat((BASE_PRICE * (1 - DISCOUNT)).toFixed(4));
 
