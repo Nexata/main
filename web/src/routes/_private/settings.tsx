@@ -8,9 +8,11 @@ import {
   ChevronLeft,
   ChevronRight,
   Search,
-  Calendar,
-  X
+  X,
+  CalendarIcon
 } from 'lucide-react';
+import { Calendar } from '@/components/ui/calendar';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { format } from "date-fns";
 import { useEffect, useState } from 'react';
 import { ConfirmDeleteCredentialModal } from '@/components/credentials/credential-delete-modal';
@@ -52,15 +54,13 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogFooter,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import {
 	'common.error' as common_error,
 	'common.success' as common_success,
@@ -444,11 +444,20 @@ function FilterPill({ label, onRemove }: { label: string; onRemove: () => void }
   );
 }
 
+// ── Discriminated union para el estado del dialog de eliminación ──────────────
+type DeleteDialogState =
+  | { open: false }
+  | { open: true; mode: "single"; fileId: string; fileName: string }
+  | { open: true; mode: "bulk"; count: number; ids: string[] };
+
 export function FilesManagementSection() {
   const [filters, setFilters] = useState<SearchFilesParams>({ page: 1 });
   const [draft, setDraft] = useState<SearchFilesParams>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false);
+  // CAMBIO 1: reemplazamos el booleano por el discriminated union
+  const [deleteDialog, setDeleteDialog] = useState<DeleteDialogState>({ open: false });
+  // CAMBIO 3: estado para el date picker tipo billing
+  const [datePickerOpen, setDatePickerOpen] = useState(false);
 
   const { data: files = [], isLoading, refetch } = useSearchFiles(filters);
   const ingestMutation = useIngestFiles();
@@ -479,16 +488,45 @@ export function FilesManagementSection() {
     setDraft((d) => ({ ...d, [key]: undefined }));
   };
 
-  const handleMassDelete = async () => {
-    await deleteMutation.mutateAsync({ ids: [...selected] });
-    setSelected(new Set());
-    setConfirmDeleteOpen(false);
-    refetch();
+  // CAMBIO 2: handler unificado con infoToast
+  const handleConfirmDelete = async () => {
+    if (!deleteDialog.open) return;
+    const ids   = deleteDialog.mode === "single" ? [deleteDialog.fileId] : deleteDialog.ids;
+    const label = deleteDialog.mode === "single" ? `"${deleteDialog.fileName}"` : `${deleteDialog.count} files`;
+    const toastId = infoToast.loading({ title: `Deleting ${label}…` });
+    try {
+      await deleteMutation.mutateAsync({ ids });
+      setSelected(new Set());
+      setDeleteDialog({ open: false });
+      refetch();
+      infoToast.success(toastId, { title: "Deleted", description: `${label} removed successfully.` });
+    } catch {
+      infoToast.error(toastId, { title: "Error", description: `Could not delete ${label}.` });
+    }
   };
 
+  // CAMBIO 2: refresh unitario con infoToast
+  const handleSingleRefresh = async (fileId: string) => {
+    const toastId = infoToast.loading({ title: "Re-ingesting file…" });
+    try {
+      await ingestMutation.mutateAsync({ files: fileId, metadata: null });
+      refetch();
+      infoToast.success(toastId, { title: "Success", description: "File re-ingested successfully." });
+    } catch {
+      infoToast.error(toastId, { title: "Error", description: "Could not re-ingest the file." });
+    }
+  };
+
+  // CAMBIO 2: refresh masivo con infoToast
   const handleMassRefresh = async () => {
-    await ingestMutation.mutateAsync({ files: "mass", metadata: null });
-    refetch();
+    const toastId = infoToast.loading({ title: `Re-ingesting ${selected.size} file${selected.size !== 1 ? "s" : ""}…` });
+    try {
+      await ingestMutation.mutateAsync({ files: "mass", metadata: null });
+      refetch();
+      infoToast.success(toastId, { title: "Success", description: `${selected.size} file${selected.size !== 1 ? "s" : ""} re-ingested.` });
+    } catch {
+      infoToast.error(toastId, { title: "Error", description: "Could not re-ingest the selected files." });
+    }
   };
 
   const SkeletonRows = () =>
@@ -503,6 +541,18 @@ export function FilesManagementSection() {
   const empty = !isLoading && files.length === 0;
   const currentPage = filters.page ?? 1;
   const hasSelection = selected.size > 0;
+  const selectedDate = draft.createdAt ? new Date(draft.createdAt) : undefined;
+
+  // Contenido del dialog derivado del estado
+  const dialogTitle = !deleteDialog.open ? "" :
+    deleteDialog.mode === "single"
+      ? `Delete "${deleteDialog.fileName}"?`
+      : `Delete ${deleteDialog.count} file${deleteDialog.count !== 1 ? "s" : ""}?`;
+
+  const dialogDescription = !deleteDialog.open ? "" :
+    deleteDialog.mode === "single"
+      ? `"${deleteDialog.fileName}" will be permanently removed and cannot be recovered.`
+      : `You are about to permanently delete ${deleteDialog.count} file${deleteDialog.count !== 1 ? "s" : ""}. This action cannot be undone.`;
 
   return (
     <Card className="bg-sidebar">
@@ -608,15 +658,50 @@ export function FilesManagementSection() {
               </Select>
             </div>
 
-            {/* Ingested since */}
+            {/* CAMBIO 3: Ingested since — Popover + Calendar igual que billing */}
             <div className="flex flex-col gap-1">
               <label className="text-xs font-medium text-muted-foreground">Ingested since</label>
-              <div className="relative">
-                <Calendar className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
-                <Input type="date" className="pl-8 h-9 text-sm"
-                  value={draft.createdAt ? draft.createdAt.split("T")[0] : ""}
-                  onChange={(e) => setDraft((d) => ({ ...d, createdAt: e.target.value ? `${e.target.value}T00:00:00Z` : undefined }))} />
-              </div>
+              <Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
+                <PopoverTrigger>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-9 w-full justify-start text-left font-normal cursor-pointer"
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4 shrink-0" />
+                    {selectedDate ? (
+                      <span>{format(selectedDate, "PPP")}</span>
+                    ) : (
+                      <span className="text-muted-foreground">Pick a date…</span>
+                    )}
+                    {selectedDate && (
+                      <X
+                        className="ml-auto h-3.5 w-3.5 text-muted-foreground hover:text-foreground transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDraft((d) => ({ ...d, createdAt: undefined }));
+                          setDatePickerOpen(false);
+                        }}
+                      />
+                    )}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <Calendar
+                    mode="single"
+                    selected={selectedDate}
+                    onSelect={(date) => {
+                      setDraft((d) => ({
+                        ...d,
+                        createdAt: date ? `${format(date, "yyyy-MM-dd")}T00:00:00Z` : undefined,
+                      }));
+                      setDatePickerOpen(false);
+                    }}
+                    disabled={(date) => date > new Date()}
+                    autoFocus
+                  />
+                </PopoverContent>
+              </Popover>
             </div>
           </div>
 
@@ -634,7 +719,6 @@ export function FilesManagementSection() {
 
         {/* Action bar — always visible */}
         <div className="flex items-center justify-between gap-4 h-9">
-          {/* Left: active filter pills */}
           <div className="flex items-center gap-2 flex-wrap min-h-0 overflow-hidden">
             {activeFilters.length > 0 ? (
               activeFilters.map(({ key, label }) => (
@@ -645,7 +729,6 @@ export function FilesManagementSection() {
             )}
           </div>
 
-          {/* Right: bulk actions */}
           <div className="flex items-center gap-2 shrink-0">
             {hasSelection && (
               <span className="text-xs text-muted-foreground">{selected.size} selected</span>
@@ -654,8 +737,11 @@ export function FilesManagementSection() {
               disabled={!hasSelection} className="gap-1.5 cursor-pointer disabled:opacity-40">
               <RefreshCcw className="w-3.5 h-3.5" /> Refresh
             </Button>
-            <Button size="sm" variant="destructive" onClick={() => setConfirmDeleteOpen(true)}
-              disabled={!hasSelection} className="gap-1.5 cursor-pointer disabled:opacity-40">
+            {/* CAMBIO 1: bulk delete abre el dialog en modo "bulk" */}
+            <Button size="sm" variant="destructive"
+              disabled={!hasSelection}
+              onClick={() => setDeleteDialog({ open: true, mode: "bulk", count: selected.size, ids: [...selected] })}
+              className="gap-1.5 cursor-pointer disabled:opacity-40">
               <Trash2 className="w-3.5 h-3.5" /> Delete
             </Button>
           </div>
@@ -723,7 +809,9 @@ export function FilesManagementSection() {
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger>
-                            <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer" onClick={handleMassRefresh}>
+                            {/* CAMBIO 2: refresh unitario con su propio handler */}
+                            <Button size="icon" variant="ghost" className="h-8 w-8 cursor-pointer"
+                              onClick={() => handleSingleRefresh(file.id)}>
                               <RefreshCcw className="w-3.5 h-3.5" />
                             </Button>
                           </TooltipTrigger>
@@ -731,9 +819,10 @@ export function FilesManagementSection() {
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger>
+                            {/* CAMBIO 1: delete unitario abre el dialog en modo "single" con el nombre */}
                             <Button size="icon" variant="ghost"
                               className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
-                              onClick={() => { setSelected(new Set([file.id])); setConfirmDeleteOpen(true); }}>
+                              onClick={() => setDeleteDialog({ open: true, mode: "single", fileId: file.id, fileName: file.name })}>
                               <Trash2 className="w-3.5 h-3.5" />
                             </Button>
                           </TooltipTrigger>
@@ -770,18 +859,23 @@ export function FilesManagementSection() {
         </div>
       </CardContent>
 
-      <AlertDialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Delete {selected.size} file{selected.size !== 1 ? "s" : ""}?</AlertDialogTitle>
-            <AlertDialogDescription>This action cannot be undone. The selected files will be permanently removed.</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={handleMassDelete} variant="destructive" className="cursor-pointer">Delete</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+      {/* CAMBIO 1+2: dialog diferenciado single/bulk con infoToast */}
+      <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false })}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{dialogTitle}</DialogTitle>
+            <DialogDescription>{dialogDescription}</DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex justify-end gap-2">
+            <Button variant="outline" className="cursor-pointer" onClick={() => setDeleteDialog({ open: false })}>
+              Cancel
+            </Button>
+            <Button variant="destructive" className="cursor-pointer" onClick={handleConfirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </Card>
   );
 }
