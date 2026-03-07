@@ -58,9 +58,9 @@ function BillingPage() {
 			className="flex flex-col gap-6 px-4 py-6 max-w-screen-2xl mx-auto"
 		>
 			{/* Header */}
-			<header className="flex items-center justify-between">
+			<header className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<h1 className="text-3xl font-semibold tracking-tight">
+					<h1 className="text-2xl sm:text-3xl font-semibold tracking-tight">
 						{m['billing.header.title']()}
 					</h1>
 					<p className="text-sm text-muted-foreground">
@@ -68,7 +68,7 @@ function BillingPage() {
 					</p>
 				</div>
 
-				<div className="flex gap-2">
+				<div className="flex gap-2 flex-wrap">
 					<Button
 						variant="destructive"
 						onClick={() => navigate({ to: '/adminsettings' })}
@@ -104,8 +104,8 @@ function BillingPage() {
 function BillingOverviewSection() {
 	return (
 		<Card className="bg-[var(--sidebar)]">
-			<CardContent className="p-6">
-				<div className="flex items-center justify-between gap-6">
+			<CardContent className="p-4 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 					{/* Left — title */}
 					<div>
 						<h2 className="text-lg font-semibold">
@@ -117,7 +117,7 @@ function BillingOverviewSection() {
 					</div>
 
 					{/* Current spend */}
-					<div className="flex items-center justify-between gap-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 min-w-[220px]">
+					<div className="flex items-center justify-between gap-6 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-3 sm:min-w-[220px]">
 						<p className="text-sm text-muted-foreground">
 							{m['billing.overview.current_spend']()}
 						</p>

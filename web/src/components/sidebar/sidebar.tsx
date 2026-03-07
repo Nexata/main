@@ -41,7 +41,12 @@ import { useTypingText } from '@/hooks/use-typing-text';
 import { useSyncLocale } from "@/hooks/use-sync-language";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
-export default function Sidebar() {
+type SidebarProps = {
+  isMobileOverlay?: boolean;
+  onClose?: () => void;
+};
+
+export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarProps) {
   const navigate = useNavigate()
   const [isCollapsed, setIsCollapsed] = useState(false);
   useSyncLocale();
@@ -216,6 +221,7 @@ export default function Sidebar() {
     else hydrateChat(threadId);
 
     navigate({ to: '/chat' });
+    if (isMobileOverlay && onClose) onClose();
   };
 
   // Theme Switch
@@ -229,22 +235,27 @@ export default function Sidebar() {
   const { data: me, isLoading: meLoading } = useMe();
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
+  // In mobile overlay mode, always show expanded at full width
+  const effectiveCollapsed = isMobileOverlay ? false : isCollapsed;
+
   return (
     <>
       <MotionDiv
         className="h-full flex flex-col relative"
-        animate={{ width: isCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
+        animate={isMobileOverlay ? { width: "100%" } : { width: effectiveCollapsed ? COLLAPSED_WIDTH : sidebarWidth }}
         initial={false}
         transition={
-          isResizing
+          isMobileOverlay
             ? { duration: 0 }
-            : { width: { type: "spring", stiffness: 300, damping: 30 } }
+            : isResizing
+              ? { duration: 0 }
+              : { width: { type: "spring", stiffness: 300, damping: 30 } }
         }
       >
         <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md">
           {/* Header */}
           <div className="mb-4 min-h-12 flex items-center w-full justify-between">
-            {!isCollapsed && (
+            {!effectiveCollapsed && (
               <div className="flex items-center gap-4">
                 <motion.img
                   src="/nexata_logo.png"
@@ -275,26 +286,37 @@ export default function Sidebar() {
               </div>
             )}
 
-            <motion.button
-              onClick={() => setIsCollapsed(!isCollapsed)}
-              className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <motion.div
-                key={isCollapsed ? "menu" : "close"}
-                initial={{ rotate: -90, opacity: 0 }}
-                animate={{ rotate: 0, opacity: 1 }}
-                exit={{ rotate: 90, opacity: 0 }}
-                transition={{ type: "spring", stiffness: 250, damping: 28 }}
+            {isMobileOverlay ? (
+              <motion.button
+                onClick={onClose}
+                className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
               >
-                {isCollapsed ? <IoMenu className="w-6 h-6" /> : <IoClose className="w-6 h-6" />}
-              </motion.div>
-            </motion.button>
+                <IoClose className="w-6 h-6" />
+              </motion.button>
+            ) : (
+              <motion.button
+                onClick={() => setIsCollapsed(!isCollapsed)}
+                className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <motion.div
+                  key={effectiveCollapsed ? "menu" : "close"}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ type: "spring", stiffness: 250, damping: 28 }}
+                >
+                  {effectiveCollapsed ? <IoMenu className="w-6 h-6" /> : <IoClose className="w-6 h-6" />}
+                </motion.div>
+              </motion.button>
+            )}
           </div>
 
           {/* Nuevo chat */}
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <Button
               variant="outline"
               className="w-full mb-4 flex items-center gap-2 cursor-pointer"
@@ -306,7 +328,7 @@ export default function Sidebar() {
           )}
 
           {/* Search chats */}
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <div className="mb-3 relative">
               <Input
                 placeholder={sidebar_search()}
@@ -333,7 +355,7 @@ export default function Sidebar() {
           )}
 
           {/* Lista de chats */}
-          {!isCollapsed && (
+          {!effectiveCollapsed && (
             <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin">
               <div className="flex flex-col gap-2">
                 {threadsLoading && (
@@ -426,28 +448,28 @@ export default function Sidebar() {
             <div className="mt-auto flex flex-col w-full">
 
               <motion.div
-                key={isCollapsed ? "collapsed" : "expanded"}
+                key={effectiveCollapsed ? "collapsed" : "expanded"}
                 initial={{ opacity: 0, y: 4 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className={cn(
                   "flex w-full",
-                  isCollapsed
+                  effectiveCollapsed
                     ? "flex-col items-center gap-2"
                     : "flex-row items-center gap-2"
                 )}
               >
 
                 {/* Theme */}
-                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                <div className={cn(effectiveCollapsed ? "" : "flex-1")}>
                   <Tooltip>
-                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                    <TooltipTrigger className={cn(effectiveCollapsed ? "" : "w-full block")}>
                       <Button
                         variant="outline"
                         onClick={toggleDarkMode}
                         className={cn(
                           "h-10 rounded-lg cursor-pointer transition-all duration-200",
-                          isCollapsed ? "w-10" : "w-full"
+                          effectiveCollapsed ? "w-10" : "w-full"
                         )}
                       >
                         {theme === "dark" ? (
@@ -457,49 +479,55 @@ export default function Sidebar() {
                         )}
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                    <TooltipContent side={effectiveCollapsed ? "right" : "top"}>
                       {sidebar_theme()}
                     </TooltipContent>
                   </Tooltip>
                 </div>
 
                 {/* Settings */}
-                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                <div className={cn(effectiveCollapsed ? "" : "flex-1")}>
                   <Tooltip>
-                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                    <TooltipTrigger className={cn(effectiveCollapsed ? "" : "w-full block")}>
                       <Button
                         variant="outline"
-                        onClick={() => navigate({ to: "/settings" })}
+                        onClick={() => {
+                          navigate({ to: "/settings" });
+                          if (isMobileOverlay && onClose) onClose();
+                        }}
                         className={cn(
                           "h-10 rounded-lg cursor-pointer transition-all duration-200",
-                          isCollapsed ? "w-10" : "w-full"
+                          effectiveCollapsed ? "w-10" : "w-full"
                         )}
                       >
                         <Settings className="w-5 h-5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                    <TooltipContent side={effectiveCollapsed ? "right" : "top"}>
                       {sidebar_settings()}
                     </TooltipContent>
                   </Tooltip>
                 </div>
 
                 {/* Feedback */}
-                <div className={cn(isCollapsed ? "" : "flex-1")}>
+                <div className={cn(effectiveCollapsed ? "" : "flex-1")}>
                   <Tooltip>
-                    <TooltipTrigger className={cn(isCollapsed ? "" : "w-full block")}>
+                    <TooltipTrigger className={cn(effectiveCollapsed ? "" : "w-full block")}>
                       <Button
                         variant="outline"
-                        onClick={() => navigate({ to: "/feedback" })}
+                        onClick={() => {
+                          navigate({ to: "/feedback" });
+                          if (isMobileOverlay && onClose) onClose();
+                        }}
                         className={cn(
                           "h-10 rounded-lg cursor-pointer transition-all duration-200",
-                          isCollapsed ? "w-10" : "w-full"
+                          effectiveCollapsed ? "w-10" : "w-full"
                         )}
                       >
                         <MessageSquareText className="w-5 h-5" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent side={isCollapsed ? "right" : "top"}>
+                    <TooltipContent side={effectiveCollapsed ? "right" : "top"}>
                       {sidebar_feedback()}
                     </TooltipContent>
                   </Tooltip>
@@ -509,7 +537,7 @@ export default function Sidebar() {
               <div className="mt-4">
                 <UserSection
                   me={me ?? null}
-                  collapsed={isCollapsed}
+                  collapsed={effectiveCollapsed}
                   loading={meLoading}
                 />
               </div>
@@ -518,7 +546,7 @@ export default function Sidebar() {
           </TooltipProvider>
         </div>
 
-        {!isCollapsed && (
+        {!effectiveCollapsed && !isMobileOverlay && (
           <div
             onMouseDown={() => setIsResizing(true)}
             className="

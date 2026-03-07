@@ -4,10 +4,16 @@ import { useEffect } from 'react';
 import { FcGoogle } from 'react-icons/fc';
 import { IoLogoMicrosoft } from 'react-icons/io5';
 import { SiDropbox } from 'react-icons/si';
+import { apiClient } from '@/api';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { getDropboxLoginUrl, getGoogleLoginUrl, getMicrosoftLoginUrl } from '@/lib/oauth';
 import { isAuthenticated } from '@/lib/auth';
+import { getFingerprint } from '@/lib/fingerprint';
+import {
+	getDropboxLoginUrl,
+	getGoogleLoginUrl,
+	getMicrosoftLoginUrl,
+} from '@/lib/oauth';
 import {
 	'login.meta.title' as login_meta_title,
 	'login.oauth.dropbox' as login_oauth_dropbox,
@@ -16,8 +22,6 @@ import {
 	'login.subtitle' as login_subtitle,
 	'login.title' as login_title,
 } from '@/paraglide/messages.js';
-import { apiClient } from '@/api';
-import { getFingerprint } from '@/lib/fingerprint';
 
 export const Route = createFileRoute('/_public/login')({
 	beforeLoad: () => {
@@ -38,7 +42,7 @@ function LoginPage() {
 			initial={{ opacity: 0, scale: 0.96 }}
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ duration: 0.25, ease: 'easeOut' }}
-			className="w-full max-w-md"
+			className="w-full max-w-md mx-auto min-h-screen flex items-center justify-center px-4"
 		>
 			<Card className="rounded-2xl border shadow-xl">
 				<CardContent className="p-8">
@@ -61,23 +65,23 @@ function LoginPage() {
 
 					{/* OAuth */}
 					<div className="flex flex-col gap-3">
-            <Button
-            variant="outline"
-            className="h-11 gap-3 cursor-pointer"
-              onClick={async () => {
-                var url = await getMicrosoftLoginUrl();
-								window.location.href = url;
-							}}
-            >
-              <IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
-							{login_oauth_microsoft()}
-            </Button>
-
-            <Button
+						<Button
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
-              onClick={async () => {
-                var url = await getGoogleLoginUrl();
+							onClick={async () => {
+								var url = await getMicrosoftLoginUrl();
+								window.location.href = url;
+							}}
+						>
+							<IoLogoMicrosoft className="h-5 w-5 text-blue-500" />
+							{login_oauth_microsoft()}
+						</Button>
+
+						<Button
+							variant="outline"
+							className="h-11 gap-3 cursor-pointer"
+							onClick={async () => {
+								var url = await getGoogleLoginUrl();
 								window.location.href = url;
 							}}
 						>
@@ -89,8 +93,8 @@ function LoginPage() {
 							variant="outline"
 							className="h-11 gap-3 cursor-pointer"
 							onClick={async () => {
-  							var url = await getDropboxLoginUrl();
-   						  window.location.href = url;
+								var url = await getDropboxLoginUrl();
+								window.location.href = url;
 							}}
 						>
 							<SiDropbox className="h-5 w-5 text-[#0061FF]" />

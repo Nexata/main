@@ -1,61 +1,143 @@
 import {
-  createFileRoute,
-  Outlet,
-  redirect,
-  useRouterState,
+	createFileRoute,
+	Outlet,
+	redirect,
+	useRouterState,
 } from '@tanstack/react-router';
-import { motion } from 'framer-motion';
+import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useRef } from 'react';
+import { IoMenu } from 'react-icons/io5';
 import Sidebar from '@/components/sidebar/sidebar';
+import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
+import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
+import { useMyTenant } from '@/lib/user';
 
 export const Route = createFileRoute('/_private')({
-  beforeLoad: () => {
-    if (!isAuthenticated()) {
-      throw redirect({
-        to: '/login',
-      });
-    }
-  },
-  component: PrivateLayout,
+	beforeLoad: () => {
+		if (!isAuthenticated()) {
+			throw redirect({
+				to: '/login',
+			});
+		}
+	},
+	component: PrivateLayout,
 });
 
 function PrivateLayout() {
-  const { location } = useRouterState();
-  const controlsRef = useRef<HTMLDivElement>(null);
+	const { location } = useRouterState();
+	const controlsRef = useRef<HTMLDivElement>(null);
+	const isMobile = useIsMobile();
+	const {
+		isOpen: isMobileSidebarOpen,
+		close: closeMobileSidebar,
+		toggle: toggleMobileSidebar,
+	} = useMobileSidebarStore();
+	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
-  useEffect(() => {
-    controlsRef.current?.animate(
-      [
-        {
-          opacity: 0,
-          transform: 'translateY(6px)',
-        },
-        {
-          opacity: 1,
-          transform: 'translateY(0px)',
-        },
-      ],
-      {
-        duration: 500,
-        easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
-        fill: 'both',
-      }
-    );
-  }, [location.pathname]);
+	// Close mobile sidebar on route change
+	useEffect(() => {
+		closeMobileSidebar();
+	}, [location.pathname, closeMobileSidebar]);
 
+	useEffect(() => {
+		controlsRef.current?.animate(
+			[
+				{
+					opacity: 0,
+					transform: 'translateY(6px)',
+				},
+				{
+					opacity: 1,
+					transform: 'translateY(0px)',
+				},
+			],
+			{
+				duration: 500,
+				easing: 'cubic-bezier(0.16, 1, 0.3, 1)',
+				fill: 'both',
+			},
+		);
+	}, [location.pathname]);
 
-  return (
-    <div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
-      <Sidebar />
+	return (
+		<div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
+			{/* Desktop sidebar */}
+			{!isMobile && <Sidebar />}
 
-      <motion.div
-        ref={controlsRef}
-        initial={{ opacity: 1, x: 0 }}
-        className="flex-1 overflow-y-auto bg-background text-foreground p-6"
-      >
-        <Outlet />
-      </motion.div>
-    </div>
-  );
+			{/* Mobile sidebar overlay */}
+			{isMobile && (
+				<AnimatePresence>
+					{isMobileSidebarOpen && (
+						<>
+							{/* Backdrop */}
+							<motion.div
+								key="mobile-sidebar-backdrop"
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: 0.2 }}
+								className="fixed inset-0 z-40 bg-black/50"
+								onClick={closeMobileSidebar}
+							/>
+
+							{/* Sidebar drawer */}
+							<motion.div
+								key="mobile-sidebar-drawer"
+								initial={{ x: '-100%' }}
+								animate={{ x: 0 }}
+								exit={{ x: '-100%' }}
+								transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+								className="fixed inset-y-0 left-0 z-50 w-[280px] max-w-[85vw]"
+							>
+								<Sidebar isMobileOverlay onClose={closeMobileSidebar} />
+							</motion.div>
+						</>
+					)}
+				</AnimatePresence>
+			)}
+
+			<div className="flex flex-1 flex-col overflow-hidden">
+				{/* Mobile top bar */}
+				{isMobile && (
+					<div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3">
+						<div className="flex items-center gap-3">
+							<button
+								onClick={toggleMobileSidebar}
+								className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+							>
+								<IoMenu className="h-5 w-5" />
+							</button>
+
+							<img
+								src="/nexata_logo.png"
+								alt="Nexata"
+								className="h-6 w-auto object-contain"
+							/>
+
+							{myTenant?.logoUrl && (
+								<>
+									<div className="h-6 w-px bg-border" />
+									<TenantLogo
+										loading={tenantLoading}
+										logoUrl={myTenant.logoUrl}
+										displayName={myTenant.displayName}
+									/>
+								</>
+							)}
+						</div>
+					</div>
+				)}
+
+				<motion.div
+					ref={controlsRef}
+					initial={{ opacity: 1, x: 0 }}
+					className="flex-1 overflow-y-auto bg-background text-foreground p-3 sm:p-4 md:p-6"
+				>
+					<Outlet />
+				</motion.div>
+			</div>
+		</div>
+	);
 }
