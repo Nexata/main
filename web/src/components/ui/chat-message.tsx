@@ -17,6 +17,84 @@ import { DINAMIC_DATA_SOURCES, STORAGE_DATA_SOURCES } from "@/lib/available-sour
 import {
   'components.reasoning_block.title' as components_reasoning_block_title,
   'components.reasoning_block.description' as components_reasoning_block_description,
+  'tools.gmail.search' as tools_gmail_search,
+  'tools.gmail.read' as tools_gmail_read,
+  'tools.drive.search' as tools_drive_search,
+  'tools.drive.list' as tools_drive_list,
+  'tools.outlook.search' as tools_outlook_search,
+  'tools.outlook.read' as tools_outlook_read,
+  'tools.microsoft_calendar.list' as tools_microsoft_calendar_list,
+  'tools.microsoft_calendar.events' as tools_microsoft_calendar_events,
+  'tools.microsoft_calendar.read' as tools_microsoft_calendar_read,
+  'tools.one_drive.search' as tools_one_drive_search,
+  'tools.one_drive.list' as tools_one_drive_list,
+  'tools.dropbox.search' as tools_dropbox_search,
+  'tools.dropbox.list' as tools_dropbox_list,
+  'tools.calendar.list' as tools_calendar_list,
+  'tools.calendar.events' as tools_calendar_events,
+  'tools.calendar.read' as tools_calendar_read,
+  'tools.nexata.list_credentials' as tools_nexata_list_credentials,
+  'tools.nexata.list_users' as tools_nexata_list_users,
+  'tools.nexata.file_search' as tools_nexata_file_search,
+  'tools.nexata.file_read' as tools_nexata_file_read,
+  'tools.nexata.feedback_list' as tools_nexata_feedback_list,
+  'tools.nexata.feedback_create' as tools_nexata_feedback_create,
+  'tools.nexata.list_files_on_thread' as tools_nexata_list_files_on_thread,
+  'tools.nexata.list_files_on_message' as tools_nexata_list_files_on_message,
+  'tools.nexata.reingest' as tools_nexata_reingest,
+  'tools.nexata.ask_questions' as tools_nexata_ask_questions,
+  'tools.gmail.search_success' as tools_gmail_search_success,
+  'tools.gmail.search_error' as tools_gmail_search_error,
+  'tools.gmail.read_success' as tools_gmail_read_success,
+  'tools.gmail.read_error' as tools_gmail_read_error,
+  'tools.drive.search_success' as tools_drive_search_success,
+  'tools.drive.search_error' as tools_drive_search_error,
+  'tools.drive.list_success' as tools_drive_list_success,
+  'tools.drive.list_error' as tools_drive_list_error,
+  'tools.outlook.search_success' as tools_outlook_search_success,
+  'tools.outlook.search_error' as tools_outlook_search_error,
+  'tools.outlook.read_success' as tools_outlook_read_success,
+  'tools.outlook.read_error' as tools_outlook_read_error,
+  'tools.microsoft_calendar.list_success' as tools_microsoft_calendar_list_success,
+  'tools.microsoft_calendar.list_error' as tools_microsoft_calendar_list_error,
+  'tools.microsoft_calendar.events_success' as tools_microsoft_calendar_events_success,
+  'tools.microsoft_calendar.events_error' as tools_microsoft_calendar_events_error,
+  'tools.microsoft_calendar.read_success' as tools_microsoft_calendar_read_success,
+  'tools.microsoft_calendar.read_error' as tools_microsoft_calendar_read_error,
+  'tools.one_drive.search_success' as tools_one_drive_search_success,
+  'tools.one_drive.search_error' as tools_one_drive_search_error,
+  'tools.one_drive.list_success' as tools_one_drive_list_success,
+  'tools.one_drive.list_error' as tools_one_drive_list_error,
+  'tools.dropbox.search_success' as tools_dropbox_search_success,
+  'tools.dropbox.search_error' as tools_dropbox_search_error,
+  'tools.dropbox.list_success' as tools_dropbox_list_success,
+  'tools.dropbox.list_error' as tools_dropbox_list_error,
+  'tools.calendar.list_success' as tools_calendar_list_success,
+  'tools.calendar.list_error' as tools_calendar_list_error,
+  'tools.calendar.events_success' as tools_calendar_events_success,
+  'tools.calendar.events_error' as tools_calendar_events_error,
+  'tools.calendar.read_success' as tools_calendar_read_success,
+  'tools.calendar.read_error' as tools_calendar_read_error,
+  'tools.nexata.list_credentials_success' as tools_nexata_list_credentials_success,
+  'tools.nexata.list_credentials_error' as tools_nexata_list_credentials_error,
+  'tools.nexata.list_users_success' as tools_nexata_list_users_success,
+  'tools.nexata.list_users_error' as tools_nexata_list_users_error,
+  'tools.nexata.file_search_success' as tools_nexata_file_search_success,
+  'tools.nexata.file_search_error' as tools_nexata_file_search_error,
+  'tools.nexata.file_read_success' as tools_nexata_file_read_success,
+  'tools.nexata.file_read_error' as tools_nexata_file_read_error,
+  'tools.nexata.feedback_list_success' as tools_nexata_feedback_list_success,
+  'tools.nexata.feedback_list_error' as tools_nexata_feedback_list_error,
+  'tools.nexata.feedback_create_success' as tools_nexata_feedback_create_success,
+  'tools.nexata.feedback_create_error' as tools_nexata_feedback_create_error,
+  'tools.nexata.list_files_on_thread_success' as tools_nexata_list_files_on_thread_success,
+  'tools.nexata.list_files_on_thread_error' as tools_nexata_list_files_on_thread_error,
+  'tools.nexata.list_files_on_message_success' as tools_nexata_list_files_on_message_success,
+  'tools.nexata.list_files_on_message_error' as tools_nexata_list_files_on_message_error,
+  'tools.nexata.reingest_success' as tools_nexata_reingest_success,
+  'tools.nexata.reingest_error' as tools_nexata_reingest_error,
+  'tools.nexata.ask_questions_success' as tools_nexata_ask_questions_success,
+  'tools.nexata.ask_questions_error' as tools_nexata_ask_questions_error,
 } from '@/paraglide/messages.js';
 
 /* -------------------------------------------------------------------------- */
@@ -179,6 +257,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           }
 
           if (isToolPart(part)) {
+            console.log(part);
             blocks.push(
               <ToolRenderer
                 key={`tool-${index}`}
@@ -269,11 +348,94 @@ const ReasoningBlock = ({
 /*                                ToolRenderer                                 */
 /* -------------------------------------------------------------------------- */
 
-function ToolRenderer({
-  part,
-}: {
-  part: UIMessage["parts"][number]
-}) {
+// Agregar estos imports a los paraglide existentes:
+// 'tools.gmail.search_success', 'tools.gmail.search_error', etc.
+// (ver lista completa abajo en el JSON)
+
+const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => string; error: () => string }> = {
+  GmailSearch:              { pending: tools_gmail_search,                    success: tools_gmail_search_success,                    error: tools_gmail_search_error },
+  GmailRead:                { pending: tools_gmail_read,                      success: tools_gmail_read_success,                      error: tools_gmail_read_error },
+  DriveSearch:              { pending: tools_drive_search,                    success: tools_drive_search_success,                    error: tools_drive_search_error },
+  DriveListDir:             { pending: tools_drive_list,                      success: tools_drive_list_success,                      error: tools_drive_list_error },
+  OutlookSearch:            { pending: tools_outlook_search,                  success: tools_outlook_search_success,                  error: tools_outlook_search_error },
+  OutlookRead:              { pending: tools_outlook_read,                    success: tools_outlook_read_success,                    error: tools_outlook_read_error },
+  MicrosoftCalendarList:    { pending: tools_microsoft_calendar_list,         success: tools_microsoft_calendar_list_success,         error: tools_microsoft_calendar_list_error },
+  MicrosoftCalendarEvents:  { pending: tools_microsoft_calendar_events,       success: tools_microsoft_calendar_events_success,       error: tools_microsoft_calendar_events_error },
+  MicrosoftCalendarRead:    { pending: tools_microsoft_calendar_read,         success: tools_microsoft_calendar_read_success,         error: tools_microsoft_calendar_read_error },
+  OneDriveSearch:           { pending: tools_one_drive_search,                success: tools_one_drive_search_success,                error: tools_one_drive_search_error },
+  OneDriveListDir:          { pending: tools_one_drive_list,                  success: tools_one_drive_list_success,                  error: tools_one_drive_list_error },
+  DropboxSearch:            { pending: tools_dropbox_search,                  success: tools_dropbox_search_success,                  error: tools_dropbox_search_error },
+  DropboxListDir:           { pending: tools_dropbox_list,                    success: tools_dropbox_list_success,                    error: tools_dropbox_list_error },
+  CalendarList:             { pending: tools_calendar_list,                   success: tools_calendar_list_success,                   error: tools_calendar_list_error },
+  CalendarEvents:           { pending: tools_calendar_events,                 success: tools_calendar_events_success,                 error: tools_calendar_events_error },
+  CalendarRead:             { pending: tools_calendar_read,                   success: tools_calendar_read_success,                   error: tools_calendar_read_error },
+  NexataListCredentials:    { pending: tools_nexata_list_credentials,         success: tools_nexata_list_credentials_success,         error: tools_nexata_list_credentials_error },
+  NexataListUsers:          { pending: tools_nexata_list_users,               success: tools_nexata_list_users_success,               error: tools_nexata_list_users_error },
+  NexataFileSearch:         { pending: tools_nexata_file_search,              success: tools_nexata_file_search_success,              error: tools_nexata_file_search_error },
+  NexataFileRead:           { pending: tools_nexata_file_read,                success: tools_nexata_file_read_success,                error: tools_nexata_file_read_error },
+  NexataFeedbackList:       { pending: tools_nexata_feedback_list,            success: tools_nexata_feedback_list_success,            error: tools_nexata_feedback_list_error },
+  NexataFeedbackCreate:     { pending: tools_nexata_feedback_create,          success: tools_nexata_feedback_create_success,          error: tools_nexata_feedback_create_error },
+  NexataListFilesOnThread:  { pending: tools_nexata_list_files_on_thread,     success: tools_nexata_list_files_on_thread_success,     error: tools_nexata_list_files_on_thread_error },
+  NexataListFilesOnMessage: { pending: tools_nexata_list_files_on_message,    success: tools_nexata_list_files_on_message_success,    error: tools_nexata_list_files_on_message_error },
+  NexataReingest:           { pending: tools_nexata_reingest,                 success: tools_nexata_reingest_success,                 error: tools_nexata_reingest_error },
+  NexataAskQuestions:       { pending: tools_nexata_ask_questions,            success: tools_nexata_ask_questions_success,            error: tools_nexata_ask_questions_error },
+}
+
+const NEXATA_TOOLS = new Set([
+  'NexataListCredentials',
+  'NexataListUsers',
+  'NexataFileSearch',
+  'NexataFileRead',
+  'NexataFeedbackList',
+  'NexataFeedbackCreate',
+  'NexataListFilesOnThread',
+  'NexataListFilesOnMessage',
+  'NexataReingest',
+  'NexataAskQuestions',
+])
+
+// Mapa directo toolName -> icono, usando los ids exactos de available-sources
+const TOOL_ICON_MAP: Record<string, string> = {
+  GmailSearch:              '/datasource_icons/gmail.png',
+  GmailRead:                '/datasource_icons/gmail.png',
+  DriveSearch:              '/datasource_icons/gdrive.png',
+  DriveListDir:             '/datasource_icons/gdrive.png',
+  OutlookSearch:            '/datasource_icons/outlook.png',
+  OutlookRead:              '/datasource_icons/outlook.png',
+  MicrosoftCalendarList:    '/datasource_icons/ocalendar.png',
+  MicrosoftCalendarEvents:  '/datasource_icons/ocalendar.png',
+  MicrosoftCalendarRead:    '/datasource_icons/ocalendar.png',
+  OneDriveSearch:           '/datasource_icons/onedrive.png',
+  OneDriveListDir:          '/datasource_icons/onedrive.png',
+  DropboxSearch:            '/datasource_icons/dropbox.png',
+  DropboxListDir:           '/datasource_icons/dropbox.png',
+  CalendarList:             '/datasource_icons/gcalendar.png',
+  CalendarEvents:           '/datasource_icons/gcalendar.png',
+  CalendarRead:             '/datasource_icons/gcalendar.png',
+}
+
+function getToolLabel(rawToolName: string, state?: string) {
+  const entry = TOOL_LABEL_MAP[rawToolName]
+  if (!entry) return rawToolName
+  if (state === 'output-available') return entry.success()
+  if (state === 'output-error' || state === 'output-denied') return entry.error()
+  return entry.pending()
+}
+
+function getCredentialEmails(part: any): string[] {
+  const output = (part as any).output
+  if (!output) return []
+  if (Array.isArray(output)) {
+    const emails = output
+      .map((item: any) => item?.credentialEmail)
+      .filter(Boolean) as string[]
+    // deduplicate
+    return [...new Set(emails)]
+  }
+  return output?.credentialEmail ? [output.credentialEmail] : []
+}
+
+function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
   if (!isToolPart(part)) return null
 
   const rawToolName =
@@ -281,11 +443,14 @@ function ToolRenderer({
       ? part.toolName
       : part.type.replace("tool-", "")
 
-  const normalized = normalizeToolName(rawToolName)
-
-  const dataSource = findDataSource(normalized)
-
+  const label = getToolLabel(rawToolName, part.state)
+  const isNexata = NEXATA_TOOLS.has(rawToolName)
+  const icon = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
   const StatusIcon = getStatusIcon(part.state)
+
+  const emails = getCredentialEmails(part)
+  const visibleEmails = emails.slice(0, 2)
+  const extraCount = emails.length - visibleEmails.length
 
   return (
     <motion.div
@@ -295,44 +460,39 @@ function ToolRenderer({
       className="w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3"
     >
       <div className="flex items-center justify-between gap-4">
-
-        {/* LEFT SIDE */}
         <div className="flex items-center gap-3 min-w-0">
 
-          {/* Data source icon */}
-          {dataSource ? (
+          {/* Icon: Nexata > tool icon map > fallback */}
+          {isNexata ? (
             <img
-              src={dataSource.icon}
-              alt={dataSource.name}
-              className="h-5 w-5 shrink-0"
+              src="/nexata_logo.png"
+              alt="Nexata"
+              className="h-5 w-auto max-w-15 shrink-0 object-contain"
             />
+          ) : icon ? (
+            <img src={icon} alt={rawToolName} className="h-5 w-5 shrink-0 object-contain" />
           ) : (
             <Globe className="h-5 w-5 shrink-0 text-muted-foreground" />
           )}
 
-          {/* Tool name + ID */}
           <div className="flex flex-col min-w-0">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="text-md font-medium truncate">
-                {rawToolName}
-              </span>
+            <span className="text-md font-medium truncate">{label}</span>
 
-              {(part as any).toolCallId && (
-                <span className="text-xs text-muted-foreground truncate">
-                  | {(part as any).toolCallId}
-                </span>
-              )}
-            </div>
-
-            {(part as any).output?.credentialEmail && (
-              <span className="text-xs opacity-60 truncate">
-                {(part as any).output.credentialEmail}
-              </span>
+            {visibleEmails.length > 0 && (
+              <div className="flex items-center gap-1 flex-wrap">
+                {visibleEmails.map((email) => (
+                  <span key={email} className="text-xs opacity-60 truncate">
+                    {email}
+                  </span>
+                ))}
+                {extraCount > 0 && (
+                  <span className="text-xs opacity-40">+{extraCount}</span>
+                )}
+              </div>
             )}
           </div>
         </div>
 
-        {/* STATUS ICON */}
         <StatusIcon />
       </div>
     </motion.div>
@@ -342,22 +502,6 @@ function ToolRenderer({
 /* -------------------------------------------------------------------------- */
 /*                             Helper functions                                */
 /* -------------------------------------------------------------------------- */
-
-function normalizeToolName(name: string) {
-  return name
-    .toLowerCase()
-    .replace("search", "")
-    .replace(/[_-]/g, "")
-    .trim()
-}
-
-function findDataSource(normalized: string) {
-  const all = [...DINAMIC_DATA_SOURCES, ...STORAGE_DATA_SOURCES]
-
-  return all.find((source) =>
-    normalized.includes(source.id.toLowerCase())
-  )
-}
 
 function getStatusIcon(state?: string) {
   if (state === "output-available") return () => <Check className="h-4 w-4 text-green-500" />

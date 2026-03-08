@@ -663,5 +663,101 @@
 			"edit": "Editar feedback",
 			"delete": "Eliminar feedback"
 		}
-	}
+	},
+	"tools": {
+    "gmail": {
+      "search": "Buscando en Gmail...",
+      "search_success": "Búsqueda en Gmail completada",
+      "search_error": "Error al buscar en Gmail",
+      "read": "Leyendo correo de Gmail...",
+      "read_success": "Correo de Gmail leído",
+      "read_error": "Error al leer correo de Gmail"
+    },
+    "drive": {
+      "search": "Buscando en Google Drive...",
+      "search_success": "Búsqueda en Drive completada",
+      "search_error": "Error al buscar en Drive",
+      "list": "Listando carpeta de Drive...",
+      "list_success": "Carpeta de Drive listada",
+      "list_error": "Error al listar Drive"
+    },
+    "outlook": {
+      "search": "Buscando en Outlook...",
+      "search_success": "Búsqueda en Outlook completada",
+      "search_error": "Error al buscar en Outlook",
+      "read": "Leyendo correo de Outlook...",
+      "read_success": "Correo de Outlook leído",
+      "read_error": "Error al leer correo de Outlook"
+    },
+    "microsoft_calendar": {
+      "list": "Listando calendarios de Microsoft...",
+      "list_success": "Calendarios de Microsoft listados",
+      "list_error": "Error al listar calendarios de Microsoft",
+      "events": "Obteniendo eventos de Microsoft...",
+      "events_success": "Eventos de Microsoft obtenidos",
+      "events_error": "Error al obtener eventos de Microsoft",
+      "read": "Leyendo evento de Microsoft...",
+      "read_success": "Evento de Microsoft leído",
+      "read_error": "Error al leer evento de Microsoft"
+    },
+    "one_drive": {
+      "search": "Buscando en OneDrive...",
+      "search_success": "Búsqueda en OneDrive completada",
+      "search_error": "Error al buscar en OneDrive",
+      "list": "Listando carpeta de OneDrive...",
+      "list_success": "Carpeta de OneDrive listada",
+      "list_error": "Error al listar OneDrive"
+    },
+    "dropbox": {
+      "search": "Buscando en Dropbox...",
+      "search_success": "Búsqueda en Dropbox completada",
+      "search_error": "Error al buscar en Dropbox",
+      "list": "Listando carpeta de Dropbox...",
+      "list_success": "Carpeta de Dropbox listada",
+      "list_error": "Error al listar Dropbox"
+    },
+    "calendar": {
+      "list": "Listando calendarios de Google...",
+      "list_success": "Calendarios de Google listados",
+      "list_error": "Error al listar calendarios de Google",
+      "events": "Obteniendo eventos de Google...",
+      "events_success": "Eventos de Google obtenidos",
+      "events_error": "Error al obtener eventos de Google",
+      "read": "Leyendo evento de Google...",
+      "read_success": "Evento de Google leído",
+      "read_error": "Error al leer evento de Google"
+    },
+    "nexata": {
+      "list_credentials": "Verificando integraciones...",
+      "list_credentials_success": "Integraciones verificadas",
+      "list_credentials_error": "Error al verificar integraciones",
+      "list_users": "Consultando usuarios...",
+      "list_users_success": "Usuarios consultados",
+      "list_users_error": "Error al consultar usuarios",
+      "file_search": "Buscando archivos...",
+      "file_search_success": "Archivos encontrados",
+      "file_search_error": "Error al buscar archivos",
+      "file_read": "Leyendo archivo...",
+      "file_read_success": "Archivo leído",
+      "file_read_error": "Error al leer archivo",
+      "feedback_list": "Cargando feedback...",
+      "feedback_list_success": "Feedback cargado",
+      "feedback_list_error": "Error al cargar feedback",
+      "feedback_create": "Registrando feedback...",
+      "feedback_create_success": "Feedback registrado",
+      "feedback_create_error": "Error al registrar feedback",
+      "list_files_on_thread": "Listando archivos del hilo...",
+      "list_files_on_thread_success": "Archivos del hilo listados",
+      "list_files_on_thread_error": "Error al listar archivos del hilo",
+      "list_files_on_message": "Listando archivos del mensaje...",
+      "list_files_on_message_success": "Archivos del mensaje listados",
+      "list_files_on_message_error": "Error al listar archivos del mensaje",
+      "reingest": "Reindexando archivos...",
+      "reingest_success": "Archivos reindexados",
+      "reingest_error": "Error al reindexar archivos",
+      "ask_questions": "Generando preguntas...",
+      "ask_questions_success": "Preguntas generadas",
+      "ask_questions_error": "Error al generar preguntas"
+    }
+  }
 }
