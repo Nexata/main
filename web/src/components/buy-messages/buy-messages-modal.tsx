@@ -16,7 +16,7 @@ import {
   'components.buy_messages_modal.custom.buy_button' as components_buy_messages_modal_custom_buy_button
 } from '@/paraglide/messages.js';
 import { useMemo, useState } from "react";
-import { useCreateBillingRefill, useGetPaymentMpCheckout } from "@/lib/admin";
+import { useCreateBillingRefill, useGetPaymentMpCheckout, useUsdArsQuote } from "@/lib/admin";
 import { getLocale } from "@/paraglide/runtime";
 
 type BuyMessagesModalProps = {
@@ -35,6 +35,20 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
   const [customAmount, setCustomAmount] = useState<string>("");
   const refill = useCreateBillingRefill();
   const getCheckout = useGetPaymentMpCheckout();
+  const { data: usdArsQuote } = useUsdArsQuote();
+  const quote = (usdArsQuote as number | null | undefined) ?? null;
+
+  const formatARS = (usd: number) => {
+    if (!quote) return `USD ${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const ars = usd * quote;
+    return '$' + ars.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+  };
+
+  const formatARSUnit = (usd: number) => {
+    if (!quote) return `USD ${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}`;
+    const ars = usd * quote;
+    return '$' + ars.toLocaleString('es-AR', { maximumFractionDigits: 2 });
+  };
 
   const handleBuy = async (messages: number) => {
     if (!messages || messages <= 0) return;
@@ -90,15 +104,15 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
                   <div>
                       <p className="font-semibold text-base">Pack 100</p>
                       <div className="flex items-center gap-1.5 mt-0.5">
-                        <span className="text-xs text-muted-foreground line-through">${BASE_PRICE.toFixed(2)} / msg</span>
-                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">${PACK_PRICE.toFixed(2)} / msg</span>
+                        <span className="text-xs text-muted-foreground line-through">{formatARSUnit(BASE_PRICE)} / msg</span>
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{formatARSUnit(PACK_PRICE)} / msg</span>
                       </div>
                   </div>
               </div>
               <div className="flex items-center justify-between">
                   <div>
-                    <p className="text-xs text-muted-foreground line-through">${PACK_100.originalTotal.toFixed(2)}</p>
-                    <p className="text-lg font-bold">${PACK_100.total.toFixed(2)}</p>
+                    <p className="text-xs text-muted-foreground line-through">{formatARS(PACK_100.originalTotal)}</p>
+                    <p className="text-lg font-bold">{formatARS(PACK_100.total)}</p>
                   </div>
                   <Button size="sm" className="cursor-pointer" onClick={() => handleBuy(PACK_100.qty)}>
                     {components_buy_messages_modal_custom_buy_button()}
@@ -116,15 +130,15 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
               <div>
                 <p className="font-semibold text-base">Pack 1000</p>
                 <div className="flex items-center gap-1.5 mt-0.5">
-                  <span className="text-xs text-muted-foreground line-through">${BASE_PRICE.toFixed(2)} / msg</span>
-                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">${PACK_PRICE.toFixed(2)} / msg</span>
+                  <span className="text-xs text-muted-foreground line-through">{formatARSUnit(BASE_PRICE)} / msg</span>
+                  <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">{formatARSUnit(PACK_PRICE)} / msg</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-muted-foreground line-through">${PACK_1000.originalTotal.toFixed(2)}</p>
-                <p className="text-lg font-bold">${PACK_1000.total.toFixed(2)}</p>
+                <p className="text-xs text-muted-foreground line-through">{formatARS(PACK_1000.originalTotal)}</p>
+                <p className="text-lg font-bold">{formatARS(PACK_1000.total)}</p>
               </div>
               <Button size="sm" variant="default" className="cursor-pointer" onClick={() => handleBuy(PACK_1000.qty)}>
                 {components_buy_messages_modal_custom_buy_button()}
@@ -154,14 +168,14 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
             <div className="flex flex-row items-center gap-4 flex-1">
               <span className="flex items-center gap-2 text-xs text-muted-foreground">
                 <span className="font-medium">
-                  ${BASE_PRICE.toFixed(2)}{components_buy_messages_modal_custom_price_per_message()}
+                  {formatARSUnit(BASE_PRICE)}{components_buy_messages_modal_custom_price_per_message()}
                 </span>
 
                 <span className="h-3 w-px bg-border" />
 
                 <span className="font-semibold text-foreground">
                   Total:{" "}
-                  {totalPrice !== null ? `$${totalPrice.toFixed(2)}` : "-"}
+                  {totalPrice !== null ? formatARS(totalPrice) : "-"}
                 </span>
               </span>
 

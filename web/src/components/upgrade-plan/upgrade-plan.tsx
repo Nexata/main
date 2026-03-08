@@ -42,7 +42,7 @@ import {
   "components.upgrade_plan_modal.actions.confirm" as components_upgrade_plan_modal_confirm,
   "components.upgrade_plan_modal.actions.acknowledge" as components_upgrade_plan_modal_ack,
 } from "@/paraglide/messages.js";
-import { useBillingLastBill, useSetBillingPlan } from "@/lib/admin";
+import { useBillingLastBill, useSetBillingPlan, useUsdArsQuote } from "@/lib/admin";
 import { useMyTenant, type Plan } from "@/lib/user";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
 import { useGetPaymentMpCheckout } from "@/lib/admin";
@@ -65,6 +65,14 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
   const { data: tenant } = useMyTenant();
   const setPlan = useSetBillingPlan();
   const getCheckout = useGetPaymentMpCheckout();
+  const { data: usdArsQuote } = useUsdArsQuote();
+  const quote = (usdArsQuote as number | null | undefined) ?? null;
+
+  const formatARS = (usd: number) => {
+    if (!quote) return `USD ${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const ars = usd * quote;
+    return '$' + ars.toLocaleString('es-AR', { maximumFractionDigits: 0 });
+  };
 
   const currentPlan = tenant?.plan as Plan | undefined;
 
@@ -252,7 +260,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
           <PlanCard
             icon={<span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/10"><Star className="h-4 w-4 text-sky-600" /></span>}
             title={components_upgrade_plan_modal_plans_personal_title()}
-            price={components_upgrade_plan_modal_plans_personal_price()}
+            price={`${formatARS(19.99)} / ${components_upgrade_plan_modal_plans_personal_price()}`}
             description={components_upgrade_plan_modal_plans_personal_description()}
             features={[
               components_upgrade_plan_modal_plans_personal_features_messages(),
@@ -266,7 +274,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
             highlighted
             icon={<Briefcase className="h-5 w-5 text-primary" />}
             title={components_upgrade_plan_modal_plans_business_title()}
-            price={components_upgrade_plan_modal_plans_business_price()}
+            price={`${formatARS(99.99)} / ${components_upgrade_plan_modal_plans_business_price()}`}
             description={components_upgrade_plan_modal_plans_business_description()}
             features={[
               components_upgrade_plan_modal_plans_business_features_messages(),

@@ -438,20 +438,8 @@ function getTypeOption(mime?: string | null) {
 
 const PROVIDER_OPTIONS = [
 	{ id: 'nexata', name: 'Nexata', icon: '/nexata_logo.png' },
-	{ id: 'gmail', name: 'Gmail', icon: '/datasource_icons/gmail.png' },
-	{
-		id: 'gcalendar',
-		name: 'Google Calendar',
-		icon: '/datasource_icons/gcalendar.png',
-	},
 	{ id: 'drive', name: 'Google Drive', icon: '/datasource_icons/gdrive.png' },
-	{ id: 'outlook', name: 'Outlook', icon: '/datasource_icons/outlook.png' },
-	{
-		id: 'microsoft_calendar',
-		name: 'Outlook Calendar',
-		icon: '/datasource_icons/ocalendar.png',
-	},
-	{ id: 'onedrive', name: 'OneDrive', icon: '/datasource_icons/onedrive.png' },
+	{ id: 'one_drive', name: 'OneDrive', icon: '/datasource_icons/onedrive.png' },
 	{ id: 'dropbox', name: 'Dropbox', icon: '/datasource_icons/dropbox.png' },
 ];
 
@@ -693,7 +681,7 @@ export function FilesManagementSection() {
 	const SkeletonRows = () =>
 		Array.from({ length: 6 }).map((_, i) => (
 			<TableRow key={i} className="h-14">
-				{Array.from({ length: 9 }).map((__, j) => (
+				{Array.from({ length: 8 }).map((__, j) => (
 					<TableCell key={j}>
 						<div className="h-3 w-full rounded bg-muted animate-pulse" />
 					</TableCell>
@@ -1032,9 +1020,6 @@ export function FilesManagementSection() {
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
 									Updated At
 								</TableHead>
-								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									URL
-								</TableHead>
 								<TableHead className="text-right font-semibold text-xs uppercase tracking-wider">
 									Actions
 								</TableHead>
@@ -1046,7 +1031,7 @@ export function FilesManagementSection() {
 
 							{empty && (
 								<TableRow>
-									<TableCell colSpan={9}>
+									<TableCell colSpan={8}>
 										<div className="flex flex-col items-center py-14 text-center gap-2">
 											<div className="rounded-full bg-muted p-3">
 												<FileText className="w-5 h-5 text-muted-foreground" />
@@ -1079,9 +1064,21 @@ export function FilesManagementSection() {
 												<div className="rounded-md bg-muted p-1.5 shrink-0">
 													<FileText className="w-3.5 h-3.5 text-muted-foreground" />
 												</div>
-												<span className="text-sm font-medium truncate max-w-[180px]">
-													{file.name}
-												</span>
+												{file.url ? (
+													<a
+														href={file.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-sm font-medium truncate max-w-[180px] hover:underline"
+													>
+														{file.name}
+														<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
+													</a>
+												) : (
+													<span className="text-sm font-medium truncate max-w-[180px]">
+														{file.name}
+													</span>
+												)}
 											</div>
 										</TableCell>
 										<TableCell>
@@ -1102,19 +1099,6 @@ export function FilesManagementSection() {
 											<span className="text-sm whitespace-nowrap">
 												{format(new Date(file.modifiedAt), 'MMM d, yyyy HH:mm')}
 											</span>
-										</TableCell>
-										<TableCell>
-											{file.url ? (
-												<a
-													href={file.url}
-													target="_blank"
-													rel="noopener noreferrer"
-												>
-													<ExternalLink className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
-												</a>
-											) : (
-												<span className="text-muted-foreground">—</span>
-											)}
 										</TableCell>
 										<TableCell>
 											<div className="flex justify-end gap-1">
@@ -1163,7 +1147,7 @@ export function FilesManagementSection() {
 
 						<TableFooter className="bg-muted/30">
 							<TableRow>
-								<TableCell colSpan={6}>
+								<TableCell colSpan={5}>
 									<span className="text-xs text-muted-foreground">
 										{files.length > 0
 											? `${files.length} file${files.length !== 1 ? 's' : ''} on this page`

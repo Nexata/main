@@ -138,7 +138,7 @@
 			"plans": {
 				"personal": {
 					"title": "Personal",
-					"price": "$19.99 / month",
+					"price": "month",
 					"description": "Perfect for individual use or small teams.",
 					"features": {
 						"messages": "150 messages per month",
@@ -148,7 +148,7 @@
 				},
 				"business": {
 					"title": "Business",
-					"price": "$99.99 / month",
+					"price": "month",
 					"description": "Designed for teams and intensive usage.",
 					"features": {
 						"messages": "1000 messages per month",
