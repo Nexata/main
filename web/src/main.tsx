@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { StrictMode, useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
+import PwaReloadPrompt from './components/pwa-reload-prompt/pwa-reload-prompt';
 import { ThemeProvider } from './components/theme-provider';
 import { Toaster } from './components/ui/toaster';
 import { routeTree } from './routeTree.gen';
@@ -37,6 +38,7 @@ function AppLayout({
 		<div className="min-h-screen antialiased font-noto-sans">
 			{children(darkMode, setDarkMode)}
 			<Toaster />
+			<PwaReloadPrompt />
 		</div>
 	);
 }
