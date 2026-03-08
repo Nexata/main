@@ -43,6 +43,25 @@
 			"title": "Deep Reasoning",
 			"description": "Analyzing with extended thinking..."
 		},
+		"ask_questions": {
+      "status": {
+        "answering": "Answer the questions",
+        "submitted": "Questions answered"
+      },
+      "label": {
+        "yes": "Yes",
+        "no": "No",
+        "recommended": "Recommended",
+        "select_date": "Select a date",
+        "question_singular": "question",
+        "question_plural": "questions",
+        "answers_sent": "Answers sent",
+        "answered_count": "{answered}/{total} answered"
+      },
+      "button": {
+        "submit": "Send answers"
+      }
+    },
 		"credentials": {
 			"permissions": {
 				"view_credentials": "View Permissions",

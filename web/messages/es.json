@@ -43,6 +43,25 @@
 			"title": "Razonamiento profundo",
 			"description": "Analizando con pensamiento extendido..."
 		},
+		"ask_questions": {
+      "status": {
+        "answering": "Respondé las preguntas",
+        "submitted": "Preguntas respondidas"
+      },
+      "label": {
+        "yes": "Sí",
+        "no": "No",
+        "recommended": "Recomendado",
+        "select_date": "Seleccionar fecha",
+        "question_singular": "pregunta",
+        "question_plural": "preguntas",
+        "answers_sent": "Respuestas enviadas",
+        "answered_count": "{answered}/{total} respondidas"
+      },
+      "button": {
+        "submit": "Enviar respuestas"
+      }
+    },
 		"credentials": {
 			"permissions": {
 				"view_credentials": "Ver Permisos",

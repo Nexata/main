@@ -1,4 +1,3 @@
-// transport completo con solo cambios en la sección de archivos
 import { DefaultChatTransport } from 'ai';
 import { API_BASE_URL } from '@/api';
 import { getAccessToken } from '@/lib/auth';
@@ -27,19 +26,28 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 			try {
         const originalPayload = JSON.parse(init.body as string);
 				const lastMessage = originalPayload.messages?.at(-1);
+				const isAutoSubmit = lastMessage?.role === 'assistant';
 
-				const prompt =
-					lastMessage?.parts
-						?.filter((p: any) => p.type === 'text')
-						.map((p: any) => p.text)
-						.join('\n') ?? '';
+        const prompt = isAutoSubmit
+          ? ''
+          : lastMessage?.parts
+              ?.filter((p: any) => p.type === 'text')
+              .map((p: any) => p.text)
+              .join('\n') ?? '';
 
 				const fileParts =
 					lastMessage?.parts?.filter((p: any) => p.type === 'file') ?? [];
 
 				const hasFiles = fileParts.length > 0;
 
-				const finalThreadId = originalPayload.threadId ?? threadId ?? undefined;
+        const storeThreadId = useChatUIStore.getState().activeThreadId || null;
+        const sanitize = (id: unknown): string | null => typeof id === 'string' && id.trim() !== '' ? id : null;
+
+        const finalThreadId =
+          sanitize(originalPayload.threadId) ??
+          sanitize(threadId) ??
+          storeThreadId ??
+          undefined;
 
 				const adaptedPayload = cleanObject({
 					prompt: prompt ?? '',
@@ -47,7 +55,8 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 					threadId: finalThreadId ?? null,
 					editedMessageId: originalPayload.editedMessageId ?? null,
 					languagePreference: originalPayload.languagePreference ?? null,
-					files: hasFiles ? fileParts : null,
+          files: hasFiles ? fileParts : null,
+					...(isAutoSubmit && { messages: originalPayload.messages }),
         });
 
 				if (hasFiles) {
@@ -120,22 +129,19 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 								const event = JSON.parse(json);
 
-								if (
-									event.type === 'start' &&
-									event.messageMetadata?.threadId &&
-									originalPayload.threadId == null
-								) {
-									const { threadId, threadTitle } = event.messageMetadata;
-									const store = useChatUIStore.getState();
+								if (event.type === 'start' && event.messageMetadata?.threadId ) {
+                  const { threadId: newThreadId, threadTitle } = event.messageMetadata;
+                  const store = useChatUIStore.getState();
 
-									store.setActiveThreadId(threadId);
-
-									store.upsertOptimisticThread({
-										id: threadId,
-										title: threadTitle ?? 'New chat',
-										isTyping: true,
-									});
-								}
+                  if (newThreadId !== store.activeThreadId) {
+                    store.setActiveThreadId(newThreadId);
+                    store.upsertOptimisticThread({
+                      id: newThreadId,
+                      title: threadTitle ?? 'New chat',
+                      isTyping: true,
+                    });
+                  }
+                }
 							} catch {
 								// ignore malformed chunks
 							}

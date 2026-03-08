@@ -1,6 +1,7 @@
 'use client';
 
 import { Chat as AIChat, useChat, type UIMessage } from '@ai-sdk/react';
+import { lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { createFileRoute } from '@tanstack/react-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Chat } from '@/components/ui/chat';
@@ -25,7 +26,7 @@ function normalizeParts(content: unknown): UIParts {
   if (!content) return [];
   if (typeof content === 'string') return [{ type: 'text', text: content }];
   if (!Array.isArray(content)) return [];
-  console.log('[normalizeParts] raw parts:', JSON.stringify(content, null, 2)); // ← agregá esto
+
   return content.map((part: any) => {
     if (part.type === 'tool-call' && part.toolName) {
       return {
@@ -88,11 +89,23 @@ export function NexataChat() {
   // ----------------------------
 
   const chat = useMemo(
-    () => new AIChat({ transport: createAuthenticatedChatTransport() }),
-    [],
+    () => new AIChat({
+      transport: createAuthenticatedChatTransport(),
+      sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls
+    }), [],
   );
 
-  const { messages, sendMessage, stop, error, setMessages, status: chatStatus } = useChat({ chat });
+  const {
+    messages,
+    sendMessage,
+    stop,
+    error,
+    setMessages,
+    status: chatStatus,
+    addToolOutput
+  } = useChat({
+    chat
+  });
 
   const appliedThreadRef = useRef<string | null>(null);
 
@@ -118,13 +131,26 @@ export function NexataChat() {
   // ----------------------------
 
   useEffect(() => {
-    if (chatStatus === 'ready' || chatStatus === 'error') finishStreaming();
-  }, [chatStatus, finishStreaming]);
+    if (chatStatus === 'error') {
+      finishStreaming();
+      return;
+    }
+    if (chatStatus === 'ready') {
+      const timeout = setTimeout(() => {
+        finishStreaming();
+      }, 300);
+      return () => clearTimeout(timeout);
+    }
+    if (chatStatus === 'streaming' || chatStatus === 'submitted') {
+      setStreaming(activeThreadId ?? '');
+    }
+  }, [chatStatus, finishStreaming, setStreaming, activeThreadId]);
 
   // ----------------------------
   // UI state derivado
   // ----------------------------
 
+  const isSdkStreaming = chatStatus === 'streaming' || chatStatus === 'submitted'
   const isHydrating = !!activeThreadId && isThreadLoading && !isStreaming;
 
   // ----------------------------
@@ -186,12 +212,13 @@ export function NexataChat() {
           handleInputChange={(e) => setInput(e.target.value)}
           handleSubmit={handleSubmit}
           stop={stop}
-          isGenerating={isStreaming}
+          isGenerating={isSdkStreaming}
           isHydratingThread={isHydrating}
           isNewChat={isNewChat}
           welcomeLabel={welcomeText}
           isUserLoading={isMeLoading}
           setExtraReason={setExtraReason}
+          addToolOutput ={addToolOutput}
         />
 
         {error && (
