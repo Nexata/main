@@ -370,22 +370,42 @@ const FILE_TYPE_OPTIONS = [
 		color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
 	},
 	{
-		label: 'Word',
+		label: 'Word (.docx)',
 		ext: '.docx',
 		mime: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 		color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
 	},
 	{
-		label: 'Excel',
+		label: 'Word (.doc)',
+		ext: '.doc',
+		mime: 'application/msword',
+		color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+	},
+	{
+		label: 'Excel (.xlsx)',
 		ext: '.xlsx',
 		mime: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 		color:
 			'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
 	},
 	{
-		label: 'PowerPoint',
+		label: 'Excel (.xls)',
+		ext: '.xls',
+		mime: 'application/vnd.ms-excel',
+		color:
+			'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+	},
+	{
+		label: 'PowerPoint (.pptx)',
 		ext: '.pptx',
 		mime: 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+		color:
+			'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+	},
+	{
+		label: 'PowerPoint (.ppt)',
+		ext: '.ppt',
+		mime: 'application/vnd.ms-powerpoint',
 		color:
 			'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
 	},
@@ -393,6 +413,12 @@ const FILE_TYPE_OPTIONS = [
 		label: 'CSV',
 		ext: '.csv',
 		mime: 'text/csv',
+		color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
+	},
+	{
+		label: 'TSV',
+		ext: '.tsv',
+		mime: 'text/tab-separated-values',
 		color: 'bg-teal-100 text-teal-700 dark:bg-teal-900/40 dark:text-teal-300',
 	},
 	{
@@ -418,8 +444,8 @@ const FILE_TYPE_OPTIONS = [
 	},
 	{
 		label: 'Image',
-		ext: '.png',
-		mime: 'image/png',
+		ext: 'image/*',
+		mime: 'image/',
 		color: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
 	},
 	{
@@ -429,11 +455,56 @@ const FILE_TYPE_OPTIONS = [
 		color:
 			'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
 	},
+	{
+		label: 'XML',
+		ext: '.xml',
+		mime: 'application/xml',
+		color:
+			'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+	},
+	{
+		label: 'YAML',
+		ext: '.yaml',
+		mime: 'application/x-yaml',
+		color:
+			'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300',
+	},
+	{
+		label: 'RTF',
+		ext: '.rtf',
+		mime: 'application/rtf',
+		color:
+			'bg-slate-100 text-slate-700 dark:bg-slate-900/40 dark:text-slate-300',
+	},
+	{
+		label: 'ODT',
+		ext: '.odt',
+		mime: 'application/vnd.oasis.opendocument.text',
+		color: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+	},
+	{
+		label: 'ODS',
+		ext: '.ods',
+		mime: 'application/vnd.oasis.opendocument.spreadsheet',
+		color:
+			'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+	},
+	{
+		label: 'ODP',
+		ext: '.odp',
+		mime: 'application/vnd.oasis.opendocument.presentation',
+		color:
+			'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+	},
 ];
 
 function getTypeOption(mime?: string | null) {
 	if (!mime) return null;
-	return FILE_TYPE_OPTIONS.find((o) => o.mime === mime) ?? null;
+	return (
+		FILE_TYPE_OPTIONS.find((o) =>
+			o.mime.endsWith('/') ? mime.startsWith(o.mime) : o.mime === mime,
+		) ?? null
+	);
 }
 
 const PROVIDER_OPTIONS = [
