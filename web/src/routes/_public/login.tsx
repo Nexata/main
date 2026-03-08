@@ -44,7 +44,7 @@ function LoginPage() {
 			transition={{ duration: 0.25, ease: 'easeOut' }}
 			className="w-full max-w-md mx-auto min-h-screen flex items-center justify-center px-4 sm:px-0"
 		>
-			<Card className="rounded-2xl border shadow-xl">
+			<Card className="border-0 shadow-none sm:rounded-none sm:border sm:shadow-xl">
 				<CardContent className="p-8">
 					{/* Logos */}
 					<div className="flex items-center justify-center gap-4 mb-8">

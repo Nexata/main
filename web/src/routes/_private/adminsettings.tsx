@@ -23,6 +23,7 @@ import {
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
+import { CurrencyToggle } from '@/components/currency-toggle/currency-toggle';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
 import { Button } from '@/components/ui/button';
@@ -85,8 +86,11 @@ import {
 	useUsdArsQuote,
 	useUsers,
 } from '@/lib/admin';
+import {
+	formatAmount as formatCurrencyAmount,
+	useCurrencyStore,
+} from '@/lib/currency.store';
 import { type Language, type Plan, useMyTenant } from '@/lib/user';
-import { cn } from '@/lib/utils';
 import {
 	'admin.billing.bills_list.col_amount' as admin_billing_bills_list_col_amount,
 	'admin.billing.bills_list.col_date' as admin_billing_bills_list_col_date,
@@ -118,7 +122,6 @@ import {
 	'admin.billing.last_refill.messages_recharged' as admin_billing_last_refill_messages_recharged,
 	'admin.billing.last_refill.price_per_message' as admin_billing_last_refill_price_per_message,
 	'admin.billing.last_refill.title' as admin_billing_last_refill_title,
-	'admin.billing.currency_toggle.quote_label' as admin_billing_quote_label,
 	'admin.billing.sources.plan_change' as admin_billing_sources_plan_change,
 	'admin.billing.sources.refill' as admin_billing_sources_refill,
 	'admin.billing.title' as admin_billing_title,
@@ -555,7 +558,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 	const { data: lastRefillBill, isLoading: lastRefillLoading } =
 		useBillingLastRefillBill();
 	const getCheckout = useGetPaymentMpCheckout();
-	const [showARS, setShowARS] = useState(false);
+	const showARS = useCurrencyStore((s) => s.showARS);
 	const BILLS_PAGE_SIZE = 5;
 	const [billsCursorStack, setBillsCursorStack] = useState<(string | null)[]>([
 		null,
@@ -573,18 +576,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
 	const formatAmount = (amount: string | number) => {
 		const usd = parseFloat(String(amount));
-		if (showARS && quote)
-			return (
-				'$' +
-				(usd * quote).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-			);
-		return (
-			'USD ' +
-			usd.toLocaleString('en-US', {
-				minimumFractionDigits: 2,
-				maximumFractionDigits: 2,
-			})
-		);
+		return formatCurrencyAmount(usd, showARS, quote);
 	};
 
 	const formatDate = (date: string) =>
@@ -689,45 +681,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 					</div>
 
 					{/* Currency toggle */}
-					<div className="flex items-center gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2 shrink-0">
-						<div className="flex items-center rounded-md bg-muted p-0.5 gap-0.5">
-							<button
-								onClick={() => setShowARS(false)}
-								disabled={!quote}
-								className={cn(
-									'relative px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 outline-none',
-									!showARS
-										? 'bg-background text-foreground shadow-sm'
-										: 'text-muted-foreground hover:text-foreground',
-								)}
-							>
-								USD
-							</button>
-							<button
-								onClick={() => setShowARS(true)}
-								disabled={!quote}
-								className={cn(
-									'relative px-2.5 py-1 text-xs font-medium rounded transition-all duration-200 outline-none',
-									showARS
-										? 'bg-background text-foreground shadow-sm'
-										: 'text-muted-foreground hover:text-foreground',
-									!quote && 'opacity-40 cursor-not-allowed',
-								)}
-							>
-								ARS
-							</button>
-						</div>
-
-						{quote && (
-							<span className="text-[10px] text-muted-foreground border-l border-border pl-3 tabular-nums">
-								<strong>
-									{admin_billing_quote_label({
-										quote: quote.toLocaleString('es-AR'),
-									})}
-								</strong>
-							</span>
-						)}
-					</div>
+					<CurrencyToggle />
 				</div>
 
 				<Separator />

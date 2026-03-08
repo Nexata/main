@@ -29,7 +29,8 @@ import {
   "sidebar.search" as sidebar_search,
   "sidebar.theme" as sidebar_theme,
   "sidebar.settings" as sidebar_settings,
-  "sidebar.feedback" as sidebar_feedback
+  "sidebar.feedback" as sidebar_feedback,
+  "common.created_at" as common_created_at,
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
@@ -415,6 +416,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                           isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
                           isSaving={savingThreads.has(chat.id ?? "")}
                           sidebarWidth={sidebarWidth}
+                          createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
                         />
 
                         {chat.id !== null && (
@@ -582,12 +584,14 @@ function ThreadTitle({
   title,
   isTyping,
   isSaving,
-  sidebarWidth
+  sidebarWidth,
+  createdAt,
 }: {
   title: string;
   isTyping: boolean;
   isSaving: boolean;
   sidebarWidth: number;
+  createdAt: Date | string;
 }) {
   function truncateText(text: string, max = 32) {
     if (text.length <= max) return text;
@@ -598,6 +602,14 @@ function ThreadTitle({
   const extraChars = sidebarWidth > 250 ? Math.floor((sidebarWidth - 250) / 12) : 0;
   const maxChars = Math.floor((sidebarWidth - 80) / 8) + extraChars;
   const visibleText = truncateText(isTyping ? animated : title, maxChars);
+
+  const formattedDate = new Date(createdAt).toLocaleDateString('es-AR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 
   return (
     <TooltipProvider>
@@ -628,7 +640,8 @@ function ThreadTitle({
         sideOffset={10}
         className="max-w-xs"
         >
-          {title}
+          <p>{title}</p>
+          <p className="text-xs text-muted-foreground">{common_created_at()}: {formattedDate}</p>
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>

@@ -43,6 +43,8 @@ import {
   "components.upgrade_plan_modal.actions.acknowledge" as components_upgrade_plan_modal_ack,
 } from "@/paraglide/messages.js";
 import { useBillingLastBill, useSetBillingPlan, useUsdArsQuote } from "@/lib/admin";
+import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
+import { CurrencyToggle } from "@/components/currency-toggle/currency-toggle";
 import { useMyTenant, type Plan } from "@/lib/user";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
 import { useGetPaymentMpCheckout } from "@/lib/admin";
@@ -67,12 +69,9 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
   const getCheckout = useGetPaymentMpCheckout();
   const { data: usdArsQuote } = useUsdArsQuote();
   const quote = (usdArsQuote as number | null | undefined) ?? null;
+  const showARS = useCurrencyStore((s) => s.showARS);
 
-  const formatARS = (usd: number) => {
-    if (!quote) return `USD ${usd.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const ars = usd * quote;
-    return '$' + ars.toLocaleString('es-AR', { maximumFractionDigits: 0 });
-  };
+  const fmt = (usd: number) => formatAmount(usd, showARS, quote);
 
   const currentPlan = tenant?.plan as Plan | undefined;
 
@@ -246,12 +245,17 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
         "
       >
         <DialogHeader>
-          <h2 className="text-lg font-semibold tracking-tight">
-            {components_upgrade_plan_modal_title()}
-          </h2>
-          <p className="mt-1.5 text-sm text-muted-foreground">
-            {components_upgrade_plan_modal_subtitle()}
-          </p>
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">
+                {components_upgrade_plan_modal_title()}
+              </h2>
+              <p className="mt-1.5 text-sm text-muted-foreground">
+                {components_upgrade_plan_modal_subtitle()}
+              </p>
+            </div>
+            <CurrencyToggle className="mt-0.5" />
+          </div>
         </DialogHeader>
 
         <Separator className="my-4" />
@@ -260,7 +264,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
           <PlanCard
             icon={<span className="flex h-8 w-8 items-center justify-center rounded-full bg-sky-500/10"><Star className="h-4 w-4 text-sky-600" /></span>}
             title={components_upgrade_plan_modal_plans_personal_title()}
-            price={`${formatARS(19.99)} / ${components_upgrade_plan_modal_plans_personal_price()}`}
+            price={`${fmt(19.99)} / ${components_upgrade_plan_modal_plans_personal_price()}`}
             description={components_upgrade_plan_modal_plans_personal_description()}
             features={[
               components_upgrade_plan_modal_plans_personal_features_messages(),
@@ -274,7 +278,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
             highlighted
             icon={<Briefcase className="h-5 w-5 text-primary" />}
             title={components_upgrade_plan_modal_plans_business_title()}
-            price={`${formatARS(99.99)} / ${components_upgrade_plan_modal_plans_business_price()}`}
+            price={`${fmt(99.99)} / ${components_upgrade_plan_modal_plans_business_price()}`}
             description={components_upgrade_plan_modal_plans_business_description()}
             features={[
               components_upgrade_plan_modal_plans_business_features_messages(),
