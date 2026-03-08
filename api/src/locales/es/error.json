@@ -43,5 +43,6 @@
 	"BILL_NOT_FOUND": "Factura no encontrada",
 	"TENANT_CREATION_EXPIRED": "La solicitud de creación de la organización ha expirado o es inválida",
 	"SLUG_UNAVAILABLE": "Este identificador no está disponible",
-	"CREDENTIAL_HAS_FILES": "Esta credencial no se puede eliminar porque tiene archivos ingestados"
+	"CREDENTIAL_HAS_FILES": "Esta credencial no se puede eliminar porque tiene archivos ingestados",
+	"TOOL_CALL_NOT_FOUND": "No se encontró una llamada de herramienta pendiente en esta conversación"
 }

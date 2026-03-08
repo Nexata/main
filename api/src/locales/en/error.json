@@ -43,5 +43,6 @@
 	"BILL_NOT_FOUND": "Bill not found",
 	"TENANT_CREATION_EXPIRED": "Tenant creation request has expired or is invalid",
 	"SLUG_UNAVAILABLE": "This slug is not available",
-	"CREDENTIAL_HAS_FILES": "This credential cannot be deleted because it has files ingested"
+	"CREDENTIAL_HAS_FILES": "This credential cannot be deleted because it has files ingested",
+	"TOOL_CALL_NOT_FOUND": "No pending tool call found on this thread"
 }

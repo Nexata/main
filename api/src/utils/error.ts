@@ -73,6 +73,8 @@ export enum ErrorCode {
 	SLUG_UNAVAILABLE = 'SLUG_UNAVAILABLE',
 
 	CREDENTIAL_HAS_FILES = 'CREDENTIAL_HAS_FILES',
+
+	TOOL_CALL_NOT_FOUND = 'TOOL_CALL_NOT_FOUND',
 }
 
 const errorLocales: Record<Language, Record<string, string>> = {

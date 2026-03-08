@@ -1,33 +1,26 @@
 import { authPlugin } from '@api/auth';
 import {
 	BUILD_SYSTEM_PROMPT,
-	createThread,
 	generateThreadTitle,
 	getThreadMessages,
+	mapFinishReason,
 	type PartialMessage,
+	persistChat,
 	redactReasoningTransform,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
-import { cache, db, MODEL, REASONING_MODEL } from '@api/env';
+import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
-import {
-	BillableEventType,
-	billableEvent,
-	FinishReason,
-	file,
-	type MessageRole,
-	message,
-	thread,
-} from '@api/schema';
-import { checkTenantCanChat, incrementMessageUsage } from '@api/utils/billing';
+import { FinishReason, message, thread } from '@api/schema';
+import { checkTenantCanChat } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { encode } from '@toon-format/toon';
 import { consumeStream, type ModelMessage, stepCountIs, streamText } from 'ai';
-import { and, eq, gte, inArray, lte, or, sql } from 'drizzle-orm';
+import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
@@ -134,108 +127,31 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				? undefined
 				: await generateThreadTitle(body.prompt, languagePreference);
 
-			const mapFinishReason = (aiReason: string): FinishReason =>
-				aiReason === 'stop'
-					? FinishReason.COMPLETE
-					: aiReason === 'length'
-						? FinishReason.LENGTH
-						: FinishReason.ERROR;
-
-			const persistChat = async (
+			const doPersist = async (
 				responseMessages: ModelMessage[],
 				reason: FinishReason,
-			) => {
-				if (editedMessage && body.threadId)
-					await db
-						.delete(message)
-						.where(
-							and(
-								eq(message.threadId, body.threadId),
-								or(
-									eq(message.id, editedMessage.id),
-									gte(
-										message.createdAt,
-										db
-											.select({ createdAt: message.createdAt })
-											.from(message)
-											.where(eq(message.id, editedMessage.id)),
-									),
-								),
-							),
-						);
-
-				if (!body.threadId)
-					await createThread(
-						activeUser.id,
-						body.prompt,
-						threadId,
-						threadTitle,
-						activeUser.language,
-					);
-
-				const messagesToAppend = [
-					fileSystemMessage,
-					userMessage,
-					...responseMessages,
-				].filter((x) => typeof x !== 'undefined');
-
-				const shouldBill = reason !== FinishReason.ERROR;
-
-				const baseDate = new Date();
-				const messageValues = messagesToAppend.map((m, i) => ({
-					id:
-						'id' in m && typeof m.id === 'string' ? m.id : crypto.randomUUID(),
+			) =>
+				persistChat({
 					threadId,
-					role: m.role as MessageRole,
-					content: m.content,
-					finishReason:
-						m.role === 'assistant' || m.role === 'tool' ? reason : undefined,
-					createdAt: new Date(baseDate.getTime() + i),
-				}));
-
-				const insertQuery = shouldBill
-					? db
-							.with(
-								db.$with('billing').as(
-									db.insert(billableEvent).values({
-										type: BillableEventType.MESSAGE,
-										consumption: creditsToUse.toString(),
-										userId: activeUser.id,
-										slug: activeUser.slug,
-									}),
-								),
-							)
-							.insert(message)
-							.values(messageValues)
-							.returning({ id: message.id, role: message.role })
-					: db
-							.insert(message)
-							.values(messageValues)
-							.returning({ id: message.id, role: message.role });
-
-				const insertedMessages = await insertQuery;
-
-				const afterInsert: Promise<unknown>[] = [
-					cache.set(threadId, [...threadMessages, ...insertedMessages], {
-						ex: 60 * 5,
-					}),
-				];
-
-				if (shouldBill)
-					afterInsert.push(
-						incrementMessageUsage(activeUser.slug, creditsToUse),
-					);
-
-				await Promise.all(afterInsert);
-
-				if (fileIds.length)
-					await db
-						.update(file)
-						.set({ messageId: userMessage.id })
-						.where(
-							and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)),
-						);
-			};
+					activeUser,
+					creditsToUse,
+					threadMessages,
+					responseMessages,
+					reason,
+					messagesToPrepend: [fileSystemMessage, userMessage].filter(
+						(x) => typeof x !== 'undefined',
+					),
+					editedMessage: editedMessage || undefined,
+					newThread: body.threadId
+						? undefined
+						: {
+								prompt: body.prompt,
+								title: threadTitle,
+								language: activeUser.language,
+							},
+					fileIds: fileIds.length ? fileIds : undefined,
+					userMessageId: userMessage.id,
+				});
 
 			// Final streaming
 			const stream = streamText({
@@ -264,7 +180,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					finishReason: aiFinishReason,
 					response: { messages: responseMessages },
 				}) => {
-					await persistChat(
+					await doPersist(
 						responseMessages,
 						mapFinishReason(aiFinishReason),
 					).catch((error) =>
@@ -278,7 +194,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					const responseMessages = steps.flatMap(
 						(step) => step.response.messages,
 					);
-					await persistChat(responseMessages, FinishReason.STOPPED).catch(
+					await doPersist(responseMessages, FinishReason.STOPPED).catch(
 						(error) =>
 							captureException(error, {
 								tags: { source: 'chat:onAbort' },
@@ -334,6 +250,161 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							'If true, includes approval-requiring tools like re-ingestion in the toolset.',
 					},
 				),
+			}),
+		},
+	)
+	.post(
+		'/answer',
+		async ({ body, activeUser, request }) => {
+			const threadMessages = await getThreadMessages(body.threadId, {
+				content: 'partial',
+				slug: activeUser.slug,
+				userId: activeUser.id,
+				avoidCaching: true,
+				language: activeUser.language,
+			});
+
+			// Find the last assistant message with an unresolved NexataAskQuestions tool call
+			const lastMessage = threadMessages.at(-1);
+			if (!lastMessage || lastMessage.role !== 'assistant')
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.TOOL_CALL_NOT_FOUND,
+					activeUser.language,
+				);
+
+			const toolCallPart = (
+				(Array.isArray(lastMessage.content)
+					? lastMessage.content
+					: []) as unknown[]
+			).find(
+				(
+					part,
+				): part is {
+					type: 'tool-call';
+					toolCallId: string;
+					toolName: string;
+				} =>
+					typeof part === 'object' &&
+					part !== null &&
+					'type' in part &&
+					part.type === 'tool-call' &&
+					'toolName' in part &&
+					part.toolName === 'NexataAskQuestions',
+			);
+
+			if (!toolCallPart)
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.TOOL_CALL_NOT_FOUND,
+					activeUser.language,
+				);
+
+			// Append the tool result to the message history
+			const toolResultMessage: PartialMessage = {
+				id: crypto.randomUUID(),
+				role: 'tool',
+				content: [
+					{
+						type: 'tool-result',
+						toolCallId: toolCallPart.toolCallId,
+						toolName: 'NexataAskQuestions',
+						output: {
+							type: 'text',
+							value: encode(body.result),
+						},
+					},
+				],
+			};
+
+			threadMessages.push(toolResultMessage);
+
+			const languagePreference = body.languagePreference ?? activeUser.language;
+
+			const doPersist = async (
+				responseMessages: ModelMessage[],
+				reason: FinishReason,
+			) =>
+				persistChat({
+					threadId: body.threadId,
+					activeUser,
+					creditsToUse: 0,
+					threadMessages,
+					responseMessages,
+					reason,
+					messagesToPrepend: [toolResultMessage],
+				});
+
+			const stream = streamText({
+				model: MODEL,
+				system: BUILD_SYSTEM_PROMPT({
+					...activeUser,
+					languagePreference,
+				}),
+				abortSignal: request.signal,
+				stopWhen: stepCountIs(50),
+				tools: await getTools(activeUser, body.threadId, [], true),
+				experimental_transform: redactReasoningTransform(),
+				messages: threadMessages.map(
+					(m) =>
+						({
+							role: m.role,
+							content: m.content,
+						}) as ModelMessage,
+				),
+				onFinish: async ({
+					finishReason: aiFinishReason,
+					response: { messages: responseMessages },
+				}) => {
+					await doPersist(
+						responseMessages,
+						mapFinishReason(aiFinishReason),
+					).catch((error) =>
+						captureException(error, {
+							tags: { source: 'chat:answer:onFinish' },
+							extra: {
+								threadId: body.threadId,
+								finishReason: aiFinishReason,
+							},
+						}),
+					);
+				},
+				onAbort: async ({ steps }) => {
+					const responseMessages = steps.flatMap(
+						(step) => step.response.messages,
+					);
+					await doPersist(responseMessages, FinishReason.STOPPED).catch(
+						(error) =>
+							captureException(error, {
+								tags: { source: 'chat:answer:onAbort' },
+								extra: { threadId: body.threadId },
+							}),
+					);
+				},
+			});
+
+			return stream.toUIMessageStreamResponse({
+				headers: { 'Content-Type': 'text/event-stream' },
+				consumeSseStream: consumeStream,
+			});
+		},
+		{
+			detail: {
+				summary: 'Answer tool call',
+				description:
+					'Submits user answers for a NexataAskQuestions tool call and resumes AI generation. Does not consume a message credit.',
+			},
+			body: tObject({
+				threadId: t.String({
+					format: 'uuid',
+					description: 'UUID of the thread containing the tool call.',
+				}),
+				result: t.Unknown({
+					description: 'The user answers for the tool call, as a JSON value.',
+				}),
+				languagePreference: Nullish(t.String(), {
+					description: 'Language preference for the chat response.',
+				}),
 			}),
 		},
 	)

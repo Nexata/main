@@ -1,5 +1,16 @@
 import { cache, db, LIGHT_MODEL } from '@api/env';
-import { file, type Language, message, thread, user } from '@api/schema';
+import {
+	BillableEventType,
+	billableEvent,
+	FinishReason,
+	file,
+	type Language,
+	type MessageRole,
+	message,
+	thread,
+	user,
+} from '@api/schema';
+import { incrementMessageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import {
@@ -9,7 +20,7 @@ import {
 	type TextStreamPart,
 	type ToolSet,
 } from 'ai';
-import { and, asc, eq, exists, lt } from 'drizzle-orm';
+import { and, asc, eq, exists, gte, inArray, lt, or } from 'drizzle-orm';
 
 const truncateTitle = (prompt: string, length = 50) =>
 	((x: string) => (x.length >= length ? `${x.slice(0, length - 3)}...` : x))(
@@ -325,4 +336,125 @@ export async function getThreadMessages(
 		);
 
 	return noncached.filter((m) => m.content);
+}
+
+export const mapFinishReason = (aiReason: string): FinishReason =>
+	aiReason === 'stop'
+		? FinishReason.COMPLETE
+		: aiReason === 'length'
+			? FinishReason.LENGTH
+			: aiReason === 'tool-calls'
+				? FinishReason.TOOL_CALLS
+				: FinishReason.ERROR;
+
+export async function persistChat(params: {
+	threadId: string;
+	activeUser: { id: string; slug: string; language: string };
+	creditsToUse: number;
+	threadMessages: PartialMessage[];
+	responseMessages: ModelMessage[];
+	reason: FinishReason;
+	messagesToPrepend?: PartialMessage[];
+	editedMessage?: PartialMessage | false;
+	newThread?: { prompt: string; title?: string; language?: Language };
+	fileIds?: string[];
+	userMessageId?: string;
+}) {
+	const {
+		threadId,
+		activeUser,
+		creditsToUse,
+		threadMessages,
+		responseMessages,
+		reason,
+		messagesToPrepend = [],
+		editedMessage,
+		newThread,
+		fileIds,
+		userMessageId,
+	} = params;
+
+	if (editedMessage)
+		await db
+			.delete(message)
+			.where(
+				and(
+					eq(message.threadId, threadId),
+					or(
+						eq(message.id, editedMessage.id),
+						gte(
+							message.createdAt,
+							db
+								.select({ createdAt: message.createdAt })
+								.from(message)
+								.where(eq(message.id, editedMessage.id)),
+						),
+					),
+				),
+			);
+
+	if (newThread)
+		await createThread(
+			activeUser.id,
+			newThread.prompt,
+			threadId,
+			newThread.title,
+			newThread.language,
+		);
+
+	const messagesToAppend = [...messagesToPrepend, ...responseMessages].filter(
+		(x) => typeof x !== 'undefined',
+	);
+
+	const shouldBill = creditsToUse > 0 && reason !== FinishReason.ERROR;
+
+	const baseDate = new Date();
+	const messageValues = messagesToAppend.map((m, i) => ({
+		id: 'id' in m && typeof m.id === 'string' ? m.id : crypto.randomUUID(),
+		threadId,
+		role: m.role as MessageRole,
+		content: m.content,
+		finishReason:
+			m.role === 'assistant' || m.role === 'tool' ? reason : undefined,
+		createdAt: new Date(baseDate.getTime() + i),
+	}));
+
+	const insertQuery = shouldBill
+		? db
+				.with(
+					db.$with('billing').as(
+						db.insert(billableEvent).values({
+							type: BillableEventType.MESSAGE,
+							consumption: creditsToUse.toString(),
+							userId: activeUser.id,
+							slug: activeUser.slug,
+						}),
+					),
+				)
+				.insert(message)
+				.values(messageValues)
+				.returning({ id: message.id, role: message.role })
+		: db
+				.insert(message)
+				.values(messageValues)
+				.returning({ id: message.id, role: message.role });
+
+	const insertedMessages = await insertQuery;
+
+	const afterInsert: Promise<unknown>[] = [
+		cache.set(threadId, [...threadMessages, ...insertedMessages], {
+			ex: 60 * 5,
+		}),
+	];
+
+	if (shouldBill)
+		afterInsert.push(incrementMessageUsage(activeUser.slug, creditsToUse));
+
+	await Promise.all(afterInsert);
+
+	if (fileIds?.length && userMessageId)
+		await db
+			.update(file)
+			.set({ messageId: userMessageId })
+			.where(and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)));
 }

@@ -27,6 +27,7 @@ export enum FinishReason {
 	STOPPED = 'stopped',
 	ERROR = 'error',
 	LENGTH = 'length',
+	TOOL_CALLS = 'tool_calls',
 }
 
 export const FinishReasonEnum = pgEnum(
