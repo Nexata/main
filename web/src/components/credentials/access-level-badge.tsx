@@ -7,7 +7,7 @@ import {
   Crown,
 } from "lucide-react"
 import {
-  "components.credentials.permissions.tenat_admin" as components_credentials_permissions_tenat_admin,
+  "components.credentials.permissions.tenant_admin" as components_credentials_permissions_tenant_admin,
   "components.credentials.permissions.read_only" as components_credentials_permissions_read_only
 } from "@/paraglide/messages.js"
 
@@ -57,7 +57,7 @@ export function AccessLevelBadge({ level }: Props) {
           className="gap-1 text-amber-700 bg-amber-50 border border-amber-200"
         >
           <Crown className="h-3 w-3" />
-          {components_credentials_permissions_tenat_admin()}
+          {components_credentials_permissions_tenant_admin()}
         </Badge>
       )
 

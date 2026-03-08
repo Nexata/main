@@ -13,17 +13,14 @@
 		"save_changes": "Guardar cambios",
 		"success": "Operación exitosa",
 		"error": "Ocurrió un error",
-		"expand": "Ver detalles",
-		"collapse": "Ocultar detalles",
-		"account": "Cuenta",
 		"created_at": "Fecha de creación"
 	},
 
 	"tenant-selection": {
-    "title": "Nexata | Seleccionar tenant",
-    "welcome": "Bienvenido {name}",
-    "selectPrompt": "Seleccioná el tenant al que querés ingresar",
-    "userFallback": "Usuario"
+		"title": "Nexata | Seleccionar tenant",
+		"welcome": "Bienvenido {name}",
+		"selectPrompt": "Seleccioná el tenant al que querés ingresar",
+		"userFallback": "Usuario"
 	},
 
 	"months": {
@@ -42,19 +39,19 @@
 	},
 
 	"components": {
-	  "reasoning_block": {
-      "title": "Razonamiento profundo",
-      "description": "Analizando con pensamiento extendido..."
-    },
+		"reasoning_block": {
+			"title": "Razonamiento profundo",
+			"description": "Analizando con pensamiento extendido..."
+		},
 		"credentials": {
 			"permissions": {
-     	  "view_credentials": "Ver Permisos",
-        "hice_credentials": "Ocultar Permisos",
+				"view_credentials": "Ver Permisos",
+				"hide_credentials": "Ocultar Permisos",
 				"title": "Permisos de la credencial",
 				"description": "Administrá qué usuarios pueden acceder y utilizar esta credencial.",
 				"no_manage_description": "Revisa qué usuarios pueden acceder y utilizar esta credencial.",
 				"add": "Agregar",
-				"tenat_admin": "Administrador del Tenant",
+				"tenant_admin": "Administrador del Tenant",
 				"read_only": "Solo Lectura",
 				"remove": {
 					"toast": {
@@ -97,7 +94,7 @@
 			"title": "Comprar mensajes adicionales",
 			"subtitle": "Agregá mensajes adicionales a tu cuenta de forma inmediata.",
 			"info": {
-				"line_1": "Los mensajes se acreditan automáticamente en tu cuenta una vez confirmada la compra. Podras ver el conusmo en tu factura en la seccion de Panel de Administrador -> Facturacion.",
+				"line_1": "Los mensajes se acreditan automáticamente en tu cuenta una vez confirmada la compra. Podrás ver el consumo en tu factura en la sección de Panel de Administrador -> Facturación.",
 				"line_2": "Ideal para picos de uso, campañas o necesidades puntuales sin cambiar tu plan actual."
 			},
 			"custom": {
@@ -111,89 +108,89 @@
 		},
 
 		"file_tree": {
-      "disclaimer_title": "Estimación de almacenamiento:",
-      "disclaimer_title_description": "Los valores mostrados son aproximados. En la mayoría de los casos, la optimización inteligente de Nexata reduce el consumo real, permitiéndote almacenar más de lo indicado y aprovechar mejor tu espacio disponible.",
-      "header_description": "Administra archivos para que Nexata pueda tener conocimiento sobre su contenido.",
-      "root": "Raíz",
-      "select_all": "Seleccionar todo",
-      "empty_title": "Esta carpeta está vacía",
-      "empty_description": "No se encontraron archivos o carpetas aquí.",
-      "updated": "Actualizado",
-      "selected": "seleccionados",
-      "remaining": "restante",
-      "storage_exceeded": "Límite de almacenamiento excedido",
-      "reduce_selection": "Reduce la selección para continuar",
-      "toast_loading_title": "Iniciando ingesta",
-      "toast_loading_description": "{count} archivos en cola",
-      "toast_success_title": "Ingesta iniciada",
-      "toast_success_description": "Los archivos fueron correctamente ingeridos",
-      "toast_error_title": "Falló la ingesta",
-      "toast_error_description": "Ocurrió un error durante el proceso"
-    },
+			"disclaimer_title": "Estimación de almacenamiento:",
+			"disclaimer_title_description": "Los valores mostrados son aproximados. En la mayoría de los casos, la optimización inteligente de Nexata reduce el consumo real, permitiéndote almacenar más de lo indicado y aprovechar mejor tu espacio disponible.",
+			"header_description": "Administra archivos para que Nexata pueda tener conocimiento sobre su contenido.",
+			"root": "Raíz",
+			"select_all": "Seleccionar todo",
+			"empty_title": "Esta carpeta está vacía",
+			"empty_description": "No se encontraron archivos o carpetas aquí.",
+			"updated": "Actualizado",
+			"selected": "seleccionados",
+			"remaining": "restante",
+			"storage_exceeded": "Límite de almacenamiento excedido",
+			"reduce_selection": "Reduce la selección para continuar",
+			"toast_loading_title": "Iniciando ingesta",
+			"toast_loading_description": "{count} archivos en cola",
+			"toast_success_title": "Ingesta iniciada",
+			"toast_success_description": "Los archivos fueron correctamente ingeridos",
+			"toast_error_title": "Falló la ingesta",
+			"toast_error_description": "Ocurrió un error durante el proceso"
+		},
 
-    "upgrade_plan_modal": {
-      "title": "Elegí el plan ideal para tu equipo",
-      "subtitle": "Podés cambiar o escalar tu plan en cualquier momento.",
-      "current_plan": "Plan Actual",
-      "upgrade_button": "Actualizar Plan",
-      "downgrade_button": "Degradar Plan",
-      "contact": "Contactanos",
-      "plans": {
-        "personal": {
-          "title": "Personal",
-          "price": "$19.99 / mes",
-          "description": "Ideal para uso individual o pequeños equipos.",
-          "features": {
-            "messages": "150 mensajes por mes",
-            "storage": "1024 MB de almacenamiento",
-            "embeddings": "375M de tokens para embeddings / mes"
-          }
-        },
-        "business": {
-          "title": "Business",
-          "price": "$99.99 / mes",
-          "description": "Pensado para equipos y uso intensivo.",
-          "features": {
-            "messages": "1000 mensajes por mes",
-            "storage": "10 GB de almacenamiento",
-            "embeddings": "3750M de tokens para embeddings / mes"
-          }
-        },
-        "custom": {
-          "title": "Plan personalizado",
-          "price": "A medida",
-          "description": "Soluciones avanzadas para necesidades específicas.",
-          "features": {
-            "custom_plans": "Planes totalmente personalizados",
-            "external_integrations": "Integraciones con proveedores externos",
-            "data_sources": "Conexión a fuentes de datos propias"
-          }
-        }
-      },
-      "warnings": {
-        "downgrade_not_allowed": {
-          "title": "Degradación no permitida",
-          "description": "No podés degradar al plan Free desde tu membresía actual."
-        },
-        "downgrade_not_available": {
-          "title": "Degradación no disponible",
-          "description": "No podés degradar tu plan en este momento porque tu membresía mensual actual sigue activa. Cuando termine el ciclo de facturación, en lugar de pagar la próxima factura mensual, vas a poder elegir un plan inferior. Se te notificará cuando tu pago esté por vencer y en ese momento podrás proceder con la degradación."
-        },
-        "confirm_downgrade": {
-          "title": "Confirmar degradación de plan",
-          "description": "Estás a punto de degradar tu plan actual. Esta acción eliminará permanentemente tus datos almacenados, saldo de mensajes, embeddings y almacenamiento. Vas a tener que reconectar tus integraciones y volver a subir tu información una vez que la degradación se complete. Confirmá que entendés las consecuencias antes de continuar."
-        },
-        "confirm_upgrade": {
-          "title": "Confirmar actualización de plan",
-          "description": "Estás a punto de actualizar tu membresía actual. Tu plan vigente será cancelado inmediatamente y se generará una nueva factura para el plan seleccionado. Cualquier mensaje restante, embeddings o almacenamiento de tu ciclo actual se perderán. Una vez que la nueva factura sea abonada, tu plan se actualizará automáticamente y se aplicarán los nuevos límites."
-        }
-      },
-      "actions": {
-        "cancel": "Cancelar",
-        "confirm": "Confirmar",
-        "acknowledge": "Entiendo"
-      }
-    }
+		"upgrade_plan_modal": {
+			"title": "Elegí el plan ideal para tu equipo",
+			"subtitle": "Podés cambiar o escalar tu plan en cualquier momento.",
+			"current_plan": "Plan Actual",
+			"upgrade_button": "Actualizar Plan",
+			"downgrade_button": "Degradar Plan",
+			"contact": "Contactanos",
+			"plans": {
+				"personal": {
+					"title": "Personal",
+					"price": "$19.99 / mes",
+					"description": "Ideal para uso individual o pequeños equipos.",
+					"features": {
+						"messages": "150 mensajes por mes",
+						"storage": "1024 MB de almacenamiento",
+						"embeddings": "375M de tokens para embeddings / mes"
+					}
+				},
+				"business": {
+					"title": "Business",
+					"price": "$99.99 / mes",
+					"description": "Pensado para equipos y uso intensivo.",
+					"features": {
+						"messages": "1000 mensajes por mes",
+						"storage": "10 GB de almacenamiento",
+						"embeddings": "3750M de tokens para embeddings / mes"
+					}
+				},
+				"custom": {
+					"title": "Plan personalizado",
+					"price": "A medida",
+					"description": "Soluciones avanzadas para necesidades específicas.",
+					"features": {
+						"custom_plans": "Planes totalmente personalizados",
+						"external_integrations": "Integraciones con proveedores externos",
+						"data_sources": "Conexión a fuentes de datos propias"
+					}
+				}
+			},
+			"warnings": {
+				"downgrade_not_allowed": {
+					"title": "Degradación no permitida",
+					"description": "No podés degradar al plan Free desde tu membresía actual."
+				},
+				"downgrade_not_available": {
+					"title": "Degradación no disponible",
+					"description": "No podés degradar tu plan en este momento porque tu membresía mensual actual sigue activa. Cuando termine el ciclo de facturación, en lugar de pagar la próxima factura mensual, vas a poder elegir un plan inferior. Se te notificará cuando tu pago esté por vencer y en ese momento podrás proceder con la degradación."
+				},
+				"confirm_downgrade": {
+					"title": "Confirmar degradación de plan",
+					"description": "Estás a punto de degradar tu plan actual. Esta acción eliminará permanentemente tus datos almacenados, saldo de mensajes, embeddings y almacenamiento. Vas a tener que reconectar tus integraciones y volver a subir tu información una vez que la degradación se complete. Confirmá que entendés las consecuencias antes de continuar."
+				},
+				"confirm_upgrade": {
+					"title": "Confirmar actualización de plan",
+					"description": "Estás a punto de actualizar tu membresía actual. Tu plan vigente será cancelado inmediatamente y se generará una nueva factura para el plan seleccionado. Cualquier mensaje restante, embeddings o almacenamiento de tu ciclo actual se perderán. Una vez que la nueva factura sea abonada, tu plan se actualizará automáticamente y se aplicarán los nuevos límites."
+				}
+			},
+			"actions": {
+				"cancel": "Cancelar",
+				"confirm": "Confirmar",
+				"acknowledge": "Entiendo"
+			}
+		}
 	},
 
 	"login": {
@@ -209,13 +206,12 @@
 		}
 	},
 	"sidebar": {
-		"chat": "Chat",
 		"new_chat": "Nuevo Chat",
 		"search": "Buscar Chats...",
 		"delete_chat_title": "¿Eliminar chat?",
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer.",
 		"theme": "Cambiar tema",
-		"settings": "Configuracion",
+		"settings": "Configuración",
 		"tenant_switch": "Cambiar Empresa",
 		"feedback": "Enviar feedback"
 	},
@@ -261,36 +257,18 @@
 			"title": "Fuentes de información dinámica",
 			"description": "Administrá las integraciones que Nexata utiliza en tiempo real para contextualizar y responder con información siempre actualizada.",
 			"connect": "Conectar",
-			"disconnect": "Desconectar",
 			"no_accounts": "No hay cuentas conectadas",
-			"owner_label": "Propietario",
-			"account_label": "Cuenta",
-			"created_at_label": "Fecha de creación",
 			"loading_accounts": "Cargando cuentas...",
 			"view_details": "Ver detalles"
 		},
 		"storage": {
 			"title": "Almacenamiento",
-			"description": "Gestioná qué archivos y carpetas puede utilizar Nexata para analizar, buscar y contextualizar información.",
-			"configure": "Configurar",
-			"close": "Cerrar",
-			"selected": "Seleccionado",
-			"save_changes": "Guardar cambios",
-			"google_drive": {
-				"my_files": "Mis archivos",
-				"shared_files": "Documentos compartidos",
-				"shared_drives": "Unidades compartidas"
-			},
-			"confirm_save": {
-				"title": "Confirmar cambios",
-				"description": "¿Querés aplicar los cambios de seguimiento seleccionados?"
-			}
+			"description": "Gestioná qué archivos y carpetas puede utilizar Nexata para analizar, buscar y contextualizar información."
 		}
 	},
 	"admin": {
 		"meta": {
-			"title": "Nexata | Panel de administrador",
-			"description": "Gestión general y de usuarios de Nexata"
+			"title": "Nexata | Panel de administrador"
 		},
 		"header": {
 			"title": "Panel de administrador",
@@ -312,99 +290,99 @@
 			"tenant_name": "Nombre de la Empresa",
 			"tenant_logo": "Logo de la Empresa",
 			"plans": {
-        "free": "Gratis",
-        "personal": "Personal",
-        "business": "Business",
-        "pay_as_you_go": "Pago por uso"
-      }
+				"free": "Gratis",
+				"personal": "Personal",
+				"business": "Business",
+				"pay_as_you_go": "Pago por uso"
+			}
 		},
 		"billing": {
-      "title": "Facturación",
-      "description": "Historial de facturas y recargas de mensajes.",
-      "currency_toggle": {
-        "quote_label": "1 USD = ARS {quote}"
-      },
-      "last_bill": {
-        "title": "Última factura",
-        "paid": "Pagada",
-        "pending": "Pendiente",
-        "no_data": "Sin datos aún",
-        "plan_label": "Plan",
-        "source_label": "Origen",
-        "detail_title": "Detalle",
-        "detail_base": "Base",
-        "detail_messages": "Mensajes",
-        "detail_storage": "Storage",
-        "no_data_description": "Aún no se registraron movimientos en esta categoría."
-      },
-      "last_refill": {
-        "title": "Última recarga",
-        "messages_recharged": "Mensajes recargados",
-        "price_per_message": "Precio por mensaje"
-      },
-      "sources": {
-        "plan_change": "Cambio de plan",
-        "refill": "Recarga"
-      },
-      "bills_list": {
-        "title": "Todas las facturas",
-        "col_date": "Fecha",
-        "col_source": "Origen",
-        "col_plan": "Plan",
-        "col_detail": "Detalle",
-        "col_amount": "Monto",
-        "col_status": "Estado",
-        "detail_base": "Base: {base}",
-        "detail_messages": "{count} msg × {price}",
-        "empty_title": "Sin facturas",
-        "empty_description": "No hay facturas registradas aún.",
-        "end_title": "No hay más facturas",
-        "end_description": "Llegaste al final del historial de facturación.",
-        "pay_tooltip": "Pagar factura",
-        "page_label": "Página {page}",
-        "prev": "Anterior",
-        "next": "Siguiente"
-      }
-    },
+			"title": "Facturación",
+			"description": "Historial de facturas y recargas de mensajes.",
+			"currency_toggle": {
+				"quote_label": "1 USD = ARS {quote}"
+			},
+			"last_bill": {
+				"title": "Última factura",
+				"paid": "Pagada",
+				"pending": "Pendiente",
+				"no_data": "Sin datos aún",
+				"plan_label": "Plan",
+				"source_label": "Origen",
+				"detail_title": "Detalle",
+				"detail_base": "Base",
+				"detail_messages": "Mensajes",
+				"detail_storage": "Storage",
+				"no_data_description": "Aún no se registraron movimientos en esta categoría."
+			},
+			"last_refill": {
+				"title": "Última recarga",
+				"messages_recharged": "Mensajes recargados",
+				"price_per_message": "Precio por mensaje"
+			},
+			"sources": {
+				"plan_change": "Cambio de plan",
+				"refill": "Recarga"
+			},
+			"bills_list": {
+				"title": "Todas las facturas",
+				"col_date": "Fecha",
+				"col_source": "Origen",
+				"col_plan": "Plan",
+				"col_detail": "Detalle",
+				"col_amount": "Monto",
+				"col_status": "Estado",
+				"detail_base": "Base: {base}",
+				"detail_messages": "{count} msg × {price}",
+				"empty_title": "Sin facturas",
+				"empty_description": "No hay facturas registradas aún.",
+				"end_title": "No hay más facturas",
+				"end_description": "Llegaste al final del historial de facturación.",
+				"pay_tooltip": "Pagar factura",
+				"page_label": "Página {page}",
+				"prev": "Anterior",
+				"next": "Siguiente"
+			}
+		},
 		"traces": {
-      "title": "Registro de eventos",
-      "description": "Monitorea la actividad del sistema.",
-      "filters": {
-        "type": "Filtrar tipo",
-        "all": "Todos",
-        "from": "Desde",
-        "to": "Hasta",
-        "clear": "Limpiar"
-      },
-      "table": {
-        "date": "Fecha",
-        "type": "Tipo",
-        "user": "Usuario",
-        "metadata": "Metadatos"
-      },
-      "empty": {
-        "title": "No se encontraron eventos",
-        "description": "Intentá ajustar los filtros o el rango de fechas."
-      },
-      "pagination": {
-        "page": "Página",
-        "rows": "Filas",
-        "prev": "Anterior",
-        "next": "Siguiente"
-      },
-      "user": {
-        "system": "sistema"
-      },
-      "metadata": {
-        "provider": "Proveedor",
-        "file": "Archivo"
-      },
-      "types": {
-        "credential_added": "Credencial agregada",
-        "credential_removed": "Credencial eliminada",
-        "ingest_failed": "Fallo de ingestión"
-      }
-    },
+			"title": "Registro de eventos",
+			"description": "Monitorea la actividad del sistema.",
+			"filters": {
+				"type": "Filtrar tipo",
+				"all": "Todos",
+				"from": "Desde",
+				"to": "Hasta",
+				"clear": "Limpiar"
+			},
+			"table": {
+				"date": "Fecha",
+				"type": "Tipo",
+				"user": "Usuario",
+				"metadata": "Metadatos"
+			},
+			"empty": {
+				"title": "No se encontraron eventos",
+				"description": "Intentá ajustar los filtros o el rango de fechas."
+			},
+			"pagination": {
+				"page": "Página",
+				"rows": "Filas",
+				"prev": "Anterior",
+				"next": "Siguiente"
+			},
+			"user": {
+				"system": "sistema"
+			},
+			"metadata": {
+				"provider": "Proveedor",
+				"file": "Archivo"
+			},
+			"types": {
+				"credential_added": "Credencial agregada",
+				"credential_removed": "Credencial eliminada",
+				"ingest_failed": "Fallo de ingestión"
+			}
+		},
 		"users": {
 			"title": "Usuarios",
 			"description": "Gestioná los usuarios que forman parte de tu empresa en Nexata.",
@@ -458,7 +436,6 @@
 			"title": "Resumen del período",
 			"description": "Plan activo, período de facturación y gasto actual.",
 			"plan": "Plan",
-			"period": "Período actual",
 			"current_spend": "Gasto del mes"
 		},
 		"monthly": {
@@ -473,10 +450,7 @@
 		"invoices": {
 			"title": "Facturas",
 			"description": "Descargá facturas de períodos anteriores.",
-			"year": "Año",
-			"month": "Mes",
-			"download": "Descargar factura",
-			"select_period": "Seleccionar período"
+			"download": "Descargar factura"
 		},
 		"events": {
 			"title": "Eventos de facturación",
@@ -529,7 +503,7 @@
 				"title": "Perfil",
 				"subtitle": "Administrá tu información personal",
 				"back_to_chat": "Volver al chat",
-				"logout": "Cerrar Sesion"
+				"logout": "Cerrar Sesión"
 			},
 			"info": {
 				"messages_used": "Mensajes usados este mes"
@@ -572,7 +546,7 @@
 					"regenerate": "Regenerar clave API",
 					"delete": "Eliminar clave API",
 					"create": "Crear clave API",
-					"not_enabled": "Tu Empresa no tiene la funcion de ApiKey activa"
+					"not_enabled": "Tu Empresa no tiene la función de ApiKey activa"
 				},
 				"empty": {
 					"title": "Sin clave API",
@@ -583,7 +557,9 @@
 					"description": "Esta es la única vez que podrás ver esta clave API. Copiala ahora y guardala de forma segura.",
 					"security_note": "Por razones de seguridad, no podrás volver a ver esta clave. Si la perdés, deberás regenerarla.",
 					"saved_button": "Ya la guardé",
-					"copy_aria_label": "Copiar clave API"
+					"copy_aria_label": "Copiar clave API",
+					"client_id_label": "Client ID",
+					"copy_client_id_aria_label": "Copiar Client ID"
 				},
 				"delete_modal": {
 					"title": "Eliminar clave API",
@@ -616,76 +592,76 @@
 	},
 
 	"feedback": {
-    "title": "Mis Feedbacks",
-    "subtitle": "Gestiona tus reportes",
-    "back_to_chat": "Volver al chat",
-    "filters": {
-      "type": "Tipo",
-      "status": "Estado",
-      "all": "Todos",
-      "clear": "Borrar filtros"
-    },
-    "create": "Crear Feedback",
-    "empty": "No hay feedbacks todavía",
-    "pagination": {
-      "previous": "Anterior",
-      "next": "Siguiente",
-      "page_of": "Página {current} de {total}"
-    },
-    "types": {
-      "bug_report": "Reporte de Bug",
-      "feature_request": "Solicitud de Feature",
-      "question": "Pregunta",
-      "other": "Otro"
-    },
-    "statuses": {
-      "pending": "Pendiente",
-      "in_review": "En revisión",
-      "wontfix": "No se resolverá",
-      "solved": "Resuelto"
-    },
-    "modal": {
-      "view_title": "Detalle del Feedback",
-      "create_title": "Nuevo Feedback",
-      "view_description": "Visualiza la información enviada.",
-      "create_description": "Comparte un problema o sugerencia.",
-      "comment_label": "Comentario enviado",
-      "comment_placeholder": "Describe el detalle de tu feedback...",
-      "no_content": "Sin contenido",
-      "no_files": "Sin archivos",
-      "saved_files": "Archivos guardados",
-      "remove_file": "Click para remover",
-      "select_category": "Selecciona una categoría",
-      "type_required": "Debes seleccionar un tipo.",
-      "team_response": "Respuesta del equipo",
-      "no_response": "Todavía no hay una respuesta asociada a este feedback.",
-      "send": "Enviar feedback",
-      "update": "Guardar cambios",
-      "loading_create_title": "Enviando feedback...",
-      "loading_create_desc": "Procesando tu solicitud.",
-      "loading_update_title": "Actualizando feedback...",
-      "loading_update_desc": "Guardando los cambios realizados.",
-      "success_create_title": "Feedback enviado",
-      "success_create_desc": "Gracias por ayudarnos a mejorar.",
-      "success_update_title": "Feedback actualizado",
-      "success_update_desc": "Los cambios se guardaron correctamente.",
-      "error_title": "Error inesperado",
-      "error_desc": "No pudimos completar la operación."
-    },
-    "delete": {
-      "title": "Eliminar Feedback",
-      "description": "Esta acción eliminará permanentemente el feedback seleccionado. No podrá recuperarse una vez confirmado.",
-      "loading_title": "Eliminando feedback...",
-      "loading_desc": "Estamos procesando la eliminación. Esto tomará solo un momento.",
-      "success_title": "Feedback eliminado",
-      "success_desc": "El feedback fue eliminado correctamente y ya no estará disponible.",
-      "error_title": "No pudimos eliminar el feedback",
-      "error_desc": "Ocurrió un problema inesperado. Por favor intenta nuevamente."
-    },
-    "actions": {
-      "view": "Ver detalles",
-      "edit": "Editar feedback",
-      "delete": "Eliminar feedback"
-    }
-  }
+		"title": "Mis Feedbacks",
+		"subtitle": "Gestiona tus reportes",
+		"back_to_chat": "Volver al chat",
+		"filters": {
+			"type": "Tipo",
+			"status": "Estado",
+			"all": "Todos",
+			"clear": "Borrar filtros"
+		},
+		"create": "Crear Feedback",
+		"empty": "No hay feedbacks todavía",
+		"pagination": {
+			"previous": "Anterior",
+			"next": "Siguiente",
+			"page_of": "Página {current} de {total}"
+		},
+		"types": {
+			"bug_report": "Reporte de Bug",
+			"feature_request": "Solicitud de Feature",
+			"question": "Pregunta",
+			"other": "Otro"
+		},
+		"statuses": {
+			"pending": "Pendiente",
+			"in_review": "En revisión",
+			"wontfix": "No se resolverá",
+			"solved": "Resuelto"
+		},
+		"modal": {
+			"view_title": "Detalle del Feedback",
+			"create_title": "Nuevo Feedback",
+			"view_description": "Visualiza la información enviada.",
+			"create_description": "Comparte un problema o sugerencia.",
+			"comment_label": "Comentario enviado",
+			"comment_placeholder": "Describe el detalle de tu feedback...",
+			"no_content": "Sin contenido",
+			"no_files": "Sin archivos",
+			"saved_files": "Archivos guardados",
+			"remove_file": "Click para remover",
+			"select_category": "Selecciona una categoría",
+			"type_required": "Debes seleccionar un tipo.",
+			"team_response": "Respuesta del equipo",
+			"no_response": "Todavía no hay una respuesta asociada a este feedback.",
+			"send": "Enviar feedback",
+			"update": "Guardar cambios",
+			"loading_create_title": "Enviando feedback...",
+			"loading_create_desc": "Procesando tu solicitud.",
+			"loading_update_title": "Actualizando feedback...",
+			"loading_update_desc": "Guardando los cambios realizados.",
+			"success_create_title": "Feedback enviado",
+			"success_create_desc": "Gracias por ayudarnos a mejorar.",
+			"success_update_title": "Feedback actualizado",
+			"success_update_desc": "Los cambios se guardaron correctamente.",
+			"error_title": "Error inesperado",
+			"error_desc": "No pudimos completar la operación."
+		},
+		"delete": {
+			"title": "Eliminar Feedback",
+			"description": "Esta acción eliminará permanentemente el feedback seleccionado. No podrá recuperarse una vez confirmado.",
+			"loading_title": "Eliminando feedback...",
+			"loading_desc": "Estamos procesando la eliminación. Esto tomará solo un momento.",
+			"success_title": "Feedback eliminado",
+			"success_desc": "El feedback fue eliminado correctamente y ya no estará disponible.",
+			"error_title": "No pudimos eliminar el feedback",
+			"error_desc": "Ocurrió un problema inesperado. Por favor intenta nuevamente."
+		},
+		"actions": {
+			"view": "Ver detalles",
+			"edit": "Editar feedback",
+			"delete": "Eliminar feedback"
+		}
+	}
 }

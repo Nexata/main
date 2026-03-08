@@ -42,7 +42,7 @@ function LoginPage() {
 			initial={{ opacity: 0, scale: 0.96 }}
 			animate={{ opacity: 1, scale: 1 }}
 			transition={{ duration: 0.25, ease: 'easeOut' }}
-			className="w-full max-w-md mx-auto min-h-screen flex items-center justify-center px-4"
+			className="w-full max-w-md mx-auto min-h-screen flex items-center justify-center px-4 sm:px-0"
 		>
 			<Card className="rounded-2xl border shadow-xl">
 				<CardContent className="p-8">

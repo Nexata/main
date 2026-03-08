@@ -106,7 +106,9 @@ import {
 	'user.profile.api_keys.actions.not_enabled' as user_profile_api_keys_actions_not_enabled,
 	'user.profile.api_keys.delete_modal.description' as user_profile_api_keys_delete_modal_description,
 	'user.profile.api_keys.delete_modal.title' as user_profile_api_keys_delete_modal_title,
+	'user.profile.api_keys.one_time_modal.client_id_label' as user_profile_api_keys_one_time_modal_client_id_label,
 	'user.profile.api_keys.one_time_modal.copy_aria_label' as user_profile_api_keys_one_time_modal_copy_aria_label,
+	'user.profile.api_keys.one_time_modal.copy_client_id_aria_label' as user_profile_api_keys_one_time_modal_copy_client_id_aria_label,
 	'user.profile.api_keys.one_time_modal.description' as user_profile_api_keys_one_time_modal_description,
 	'user.profile.api_keys.one_time_modal.saved_button' as user_profile_api_keys_one_time_modal_saved_button,
 	'user.profile.api_keys.one_time_modal.security_note' as user_profile_api_keys_one_time_modal_security_note,
@@ -609,17 +611,17 @@ export default function ProfilePage() {
 					<div className="space-y-3">
 						<div>
 							<h2 className="text-lg font-semibold">
-								profile_api_keys_section_title()
+								{profile_api_keys_section_title()}
 							</h2>
 							<p className="text-sm text-muted-foreground">
-								profile_api_keys_section_subtitle()
+								{profile_api_keys_section_subtitle()}
 							</p>
 						</div>
-						me.hasApiKey ? (
-						<div className="flex flex-col sm:flex-row sm:items-center gap-3">
-							<div className="flex-1">
-								<div
-									className="
+						{me.hasApiKey ? (
+							<div className="flex flex-col sm:flex-row sm:items-center gap-3">
+								<div className="flex-1">
+									<div
+										className="
 									flex items-center
 									h-10 px-3
 									rounded-md border border-border
@@ -629,87 +631,87 @@ export default function ProfilePage() {
 									tracking-widest
 									select-none
 									"
-								>
-									*****************************
+									>
+										*****************************
+									</div>
 								</div>
+
+								<TooltipProvider>
+									<div className="flex items-center gap-2 shrink-0">
+										<Tooltip>
+											<TooltipTrigger>
+												<Button
+													variant="outline"
+													size="icon"
+													className="cursor-pointer"
+													onClick={handleCreateOrRegenerateApiKey}
+													aria-label="Regenerate API key"
+												>
+													<RotateCw className="h-4 w-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>{profile_api_keys_action_regenerate()}</p>
+											</TooltipContent>
+										</Tooltip>
+
+										{/* Delete */}
+										<Tooltip>
+											<TooltipTrigger>
+												<Button
+													variant="destructive"
+													size="icon"
+													className="cursor-pointer"
+													onClick={() => setDeleteApiKeyOpen(true)}
+													aria-label="Delete API key"
+												>
+													<Trash2 className="h-4 w-4" />
+												</Button>
+											</TooltipTrigger>
+											<TooltipContent>
+												<p>{profile_api_keys_action_delete()}</p>
+											</TooltipContent>
+										</Tooltip>
+									</div>
+								</TooltipProvider>
 							</div>
-
-							<TooltipProvider>
-								<div className="flex items-center gap-2 shrink-0">
-									<Tooltip>
-										<TooltipTrigger>
-											<Button
-												variant="outline"
-												size="icon"
-												className="cursor-pointer"
-												onClick={handleCreateOrRegenerateApiKey}
-												aria-label="Regenerate API key"
-											>
-												<RotateCw className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>{profile_api_keys_action_regenerate()}</p>
-										</TooltipContent>
-									</Tooltip>
-
-									{/* Delete */}
-									<Tooltip>
-										<TooltipTrigger>
-											<Button
-												variant="destructive"
-												size="icon"
-												className="cursor-pointer"
-												onClick={() => setDeleteApiKeyOpen(true)}
-												aria-label="Delete API key"
-											>
-												<Trash2 className="h-4 w-4" />
-											</Button>
-										</TooltipTrigger>
-										<TooltipContent>
-											<p>{profile_api_keys_action_delete()}</p>
-										</TooltipContent>
-									</Tooltip>
-								</div>
-							</TooltipProvider>
-						</div>
 						) : (
-						<div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4">
-							<div>
-								<p className="text-sm font-medium">
-									{profile_api_keys_empty_title()}
-								</p>
-								<p className="text-xs text-muted-foreground">
-									{profile_api_keys_empty_description()}
-								</p>
+							<div className="flex items-center justify-between gap-4 rounded-lg border border-dashed border-border bg-muted/30 px-4 py-4">
+								<div>
+									<p className="text-sm font-medium">
+										{profile_api_keys_empty_title()}
+									</p>
+									<p className="text-xs text-muted-foreground">
+										{profile_api_keys_empty_description()}
+									</p>
+								</div>
+
+								<Tooltip>
+									<TooltipTrigger>
+										<span>
+											<Button
+												size="sm"
+												className={
+													!tenant?.hasApiAccess
+														? 'cursor-not-allowed'
+														: 'cursor-pointer'
+												}
+												disabled={!tenant?.hasApiAccess}
+												onClick={handleCreateOrRegenerateApiKey}
+											>
+												{profile_api_keys_action_create()}
+											</Button>
+										</span>
+									</TooltipTrigger>
+
+									{!tenant?.hasApiAccess && (
+										<TooltipContent>
+											{user_profile_api_keys_actions_not_enabled()}
+										</TooltipContent>
+									)}
+								</Tooltip>
 							</div>
-
-							<Tooltip>
-								<TooltipTrigger>
-									<span>
-										<Button
-											size="sm"
-											className={
-												!tenant?.hasApiAccess
-													? 'cursor-not-allowed'
-													: 'cursor-pointer'
-											}
-											disabled={!tenant?.hasApiAccess}
-											onClick={handleCreateOrRegenerateApiKey}
-										>
-											{profile_api_keys_action_create()}
-										</Button>
-									</span>
-								</TooltipTrigger>
-
-								{!tenant?.hasApiAccess && (
-									<TooltipContent>
-										{user_profile_api_keys_actions_not_enabled()}
-									</TooltipContent>
-								)}
-							</Tooltip>
-						</div>
-						)
+						)}
 					</div>
 
 					<Separator />
@@ -767,6 +769,7 @@ export default function ProfilePage() {
 			<ApiKeyOneTimeModal
 				open={apiKeyModalOpen}
 				apiKey={generatedApiKey}
+				clientId={me?.id ?? null}
 				onOpenChange={(v) => {
 					setApiKeyModalOpen(v);
 					if (!v) setGeneratedApiKey(null);
@@ -838,22 +841,34 @@ function ApiKeyOneTimeModal({
 	open,
 	onOpenChange,
 	apiKey,
+	clientId,
 }: {
 	open: boolean;
 	onOpenChange: (v: boolean) => void;
 	apiKey: string | null;
+	clientId: string | null;
 }) {
-	const [copied, setCopied] = useState(false);
+	const [copiedKey, setCopiedKey] = useState(false);
+	const [copiedClientId, setCopiedClientId] = useState(false);
 
 	useEffect(() => {
-		if (open) setCopied(false);
+		if (open) {
+			setCopiedKey(false);
+			setCopiedClientId(false);
+		}
 	}, [open]);
 
 	if (!apiKey) return null;
 
-	const handleCopy = async () => {
+	const handleCopyKey = async () => {
 		await navigator.clipboard.writeText(apiKey);
-		setCopied(true);
+		setCopiedKey(true);
+	};
+
+	const handleCopyClientId = async () => {
+		if (!clientId) return;
+		await navigator.clipboard.writeText(clientId);
+		setCopiedClientId(true);
 	};
 
 	return (
@@ -873,22 +888,52 @@ function ApiKeyOneTimeModal({
 				</DialogHeader>
 
 				<div className="space-y-3">
-					<div className="flex items-center gap-2">
-						<Input readOnly value={apiKey} className="font-mono" />
+					{clientId && (
+						<div className="space-y-1">
+							<label className="text-xs font-medium text-muted-foreground">
+								{user_profile_api_keys_one_time_modal_client_id_label()}
+							</label>
+							<div className="flex items-center gap-2">
+								<Input readOnly value={clientId} className="font-mono" />
 
-						<Button
-							size="icon"
-							variant="outline"
-							onClick={handleCopy}
-							className="cursor-pointer"
-							aria-label={user_profile_api_keys_one_time_modal_copy_aria_label()}
-						>
-							{copied ? (
-								<Check className="h-4 w-4 text-green-600" />
-							) : (
-								<Copy className="h-4 w-4" />
-							)}
-						</Button>
+								<Button
+									size="icon"
+									variant="outline"
+									onClick={handleCopyClientId}
+									className="cursor-pointer"
+									aria-label={user_profile_api_keys_one_time_modal_copy_client_id_aria_label()}
+								>
+									{copiedClientId ? (
+										<Check className="h-4 w-4 text-green-600" />
+									) : (
+										<Copy className="h-4 w-4" />
+									)}
+								</Button>
+							</div>
+						</div>
+					)}
+
+					<div className="space-y-1">
+						<label className="text-xs font-medium text-muted-foreground">
+							{user_profile_api_keys_one_time_modal_copy_aria_label()}
+						</label>
+						<div className="flex items-center gap-2">
+							<Input readOnly value={apiKey} className="font-mono" />
+
+							<Button
+								size="icon"
+								variant="outline"
+								onClick={handleCopyKey}
+								className="cursor-pointer"
+								aria-label={user_profile_api_keys_one_time_modal_copy_aria_label()}
+							>
+								{copiedKey ? (
+									<Check className="h-4 w-4 text-green-600" />
+								) : (
+									<Copy className="h-4 w-4" />
+								)}
+							</Button>
+						</div>
 					</div>
 
 					<p className="text-xs text-muted-foreground">

@@ -13,17 +13,14 @@
 		"loading": "Loading…",
 		"success": "Success",
 		"error": "Something went wrong",
-		"expand": "View details",
-		"collapse": "Hide details",
-		"account": "Account",
 		"created_at": "Created at"
 	},
 
 	"tenant-selection": {
-    "title": "Nexata | Select tenant",
-    "welcome": "Welcome {name}",
-    "selectPrompt": "Select the tenant you want to access",
-    "userFallback": "User"
+		"title": "Nexata | Select tenant",
+		"welcome": "Welcome {name}",
+		"selectPrompt": "Select the tenant you want to access",
+		"userFallback": "User"
 	},
 
 	"months": {
@@ -42,19 +39,19 @@
 	},
 
 	"components": {
-  	"reasoning_block": {
-      "title": "Deep Reasoning",
-      "description": "Analyzing with extended thinking..."
-    },
+		"reasoning_block": {
+			"title": "Deep Reasoning",
+			"description": "Analyzing with extended thinking..."
+		},
 		"credentials": {
 			"permissions": {
-			  "view_credentials": "View Permissions",
-				"hice_credentials": "Hide Permissions",
+				"view_credentials": "View Permissions",
+				"hide_credentials": "Hide Permissions",
 				"title": "Credential permissions",
 				"description": "Manage which users can access and use this credential.",
 				"no_manage_description": "Check which users can access and use this credential.",
 				"add": "Add",
-				"tenat_admin": "Tenant Admin",
+				"tenant_admin": "Tenant Admin",
 				"read_only": "Read Only",
 				"remove": {
 					"toast": {
@@ -111,89 +108,89 @@
 		},
 
 		"file_tree": {
-      "disclaimer_title": "Storage estimate:",
-      "disclaimer_title_description": "The displayed storage values are approximate. In most cases, Nexata’s intelligent optimization reduces the real space consumed, allowing you to store more than what the indicator suggests maximizing efficiency without extra effort.",
-      "header_description": "Manage files so Nexata can understand their content.",
-      "root": "Root",
-      "select_all": "Select all",
-      "empty_title": "This folder is empty",
-      "empty_description": "No files or folders found here.",
-      "updated": "Updated",
-      "selected": "selected",
-      "remaining": "remaining",
-      "storage_exceeded": "Storage limit exceeded",
-      "reduce_selection": "Reduce selection to continue",
-      "toast_loading_title": "Starting ingestion",
-      "toast_loading_description": "{count} files queued",
-      "toast_success_title": "Ingestion started",
-      "toast_success_description": "The files were successfully ingested",
-      "toast_error_title": "Ingestion failed",
-      "toast_error_description": "Something went wrong during processing"
-    },
+			"disclaimer_title": "Storage estimate:",
+			"disclaimer_title_description": "The displayed storage values are approximate. In most cases, Nexata’s intelligent optimization reduces the real space consumed, allowing you to store more than what the indicator suggests maximizing efficiency without extra effort.",
+			"header_description": "Manage files so Nexata can understand their content.",
+			"root": "Root",
+			"select_all": "Select all",
+			"empty_title": "This folder is empty",
+			"empty_description": "No files or folders found here.",
+			"updated": "Updated",
+			"selected": "selected",
+			"remaining": "remaining",
+			"storage_exceeded": "Storage limit exceeded",
+			"reduce_selection": "Reduce selection to continue",
+			"toast_loading_title": "Starting ingestion",
+			"toast_loading_description": "{count} files queued",
+			"toast_success_title": "Ingestion started",
+			"toast_success_description": "The files were successfully ingested",
+			"toast_error_title": "Ingestion failed",
+			"toast_error_description": "Something went wrong during processing"
+		},
 
-    "upgrade_plan_modal": {
-      "title": "Choose the ideal plan for your team",
-      "subtitle": "You can change or upgrade your plan at any time.",
-      "current_plan": "Current Plan",
-      "upgrade_button": "Upgrade Plan",
-      "downgrade_button": "Downgrade Plan",
-      "contact": "Contact us",
-      "plans": {
-        "personal": {
-          "title": "Personal",
-          "price": "$19.99 / month",
-          "description": "Perfect for individual use or small teams.",
-          "features": {
-            "messages": "150 messages per month",
-            "storage": "1024 MB of storage",
-            "embeddings": "375M tokens for embeddings / month"
-          }
-        },
-        "business": {
-          "title": "Business",
-          "price": "$99.99 / month",
-          "description": "Designed for teams and intensive usage.",
-          "features": {
-            "messages": "1000 messages per month",
-            "storage": "10 GB of storage",
-            "embeddings": "3750M tokens for embeddings / month"
-          }
-        },
-        "custom": {
-          "title": "Custom plan",
-          "price": "Custom pricing",
-          "description": "Advanced solutions for specific needs.",
-          "features": {
-            "custom_plans": "Fully customized plans",
-            "external_integrations": "External provider integrations",
-            "data_sources": "Connection to private data sources"
-          }
-        }
-      },
-      "warnings": {
-        "downgrade_not_allowed": {
-          "title": "Downgrade Not Allowed",
-          "description": "Downgrading to the Free plan is not available from your current membership."
-        },
-        "downgrade_not_available": {
-          "title": "Downgrade Not Available",
-          "description": "You cannot downgrade your plan at this moment because your current monthly membership is still active. When your billing cycle ends, instead of paying the next monthly invoice, you will be able to choose a lower plan. You will be notified when your membership payment is due, and at that time you can proceed with the downgrade."
-        },
-        "confirm_downgrade": {
-          "title": "Confirm Plan Downgrade",
-          "description": "You are about to downgrade your current plan. This action will permanently remove your stored data, message balance, embeddings, and storage. You will need to reconnect your integrations and re-upload your information after the downgrade is completed. Please confirm that you understand the consequences before proceeding."
-        },
-        "confirm_upgrade": {
-          "title": "Confirm Plan Upgrade",
-          "description": "You are about to upgrade your current membership. Your current plan will be cancelled immediately and a new invoice will be generated for the selected plan. Any remaining messages, embeddings, and storage from your current billing cycle will be lost. Once the new invoice is paid, your plan will be automatically upgraded and your new limits will be applied."
-        }
-      },
-      "actions": {
-        "cancel": "Cancel",
-        "confirm": "Confirm",
-        "acknowledge": "I understand"
-      }
-    }
+		"upgrade_plan_modal": {
+			"title": "Choose the ideal plan for your team",
+			"subtitle": "You can change or upgrade your plan at any time.",
+			"current_plan": "Current Plan",
+			"upgrade_button": "Upgrade Plan",
+			"downgrade_button": "Downgrade Plan",
+			"contact": "Contact us",
+			"plans": {
+				"personal": {
+					"title": "Personal",
+					"price": "$19.99 / month",
+					"description": "Perfect for individual use or small teams.",
+					"features": {
+						"messages": "150 messages per month",
+						"storage": "1024 MB of storage",
+						"embeddings": "375M tokens for embeddings / month"
+					}
+				},
+				"business": {
+					"title": "Business",
+					"price": "$99.99 / month",
+					"description": "Designed for teams and intensive usage.",
+					"features": {
+						"messages": "1000 messages per month",
+						"storage": "10 GB of storage",
+						"embeddings": "3750M tokens for embeddings / month"
+					}
+				},
+				"custom": {
+					"title": "Custom plan",
+					"price": "Custom pricing",
+					"description": "Advanced solutions for specific needs.",
+					"features": {
+						"custom_plans": "Fully customized plans",
+						"external_integrations": "External provider integrations",
+						"data_sources": "Connection to private data sources"
+					}
+				}
+			},
+			"warnings": {
+				"downgrade_not_allowed": {
+					"title": "Downgrade Not Allowed",
+					"description": "Downgrading to the Free plan is not available from your current membership."
+				},
+				"downgrade_not_available": {
+					"title": "Downgrade Not Available",
+					"description": "You cannot downgrade your plan at this moment because your current monthly membership is still active. When your billing cycle ends, instead of paying the next monthly invoice, you will be able to choose a lower plan. You will be notified when your membership payment is due, and at that time you can proceed with the downgrade."
+				},
+				"confirm_downgrade": {
+					"title": "Confirm Plan Downgrade",
+					"description": "You are about to downgrade your current plan. This action will permanently remove your stored data, message balance, embeddings, and storage. You will need to reconnect your integrations and re-upload your information after the downgrade is completed. Please confirm that you understand the consequences before proceeding."
+				},
+				"confirm_upgrade": {
+					"title": "Confirm Plan Upgrade",
+					"description": "You are about to upgrade your current membership. Your current plan will be cancelled immediately and a new invoice will be generated for the selected plan. Any remaining messages, embeddings, and storage from your current billing cycle will be lost. Once the new invoice is paid, your plan will be automatically upgraded and your new limits will be applied."
+				}
+			},
+			"actions": {
+				"cancel": "Cancel",
+				"confirm": "Confirm",
+				"acknowledge": "I understand"
+			}
+		}
 	},
 
 	"login": {
@@ -209,7 +206,6 @@
 		}
 	},
 	"sidebar": {
-		"chat": "Chat",
 		"new_chat": "New Chat",
 		"search": "Search Chats...",
 		"delete_chat_title": "Delete chat?",
@@ -261,36 +257,18 @@
 			"title": "Dynamic data sources",
 			"description": "Manage real-time integrations Nexata uses to contextualize and respond with up-to-date information.",
 			"connect": "Connect",
-			"disconnect": "Disconnect",
 			"no_accounts": "No connected accounts",
-			"owner_label": "Owner",
-			"account_label": "Account",
-			"created_at_label": "Created At",
 			"loading_accounts": "Loading accounts...",
 			"view_details": "View details"
 		},
 		"storage": {
 			"title": "Storage",
-			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information.",
-			"configure": "Configure",
-			"close": "Close",
-			"selected": "Selected",
-			"save_changes": "Save changes",
-			"google_drive": {
-				"my_files": "My files",
-				"shared_files": "Shared files",
-				"shared_drives": "Shared drives"
-			},
-			"confirm_save": {
-				"title": "Confirm changes",
-				"description": "Do you want to apply the selected tracking changes?"
-			}
+			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information."
 		}
 	},
 	"admin": {
 		"meta": {
-			"title": "Nexata | Admin Panel",
-			"description": "General and user management for Nexata"
+			"title": "Nexata | Admin Panel"
 		},
 		"header": {
 			"title": "Admin panel",
@@ -312,99 +290,99 @@
 			"tenant_name": "Company Name",
 			"tenant_logo": "Company Logo",
 			"plans": {
-        "free": "Free",
-        "personal": "Personal",
-        "business": "Business",
-        "pay_as_you_go": "Pay as you go"
-      }
+				"free": "Free",
+				"personal": "Personal",
+				"business": "Business",
+				"pay_as_you_go": "Pay as you go"
+			}
 		},
 		"billing": {
-      "title": "Billing",
-      "description": "Invoice history and message top-ups.",
-      "currency_toggle": {
-        "quote_label": "1 USD = ARS {quote}"
-      },
-      "last_bill": {
-        "title": "Last invoice",
-        "paid": "Paid",
-        "pending": "Pending",
-        "no_data": "No data yet",
-        "plan_label": "Plan",
-        "source_label": "Source",
-        "detail_title": "Detail",
-        "detail_base": "Base",
-        "detail_messages": "Messages",
-        "detail_storage": "Storage",
-        "no_data_description": "No activity has been recorded in this category yet."
-      },
-      "last_refill": {
-        "title": "Last top-up",
-        "messages_recharged": "Messages recharged",
-        "price_per_message": "Price per message"
-      },
-      "sources": {
-        "plan_change": "Plan change",
-        "refill": "Top-up"
-      },
-      "bills_list": {
-        "title": "All invoices",
-        "col_date": "Date",
-        "col_source": "Source",
-        "col_plan": "Plan",
-        "col_detail": "Detail",
-        "col_amount": "Amount",
-        "col_status": "Status",
-        "detail_base": "Base: {base}",
-        "detail_messages": "{count} msg × {price}",
-        "empty_title": "No invoices",
-        "empty_description": "No invoices have been recorded yet.",
-        "end_title": "No more invoices",
-        "end_description": "You've reached the end of your billing history.",
-        "pay_tooltip": "Pay invoice",
-        "page_label": "Page {page}",
-        "prev": "Previous",
-        "next": "Next"
-      }
-    },
+			"title": "Billing",
+			"description": "Invoice history and message top-ups.",
+			"currency_toggle": {
+				"quote_label": "1 USD = ARS {quote}"
+			},
+			"last_bill": {
+				"title": "Last invoice",
+				"paid": "Paid",
+				"pending": "Pending",
+				"no_data": "No data yet",
+				"plan_label": "Plan",
+				"source_label": "Source",
+				"detail_title": "Detail",
+				"detail_base": "Base",
+				"detail_messages": "Messages",
+				"detail_storage": "Storage",
+				"no_data_description": "No activity has been recorded in this category yet."
+			},
+			"last_refill": {
+				"title": "Last top-up",
+				"messages_recharged": "Messages recharged",
+				"price_per_message": "Price per message"
+			},
+			"sources": {
+				"plan_change": "Plan change",
+				"refill": "Top-up"
+			},
+			"bills_list": {
+				"title": "All invoices",
+				"col_date": "Date",
+				"col_source": "Source",
+				"col_plan": "Plan",
+				"col_detail": "Detail",
+				"col_amount": "Amount",
+				"col_status": "Status",
+				"detail_base": "Base: {base}",
+				"detail_messages": "{count} msg × {price}",
+				"empty_title": "No invoices",
+				"empty_description": "No invoices have been recorded yet.",
+				"end_title": "No more invoices",
+				"end_description": "You've reached the end of your billing history.",
+				"pay_tooltip": "Pay invoice",
+				"page_label": "Page {page}",
+				"prev": "Previous",
+				"next": "Next"
+			}
+		},
 		"traces": {
-      "title": "Event trace",
-      "description": "Monitor system activity.",
-      "filters": {
-        "type": "Filter type",
-        "all": "All",
-        "from": "From",
-        "to": "To",
-        "clear": "Clear"
-      },
-      "table": {
-        "date": "Date",
-        "type": "Type",
-        "user": "User",
-        "metadata": "Metadata"
-      },
-      "empty": {
-        "title": "No events found",
-        "description": "Try adjusting filters or date range."
-      },
-      "pagination": {
-        "page": "Page",
-        "rows": "Rows",
-        "prev": "Prev",
-        "next": "Next"
-      },
-      "user": {
-        "system": "system"
-      },
-      "metadata": {
-        "provider": "Provider",
-        "file": "File"
-      },
-      "types": {
-        "credential_added": "Credential added",
-        "credential_removed": "Credential removed",
-        "ingest_failed": "Ingest failed"
-      }
-    },
+			"title": "Event trace",
+			"description": "Monitor system activity.",
+			"filters": {
+				"type": "Filter type",
+				"all": "All",
+				"from": "From",
+				"to": "To",
+				"clear": "Clear"
+			},
+			"table": {
+				"date": "Date",
+				"type": "Type",
+				"user": "User",
+				"metadata": "Metadata"
+			},
+			"empty": {
+				"title": "No events found",
+				"description": "Try adjusting filters or date range."
+			},
+			"pagination": {
+				"page": "Page",
+				"rows": "Rows",
+				"prev": "Prev",
+				"next": "Next"
+			},
+			"user": {
+				"system": "system"
+			},
+			"metadata": {
+				"provider": "Provider",
+				"file": "File"
+			},
+			"types": {
+				"credential_added": "Credential added",
+				"credential_removed": "Credential removed",
+				"ingest_failed": "Ingest failed"
+			}
+		},
 		"users": {
 			"title": "Users",
 			"description": "Manage the users that belong to your Nexata organization.",
@@ -458,7 +436,6 @@
 			"title": "Billing overview",
 			"description": "Active plan, billing period and current spend.",
 			"plan": "Plan",
-			"period": "Current period",
 			"current_spend": "Current spend"
 		},
 		"monthly": {
@@ -473,10 +450,7 @@
 		"invoices": {
 			"title": "Invoices",
 			"description": "Download invoices from previous periods.",
-			"year": "Year",
-			"month": "Month",
-			"download": "Download invoice",
-			"select_period": "Select period"
+			"download": "Download invoice"
 		},
 		"events": {
 			"title": "Billing events",
@@ -583,7 +557,9 @@
 					"description": "This is the only time you will be able to see this API key. Copy it now and store it securely.",
 					"security_note": "For security reasons, you won't be able to view this key again. If you lose it, you will need to regenerate it.",
 					"saved_button": "I have saved it",
-					"copy_aria_label": "Copy API key"
+					"copy_aria_label": "Copy API key",
+					"client_id_label": "Client ID",
+					"copy_client_id_aria_label": "Copy Client ID"
 				},
 				"delete_modal": {
 					"title": "Delete API key",
@@ -616,76 +592,76 @@
 	},
 
 	"feedback": {
-    "title": "My Feedback",
-    "subtitle": "Manage your reports",
-    "back_to_chat": "Back to chat",
-    "filters": {
-      "type": "Type",
-      "status": "Status",
-      "all": "All",
-      "clear": "Clear filters"
-    },
-    "create": "Create Feedback",
-    "empty": "There are no feedback entries yet",
-    "pagination": {
-      "previous": "Previous",
-      "next": "Next",
-      "page_of": "Page {current} of {total}"
-    },
-    "types": {
-      "bug_report": "Bug Report",
-      "feature_request": "Feature Request",
-      "question": "Question",
-      "other": "Other"
-    },
-    "statuses": {
-      "pending": "Pending",
-      "in_review": "In Review",
-      "wontfix": "Won't Fix",
-      "solved": "Solved"
-    },
-    "modal": {
-      "view_title": "Feedback Details",
-      "create_title": "New Feedback",
-      "view_description": "View the submitted information.",
-      "create_description": "Share a problem or suggestion.",
-      "comment_label": "Submitted comment",
-      "comment_placeholder": "Describe your feedback in detail...",
-      "no_content": "No content",
-      "no_files": "No files",
-      "saved_files": "Saved files",
-      "remove_file": "Click to remove",
-      "select_category": "Select a category",
-      "type_required": "You must select a type.",
-      "team_response": "Team response",
-      "no_response": "There is no response associated with this feedback yet.",
-      "send": "Send feedback",
-      "update": "Save changes",
-      "loading_create_title": "Sending feedback...",
-      "loading_create_desc": "Processing your request.",
-      "loading_update_title": "Updating feedback...",
-      "loading_update_desc": "Saving your changes.",
-      "success_create_title": "Feedback sent",
-      "success_create_desc": "Thank you for helping us improve.",
-      "success_update_title": "Feedback updated",
-      "success_update_desc": "Changes were saved successfully.",
-      "error_title": "Unexpected error",
-      "error_desc": "We couldn't complete the operation."
-    },
-    "delete": {
-      "title": "Delete Feedback",
-      "description": "This action will permanently delete the selected feedback. It cannot be recovered once confirmed.",
-      "loading_title": "Deleting feedback...",
-      "loading_desc": "We are processing the deletion. This will only take a moment.",
-      "success_title": "Feedback deleted",
-      "success_desc": "The feedback was successfully deleted and is no longer available.",
-      "error_title": "We couldn't delete the feedback",
-      "error_desc": "An unexpected error occurred. Please try again."
-    },
-    "actions": {
-      "view": "View details",
-      "edit": "Edit feedback",
-      "delete": "Delete feedback"
-    }
-  }
+		"title": "My Feedback",
+		"subtitle": "Manage your reports",
+		"back_to_chat": "Back to chat",
+		"filters": {
+			"type": "Type",
+			"status": "Status",
+			"all": "All",
+			"clear": "Clear filters"
+		},
+		"create": "Create Feedback",
+		"empty": "There are no feedback entries yet",
+		"pagination": {
+			"previous": "Previous",
+			"next": "Next",
+			"page_of": "Page {current} of {total}"
+		},
+		"types": {
+			"bug_report": "Bug Report",
+			"feature_request": "Feature Request",
+			"question": "Question",
+			"other": "Other"
+		},
+		"statuses": {
+			"pending": "Pending",
+			"in_review": "In Review",
+			"wontfix": "Won't Fix",
+			"solved": "Solved"
+		},
+		"modal": {
+			"view_title": "Feedback Details",
+			"create_title": "New Feedback",
+			"view_description": "View the submitted information.",
+			"create_description": "Share a problem or suggestion.",
+			"comment_label": "Submitted comment",
+			"comment_placeholder": "Describe your feedback in detail...",
+			"no_content": "No content",
+			"no_files": "No files",
+			"saved_files": "Saved files",
+			"remove_file": "Click to remove",
+			"select_category": "Select a category",
+			"type_required": "You must select a type.",
+			"team_response": "Team response",
+			"no_response": "There is no response associated with this feedback yet.",
+			"send": "Send feedback",
+			"update": "Save changes",
+			"loading_create_title": "Sending feedback...",
+			"loading_create_desc": "Processing your request.",
+			"loading_update_title": "Updating feedback...",
+			"loading_update_desc": "Saving your changes.",
+			"success_create_title": "Feedback sent",
+			"success_create_desc": "Thank you for helping us improve.",
+			"success_update_title": "Feedback updated",
+			"success_update_desc": "Changes were saved successfully.",
+			"error_title": "Unexpected error",
+			"error_desc": "We couldn't complete the operation."
+		},
+		"delete": {
+			"title": "Delete Feedback",
+			"description": "This action will permanently delete the selected feedback. It cannot be recovered once confirmed.",
+			"loading_title": "Deleting feedback...",
+			"loading_desc": "We are processing the deletion. This will only take a moment.",
+			"success_title": "Feedback deleted",
+			"success_desc": "The feedback was successfully deleted and is no longer available.",
+			"error_title": "We couldn't delete the feedback",
+			"error_desc": "An unexpected error occurred. Please try again."
+		},
+		"actions": {
+			"view": "View details",
+			"edit": "Edit feedback",
+			"delete": "Delete feedback"
+		}
+	}
 }

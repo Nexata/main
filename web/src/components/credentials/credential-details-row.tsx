@@ -12,7 +12,7 @@ import {
   "components.sources.view_files" as components_sources_view_files,
   "components.sources.collapse_files" as components_sources_collapse_files,
   "components.credentials.permissions.view_credentials" as components_credentials_permissions_view_credentials,
-  "components.credentials.permissions.hice_credentials" as components_credentials_permissions_hice_credentials
+  "components.credentials.permissions.hide_credentials" as components_credentials_permissions_hide_credentials
 } from "@/paraglide/messages.js"
 import { AccessLevelBadge } from "./access-level-badge"
 
@@ -125,7 +125,7 @@ export function CredentialDetailsRow({
 
             }}
           >
-            {expanded && mode === "details" ? components_credentials_permissions_hice_credentials() : components_credentials_permissions_view_credentials()}
+            {expanded && mode === "details" ? components_credentials_permissions_hide_credentials() : components_credentials_permissions_view_credentials()}
           </Button>
 
           {/* Files button */}
