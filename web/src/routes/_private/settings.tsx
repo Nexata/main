@@ -5,6 +5,7 @@ import {
 	CalendarIcon,
 	ChevronLeft,
 	ChevronRight,
+	ExternalLink,
 	FileText,
 	RefreshCcw,
 	Search,
@@ -692,7 +693,7 @@ export function FilesManagementSection() {
 	const SkeletonRows = () =>
 		Array.from({ length: 6 }).map((_, i) => (
 			<TableRow key={i} className="h-14">
-				{Array.from({ length: 7 }).map((__, j) => (
+				{Array.from({ length: 9 }).map((__, j) => (
 					<TableCell key={j}>
 						<div className="h-3 w-full rounded bg-muted animate-pulse" />
 					</TableCell>
@@ -1028,6 +1029,12 @@ export function FilesManagementSection() {
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
 									Ingested
 								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									Updated At
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									URL
+								</TableHead>
 								<TableHead className="text-right font-semibold text-xs uppercase tracking-wider">
 									Actions
 								</TableHead>
@@ -1039,7 +1046,7 @@ export function FilesManagementSection() {
 
 							{empty && (
 								<TableRow>
-									<TableCell colSpan={7}>
+									<TableCell colSpan={9}>
 										<div className="flex flex-col items-center py-14 text-center gap-2">
 											<div className="rounded-full bg-muted p-3">
 												<FileText className="w-5 h-5 text-muted-foreground" />
@@ -1092,6 +1099,24 @@ export function FilesManagementSection() {
 											</span>
 										</TableCell>
 										<TableCell>
+											<span className="text-sm whitespace-nowrap">
+												{format(new Date(file.modifiedAt), 'MMM d, yyyy HH:mm')}
+											</span>
+										</TableCell>
+										<TableCell>
+											{file.url ? (
+												<a
+													href={file.url}
+													target="_blank"
+													rel="noopener noreferrer"
+												>
+													<ExternalLink className="w-4 h-4 text-muted-foreground hover:text-foreground transition-colors" />
+												</a>
+											) : (
+												<span className="text-muted-foreground">—</span>
+											)}
+										</TableCell>
+										<TableCell>
 											<div className="flex justify-end gap-1">
 												<TooltipProvider>
 													<Tooltip>
@@ -1138,7 +1163,7 @@ export function FilesManagementSection() {
 
 						<TableFooter className="bg-muted/30">
 							<TableRow>
-								<TableCell colSpan={4}>
+								<TableCell colSpan={6}>
 									<span className="text-xs text-muted-foreground">
 										{files.length > 0
 											? `${files.length} file${files.length !== 1 ? 's' : ''} on this page`

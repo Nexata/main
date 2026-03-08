@@ -27,7 +27,7 @@ export default function PwaReloadPrompt() {
   if (!offlineReady && !needRefresh) return null;
 
   return (
-    <div className="fixed bottom-4 right-4 z-[200] max-w-sm">
+    <div className="fixed bottom-4 right-4 z-200 max-w-sm">
       <div className="flex items-start gap-3 rounded-xl border border-border bg-card/95 p-4 shadow-lg backdrop-blur-md">
         <div className="flex-1 space-y-1">
           <p className="text-sm font-medium text-foreground">
