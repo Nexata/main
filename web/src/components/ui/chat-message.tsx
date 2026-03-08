@@ -518,13 +518,19 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
 
             {visibleEmails.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap">
-                {visibleEmails.map((email) => (
-                  <span key={email} className="text-xs opacity-60 truncate">
-                    {email}
-                  </span>
+                {visibleEmails.map((email, i) => (
+                  <React.Fragment key={email}>
+                    <span className="text-xs opacity-60 truncate">{email}</span>
+                    {i < visibleEmails.length - 1 && (
+                      <span className="text-xs opacity-30">|</span>
+                    )}
+                  </React.Fragment>
                 ))}
                 {extraCount > 0 && (
-                  <span className="text-xs opacity-40">+{extraCount}</span>
+                  <>
+                    <span className="text-xs opacity-30">|</span>
+                    <span className="text-xs opacity-40">+{extraCount}</span>
+                  </>
                 )}
               </div>
             )}
