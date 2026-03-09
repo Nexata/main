@@ -439,10 +439,18 @@ export async function persistChat(params: {
 				.values(messageValues)
 				.returning({ id: message.id, role: message.role });
 
-	const insertedMessages = await insertQuery;
+	await insertQuery;
+
+	const newCachedMessages = messageValues
+		.slice(messagesToPrepend.length)
+		.map((m) => ({
+			id: m.id,
+			role: m.role,
+			content: m.content,
+		}));
 
 	const afterInsert: Promise<unknown>[] = [
-		cache.set(threadId, [...threadMessages, ...insertedMessages], {
+		cache.set(threadId, [...threadMessages, ...newCachedMessages], {
 			ex: 60 * 5,
 		}),
 	];
