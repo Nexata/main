@@ -102,34 +102,35 @@ function PrivateLayout() {
 			<div className="flex flex-1 flex-col overflow-hidden">
 				{/* Mobile top bar */}
 				{isMobile && (
-  				<div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3" style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}>
-						<div className="flex items-center gap-3">
-							<button
-								onClick={toggleMobileSidebar}
-								className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
-							>
-								<IoMenu className="h-5 w-5" />
-							</button>
+          <div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3" style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}>
+            {/* Izquierda: botón menú */}
+            <button
+              onClick={toggleMobileSidebar}
+              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+            >
+              <IoMenu className="h-5 w-5" />
+            </button>
 
-							<img
-								src="/nexata_logo.png"
-								alt="Nexata"
-								className="h-6 w-auto object-contain"
-							/>
-
-							{myTenant?.logoUrl && (
-								<>
-									<div className="h-6 w-px bg-border" />
-									<TenantLogo
-										loading={tenantLoading}
-										logoUrl={myTenant.logoUrl}
-										displayName={myTenant.displayName}
-									/>
-								</>
-							)}
-						</div>
-					</div>
-				)}
+            {/* Derecha: logos */}
+            <div className="flex items-center gap-3">
+              <img
+                src="/nexata_logo.png"
+                alt="Nexata"
+                className="h-6 w-auto object-contain"
+              />
+              {myTenant?.logoUrl && (
+                <>
+                  <div className="h-6 w-px bg-border" />
+                  <TenantLogo
+                    loading={tenantLoading}
+                    logoUrl={myTenant.logoUrl}
+                    displayName={myTenant.displayName}
+                  />
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
 				<motion.div
 					ref={controlsRef}
