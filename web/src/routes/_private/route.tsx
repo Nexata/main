@@ -62,7 +62,8 @@ function PrivateLayout() {
 	}, [location.pathname]);
 
 	return (
-		<div className="flex h-screen w-screen overflow-hidden font-noto-sans antialiased">
+	  <div className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased"
+     style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
 			{/* Desktop sidebar */}
 			{!isMobile && <Sidebar />}
 
@@ -101,7 +102,7 @@ function PrivateLayout() {
 			<div className="flex flex-1 flex-col overflow-hidden">
 				{/* Mobile top bar */}
 				{isMobile && (
-					<div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3">
+  				<div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3" style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}>
 						<div className="flex items-center gap-3">
 							<button
 								onClick={toggleMobileSidebar}

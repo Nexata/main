@@ -35,7 +35,7 @@ function AppLayout({
 	}, [darkMode]);
 
 	return (
-		<div className="min-h-screen antialiased font-noto-sans">
+	  <div className="min-h-dvh antialiased font-noto-sans">
 			{children(darkMode, setDarkMode)}
 			<Toaster />
 			<PwaReloadPrompt />
