@@ -202,23 +202,25 @@ export function MessageInput({
   })
 
   const hasFiles = props.allowAttachments && props.files && props.files.length > 0
-  const expandedByText = props.value.trim().length > 0 && textAreaHeight > 40
+  const hasContent = props.value.length > 0
+  const expandedByText = hasContent && textAreaHeight > 40
   const isExpanded = expandedByText || hasFiles
+
+  const prevExpandedRef = useRef(isExpanded)
 
   useEffect(() => {
     const el = textAreaRef.current
     if (!el) return
 
+    const didChange = prevExpandedRef.current !== isExpanded
+    prevExpandedRef.current = isExpanded
+
+    if (!didChange) return
+
     requestAnimationFrame(() => {
       el.focus()
-
-      if (caretRef.current !== null) {
-        el.setSelectionRange(
-          caretRef.current,
-          caretRef.current
-        )
-      }
-
+      const len = el.value.length
+      el.setSelectionRange(len, len)
       el.scrollTop = el.scrollHeight
     })
   }, [isExpanded])

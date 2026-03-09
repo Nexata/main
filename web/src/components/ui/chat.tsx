@@ -1,5 +1,5 @@
 "use client"
-
+import type { useChat } from '@ai-sdk/react'
 import {
   forwardRef,
   useCallback,
@@ -48,6 +48,7 @@ interface ChatPropsBase {
   isNewChat?: boolean
   isUserLoading?: boolean
   setExtraReason?: (value: boolean) => void
+  addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
 }
 
 export function Chat({
@@ -65,7 +66,8 @@ export function Chat({
   isHydratingThread,
   isNewChat,
   isUserLoading,
-  setExtraReason
+  setExtraReason,
+  addToolOutput
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -132,9 +134,10 @@ export function Chat({
             copyMessage="Copied response to clipboard!"
           />
         ),
+        addToolOutput
       }
     },
-    [onRateResponse]
+    [onRateResponse, addToolOutput]
   )
 
   return (
