@@ -1,0 +1,1 @@
+ALTER TYPE "public"."finish_reason" ADD VALUE 'tool_calls';
