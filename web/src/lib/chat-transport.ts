@@ -24,47 +24,81 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 		if (typeof input === 'string' && input === '/chat' && init?.body) {
 			try {
-        const originalPayload = JSON.parse(init.body as string);
+				const originalPayload = JSON.parse(init.body as string);
 				const lastMessage = originalPayload.messages?.at(-1);
 				const isAutoSubmit = lastMessage?.role === 'assistant';
 
-        const prompt = isAutoSubmit
-          ? ''
-          : lastMessage?.parts
-              ?.filter((p: any) => p.type === 'text')
-              .map((p: any) => p.text)
-              .join('\n') ?? '';
+				// ===== NexataAskQuestions → /chat/answer =====
+				if (isAutoSubmit) {
+					const askQuestionsPart = lastMessage?.parts?.find(
+						(p: any) =>
+							(p.type === 'tool-NexataAskQuestions' ||
+								(p.type === 'dynamic-tool' &&
+									p.toolName === 'NexataAskQuestions')) &&
+							p.state === 'output-available' &&
+							p.output != null,
+					);
+
+					if (askQuestionsPart) {
+						const storeThreadId = useChatUIStore.getState().activeThreadId;
+
+						return baseFetch(`${API_BASE_URL}/chat/answer`, {
+							...init,
+							body: JSON.stringify({
+								threadId: storeThreadId,
+								result: askQuestionsPart.output,
+								languagePreference: originalPayload.languagePreference ?? null,
+							}),
+							headers: {
+								...(init.headers ?? {}),
+								'content-type': 'application/json',
+							},
+						});
+					}
+				}
+
+				const prompt = isAutoSubmit
+					? ''
+					: (lastMessage?.parts
+							?.filter((p: any) => p.type === 'text')
+							.map((p: any) => p.text)
+							.join('\n') ?? '');
 
 				const fileParts =
 					lastMessage?.parts?.filter((p: any) => p.type === 'file') ?? [];
 
 				const hasFiles = fileParts.length > 0;
 
-        const storeThreadId = useChatUIStore.getState().activeThreadId || null;
-        const sanitize = (id: unknown): string | null => typeof id === 'string' && id.trim() !== '' ? id : null;
+				const storeThreadId = useChatUIStore.getState().activeThreadId || null;
+				const sanitize = (id: unknown): string | null =>
+					typeof id === 'string' && id.trim() !== '' ? id : null;
 
-        const finalThreadId =
-          sanitize(originalPayload.threadId) ??
-          sanitize(threadId) ??
-          storeThreadId ??
-          undefined;
+				const finalThreadId =
+					sanitize(originalPayload.threadId) ??
+					sanitize(threadId) ??
+					storeThreadId ??
+					undefined;
 
 				const adaptedPayload = cleanObject({
 					prompt: prompt ?? '',
-					extraReason: originalPayload.extraReason != null	? Boolean(originalPayload.extraReason)	: null,
+					extraReason:
+						originalPayload.extraReason != null
+							? Boolean(originalPayload.extraReason)
+							: null,
 					threadId: finalThreadId ?? null,
 					editedMessageId: originalPayload.editedMessageId ?? null,
 					languagePreference: originalPayload.languagePreference ?? null,
-          files: hasFiles ? fileParts : null,
+					files: hasFiles ? fileParts : null,
 					...(isAutoSubmit && { messages: originalPayload.messages }),
-        });
+				});
 
 				if (hasFiles) {
 					const formData = new FormData();
 
-          Object.entries(adaptedPayload).forEach(([key, value]) => {
-            if (key === 'files') return;
-						if (value != null && value !== '') 	formData.append(key, String(value));
+					Object.entries(adaptedPayload).forEach(([key, value]) => {
+						if (key === 'files') return;
+						if (value != null && value !== '')
+							formData.append(key, String(value));
 					});
 
 					for (const part of fileParts) {
@@ -74,7 +108,9 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 						} else if (part.url && part.filename) {
 							const res = await fetch(part.url);
 							const blob = await res.blob();
-							fileToSend = new File([blob], part.filename, { type: part.mediaType });
+							fileToSend = new File([blob], part.filename, {
+								type: part.mediaType,
+							});
 						} else {
 							console.warn('[Transport] Skipping invalid file part', part);
 							continue;
@@ -87,7 +123,7 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 						body: formData,
 						headers: {
 							authorization: (init.headers as any)?.authorization,
-							fingerprint: (init.headers as any)?.fingerprint
+							fingerprint: (init.headers as any)?.fingerprint,
 						},
 					});
 				}
@@ -129,19 +165,20 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 								const event = JSON.parse(json);
 
-								if (event.type === 'start' && event.messageMetadata?.threadId ) {
-                  const { threadId: newThreadId, threadTitle } = event.messageMetadata;
-                  const store = useChatUIStore.getState();
+								if (event.type === 'start' && event.messageMetadata?.threadId) {
+									const { threadId: newThreadId, threadTitle } =
+										event.messageMetadata;
+									const store = useChatUIStore.getState();
 
-                  if (newThreadId !== store.activeThreadId) {
-                    store.setActiveThreadId(newThreadId);
-                    store.upsertOptimisticThread({
-                      id: newThreadId,
-                      title: threadTitle ?? 'New chat',
-                      isTyping: true,
-                    });
-                  }
-                }
+									if (newThreadId !== store.activeThreadId) {
+										store.setActiveThreadId(newThreadId);
+										store.upsertOptimisticThread({
+											id: newThreadId,
+											title: threadTitle ?? 'New chat',
+											isTyping: true,
+										});
+									}
+								}
 							} catch {
 								// ignore malformed chunks
 							}
