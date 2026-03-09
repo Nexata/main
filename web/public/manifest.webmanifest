@@ -1,0 +1,16 @@
+{
+  "name": "Nexata",
+  "short_name": "Nexata",
+  "description": "Nexata — AI-powered business assistant",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#171926",
+  "theme_color": "#171926",
+  "icons": [
+    {
+      "src": "/icon.ico",
+      "sizes": "256x256",
+      "type": "image/x-icon"
+    }
+  ]
+}
