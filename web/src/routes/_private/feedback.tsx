@@ -876,7 +876,7 @@ function FeedbackModal({ mode, feedback, open, onClose }: FeedbackModalProps) {
 
                 {/* PREVIEWS — debajo en mobile, sin espacio fantasma */}
                 {files.length > 0 && (
-                  <div className="flex items-center gap-2 flex-wrap">
+                  <div className="flex items-center gap-2 flex-wrap mt-2 sm:mt-0">
                     <AnimatePresence mode="popLayout">
                       {visibleFiles.map((file) => (
                         <motion.div

@@ -465,27 +465,27 @@ export default function ProfilePage() {
 											</label>
 
 											<div className="flex items-center gap-3 min-h-10">
-    <Input
-        type="file"
-        accept="image/*"
-        className="w-full sm:w-56 h-10"
-        onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-    />
+  											<Input
+                            type="file"
+                            accept="image/*"
+                            className="w-full sm:w-56 h-10 overflow-hidden file:hidden"
+                            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+                        />
 
-    <AnimatePresence initial={false}>
-        {file && (
-            <motion.div
-                initial={{ opacity: 0, scale: 0.96 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.96 }}
-                transition={{ duration: 0.15 }}
-                className="flex items-center h-10"
-            >
-                <FilePreview file={file} onRemove={() => setFile(null)} />
-            </motion.div>
-        )}
-    </AnimatePresence>
-</div>
+                        <AnimatePresence initial={false}>
+                          {file && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.96 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.96 }}
+                              transition={{ duration: 0.15 }}
+                              className="flex items-center h-10"
+                            >
+                              <FilePreview file={file} onRemove={() => setFile(null)} />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
+                      </div>
 										</div>
 									</div>
 
