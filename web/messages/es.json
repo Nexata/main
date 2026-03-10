@@ -642,8 +642,10 @@
 		"modal": {
 			"view_title": "Detalle del Feedback",
 			"create_title": "Nuevo Feedback",
+			"edit_title": "Editar Feedback",
 			"view_description": "Visualiza la información enviada.",
 			"create_description": "Comparte un problema o sugerencia.",
+			"edit_description": "Edita tu problema o sugerencia.",
 			"comment_label": "Comentario enviado",
 			"comment_placeholder": "Describe el detalle de tu feedback...",
 			"no_content": "Sin contenido",

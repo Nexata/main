@@ -118,7 +118,9 @@ import {
 	'feedback.types.bug_report' as feedback_type_bug_report,
 	'feedback.types.feature_request' as feedback_type_feature_request,
 	'feedback.types.other' as feedback_type_other,
-	'feedback.types.question' as feedback_type_question,
+  'feedback.types.question' as feedback_type_question,
+  'feedback.modal.edit_title' as feedback_modal_edit_title,
+  'feedback.modal.edit_description' as feedback_modal_edit_description
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/feedback')({
@@ -222,7 +224,7 @@ export default function FeedbackPage() {
 				<Card className="bg-sidebar">
 					<CardContent className="p-6">
 						{/* FILTERS */}
-						<div className="flex flex-wrap items-end gap-4 border-b pb-4">
+						<div className="flex flex-wrap items-end gap-3 border-b pb-4">
 							{/* TYPE FILTER */}
 							<div className="flex flex-col gap-2">
 								<span className="text-xs font-medium text-muted-foreground">
@@ -363,12 +365,12 @@ export default function FeedbackPage() {
 							</AnimatePresence>
 
 							{/* CREATE BUTTON */}
-							<div className="ml-auto">
-								<Button variant="outline" onClick={() => setCreateOpen(true)}>
-									<Plus className="mr-2 h-4 w-4" />
-									{feedback_create()}
-								</Button>
-							</div>
+							<div className="w-full sm:w-auto sm:ml-auto">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={() => setCreateOpen(true)}>
+                  <Plus className="mr-2 h-4 w-4" />
+                  {feedback_create()}
+                </Button>
+              </div>
 						</div>
 
 						{isLoading && <SkeletonList />}
@@ -707,8 +709,8 @@ function FeedbackModal({ mode, feedback, open, onClose }: FeedbackModalProps) {
 		}
 	};
 
-	const visibleFiles = files.slice(0, 2);
-	const extraCount = files.length - 2;
+	const visibleFiles = files.slice(0, 1);
+	const extraCount = files.length - 1;
 
 	return (
 		<Dialog open={open} onOpenChange={onClose}>
@@ -724,18 +726,14 @@ function FeedbackModal({ mode, feedback, open, onClose }: FeedbackModalProps) {
 				<div className="px-6 pt-6 pb-4 flex flex-col gap-6 overflow-y-auto">
 					<DialogHeader className="space-y-2">
 						<DialogTitle className="text-xl font-semibold">
-							{readonly
-								? feedback_modal_view_title()
-								: editing
-									? feedback_modal_create_title()
-									: feedback_modal_create_title()}
+							{readonly ? feedback_modal_view_title()
+								: !editing ? feedback_modal_create_title() : feedback_modal_edit_title()}
 						</DialogTitle>
 
 						<p className="text-sm text-muted-foreground">
-							{readonly
-								? feedback_modal_view_description()
-								: feedback_modal_create_description()}
-						</p>
+							{readonly ? feedback_modal_view_description()
+                : !editing ? feedback_modal_create_description() : feedback_modal_edit_description()}
+            </p>
 					</DialogHeader>
 
 					<Separator />
@@ -823,93 +821,91 @@ function FeedbackModal({ mode, feedback, open, onClose }: FeedbackModalProps) {
 								Tipo <span className="text-destructive">*</span>
 							</label>
 
-							<div className="flex items-center gap-3">
-								<Select<string>
-									value={type}
-									onValueChange={(v) => {
-										setType(v as FeedbackType);
-										setTypeError(false);
-									}}
-								>
-									<SelectTrigger
-										className={`w-56 ${
-											typeError
-												? 'border-destructive focus:ring-destructive'
-												: ''
-										}`}
-									>
-										<SelectValue>
-											{type ? (
-												<Badge variant={TYPE_COLORS[type]}>
-													{TYPE_LABELS[type]}
-												</Badge>
-											) : (
-												<span className="text-muted-foreground">
-													{feedback_modal_select_category()}
-												</span>
-											)}
-										</SelectValue>
-									</SelectTrigger>
+              <div className="flex flex-col sm:flex-row sm:items-center sm:gap-3">
+                <div className="flex items-center gap-3">
+                  <Select<string>
+                    value={type}
+                    onValueChange={(v) => {
+                      setType(v as FeedbackType);
+                      setTypeError(false);
+                    }}
+                  >
+                    <SelectTrigger className={`w-56 ${typeError ? 'border-destructive focus:ring-destructive' : ''}`}>
+                      <SelectValue>
+                        {type ? (
+                          <Badge variant={TYPE_COLORS[type]}>
+                              {TYPE_LABELS[type]}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">
+                            {feedback_modal_select_category()}
+                          </span>
+                        )}
+                      </SelectValue>
+                    </SelectTrigger>
 
-									<SelectContent>
-										{Object.entries(TYPE_LABELS).map(([k, label]) => (
-											<SelectItem key={k} value={k}>
-												<Badge variant={TYPE_COLORS[k as FeedbackType]}>
-													{label}
-												</Badge>
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
+                    <SelectContent>
+                      {Object.entries(TYPE_LABELS).map(([k, label]) => (
+                        <SelectItem key={k} value={k}>
+                          <Badge variant={TYPE_COLORS[k as FeedbackType]}>
+                            {label}
+                          </Badge>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-								{/* ADJUNTAR */}
-								<Button
-									variant="secondary"
-									className="cursor-pointer shrink-0"
-									onClick={() => document.getElementById('file-input')?.click()}
-								>
-									<Paperclip className="mr-2 h-4 w-4" />
-									Adjuntar
-								</Button>
+                  {/* ADJUNTAR */}
+                  <Button
+                    variant="secondary"
+                    className="cursor-pointer shrink-0"
+                    onClick={() => document.getElementById('file-input')?.click()}
+                  >
+                    <Paperclip className="mr-2 h-4 w-4" />
+                    Adjuntar
+                  </Button>
 
-								<input
-									id="file-input"
-									type="file"
-									multiple
-									hidden
-									onChange={(e) => addFiles(e.target.files)}
-								/>
+                  <input
+                  id="file-input"
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(e) => addFiles(e.target.files)}
+                  />
+                </div>
 
-								{/* PREVIEWS */}
-								<div className="flex items-center gap-2 ml-2 min-h-12">
-									<AnimatePresence mode="popLayout">
-										{visibleFiles.map((file) => (
-											<motion.div
-												key={`${file.name}-${file.lastModified}`}
-												layout
-												initial={{ opacity: 0, scale: 0.9 }}
-												animate={{ opacity: 1, scale: 1 }}
-												exit={{
-													opacity: 0,
-													scale: 0.85,
-													transition: { duration: 0.18 },
-												}}
-											>
-												<FilePreview
-													file={file}
-													onRemove={() => removeFile(file)}
-												/>
-											</motion.div>
-										))}
-									</AnimatePresence>
+                {/* PREVIEWS — debajo en mobile, sin espacio fantasma */}
+                {files.length > 0 && (
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <AnimatePresence mode="popLayout">
+                      {visibleFiles.map((file) => (
+                        <motion.div
+                          key={`${file.name}-${file.lastModified}`}
+                          layout
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{
+                              opacity: 0,
+                              scale: 0.85,
+                              transition: { duration: 0.18 },
+                          }}
+                        >
+                          <FilePreview
+                            file={file}
+                            onRemove={() => removeFile(file)}
+                          />
+                        </motion.div>
+                      ))}
+                    </AnimatePresence>
 
-									{extraCount > 0 && (
-										<div className="text-xs bg-muted px-2 py-1 rounded-md">
-											+{extraCount}
-										</div>
-									)}
-								</div>
-							</div>
+                    {extraCount > 0 && (
+                      <div className="text-xs bg-muted px-2 py-1 rounded-md">
+                        +{extraCount}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
 
 							{/* ERROR */}
 							{typeError && (
