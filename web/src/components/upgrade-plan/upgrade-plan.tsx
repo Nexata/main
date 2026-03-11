@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from "react";
+import React, { useMemo, useState, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -77,6 +77,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
 
   const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   const [ack, setAck] = useState(false);
+  const warningRef = useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!open) {
@@ -84,6 +85,14 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
       setAck(false);
     }
   }, [open]);
+
+  React.useEffect(() => {
+    if (selectedPlan && warningRef.current) {
+      setTimeout(() => {
+        warningRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      }, 300);
+    }
+  }, [selectedPlan]);
 
   const isUpgrade = useMemo(() => {
     if (!currentPlan || !selectedPlan) return false;
@@ -235,17 +244,19 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="
-          w-[95vw] sm:w-[85vw] lg:w-[70vw]
-          max-w-[95vw] sm:max-w-[85vw] lg:max-w-[70vw]
-          max-h-[90vh]
-          overflow-y-auto
-          px-6 sm:px-8
-          py-8 sm:py-10
-          scrollbar-thin
+        w-[95vw] sm:w-[85vw] lg:w-[70vw]
+        min-w-[95vw] sm:min-w-[85vw] lg:min-w-[70vw]
+        max-w-[95vw] sm:max-w-[85vw] lg:max-w-[70vw]
+        max-h-[85dvh] sm:max-h-[90vh]
+        overflow-y-auto
+        px-6 sm:px-8
+        py-5 sm:py-8
+        mt-[env(safe-area-inset-top)]
+        scrollbar-thin
         "
       >
         <DialogHeader>
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
               <h2 className="text-lg font-semibold tracking-tight">
                 {components_upgrade_plan_modal_title()}
@@ -305,6 +316,7 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
         <AnimatePresence mode="wait">
           {selectedPlan && (
             <motion.div
+              ref={warningRef}
               key={selectedPlan}
               className="mt-6"
               initial={{ opacity: 0, y: -8 }}

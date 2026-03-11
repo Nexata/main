@@ -69,14 +69,15 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
       w-[95vw] sm:w-[80vw] lg:w-[60vw]
       min-w-[95vw] sm:min-w-[80vw] lg:min-w-[60vw]
       max-w-[95vw] sm:max-w-[80vw] lg:max-w-[60vw]
-      max-h-[90vh]
+      max-h-[85dvh] sm:max-h-[90vh]
       overflow-y-auto
       px-6 sm:px-8
       py-5 sm:py-6
+      mt-[env(safe-area-inset-top)]
       "
       >
         <DialogHeader className="space-y-0">
-          <div className="flex items-start justify-between gap-4">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
             <div>
               <h2 className="text-lg font-semibold">{components_buy_messages_modal_title()}</h2>
               <p className="mt-1.5 text-sm text-muted-foreground">{components_buy_messages_modal_subtitle()}</p>
