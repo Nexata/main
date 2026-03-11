@@ -420,7 +420,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                         />
 
                         {chat.id !== null && (
-                          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <Pencil
                               className="text-secondary-500 w-4 h-4 cursor-pointer"
                               onClick={(e) => {
