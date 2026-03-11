@@ -253,7 +253,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
               : { width: { type: "spring", stiffness: 300, damping: 30 } }
         }
       >
-        <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md">
+      <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {/* Header */}
           <div className="mb-4 min-h-12 flex items-center w-full justify-between">
             {!effectiveCollapsed && (
