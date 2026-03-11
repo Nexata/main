@@ -121,11 +121,11 @@ export function CredentialPermissions({
 
             {/* Add permission */}
             {canManage && (
-              <div className="flex items-center gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                 <div className="flex-1">
                   <div className="flex items-center gap-3">
                     <UserInput value={selectedUser} onChange={setSelectedUser} />
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <Checkbox
                         id="admin-permission"
                         className="cursor-pointer"
@@ -157,7 +157,7 @@ export function CredentialPermissions({
             {/* Permissions list */}
             <div className="space-y-2">
                 {credential.permissions.map((user) => (
-                    <div key={user.id} className="flex items-center justify-between rounded-md border px-3 py-2">
+                    <div key={user.id} className="flex flex-col sm:flex-row sm:items-center sm:justify-between rounded-md border px-3 py-2 gap-2">
                         <div className="flex items-center gap-3 min-w-0">
                             <Avatar className="h-8 w-8">
                                 {user.pfpUrl && ( <AvatarImage src={user.pfpUrl} /> )}
@@ -185,7 +185,7 @@ export function CredentialPermissions({
                             </div>
                         </div>
 
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 self-end sm:self-auto">
                           {canManage && (
                             <Button
                               size="sm"

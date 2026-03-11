@@ -71,21 +71,21 @@ export default function UserInput({
                         !selectedUser && "text-muted-foreground"
                     )}
                 >
-                    {selectedUser ? (
-                        <div className="flex items-center gap-3 truncate">
-                            <Avatar user={selectedUser} />
-                            <div className="flex flex-col truncate text-left">
-                                <span className="truncate text-sm">{selectedUser.displayName ?? selectedUser.email}</span>
-                                {selectedUser.displayName && (
-                                    <span className="truncate text-xs text-muted-foreground">{selectedUser.email}</span>
-                                )}
-                            </div>
-                        </div>
-                    ) : (
-                        <span>{user_input_placeholder()}</span>
-                    )}
+                  {selectedUser ? (
+                    <div className="flex items-center gap-2 truncate">
+                      <Avatar user={selectedUser} />
+                      <div className="flex flex-col truncate text-left">
+                        <span className="truncate text-sm">{selectedUser.displayName ?? selectedUser.email}</span>
+                        {selectedUser.displayName && (
+                          <span className="hidden sm:block truncate text-xs text-muted-foreground">{selectedUser.email}</span>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <span>{user_input_placeholder()}</span>
+                  )}
 
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
 
@@ -155,4 +155,3 @@ function Avatar({ user }: { user: User }) {
         </div>
     );
 }
-

@@ -55,7 +55,7 @@ export function CredentialDetailsRow({
   return (
     <div className="rounded-md border border-border bg-card overflow-hidden">
       {/* Row */}
-      <div className="flex items-center justify-between px-4 py-3 hover:bg-muted/40 transition-colors gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between px-4 py-3 hover:bg-muted/40 transition-colors gap-2">
         {/* Owner */}
         <div className="flex items-center gap-3 flex-1 min-w-0">
           {/* Avatar */}
@@ -107,7 +107,7 @@ export function CredentialDetailsRow({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1 self-end sm:self-auto">
           {/* Details button */}
           <Button
             size="sm"

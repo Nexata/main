@@ -58,16 +58,20 @@ export function SourceRow({
             </div>
           ) : (
             <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="ghost"
-                className="cursor-pointer"
-                onClick={onToggle}
-              >
-                {count === 0
-                  ? settings_sources_no_accounts()
-                  : `${count} · ${settings_sources_view_details()}`}
-              </Button>
+              {count === 0 ? (
+                <span className="text-sm text-muted-foreground">
+                  {settings_sources_no_accounts()}
+                </span>
+              ) : (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="cursor-pointer"
+                  onClick={onToggle}
+                >
+                  {`${count} · ${settings_sources_view_details()}`}
+                </Button>
+              )}
 
               <Button
                 size="sm"
