@@ -196,8 +196,16 @@ export function StorageFileTree({ credentialId, source }: Props) {
     };
 
     const Icon = map[ext?.toLowerCase()] ?? File;
+    const isDir = ext?.toLowerCase() === "dir";
 
-    return (<Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground group-hover:text-foreground" />);
+    return (
+      <Icon className={cn(
+        "h-3.5 w-3.5 shrink-0",
+        isDir
+          ? "text-yellow-400 fill-yellow-400"
+          : "text-muted-foreground group-hover:text-foreground"
+      )} />
+    );
   }
 
   /* SELECTION */
@@ -333,30 +341,21 @@ export function StorageFileTree({ credentialId, source }: Props) {
       <div className="border rounded-md overflow-hidden">
 
         {/* NAV HEADER */}
-        <div className="flex items-center justify-between px-3 h-11 bg-muted border-b">
-          <div className="flex items-center gap-2 min-w-0 flex-1">
-            <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={goBack}
-            >
+        <div className="flex items-center justify-between px-3 h-11 bg-muted border-b gap-2">
+          {/* Flechas + breadcrumb */}
+          <div className="flex items-center gap-1 min-w-0 flex-1">
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goBack}>
               <ChevronLeft className="h-4 w-4" />
             </Button>
 
-            <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6"
-            onClick={goForward}
-            >
+            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goForward}>
               <ChevronRight className="h-4 w-4" />
             </Button>
 
-            <div className="flex items-center gap-1 text-[11px] truncate">
+            <div className="flex items-center gap-1 text-[11px] overflow-x-auto scrollbar-none">
               {history.map((crumb, i) => (
-                <div key={crumb.id} className="flex items-center gap-1">
-                  {i > 0 && <span>/</span>}
+                <div key={crumb.id} className="flex items-center gap-1 shrink-0">
+                  {i > 0 && <span className="text-muted-foreground">/</span>}
                   <Button
                     variant="ghost"
                     size="sm"
@@ -373,7 +372,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 text-[11px]">
+          {/* Select all */}
+          <div className="flex items-center gap-2 text-[11px] shrink-0">
             <Checkbox
               checked={
                 entries.length > 0 &&
@@ -385,7 +385,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
               }
               onCheckedChange={toggleAll}
             />
-            <span className="text-muted-foreground">{components_file_tree_select_all()}</span>
+            <span className="text-muted-foreground hidden sm:inline">{components_file_tree_select_all()}</span>
           </div>
         </div>
 
@@ -432,7 +432,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
                     )}
                     onDoubleClick={() => isDir && enterFolder(file)}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
                       <Checkbox
                       checked={ingestedMap.has(file.id) ? !markedForDelete.has(file.id) : selectedForIngest.has(file.id)}
                       onCheckedChange={() => toggle(file)}
@@ -441,17 +441,17 @@ export function StorageFileTree({ credentialId, source }: Props) {
                       {getIcon(file.ext)}
 
                       <div className="flex flex-col min-w-0">
-                        <Button variant="link" className="p-0 h-auto justify-start text-foreground">
+                        <div className="flex items-center gap-1 min-w-0">
+                          <span className="truncate text-foreground">{file.name}</span>
                           <a
                             href={file.url}
                             target="_blank"
                             onClick={e => e.stopPropagation()}
-                            className="truncate flex gap-1"
+                            className="shrink-0 text-muted-foreground hover:text-foreground"
                           >
-                            {file.name}
                             <ExternalLink className="h-3 w-3" />
                           </a>
-                        </Button>
+                        </div>
 
                         <span className="text-muted-foreground">
                           {components_file_tree_updated()} {formatDate(file.updatedAt)}
@@ -473,8 +473,9 @@ export function StorageFileTree({ credentialId, source }: Props) {
         <Separator />
 
         {/* FOOTER */}
-        <div className="flex items-center justify-between px-3 py-2 bg-muted text-[11px]">
-          <div className="flex items-center gap-3 text-muted-foreground">
+        <div className="flex flex-col gap-2 px-3 py-2 bg-muted text-[11px] sm:flex-row sm:items-center sm:justify-between">
+          {/* Stats row */}
+          <div className="flex items-center gap-3 text-muted-foreground flex-wrap">
             <span>
               <span className="font-medium text-foreground">
                 {pendingIngestCount}
@@ -482,11 +483,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
               {components_file_tree_selected()}
             </span>
 
-            <Separator orientation="vertical" />
+            <Separator orientation="vertical" className="hidden sm:block" />
 
             <span>{formatMB(pendingIngestSize)}</span>
 
-            <Separator orientation="vertical" />
+            <Separator orientation="vertical" className="hidden sm:block" />
 
             <span className={cn(remaining < 0 && "text-destructive font-medium")}>
               {formatMB(Math.max(remaining, 0))} {components_file_tree_remaining()}
@@ -498,7 +499,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
             )}
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* Actions row */}
+          <div className="flex items-center justify-end gap-2">
             <Button
               variant="destructive"
               size="sm"
@@ -513,9 +515,9 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
             <div className="flex flex-col items-end">
               <AsyncConfirmButton
-               	size="sm"
-               	onClick={handleConfirm}
-               	disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || remaining < 0}
+                size="sm"
+                onClick={handleConfirm}
+                disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || remaining < 0}
               >
                 {common_confirm()}
               </AsyncConfirmButton>
