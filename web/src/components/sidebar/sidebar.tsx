@@ -38,6 +38,7 @@ import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
 import { useChatUIStore } from '@/lib/chat.store';
+import { removeChatInstance } from '@/lib/chat-pool';
 import { useTypingText } from '@/hooks/use-typing-text';
 import { useSyncLocale } from "@/hooks/use-sync-language";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
@@ -101,6 +102,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
   // Chat Status
   const { startNewChat, hydrateChat } = useChatUIStore();
+  const streamingThreadIds = useChatUIStore((s) => s.streamingThreadIds);
 
   // Search
   const [search, setSearch] = useState('');
@@ -191,6 +193,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
     try {
       await deleteThreadFn(deletedThreadId);
+      removeChatInstance(deletedThreadId);
 
       infoToast.success(toastId, {
         title: 'Chat deleted',
@@ -411,13 +414,18 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                       </div>
                     ) : (
                       <>
-                        <ThreadTitle
-                          title={chat.title ?? "New Chat"}
-                          isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
-                          isSaving={savingThreads.has(chat.id ?? "")}
-                          sidebarWidth={sidebarWidth}
-                          createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
-                        />
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          <ThreadTitle
+                            title={chat.title ?? "New Chat"}
+                            isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
+                            isSaving={savingThreads.has(chat.id ?? "")}
+                            sidebarWidth={sidebarWidth}
+                            createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
+                          />
+                          {chat.id !== null && chat.id !== activeThreadId && streamingThreadIds.has(chat.id) && (
+                            <StreamingDots />
+                          )}
+                        </div>
 
                         {chat.id !== null && (
                           <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
@@ -645,5 +653,23 @@ function ThreadTitle({
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
+  );
+}
+
+/**
+ * Three animated bouncing dots shown next to sidebar thread titles
+ * that have an active stream running in the background.
+ */
+function StreamingDots() {
+  return (
+    <span className="inline-flex items-center gap-0.5 shrink-0" aria-label="Streaming">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="w-1 h-1 rounded-full bg-current opacity-60 animate-bounce"
+          style={{ animationDelay: `${i * 150}ms`, animationDuration: "0.6s" }}
+        />
+      ))}
+    </span>
   );
 }

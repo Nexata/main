@@ -1,15 +1,14 @@
 'use client';
 
-import { Chat as AIChat, type UIMessage, useChat } from '@ai-sdk/react';
+import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import { useThreadById } from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
-import { createAuthenticatedChatTransport } from '@/lib/chat-transport';
+import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
 import { useMe } from '@/lib/user';
 import {
 	'chat.meta.error' as chat_meta_error,
@@ -63,11 +62,15 @@ export function NexataChat() {
 	// Store
 	// ----------------------------
 
-	const { activeThreadId, status, setStreaming, finishStreaming } =
-		useChatUIStore();
+	const {
+		activeThreadId,
+		viewStatus,
+		streamingThreadIds,
+		addStreamingThread,
+		removeStreamingThread,
+	} = useChatUIStore();
 
-	const isNewChat = status === 'new';
-	const isStreaming = status === 'streaming';
+	const isNewChat = viewStatus === 'new';
 
 	// ----------------------------
 	// Thread data (React Query es la fuente de verdad del loading)
@@ -91,17 +94,10 @@ export function NexataChat() {
 	}, [threadMessages]);
 
 	// ----------------------------
-	// Chat Engine
+	// Chat Engine (per-thread from pool)
 	// ----------------------------
 
-	const chat = useMemo(
-		() =>
-			new AIChat({
-				transport: createAuthenticatedChatTransport(),
-				sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-			}),
-		[],
-	);
+	const chat = useMemo(() => getChatInstance(activeThreadId), [activeThreadId]);
 
 	const {
 		messages,
@@ -115,6 +111,10 @@ export function NexataChat() {
 		chat,
 	});
 
+	// ----------------------------
+	// Thread hydration
+	// ----------------------------
+
 	const appliedThreadRef = useRef<string | null>(null);
 
 	useEffect(() => {
@@ -126,33 +126,87 @@ export function NexataChat() {
 		if (threadMessages === undefined) return;
 		if (appliedThreadRef.current === activeThreadId) return;
 
+		// Don't overwrite if this thread is currently streaming (has live messages)
+		const threadKey = activeThreadId;
+		if (streamingThreadIds.has(threadKey)) return;
+
 		appliedThreadRef.current = activeThreadId;
 		setMessages(hydratedMessages);
-	}, [activeThreadId, threadMessages, hydratedMessages, setMessages]);
+	}, [
+		activeThreadId,
+		threadMessages,
+		hydratedMessages,
+		setMessages,
+		streamingThreadIds,
+	]);
 
 	useEffect(() => {
 		if (isNewChat) setMessages([]);
 	}, [isNewChat, setMessages]);
 
 	// ----------------------------
-	// Reset streaming state when done
+	// Sync active thread's SDK status → store
 	// ----------------------------
 
 	useEffect(() => {
+		const threadKey = activeThreadId ?? NEW_CHAT_KEY;
+		if (chatStatus === 'streaming' || chatStatus === 'submitted') {
+			addStreamingThread(threadKey);
+		}
 		if (chatStatus === 'error') {
-			finishStreaming();
+			removeStreamingThread(threadKey);
 			return;
 		}
 		if (chatStatus === 'ready') {
 			const timeout = setTimeout(() => {
-				finishStreaming();
+				removeStreamingThread(threadKey);
 			}, 300);
 			return () => clearTimeout(timeout);
 		}
-		if (chatStatus === 'streaming' || chatStatus === 'submitted') {
-			setStreaming(activeThreadId ?? '');
+	}, [chatStatus, activeThreadId, addStreamingThread, removeStreamingThread]);
+
+	// ----------------------------
+	// Background stream monitor
+	// Uses Chat instance's ~registerStatusCallback for non-active threads
+	// ----------------------------
+
+	useEffect(() => {
+		if (streamingThreadIds.size === 0) return;
+
+		const unsubscribes: (() => void)[] = [];
+		const pool = getChatPool();
+
+		for (const threadId of streamingThreadIds) {
+			// Active thread is monitored by the useChat hook above
+			if (threadId === (activeThreadId ?? NEW_CHAT_KEY)) continue;
+
+			const instance = pool.get(threadId);
+			if (!instance) {
+				removeStreamingThread(threadId);
+				continue;
+			}
+
+			// Check immediately
+			const currentStatus = instance.status;
+			if (currentStatus === 'ready' || currentStatus === 'error') {
+				removeStreamingThread(threadId);
+				continue;
+			}
+
+			// Subscribe for future changes
+			const unsub = instance['~registerStatusCallback'](() => {
+				const s = instance.status;
+				if (s === 'ready' || s === 'error') {
+					removeStreamingThread(threadId);
+				}
+			});
+			unsubscribes.push(unsub);
 		}
-	}, [chatStatus, finishStreaming, setStreaming, activeThreadId]);
+
+		return () => {
+			unsubscribes.forEach((fn) => fn());
+		};
+	}, [streamingThreadIds, activeThreadId, removeStreamingThread]);
 
 	// ----------------------------
 	// UI state derivado
@@ -160,7 +214,7 @@ export function NexataChat() {
 
 	const isSdkStreaming =
 		chatStatus === 'streaming' || chatStatus === 'submitted';
-	const isHydrating = !!activeThreadId && isThreadLoading && !isStreaming;
+	const isHydrating = !!activeThreadId && isThreadLoading && !isSdkStreaming;
 
 	// ----------------------------
 	// Input / Submit
@@ -183,7 +237,7 @@ export function NexataChat() {
 		const reasoning = extraReason;
 
 		setInput('');
-		setStreaming(activeThreadId ?? '');
+		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 		setExtraReason(false);
 
 		await sendMessage(

@@ -3,6 +3,7 @@ import { API_BASE_URL } from '@/api';
 import { getAccessToken } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
 import { useChatUIStore } from './chat.store';
+import { promoteChatInstance } from './chat-pool';
 
 const baseFetch = globalThis.fetch;
 
@@ -171,6 +172,7 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 									const store = useChatUIStore.getState();
 
 									if (newThreadId !== store.activeThreadId) {
+										promoteChatInstance(newThreadId);
 										store.setActiveThreadId(newThreadId);
 										store.upsertOptimisticThread({
 											id: newThreadId,
@@ -178,6 +180,8 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 											isTyping: true,
 										});
 									}
+
+									store.addStreamingThread(newThreadId);
 								}
 							} catch {
 								// ignore malformed chunks
