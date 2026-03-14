@@ -13,6 +13,7 @@ type ChatUIState = {
 	activeThreadId: string | null;
 	viewStatus: ChatViewStatus;
 	streamingThreadIds: Set<string>;
+	unreadThreadIds: Set<string>;
 	optimisticThreads: Record<string, OptimisticThread>;
 	setActiveThreadId: (id: string | null) => void;
 	upsertOptimisticThread: (thread: OptimisticThread) => void;
@@ -21,6 +22,8 @@ type ChatUIState = {
 	hydrateChat: (threadId: string) => void;
 	addStreamingThread: (threadId: string) => void;
 	removeStreamingThread: (threadId: string) => void;
+	addUnreadThread: (threadId: string) => void;
+	removeUnreadThread: (threadId: string) => void;
 };
 
 export const useChatUIStore = create<ChatUIState>()(
@@ -29,10 +32,19 @@ export const useChatUIStore = create<ChatUIState>()(
 			activeThreadId: null,
 			viewStatus: 'idle',
 			streamingThreadIds: new Set<string>(),
+			unreadThreadIds: new Set<string>(),
 			optimisticThreads: {},
 			startNewChat: () => set({ activeThreadId: null, viewStatus: 'new' }),
 			hydrateChat: (threadId) =>
-				set({ activeThreadId: threadId, viewStatus: 'idle' }),
+				set((state) => {
+					const nextUnread = new Set(state.unreadThreadIds);
+					nextUnread.delete(threadId);
+					return {
+						activeThreadId: threadId,
+						viewStatus: 'idle',
+						unreadThreadIds: nextUnread,
+					};
+				}),
 			addStreamingThread: (threadId) =>
 				set((state) => {
 					if (state.streamingThreadIds.has(threadId)) return state;
@@ -46,6 +58,20 @@ export const useChatUIStore = create<ChatUIState>()(
 					const next = new Set(state.streamingThreadIds);
 					next.delete(threadId);
 					return { streamingThreadIds: next };
+				}),
+			addUnreadThread: (threadId) =>
+				set((state) => {
+					if (state.unreadThreadIds.has(threadId)) return state;
+					const next = new Set(state.unreadThreadIds);
+					next.add(threadId);
+					return { unreadThreadIds: next };
+				}),
+			removeUnreadThread: (threadId) =>
+				set((state) => {
+					if (!state.unreadThreadIds.has(threadId)) return state;
+					const next = new Set(state.unreadThreadIds);
+					next.delete(threadId);
+					return { unreadThreadIds: next };
 				}),
 			setActiveThreadId: (id) => set({ activeThreadId: id }),
 			upsertOptimisticThread: (thread) =>

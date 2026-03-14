@@ -103,6 +103,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   // Chat Status
   const { startNewChat, hydrateChat } = useChatUIStore();
   const streamingThreadIds = useChatUIStore((s) => s.streamingThreadIds);
+  const unreadThreadIds = useChatUIStore((s) => s.unreadThreadIds);
 
   // Search
   const [search, setSearch] = useState('');
@@ -423,7 +424,10 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                             createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
                           />
                           {chat.id !== null && chat.id !== activeThreadId && streamingThreadIds.has(chat.id) && (
-                            <StreamingDots />
+                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin opacity-70" />
+                          )}
+                          {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
+                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary" />
                           )}
                         </div>
 
@@ -653,23 +657,5 @@ function ThreadTitle({
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
-  );
-}
-
-/**
- * Three animated bouncing dots shown next to sidebar thread titles
- * that have an active stream running in the background.
- */
-function StreamingDots() {
-  return (
-    <span className="inline-flex items-center gap-0.5 shrink-0" aria-label="Streaming">
-      {[0, 1, 2].map((i) => (
-        <span
-          key={i}
-          className="w-1 h-1 rounded-full bg-current opacity-60 animate-bounce"
-          style={{ animationDelay: `${i * 150}ms`, animationDuration: "0.6s" }}
-        />
-      ))}
-    </span>
   );
 }

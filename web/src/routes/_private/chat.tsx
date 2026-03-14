@@ -68,6 +68,7 @@ export function NexataChat() {
 		streamingThreadIds,
 		addStreamingThread,
 		removeStreamingThread,
+		addUnreadThread,
 	} = useChatUIStore();
 
 	const isNewChat = viewStatus === 'new';
@@ -188,7 +189,12 @@ export function NexataChat() {
 
 			// Check immediately
 			const currentStatus = instance.status;
-			if (currentStatus === 'ready' || currentStatus === 'error') {
+			if (currentStatus === 'ready') {
+				removeStreamingThread(threadId);
+				addUnreadThread(threadId);
+				continue;
+			}
+			if (currentStatus === 'error') {
 				removeStreamingThread(threadId);
 				continue;
 			}
@@ -196,7 +202,10 @@ export function NexataChat() {
 			// Subscribe for future changes
 			const unsub = instance['~registerStatusCallback'](() => {
 				const s = instance.status;
-				if (s === 'ready' || s === 'error') {
+				if (s === 'ready') {
+					removeStreamingThread(threadId);
+					addUnreadThread(threadId);
+				} else if (s === 'error') {
 					removeStreamingThread(threadId);
 				}
 			});
@@ -206,7 +215,12 @@ export function NexataChat() {
 		return () => {
 			unsubscribes.forEach((fn) => fn());
 		};
-	}, [streamingThreadIds, activeThreadId, removeStreamingThread]);
+	}, [
+		streamingThreadIds,
+		activeThreadId,
+		removeStreamingThread,
+		addUnreadThread,
+	]);
 
 	// ----------------------------
 	// UI state derivado
