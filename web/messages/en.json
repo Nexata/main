@@ -44,24 +44,24 @@
 			"description": "Analyzing with extended thinking..."
 		},
 		"ask_questions": {
-      "status": {
-        "answering": "Answer the questions",
-        "submitted": "Questions answered"
-      },
-      "label": {
-        "yes": "Yes",
-        "no": "No",
-        "recommended": "Recommended",
-        "select_date": "Select a date",
-        "question_singular": "question",
-        "question_plural": "questions",
-        "answers_sent": "Answers sent",
-        "answered_count": "{answered}/{total} answered"
-      },
-      "button": {
-        "submit": "Send answers"
-      }
-    },
+			"status": {
+				"answering": "Answer the questions",
+				"submitted": "Questions answered"
+			},
+			"label": {
+				"yes": "Yes",
+				"no": "No",
+				"recommended": "Recommended",
+				"select_date": "Select a date",
+				"question_singular": "question",
+				"question_plural": "questions",
+				"answers_sent": "Answers sent",
+				"answered_count": "{answered}/{total} answered"
+			},
+			"button": {
+				"submit": "Send answers"
+			}
+		},
 		"credentials": {
 			"permissions": {
 				"view_credentials": "View Permissions",
@@ -144,7 +144,8 @@
 			"toast_success_title": "Ingestion started",
 			"toast_success_description": "The files were successfully ingested",
 			"toast_error_title": "Ingestion failed",
-			"toast_error_description": "Something went wrong during processing"
+			"toast_error_description": "Something went wrong during processing",
+			"unsupported_extension": "This file extension is not supported for ingestion"
 		},
 
 		"upgrade_plan_modal": {
@@ -565,7 +566,7 @@
 					"regenerate": "Regenerate API key",
 					"delete": "Delete API key",
 					"create": "Create API key",
-					"not_enabled": "Your Tenant does not have API access enabled"
+					"not_enabled": "Your company's plan does not include API key access"
 				},
 				"empty": {
 					"title": "No API key",
@@ -686,99 +687,99 @@
 		}
 	},
 	"tools": {
-    "gmail": {
-      "search": "Searching Gmail...",
-      "search_success": "Gmail search complete",
-      "search_error": "Error searching Gmail",
-      "read": "Reading Gmail message...",
-      "read_success": "Gmail message read",
-      "read_error": "Error reading Gmail message"
-    },
-    "drive": {
-      "search": "Searching Google Drive...",
-      "search_success": "Drive search complete",
-      "search_error": "Error searching Drive",
-      "list": "Listing Drive folder...",
-      "list_success": "Drive folder listed",
-      "list_error": "Error listing Drive"
-    },
-    "outlook": {
-      "search": "Searching Outlook...",
-      "search_success": "Outlook search complete",
-      "search_error": "Error searching Outlook",
-      "read": "Reading Outlook message...",
-      "read_success": "Outlook message read",
-      "read_error": "Error reading Outlook message"
-    },
-    "microsoft_calendar": {
-      "list": "Listing Microsoft calendars...",
-      "list_success": "Microsoft calendars listed",
-      "list_error": "Error listing Microsoft calendars",
-      "events": "Fetching Microsoft events...",
-      "events_success": "Microsoft events fetched",
-      "events_error": "Error fetching Microsoft events",
-      "read": "Reading Microsoft event...",
-      "read_success": "Microsoft event read",
-      "read_error": "Error reading Microsoft event"
-    },
-    "one_drive": {
-      "search": "Searching OneDrive...",
-      "search_success": "OneDrive search complete",
-      "search_error": "Error searching OneDrive",
-      "list": "Listing OneDrive folder...",
-      "list_success": "OneDrive folder listed",
-      "list_error": "Error listing OneDrive"
-    },
-    "dropbox": {
-      "search": "Searching Dropbox...",
-      "search_success": "Dropbox search complete",
-      "search_error": "Error searching Dropbox",
-      "list": "Listing Dropbox folder...",
-      "list_success": "Dropbox folder listed",
-      "list_error": "Error listing Dropbox"
-    },
-    "calendar": {
-      "list": "Listing Google calendars...",
-      "list_success": "Google calendars listed",
-      "list_error": "Error listing Google calendars",
-      "events": "Fetching Google events...",
-      "events_success": "Google events fetched",
-      "events_error": "Error fetching Google events",
-      "read": "Reading Google event...",
-      "read_success": "Google event read",
-      "read_error": "Error reading Google event"
-    },
-    "nexata": {
-      "list_credentials": "Checking integrations...",
-      "list_credentials_success": "Integrations checked",
-      "list_credentials_error": "Error checking integrations",
-      "list_users": "Fetching users...",
-      "list_users_success": "Users fetched",
-      "list_users_error": "Error fetching users",
-      "file_search": "Searching files...",
-      "file_search_success": "Files found",
-      "file_search_error": "Error searching files",
-      "file_read": "Reading file...",
-      "file_read_success": "File read",
-      "file_read_error": "Error reading file",
-      "feedback_list": "Loading feedback...",
-      "feedback_list_success": "Feedback loaded",
-      "feedback_list_error": "Error loading feedback",
-      "feedback_create": "Saving feedback...",
-      "feedback_create_success": "Feedback saved",
-      "feedback_create_error": "Error saving feedback",
-      "list_files_on_thread": "Listing thread files...",
-      "list_files_on_thread_success": "Thread files listed",
-      "list_files_on_thread_error": "Error listing thread files",
-      "list_files_on_message": "Listing message files...",
-      "list_files_on_message_success": "Message files listed",
-      "list_files_on_message_error": "Error listing message files",
-      "reingest": "Reindexing files...",
-      "reingest_success": "Files reindexed",
-      "reingest_error": "Error reindexing files",
-      "ask_questions": "Generating questions...",
-      "ask_questions_success": "Questions generated",
-      "ask_questions_error": "Error generating questions"
-    }
-  }
+		"gmail": {
+			"search": "Searching Gmail...",
+			"search_success": "Gmail search complete",
+			"search_error": "Error searching Gmail",
+			"read": "Reading Gmail message...",
+			"read_success": "Gmail message read",
+			"read_error": "Error reading Gmail message"
+		},
+		"drive": {
+			"search": "Searching Google Drive...",
+			"search_success": "Drive search complete",
+			"search_error": "Error searching Drive",
+			"list": "Listing Drive folder...",
+			"list_success": "Drive folder listed",
+			"list_error": "Error listing Drive"
+		},
+		"outlook": {
+			"search": "Searching Outlook...",
+			"search_success": "Outlook search complete",
+			"search_error": "Error searching Outlook",
+			"read": "Reading Outlook message...",
+			"read_success": "Outlook message read",
+			"read_error": "Error reading Outlook message"
+		},
+		"microsoft_calendar": {
+			"list": "Listing Microsoft calendars...",
+			"list_success": "Microsoft calendars listed",
+			"list_error": "Error listing Microsoft calendars",
+			"events": "Fetching Microsoft events...",
+			"events_success": "Microsoft events fetched",
+			"events_error": "Error fetching Microsoft events",
+			"read": "Reading Microsoft event...",
+			"read_success": "Microsoft event read",
+			"read_error": "Error reading Microsoft event"
+		},
+		"one_drive": {
+			"search": "Searching OneDrive...",
+			"search_success": "OneDrive search complete",
+			"search_error": "Error searching OneDrive",
+			"list": "Listing OneDrive folder...",
+			"list_success": "OneDrive folder listed",
+			"list_error": "Error listing OneDrive"
+		},
+		"dropbox": {
+			"search": "Searching Dropbox...",
+			"search_success": "Dropbox search complete",
+			"search_error": "Error searching Dropbox",
+			"list": "Listing Dropbox folder...",
+			"list_success": "Dropbox folder listed",
+			"list_error": "Error listing Dropbox"
+		},
+		"calendar": {
+			"list": "Listing Google calendars...",
+			"list_success": "Google calendars listed",
+			"list_error": "Error listing Google calendars",
+			"events": "Fetching Google events...",
+			"events_success": "Google events fetched",
+			"events_error": "Error fetching Google events",
+			"read": "Reading Google event...",
+			"read_success": "Google event read",
+			"read_error": "Error reading Google event"
+		},
+		"nexata": {
+			"list_credentials": "Checking integrations...",
+			"list_credentials_success": "Integrations checked",
+			"list_credentials_error": "Error checking integrations",
+			"list_users": "Fetching users...",
+			"list_users_success": "Users fetched",
+			"list_users_error": "Error fetching users",
+			"file_search": "Searching files...",
+			"file_search_success": "Files found",
+			"file_search_error": "Error searching files",
+			"file_read": "Reading file...",
+			"file_read_success": "File read",
+			"file_read_error": "Error reading file",
+			"feedback_list": "Loading feedback...",
+			"feedback_list_success": "Feedback loaded",
+			"feedback_list_error": "Error loading feedback",
+			"feedback_create": "Saving feedback...",
+			"feedback_create_success": "Feedback saved",
+			"feedback_create_error": "Error saving feedback",
+			"list_files_on_thread": "Listing thread files...",
+			"list_files_on_thread_success": "Thread files listed",
+			"list_files_on_thread_error": "Error listing thread files",
+			"list_files_on_message": "Listing message files...",
+			"list_files_on_message_success": "Message files listed",
+			"list_files_on_message_error": "Error listing message files",
+			"reingest": "Reindexing files...",
+			"reingest_success": "Files reindexed",
+			"reingest_error": "Error reindexing files",
+			"ask_questions": "Generating questions...",
+			"ask_questions_success": "Questions generated",
+			"ask_questions_error": "Error generating questions"
+		}
+	}
 }

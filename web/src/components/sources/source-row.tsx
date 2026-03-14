@@ -42,13 +42,13 @@ export function SourceRow({
   return (
     <div className="rounded-xl border p-3 space-y-3 flex flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
         <div className="flex items-center gap-3">
           <img src={source.icon} className="h-6 w-6" alt={source.name} />
           <span className="font-medium">{source.name}</span>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 ml-auto">
           {loading ? (
             <div className="flex items-center gap-2">
               <div className="h-5 w-5 border-2 border-t-transparent border-primary rounded-full animate-spin" />

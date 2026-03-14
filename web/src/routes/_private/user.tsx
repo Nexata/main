@@ -346,26 +346,26 @@ export default function ProfilePage() {
 						{profile_back_to_chat()}
 					</Button>
 
-					<Button
-						variant="outline"
-						className="cursor-pointer"
-						disabled={!canSwitchTenant}
-						onClick={() => {
-							if (!canSwitchTenant) return;
-							const sessions = getTenantSessions();
-							if (!sessions?.length) return;
-							const encoded = encodeURIComponent(
-								btoa(JSON.stringify(sessions)),
-							);
-							navigate({
-								to: '/tenant-selection',
-								search: { sessions: encoded },
-							});
-						}}
-					>
-						<Building2 className="h-4 w-4 mr-2" />
-						{sidebar_tenant_switch()}
-					</Button>
+					{canSwitchTenant && (
+						<Button
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => {
+								const sessions = getTenantSessions();
+								if (!sessions?.length) return;
+								const encoded = encodeURIComponent(
+									btoa(JSON.stringify(sessions)),
+								);
+								navigate({
+									to: '/tenant-selection',
+									search: { sessions: encoded },
+								});
+							}}
+						>
+							<Building2 className="h-4 w-4 mr-2" />
+							{sidebar_tenant_switch()}
+						</Button>
+					)}
 
 					<Button
 						className="cursor-pointer"
@@ -465,27 +465,30 @@ export default function ProfilePage() {
 											</label>
 
 											<div className="flex items-center gap-3 min-h-10">
-  											<Input
-                            type="file"
-                            accept="image/*"
-                            className="w-full sm:w-56 h-10 overflow-hidden file:hidden"
-                            onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                        />
+												<Input
+													type="file"
+													accept="image/*"
+													className="w-full sm:w-56 h-10 overflow-hidden file:hidden"
+													onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+												/>
 
-                        <AnimatePresence initial={false}>
-                          {file && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.96 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              exit={{ opacity: 0, scale: 0.96 }}
-                              transition={{ duration: 0.15 }}
-                              className="flex items-center h-10"
-                            >
-                              <FilePreview file={file} onRemove={() => setFile(null)} />
-                            </motion.div>
-                          )}
-                        </AnimatePresence>
-                      </div>
+												<AnimatePresence initial={false}>
+													{file && (
+														<motion.div
+															initial={{ opacity: 0, scale: 0.96 }}
+															animate={{ opacity: 1, scale: 1 }}
+															exit={{ opacity: 0, scale: 0.96 }}
+															transition={{ duration: 0.15 }}
+															className="flex items-center h-10"
+														>
+															<FilePreview
+																file={file}
+																onRemove={() => setFile(null)}
+															/>
+														</motion.div>
+													)}
+												</AnimatePresence>
+											</div>
 										</div>
 									</div>
 
@@ -531,72 +534,78 @@ export default function ProfilePage() {
 						)}
 
 						<div className="space-y-3">
-							{me.devices.map((device) => {
-								const isCurrent = device.fingerprint === actualFingerprint;
+							{[...me.devices]
+								.sort((a, b) => {
+									const aFirst = a.fingerprint === actualFingerprint ? 0 : 1;
+									const bFirst = b.fingerprint === actualFingerprint ? 0 : 1;
+									return aFirst - bFirst;
+								})
+								.map((device) => {
+									const isCurrent = device.fingerprint === actualFingerprint;
 
-								return (
-									<div
-										key={device.id}
-										className="
+									return (
+										<div
+											key={device.id}
+											className="
   										flex items-center justify-between
   										rounded-lg border border-border
   										px-4 py-3
   										hover:bg-muted/40
   										transition-colors
   									"
-									>
-										<div className="space-y-1 min-w-0">
-											<div className="flex items-center gap-2">
-												<span className="text-muted-foreground">
-													{getDeviceIcon(device.userAgent)}
-												</span>
-												<p className="text-sm font-medium truncate">
-													{formatUserAgent(device.userAgent)}
+										>
+											<div className="space-y-1 min-w-0">
+												<div className="flex items-center gap-2">
+													<span className="text-muted-foreground">
+														{getDeviceIcon(device.userAgent)}
+													</span>
+													<p className="text-sm font-medium truncate">
+														{formatUserAgent(device.userAgent)}
+													</p>
+													{isCurrent && (
+														<Badge variant="destructive" className="text-xs">
+															{user_profile_devices_current()}
+														</Badge>
+													)}
+												</div>
+
+												<p className="text-xs text-muted-foreground truncate">
+													{device.userAgent}
 												</p>
-												{isCurrent && (
-													<Badge variant="destructive" className="text-xs">
-														{user_profile_devices_current()}
-													</Badge>
-												)}
+
+												<p className="text-xs text-muted-foreground">
+													{profile_devices_added_on()}{' '}
+													{new Date(device.createdAt).toLocaleDateString()}
+												</p>
 											</div>
 
-											<p className="text-xs text-muted-foreground truncate">
-												{device.userAgent}
-											</p>
+											<Tooltip>
+												<TooltipTrigger>
+													<span>
+														<Button
+															variant="destructive"
+															size="icon"
+															className={`${isCurrent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+															disabled={isCurrent}
+															onClick={() =>
+																!isCurrent &&
+																handleDeleteDevice(device.fingerprint)
+															}
+														>
+															<Trash2 className="w-5 h-5" />
+														</Button>
+													</span>
+												</TooltipTrigger>
 
-											<p className="text-xs text-muted-foreground">
-												{profile_devices_added_on()}{' '}
-												{new Date(device.createdAt).toLocaleDateString()}
-											</p>
+												<TooltipContent>
+													{isCurrent
+														? user_profile_devices_cant_delete()
+														: user_profile_devices_delete()}
+												</TooltipContent>
+											</Tooltip>
 										</div>
-
-										<Tooltip>
-											<TooltipTrigger>
-												<span>
-													<Button
-														variant="destructive"
-														size="icon"
-														className={`${isCurrent ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
-														disabled={isCurrent}
-														onClick={() =>
-															!isCurrent &&
-															handleDeleteDevice(device.fingerprint)
-														}
-													>
-														<Trash2 className="w-5 h-5" />
-													</Button>
-												</span>
-											</TooltipTrigger>
-
-											<TooltipContent>
-												{isCurrent
-													? user_profile_devices_cant_delete()
-													: user_profile_devices_delete()}
-											</TooltipContent>
-										</Tooltip>
-									</div>
-								);
-							})}
+									);
+								})}
 						</div>
 					</div>
 				</CardContent>

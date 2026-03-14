@@ -3,6 +3,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useBillingUsage } from "@/lib/admin";
 import { cn } from "@/lib/utils";
 import type { SourceConfig } from "@/lib/available-sources";
@@ -41,6 +42,7 @@ import {
   "components.file_tree.toast_success_description" as components_file_tree_toast_success_description,
   "components.file_tree.toast_error_title" as components_file_tree_toast_error_title,
   "components.file_tree.toast_error_description" as components_file_tree_toast_error_description,
+  "components.file_tree.unsupported_extension" as components_file_tree_unsupported_extension,
   "common.cancel" as common_cancel,
   "common.confirm" as common_confirm
 } from "@/paraglide/messages.js";
@@ -68,6 +70,25 @@ type Entry = {
 };
 
 type Crumb = { id: string; name: string };
+
+/* =========================
+   SUPPORTED EXTENSIONS
+========================= */
+
+const SUPPORTED_EXTENSIONS = new Set([
+  "md", "txt", "csv", "tsv", "html", "htm", "xml", "yaml", "yml",
+  "json", "pdf", "xlsx", "xls", "docx", "doc", "rtf", "odt", "ods",
+  "odp", "pptx", "ppt", "png", "jpg", "jpeg", "gif", "webp", "svg",
+  "py", "rs", "go", "rb", "java", "kt", "swift", "c", "cpp", "h",
+  "hpp", "cs", "ts", "js", "tsx", "jsx", "vue", "svelte", "sql",
+  "sh", "bash", "zsh", "ps1", "toml", "ini", "cfg", "env", "log",
+  "css", "scss", "less", "graphql",
+]);
+
+function isExtSupported(ext: string): boolean {
+  if (ext === "dir") return true;
+  return SUPPORTED_EXTENSIONS.has(ext?.toLowerCase());
+}
 
 /* =========================
    SKELETON
@@ -210,6 +231,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   /* SELECTION */
   function toggle(file: Entry) {
+    if (!isExtSupported(file.ext)) return;
+
     if (ingestedMap.has(file.id)) {
       setMarkedForDelete(prev => {
         const next = new Map(prev);
@@ -229,9 +252,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }
 
   function toggleAll() {
-    if (entries.length === 0) return;
+    const supportedEntries = entries.filter(file => isExtSupported(file.ext));
+    if (supportedEntries.length === 0) return;
 
-    const allVisibleSelected = entries.every(file =>
+    const allVisibleSelected = supportedEntries.every(file =>
       ingestedMap.has(file.id)
         ? !markedForDelete.has(file.id)
         : selectedForIngest.has(file.id)
@@ -241,7 +265,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
     const nextMarkedForDelete = new Map(markedForDelete);
 
     if (allVisibleSelected) {
-      for (const file of entries) {
+      for (const file of supportedEntries) {
         if (ingestedMap.has(file.id)) {
           nextMarkedForDelete.set(file.id, ingestedMap.get(file.id)!);
         } else {
@@ -249,7 +273,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
         }
       }
     } else {
-      for (const file of entries) {
+      for (const file of supportedEntries) {
         if (ingestedMap.has(file.id)) {
           nextMarkedForDelete.delete(file.id);
         } else {
@@ -376,8 +400,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
           <div className="flex items-center gap-2 text-[11px] shrink-0">
             <Checkbox
               checked={
-                entries.length > 0 &&
-                entries.every(file =>
+                entries.filter(file => isExtSupported(file.ext)).length > 0 &&
+                entries.filter(file => isExtSupported(file.ext)).every(file =>
                   ingestedMap.has(file.id)
                     ? !markedForDelete.has(file.id)
                     : selectedForIngest.has(file.id)
@@ -422,21 +446,37 @@ export function StorageFileTree({ credentialId, source }: Props) {
           {!loading &&
             entries.map((file, i) => {
               const isDir = file.ext === "dir";
+              const unsupported = !isExtSupported(file.ext);
 
               return (
                 <div key={file.id}>
                   <div
                     className={cn(
                       "group flex items-center justify-between px-3 py-1.5 text-[11px] hover:bg-muted/40",
-                      isDir && "cursor-pointer"
+                      isDir && "cursor-pointer",
+                      unsupported && "opacity-50"
                     )}
                     onDoubleClick={() => isDir && enterFolder(file)}
                   >
                     <div className="flex items-center gap-2 min-w-0 flex-1 mr-2">
-                      <Checkbox
-                      checked={ingestedMap.has(file.id) ? !markedForDelete.has(file.id) : selectedForIngest.has(file.id)}
-                      onCheckedChange={() => toggle(file)}
-                      />
+                      {unsupported ? (
+                        <Tooltip>
+                          <TooltipTrigger
+                            className="flex items-center"
+                            onClick={e => e.preventDefault()}
+                          >
+                            <Checkbox disabled checked={false} />
+                          </TooltipTrigger>
+                          <TooltipContent side="right">
+                            {components_file_tree_unsupported_extension()}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : (
+                        <Checkbox
+                          checked={ingestedMap.has(file.id) ? !markedForDelete.has(file.id) : selectedForIngest.has(file.id)}
+                          onCheckedChange={() => toggle(file)}
+                        />
+                      )}
 
                       {getIcon(file.ext)}
 
