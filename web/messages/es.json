@@ -243,7 +243,8 @@
 	"chat": {
 		"meta": {
 			"title": "Nexata | Chat",
-			"thinking": "Pensando"
+			"thinking": "Pensando",
+			"error": "Ocurrió un error al procesar tu mensaje"
 		},
 		"suggestions": {
 			"welcome_1": "Hola {name}, ¿en qué puedo ayudarte hoy?",
