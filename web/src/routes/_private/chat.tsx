@@ -30,7 +30,10 @@ export const Route = createFileRoute('/_private/chat')({
 
 type UIParts = UIMessage['parts'];
 
-function normalizeParts(content: unknown): UIParts {
+function normalizeParts(
+	content: unknown,
+	toolOutputMap?: Map<string, unknown>,
+): UIParts {
 	if (!content) return [];
 	if (typeof content === 'string') return [{ type: 'text', text: content }];
 	if (!Array.isArray(content)) return [];
@@ -42,7 +45,7 @@ function normalizeParts(content: unknown): UIParts {
 				toolCallId: part.toolCallId,
 				state: 'output-available',
 				input: part.input ?? {},
-				output: part.output ?? null,
+				output: part.output ?? toolOutputMap?.get(part.toolCallId) ?? null,
 			};
 		}
 		if (part.type === 'file') {
@@ -88,6 +91,21 @@ export function NexataChat() {
 
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
 		if (!threadMessages) return [];
+
+		// Build a map of toolCallId → output from "tool" role messages
+		const toolOutputMap = new Map<string, unknown>();
+		for (const m of threadMessages) {
+			if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
+			for (const part of m.content as any[]) {
+				if (part.type === 'tool-result' && part.toolCallId) {
+					toolOutputMap.set(
+						part.toolCallId,
+						part.result ?? part.output ?? null,
+					);
+				}
+			}
+		}
+
 		return threadMessages
 			.filter((m) => m.role === 'user' || m.role === 'assistant')
 			.map((m) => ({
@@ -95,7 +113,7 @@ export function NexataChat() {
 				role: m.role,
 				createdAt: m.createdAt,
 				metadata: { hydrated: true },
-				parts: normalizeParts(m.content),
+				parts: normalizeParts(m.content, toolOutputMap),
 			}));
 	}, [threadMessages]);
 

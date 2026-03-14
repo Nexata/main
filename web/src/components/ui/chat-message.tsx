@@ -164,6 +164,7 @@ export interface ChatMessageProps {
   onEdit?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
   isStreaming?: boolean
+  isLastInGroup?: boolean
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
@@ -173,6 +174,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onEdit,
   onBranchOff,
   isStreaming = false,
+  isLastInGroup = true,
 }) => {
   const isUser = message.role === "user"
   const editingMessageId = useChatUIStore((s) => s.editingMessageId)
@@ -410,7 +412,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           })()}
 
           {/* Message Actions Toolbar */}
-          {!isEditing && isHovered && !isStreaming && (
+          {!isEditing && isHovered && !isStreaming && isLastInGroup && (
             <motion.div
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}

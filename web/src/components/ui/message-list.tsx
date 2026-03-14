@@ -26,12 +26,19 @@ export function MessageList({
       {messages.map((message, index) => {
         const additionalOptions = typeof messageOptions === "function" ? messageOptions(message) : messageOptions
 
+        // Actions toolbar should only show on the last message of a consecutive assistant group
+        const isLastInGroup = message.role === 'user' || (
+          index === messages.length - 1 ||
+          messages[index + 1]?.role === 'user'
+        )
+
         return (
           <ChatMessage
             key={message.id ?? index}
             message={message}
             showTimeStamp={showTimeStamps}
             disableTypingAnimation={disableTypingAnimation}
+            isLastInGroup={isLastInGroup}
             {...additionalOptions}
           />
         )
