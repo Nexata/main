@@ -416,7 +416,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                     ) : (
                       <>
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          {chat.id !== null && chat.id !== activeThreadId && streamingThreadIds.has(chat.id) && (
+                          {chat.id !== null && streamingThreadIds.has(chat.id) && (
                             <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin opacity-70" />
                           )}
                           {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (

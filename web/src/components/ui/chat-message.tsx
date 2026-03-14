@@ -185,7 +185,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
   const isEditing = editingMessageId === message.id
   const [editText, setEditText] = useState("")
-  const [isHovered, setIsHovered] = useState(false)
 
   const handleStartEdit = useCallback(() => {
     const text = message.parts
@@ -252,8 +251,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         "group/message relative flex flex-col gap-3 w-full",
         isUser ? "items-end" : "items-start"
       )}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
     >
       {/* Inline Edit Mode */}
       {isUser && isEditing ? (
@@ -412,11 +409,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           })()}
 
           {/* Message Actions Toolbar */}
-          {!isEditing && isHovered && !isStreaming && isLastInGroup && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ duration: 0.15 }}
+          {!isEditing && !isStreaming && isLastInGroup && (
+            <div
               className={cn(
                 "flex items-center gap-0.5 rounded-lg border bg-background/95 backdrop-blur-sm px-1 py-0.5 shadow-sm",
                 isUser ? "self-end" : "self-start"
@@ -451,7 +445,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
                 </button>
               )}
-            </motion.div>
+            </div>
           )}
         </>
       )}
