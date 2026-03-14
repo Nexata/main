@@ -416,6 +416,12 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                     ) : (
                       <>
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {chat.id !== null && chat.id !== activeThreadId && streamingThreadIds.has(chat.id) && (
+                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin opacity-70" />
+                          )}
+                          {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
+                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary" />
+                          )}
                           <ThreadTitle
                             title={chat.title ?? "New Chat"}
                             isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
@@ -423,12 +429,6 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                             sidebarWidth={sidebarWidth}
                             createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
                           />
-                          {chat.id !== null && chat.id !== activeThreadId && streamingThreadIds.has(chat.id) && (
-                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin opacity-70" />
-                          )}
-                          {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
-                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary" />
-                          )}
                         </div>
 
                         {chat.id !== null && (
