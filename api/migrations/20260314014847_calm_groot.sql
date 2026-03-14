@@ -1,4 +1,4 @@
-CREATE EXTENSION IF NOT EXISTS "vector";
+CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TYPE "public"."bill_source" AS ENUM('periodic', 'plan_change', 'refill');
 CREATE TYPE "public"."billable_event_type" AS ENUM('embed', 'storage', 'message', 'refill');
@@ -7,7 +7,7 @@ CREATE TYPE "public"."oauth_scope" AS ENUM('gmail', 'drive', 'calendar', 'outloo
 CREATE TYPE "public"."feedback_status" AS ENUM('pending', 'in_review', 'wontfix', 'solved');
 CREATE TYPE "public"."feedback_type" AS ENUM('bug_report', 'feature_request', 'question', 'other');
 CREATE TYPE "public"."file_host" AS ENUM('nexata', 'drive', 'one_drive', 'dropbox');
-CREATE TYPE "public"."finish_reason" AS ENUM('complete', 'stopped', 'error', 'length');
+CREATE TYPE "public"."finish_reason" AS ENUM('complete', 'stopped', 'error', 'length', 'tool_calls');
 CREATE TYPE "public"."message_role" AS ENUM('system', 'user', 'assistant', 'tool');
 CREATE TYPE "public"."plan" AS ENUM('free', 'personal', 'business', 'pay_as_you_go');
 CREATE TYPE "public"."trace_type" AS ENUM('file_ingested', 'file_deleted', 'credential_added', 'credential_removed', 'ingest_failed', 'limit_warning', 'user_deleted');

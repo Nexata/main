@@ -13,7 +13,12 @@ import { Button } from "@/components/ui/button";
 import { infoToast } from "@/components/info-toast/info-toast";
 import { checkSlugAvailable, requestTenantCreation } from "@/lib/public-tenant";
 import type { Language } from "@/lib/user";
-import { Loader2, Check, X, Building2, Mail, Globe } from "lucide-react";
+import { Loader2, Check, X, Building2, Mail, Globe, ChevronDown } from "lucide-react";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
 
 type RegisterTenantModalProps = {
   open: boolean;
@@ -42,6 +47,7 @@ export default function RegisterTenantModal({
   const [slugStatus, setSlugStatus] = useState<"idle" | "checking" | "available" | "taken">("idle");
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
 
   // Derive slug from display name if user hasn't manually edited it
   useEffect(() => {
@@ -78,6 +84,7 @@ export default function RegisterTenantModal({
     setSlugStatus("idle");
     setSubmitting(false);
     setSubmitted(false);
+    setShowAdvanced(false);
   }, []);
 
   const handleOpenChange = useCallback(
@@ -91,7 +98,6 @@ export default function RegisterTenantModal({
   const isValidEmail = email.includes("@") && email.includes(".");
   const isValidSlug = SLUG_REGEX.test(slug);
   const canSubmit =
-    displayName.trim().length >= 1 &&
     isValidEmail &&
     isValidSlug &&
     slugStatus !== "taken" &&
@@ -145,13 +151,14 @@ export default function RegisterTenantModal({
           orgPlaceholder: "Mi Empresa",
           email: "Email",
           emailPlaceholder: "tu@empresa.com",
-          slug: "Identificador (URL)",
+          slug: "Identificador",
           slugAvailable: "Disponible",
           slugTaken: "No disponible",
           slugChecking: "Verificando...",
           slugHint: "Solo letras minúsculas y números, 2-16 caracteres",
-          submit: "Crear organización",
-          successTitle: "Revisá tu email",
+           submit: "Crear organización",
+           advancedOptions: "Opciones avanzadas",
+           successTitle: "Revisá tu email",
           successDescription:
             "Te enviamos un enlace de confirmación. El enlace expira en 1 hora.",
           close: "Cerrar",
@@ -163,13 +170,14 @@ export default function RegisterTenantModal({
           orgPlaceholder: "My Company",
           email: "Email",
           emailPlaceholder: "you@company.com",
-          slug: "Identifier (URL)",
+          slug: "Identifier",
           slugAvailable: "Available",
           slugTaken: "Not available",
           slugChecking: "Checking...",
           slugHint: "Lowercase letters and numbers only, 2-16 characters",
-          submit: "Create organization",
-          successTitle: "Check your email",
+           submit: "Create organization",
+           advancedOptions: "Advanced options",
+           successTitle: "Check your email",
           successDescription:
             "We sent you a confirmation link. The link expires in 1 hour.",
           close: "Close",
@@ -247,49 +255,57 @@ export default function RegisterTenantModal({
                 />
               </div>
 
-              {/* Slug */}
-              <div className="grid gap-1.5">
-                <Label htmlFor="register-slug">
-                  <Globe className="h-3.5 w-3.5" />
-                  {labels.slug}
-                </Label>
-                <div className="relative">
-                  <Input
-                    id="register-slug"
-                    value={slug}
-                    onChange={(e) => {
-                      setSlugTouched(true);
-                      setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16));
-                    }}
-                    placeholder="mi-empresa"
-                    maxLength={16}
-                    className="pr-8"
-                  />
-                  <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                    {slugStatus === "checking" && (
-                      <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                    )}
-                    {slugStatus === "available" && (
-                      <Check className="h-4 w-4 text-emerald-500" />
-                    )}
-                    {slugStatus === "taken" && (
-                      <X className="h-4 w-4 text-destructive" />
-                    )}
+              {/* Advanced Options (Slug) */}
+              <Collapsible open={showAdvanced} onOpenChange={setShowAdvanced}>
+                <CollapsibleTrigger className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer">
+                  <ChevronDown className={`h-3.5 w-3.5 transition-transform ${showAdvanced ? "rotate-180" : ""}`} />
+                  {labels.advancedOptions}
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <div className="grid gap-1.5 pt-3">
+                    <Label htmlFor="register-slug">
+                      <Globe className="h-3.5 w-3.5" />
+                      {labels.slug}
+                    </Label>
+                    <div className="relative">
+                      <Input
+                        id="register-slug"
+                        value={slug}
+                        onChange={(e) => {
+                          setSlugTouched(true);
+                          setSlug(e.target.value.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 16));
+                        }}
+                        placeholder="mi-empresa"
+                        maxLength={16}
+                        className="pr-8"
+                      />
+                      <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                        {slugStatus === "checking" && (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                        {slugStatus === "available" && (
+                          <Check className="h-4 w-4 text-emerald-500" />
+                        )}
+                        {slugStatus === "taken" && (
+                          <X className="h-4 w-4 text-destructive" />
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-muted-foreground">{labels.slugHint}</span>
+                      {slugStatus === "available" && (
+                        <span className="text-xs text-emerald-500 font-medium">{labels.slugAvailable}</span>
+                      )}
+                      {slugStatus === "taken" && (
+                        <span className="text-xs text-destructive font-medium">{labels.slugTaken}</span>
+                      )}
+                      {slugStatus === "checking" && (
+                        <span className="text-xs text-muted-foreground">{labels.slugChecking}</span>
+                      )}
+                    </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-muted-foreground">{labels.slugHint}</span>
-                  {slugStatus === "available" && (
-                    <span className="text-xs text-emerald-500 font-medium">{labels.slugAvailable}</span>
-                  )}
-                  {slugStatus === "taken" && (
-                    <span className="text-xs text-destructive font-medium">{labels.slugTaken}</span>
-                  )}
-                  {slugStatus === "checking" && (
-                    <span className="text-xs text-muted-foreground">{labels.slugChecking}</span>
-                  )}
-                </div>
-              </div>
+                </CollapsibleContent>
+              </Collapsible>
             </div>
 
             <DialogFooter>

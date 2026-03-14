@@ -24,7 +24,7 @@ export async function requestTenantCreation(
 		displayName: input.displayName,
 		email: input.email,
 		slug: input.slug ?? null,
-		redirect: null,
+		redirect: `${import.meta.env.VITE_FRONT_URL}/login`,
 		$headers: {
 			language: input.language ?? 'es',
 		},
