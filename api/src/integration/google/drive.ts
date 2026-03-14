@@ -168,7 +168,14 @@ export namespace Drive {
 
 	function mapFileToEntry(f: drive_v3.Schema$File): NexataListDirEntry {
 		const isFolder = f.mimeType === FOLDER_MIME_TYPE;
-		const ext = isFolder ? 'dir' : f.name ? f.name.split('.').pop() : undefined;
+		const googleExt =
+			GOOGLE_WORKSPACE_MIME_TYPES[
+				f.mimeType as keyof typeof GOOGLE_WORKSPACE_MIME_TYPES
+			]?.ext;
+		const ext = isFolder
+			? 'dir'
+			: (googleExt ??
+				(f.name?.includes('.') ? f.name.split('.').pop() : undefined));
 
 		return {
 			id: f.id!,
