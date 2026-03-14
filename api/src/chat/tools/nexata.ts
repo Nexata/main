@@ -275,7 +275,7 @@ export namespace Nexata {
 	});
 
 	export const [askQuestionsDescription, askQuestionsInput] = [
-		'Nexata tool to ask the user one or more structured questions when clarification or input is needed before proceeding. Only use when user input is genuinely required to continue — do not ask unnecessary questions.',
+		"Nexata tool to ask the user one or more structured questions when clarification or additional context would improve the quality of results. Use this tool proactively whenever the user's request is vague, ambiguous, or could benefit from narrowing down — for example: which data source to search, time range, specific people or keywords, file type, or intent clarification. Prefer asking a quick structured question over making assumptions that may lead to irrelevant results. When in doubt, use this tool.",
 		tObject({
 			questions: t.Array(
 				t.Union([
