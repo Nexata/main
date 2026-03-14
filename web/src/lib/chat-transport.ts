@@ -31,14 +31,16 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 
 				// ===== NexataAskQuestions → /chat/answer =====
 				if (isAutoSubmit) {
-					const askQuestionsPart = lastMessage?.parts?.find(
-						(p: any) =>
-							(p.type === 'tool-NexataAskQuestions' ||
-								(p.type === 'dynamic-tool' &&
-									p.toolName === 'NexataAskQuestions')) &&
-							p.state === 'output-available' &&
-							p.output != null,
-					);
+					const askQuestionsPart = lastMessage?.parts
+						?.filter(
+							(p: any) =>
+								(p.type === 'tool-NexataAskQuestions' ||
+									(p.type === 'dynamic-tool' &&
+										p.toolName === 'NexataAskQuestions')) &&
+								p.state === 'output-available' &&
+								p.output != null,
+						)
+						.at(-1);
 
 					if (askQuestionsPart) {
 						const storeThreadId = useChatUIStore.getState().activeThreadId;
