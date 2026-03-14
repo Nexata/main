@@ -2,15 +2,20 @@
 
 import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import EditConfirmModal from '@/components/chat-edit/edit-confirm.modal';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
-import { useThreadById } from '@/lib/chat';
+import { useBranchOffMessage, useThreadById } from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
+import { useToolDetailStore } from '@/lib/tool-detail.store';
 import { useMe } from '@/lib/user';
 import {
+	'chat.branch_off.error' as chat_branch_off_error,
+	'chat.branch_off.loading' as chat_branch_off_loading,
+	'chat.branch_off.success' as chat_branch_off_success,
 	'chat.meta.error' as chat_meta_error,
 	'chat.meta.title' as chat_meta_title,
 } from '@/paraglide/messages.js';
@@ -255,7 +260,7 @@ export function NexataChat() {
 		setExtraReason(false);
 
 		await sendMessage(
-			{ text, files: files?.length ? files : null },
+			{ text, files: files?.length ? files : undefined },
 			{
 				body: {
 					threadId: activeThreadId ?? null,
@@ -286,6 +291,95 @@ export function NexataChat() {
 	}, [error]);
 
 	// ----------------------------
+	// Close tool detail panel on thread switch
+	// ----------------------------
+
+	const closeToolDetail = useToolDetailStore((s) => s.close);
+
+	useEffect(() => {
+		closeToolDetail();
+	}, [activeThreadId, closeToolDetail]);
+
+	// ----------------------------
+	// Edit message
+	// ----------------------------
+
+	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
+	const [editPending, setEditPending] = useState<{
+		messageId: string;
+		newText: string;
+	} | null>(null);
+
+	const handleEditMessage = useCallback(
+		(messageId: string, newText: string) => {
+			setEditPending({ messageId, newText });
+		},
+		[],
+	);
+
+	const handleEditConfirm = useCallback(async () => {
+		if (!editPending) return;
+		const { messageId, newText } = editPending;
+		setEditPending(null);
+		cancelEditing();
+
+		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
+
+		await sendMessage(
+			{ text: newText, files: undefined },
+			{
+				body: {
+					threadId: activeThreadId ?? null,
+					editedMessageId: messageId,
+					languagePreference: me?.language ?? null,
+					extraReason: false,
+				},
+			},
+		);
+	}, [
+		editPending,
+		cancelEditing,
+		addStreamingThread,
+		activeThreadId,
+		sendMessage,
+		me?.language,
+	]);
+
+	const handleEditCancel = useCallback(() => {
+		setEditPending(null);
+		cancelEditing();
+	}, [cancelEditing]);
+
+	// ----------------------------
+	// Branch off
+	// ----------------------------
+
+	const branchOff = useBranchOffMessage();
+	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
+
+	const handleBranchOff = useCallback(
+		async (messageId: string) => {
+			const toastId = infoToast.loading({
+				title: chat_branch_off_loading(),
+			});
+			try {
+				const result = await branchOff(messageId);
+				infoToast.success(toastId, {
+					title: chat_branch_off_success(),
+				});
+				if (result && typeof result === 'object' && 'threadId' in result) {
+					hydrateChat(result.threadId as string);
+				}
+			} catch {
+				infoToast.error(toastId, {
+					title: chat_branch_off_error(),
+				});
+			}
+		},
+		[branchOff, hydrateChat],
+	);
+
+	// ----------------------------
 	// Render
 	// ----------------------------
 
@@ -306,8 +400,16 @@ export function NexataChat() {
 					isUserLoading={isMeLoading}
 					setExtraReason={setExtraReason}
 					addToolOutput={addToolOutput}
+					onEditMessage={handleEditMessage}
+					onBranchOff={handleBranchOff}
 				/>
 			</div>
+
+			<EditConfirmModal
+				open={!!editPending}
+				onCancel={handleEditCancel}
+				onConfirm={handleEditConfirm}
+			/>
 		</div>
 	);
 }

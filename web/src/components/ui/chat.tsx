@@ -7,24 +7,14 @@ import {
   useState,
   type ReactElement,
 } from "react"
-import { ArrowDown, ThumbsDown, ThumbsUp } from "lucide-react"
+import { ArrowDown } from "lucide-react"
 import type { UIMessage } from "@ai-sdk/react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
 import { Button } from "@/components/ui/button"
-import { CopyButton } from "@/components/ui/copy-button"
 import { MessageInput } from "@/components/ui/message-input"
 import { MessageList } from "@/components/ui/message-list"
 import { ChatThinkingIndicator } from "../chat-thinking/chat-thinking"
-
-function getMessageText(message: UIMessage): string {
-  if (!message.parts) return ""
-
-  return message.parts
-    .filter((p): p is Extract<typeof p, { type: "text" | "reasoning" }> => p.type === "text" || p.type === "reasoning")
-    .map((p) => p.text ?? "")
-    .join("")
-}
 
 interface ChatPropsBase {
   handleSubmit: (
@@ -37,11 +27,6 @@ interface ChatPropsBase {
   handleInputChange: React.ChangeEventHandler<HTMLTextAreaElement>
   isGenerating: boolean
   stop?: () => void
-  onRateResponse?: (
-    messageId: string,
-    rating: "thumbs-up" | "thumbs-down"
-  ) => void
-  setMessages?: (messages: UIMessage[]) => void
   transcribeAudio?: (blob: Blob) => Promise<string>
   welcomeLabel?: string
   isHydratingThread?: boolean
@@ -49,6 +34,8 @@ interface ChatPropsBase {
   isUserLoading?: boolean
   setExtraReason?: (value: boolean) => void
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
+  onEditMessage?: (messageId: string, newText: string) => void
+  onBranchOff?: (messageId: string) => void
 }
 
 export function Chat({
@@ -59,15 +46,15 @@ export function Chat({
   stop,
   isGenerating,
   className,
-  onRateResponse,
-  setMessages,
   transcribeAudio,
   welcomeLabel,
   isHydratingThread,
   isNewChat,
   isUserLoading,
   setExtraReason,
-  addToolOutput
+  addToolOutput,
+  onEditMessage,
+  onBranchOff,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -91,53 +78,15 @@ export function Chat({
   }, [stop])
 
   const messageOptions = useCallback(
-    (message: UIMessage) => {
-      const messageText = getMessageText(message)
-
+    (_message: UIMessage) => {
       return {
-        actions: onRateResponse ? (
-          <>
-            <div className="border-r pr-1">
-              <CopyButton
-                content={messageText}
-                copyMessage="Copied response to clipboard!"
-              />
-            </div>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() =>
-                message.id &&
-                onRateResponse(message.id, "thumbs-up")
-              }
-            >
-              <ThumbsUp className="h-4 w-4" />
-            </Button>
-
-            <Button
-              size="icon"
-              variant="ghost"
-              className="h-6 w-6"
-              onClick={() =>
-                message.id &&
-                onRateResponse(message.id, "thumbs-down")
-              }
-            >
-              <ThumbsDown className="h-4 w-4" />
-            </Button>
-          </>
-        ) : (
-          <CopyButton
-            content={messageText}
-            copyMessage="Copied response to clipboard!"
-          />
-        ),
-        addToolOutput
+        addToolOutput,
+        onEdit: onEditMessage,
+        onBranchOff,
+        isStreaming,
       }
     },
-    [onRateResponse, addToolOutput]
+    [addToolOutput, onEditMessage, onBranchOff, isStreaming]
   )
 
   return (

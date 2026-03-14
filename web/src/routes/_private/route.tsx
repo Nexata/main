@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'react';
 import { IoMenu } from 'react-icons/io5';
 import Sidebar from '@/components/sidebar/sidebar';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
+import ToolDetailPanel from '@/components/tool-detail-panel/tool-detail-panel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
@@ -62,8 +63,13 @@ function PrivateLayout() {
 	}, [location.pathname]);
 
 	return (
-	  <div className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased"
-     style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}>
+		<div
+			className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased"
+			style={{
+				paddingTop: 'env(safe-area-inset-top)',
+				paddingBottom: 'env(safe-area-inset-bottom)',
+			}}
+		>
 			{/* Desktop sidebar */}
 			{!isMobile && <Sidebar />}
 
@@ -102,35 +108,38 @@ function PrivateLayout() {
 			<div className="flex flex-1 flex-col overflow-hidden">
 				{/* Mobile top bar */}
 				{isMobile && (
-          <div className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3" style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}>
-            {/* Izquierda: botón menú */}
-            <button
-              onClick={toggleMobileSidebar}
-              className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
-            >
-              <IoMenu className="h-5 w-5" />
-            </button>
+					<div
+						className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3"
+						style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}
+					>
+						{/* Izquierda: botón menú */}
+						<button
+							onClick={toggleMobileSidebar}
+							className="flex h-9 w-9 items-center justify-center rounded-lg hover:bg-muted transition-colors"
+						>
+							<IoMenu className="h-5 w-5" />
+						</button>
 
-            {/* Derecha: logos */}
-            <div className="flex items-center gap-3">
-              <img
-                src="/nexata_logo.png"
-                alt="Nexata"
-                className="h-6 w-auto object-contain"
-              />
-              {myTenant?.logoUrl && (
-                <>
-                  <div className="h-6 w-px bg-border" />
-                  <TenantLogo
-                    loading={tenantLoading}
-                    logoUrl={myTenant.logoUrl}
-                    displayName={myTenant.displayName}
-                  />
-                </>
-              )}
-            </div>
-          </div>
-        )}
+						{/* Derecha: logos */}
+						<div className="flex items-center gap-3">
+							<img
+								src="/nexata_logo.png"
+								alt="Nexata"
+								className="h-6 w-auto object-contain"
+							/>
+							{myTenant?.logoUrl && (
+								<>
+									<div className="h-6 w-px bg-border" />
+									<TenantLogo
+										loading={tenantLoading}
+										logoUrl={myTenant.logoUrl}
+										displayName={myTenant.displayName}
+									/>
+								</>
+							)}
+						</div>
+					</div>
+				)}
 
 				<motion.div
 					ref={controlsRef}
@@ -140,6 +149,9 @@ function PrivateLayout() {
 					<Outlet />
 				</motion.div>
 			</div>
+
+			{/* Tool detail right panel (desktop only) */}
+			{!isMobile && <ToolDetailPanel />}
 		</div>
 	);
 }

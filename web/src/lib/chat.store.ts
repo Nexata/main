@@ -15,6 +15,8 @@ type ChatUIState = {
 	streamingThreadIds: Set<string>;
 	unreadThreadIds: Set<string>;
 	optimisticThreads: Record<string, OptimisticThread>;
+	editingMessageId: string | null;
+	editingMessageText: string;
 	setActiveThreadId: (id: string | null) => void;
 	upsertOptimisticThread: (thread: OptimisticThread) => void;
 	removeOptimisticThread: (threadId: string) => void;
@@ -24,6 +26,8 @@ type ChatUIState = {
 	removeStreamingThread: (threadId: string) => void;
 	addUnreadThread: (threadId: string) => void;
 	removeUnreadThread: (threadId: string) => void;
+	startEditing: (messageId: string, text: string) => void;
+	cancelEditing: () => void;
 };
 
 export const useChatUIStore = create<ChatUIState>()(
@@ -34,6 +38,8 @@ export const useChatUIStore = create<ChatUIState>()(
 			streamingThreadIds: new Set<string>(),
 			unreadThreadIds: new Set<string>(),
 			optimisticThreads: {},
+			editingMessageId: null,
+			editingMessageText: '',
 			startNewChat: () => set({ activeThreadId: null, viewStatus: 'new' }),
 			hydrateChat: (threadId) =>
 				set((state) => {
@@ -87,6 +93,10 @@ export const useChatUIStore = create<ChatUIState>()(
 					delete next[threadId];
 					return { optimisticThreads: next };
 				}),
+			startEditing: (messageId, text) =>
+				set({ editingMessageId: messageId, editingMessageText: text }),
+			cancelEditing: () =>
+				set({ editingMessageId: null, editingMessageText: '' }),
 		}),
 		{
 			name: 'chat-ui-store',

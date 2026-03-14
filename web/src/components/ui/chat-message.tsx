@@ -1,5 +1,5 @@
 import React from "react"
-import { useState } from "react"
+import { useState, useCallback } from "react"
 import type { UIMessage, useChat } from "@ai-sdk/react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion } from "framer-motion"
@@ -12,11 +12,16 @@ import {
   Hash,
   Send,
   Check,
-  Calendar
+  Calendar,
+  Pencil,
+  GitBranch,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
+import { CopyButton } from "@/components/ui/copy-button"
+import { useChatUIStore } from "@/lib/chat.store"
+import { useToolDetailStore } from "@/lib/tool-detail.store"
 import {
   'components.reasoning_block.title' as components_reasoning_block_title,
   'components.reasoning_block.description' as components_reasoning_block_description,
@@ -109,6 +114,10 @@ import {
   'components.ask_questions.label.answers_sent' as components_ask_questions_label_answers_sent,
   'components.ask_questions.label.answered_count' as components_ask_questions_label_answered_count,
   'components.ask_questions.button.submit' as components_ask_questions_button_submit,
+  'chat.edit.button' as chat_edit_button,
+  'chat.edit.save' as chat_edit_save,
+  'chat.edit.cancel' as chat_edit_cancel,
+  'chat.branch_off.button' as chat_branch_off_button,
 } from '@/paraglide/messages.js';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -152,23 +161,54 @@ export interface ChatMessageProps {
   actions?: React.ReactNode
   disableTypingAnimation?: boolean
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
+  onEdit?: (messageId: string, newText: string) => void
+  onBranchOff?: (messageId: string) => void
+  isStreaming?: boolean
 }
 
 export const ChatMessage: React.FC<ChatMessageProps> = ({
   message,
   showTimeStamp = false,
-  animation = "scale",
-  actions,
-  disableTypingAnimation,
-  addToolOutput
+  addToolOutput,
+  onEdit,
+  onBranchOff,
+  isStreaming = false,
 }) => {
   const isUser = message.role === "user"
+  const editingMessageId = useChatUIStore((s) => s.editingMessageId)
+  const editingMessageText = useChatUIStore((s) => s.editingMessageText)
+  const startEditing = useChatUIStore((s) => s.startEditing)
+  const cancelEditing = useChatUIStore((s) => s.cancelEditing)
+  const openTool = useToolDetailStore((s) => s.openTool)
+
+  const isEditing = editingMessageId === message.id
+  const [editText, setEditText] = useState("")
+  const [isHovered, setIsHovered] = useState(false)
+
+  const handleStartEdit = useCallback(() => {
+    const text = message.parts
+      .filter((p): p is Extract<typeof p, { type: "text" }> => p.type === "text")
+      .map((p) => p.text)
+      .join("")
+    startEditing(message.id, text)
+    setEditText(text)
+  }, [message, startEditing])
+
+  const handleCancelEdit = useCallback(() => {
+    cancelEditing()
+    setEditText("")
+  }, [cancelEditing])
+
+  const handleSaveEdit = useCallback(() => {
+    if (!editText.trim()) return
+    onEdit?.(message.id, editText.trim())
+  }, [message.id, editText, onEdit])
 
   const createdAt =
     typeof message.metadata === "object" &&
     message.metadata &&
     "createdAt" in message.metadata
-      ? new Date((message.metadata as any).createdAt)
+      ? new Date((message.metadata as Record<string, unknown>).createdAt as string)
       : undefined
 
   const formattedTime = createdAt?.toLocaleTimeString("en-US", {
@@ -177,143 +217,242 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   })
 
   // Helper para FilePreview
-  function filePartToBrowserFile(part: any): File {
+  function filePartToBrowserFile(part: Record<string, unknown>): File {
     if (!part.url) {
       return new File(
         [],
-        part.filename ?? "Unknown",
-        { type: part.mediaType ?? "application/octet-stream" }
+        (part.filename as string) ?? "Unknown",
+        { type: (part.mediaType as string) ?? "application/octet-stream" }
       )
     }
 
-    const base64 = part.url.split(",")[1]
-    const bytes = atob(base64)
+    const base64 = (part.url as string).split(",")[1]
+    const bytes = atob(base64 ?? "")
     const array = new Uint8Array(bytes.length)
     for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i)
 
     return new File(
       [array],
-      part.filename ?? "Unknown",
-      { type: part.mediaType ?? "application/octet-stream" }
+      (part.filename as string) ?? "Unknown",
+      { type: (part.mediaType as string) ?? "application/octet-stream" }
     )
   }
+
+  // Get plain text for copy button
+  const messageText = message.parts
+    .filter((p): p is Extract<typeof p, { type: "text" | "reasoning" }> => p.type === "text" || p.type === "reasoning")
+    .map((p) => p.text ?? "")
+    .join("")
 
   return (
     <div
       className={cn(
-        "flex flex-col gap-3 w-full",
+        "group/message relative flex flex-col gap-3 w-full",
         isUser ? "items-end" : "items-start"
       )}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
     >
-      {(() => {
-        const blocks: React.ReactNode[] = []
-
-        // guardamos part + índice global
-        let buffer: { part: any; globalIndex: number }[] = []
-
-        const flushBuffer = () => {
-          if (!buffer.length) return
-
-          const firstIndex = buffer[0]?.globalIndex
-          const lastIndex = buffer[buffer.length - 1]?.globalIndex
-          const bubbleKey = `bubble-${firstIndex}-${lastIndex}`
-
-
-          const textBuffer = buffer.filter(b => b.part.type === "text")
-          const fileBuffer = buffer.filter(b => b.part.type === "file")
-
-          blocks.push(
-            <motion.div
-              key={bubbleKey}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.25, ease: "easeOut" }}
-              className={cn(chatBubbleVariants({ isUser, animation: "none" }))}
+      {/* Inline Edit Mode */}
+      {isUser && isEditing ? (
+        <div className="w-full sm:max-w-[85%] flex flex-col gap-2">
+          <textarea
+            value={editText}
+            onChange={(e) => setEditText(e.target.value)}
+            rows={Math.min(Math.max(editText.split("\n").length, 2), 10)}
+            className="w-full rounded-lg border bg-muted p-3 text-md text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Escape") handleCancelEdit()
+              if (e.key === "Enter" && !e.shiftKey) {
+                e.preventDefault()
+                handleSaveEdit()
+              }
+            }}
+          />
+          <div className="flex justify-end gap-2">
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancelEdit}
+              className="h-7 text-xs"
             >
-              {/* TEXT */}
-              {textBuffer.map(({ part, globalIndex }, i) => {
-                return (
-                  <div key={`text-${i}`}>
-                    <MarkdownRenderer>{part.text}</MarkdownRenderer>
-                  </div>
-                )
-              })}
+              {chat_edit_cancel()}
+            </Button>
+            <Button
+              size="sm"
+              variant="default"
+              onClick={handleSaveEdit}
+              disabled={!editText.trim() || editText.trim() === editingMessageText}
+              className="h-7 text-xs"
+            >
+              {chat_edit_save()}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <>
+          {/* Message Content */}
+          {(() => {
+            const blocks: React.ReactNode[] = []
+            let buffer: { part: Record<string, unknown>; globalIndex: number }[] = []
 
-              {/* FILES */}
-              {fileBuffer.map(({ part }, i) => {
-                const browserFile = filePartToBrowserFile(part)
+            const flushBuffer = () => {
+              if (!buffer.length) return
 
-                return (
-                  <div
-                    key={`file-${i}`}
-                    className="mt-3 scale-90 origin-left"
-                  >
-                    <FilePreview file={browserFile} />
-                  </div>
-                )
-              })}
-            </motion.div>
-          )
+              const firstIndex = buffer[0]?.globalIndex
+              const lastIndex = buffer[buffer.length - 1]?.globalIndex
+              const bubbleKey = `bubble-${firstIndex}-${lastIndex}`
 
-          buffer = []
-        }
+              const textBuffer = buffer.filter(b => (b.part as { type: string }).type === "text")
+              const fileBuffer = buffer.filter(b => (b.part as { type: string }).type === "file")
 
-        message.parts.forEach((part, index) => {
-          if (part.type === "text" || part.type === "file") {
-            buffer.push({ part, globalIndex: index })
-            return
-          }
-
-          // flush bubble before special block
-          flushBuffer()
-
-          if (part.type === "reasoning") {
-            blocks.push(
-              <ReasoningBlock
-                key={`reasoning-${index}`}
-                reasoning={part.text}
-                streaming={part.state === "streaming"}
-              />
-            )
-            return
-          }
-
-          if (isToolPart(part)) {
-            const rawName = part.type === "dynamic-tool"
-              ? part.toolName
-              : part.type.replace("tool-", "")
-
-            if (rawName === "NexataAskQuestions") {
               blocks.push(
-                <AskQuestionsRenderer
-                  key={`ask-${index}`}
-                  part={part}
-                  onSubmit={(toolCallId, answers) => {
-                    addToolOutput?.({
-                      toolCallId,
-                      tool: rawName,
-                      output: answers,
-                    })
-                  }}
-                />
+                <motion.div
+                  key={bubbleKey}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  className={cn(chatBubbleVariants({ isUser, animation: "none" }))}
+                >
+                  {/* TEXT */}
+                  {textBuffer.map(({ part }, i) => {
+                    return (
+                      <div key={`text-${i}`}>
+                        <MarkdownRenderer>{(part as { text: string }).text}</MarkdownRenderer>
+                      </div>
+                    )
+                  })}
+
+                  {/* FILES */}
+                  {fileBuffer.map(({ part }, i) => {
+                    const browserFile = filePartToBrowserFile(part)
+
+                    return (
+                      <div
+                        key={`file-${i}`}
+                        className="mt-3 scale-90 origin-left"
+                      >
+                        <FilePreview file={browserFile} />
+                      </div>
+                    )
+                  })}
+                </motion.div>
               )
-              return
+
+              buffer = []
             }
 
-            blocks.push(
-              <ToolRenderer
-                key={`tool-${index}`}
-                part={part}
-              />
-            )
-          }
-        })
+            message.parts.forEach((part, index) => {
+              if (part.type === "text" || part.type === "file") {
+                buffer.push({ part: part as unknown as Record<string, unknown>, globalIndex: index })
+                return
+              }
 
-        // flush final bubble
-        flushBuffer()
+              // flush bubble before special block
+              flushBuffer()
 
-        return blocks
-      })()}
+              if (part.type === "reasoning") {
+                blocks.push(
+                  <ReasoningBlock
+                    key={`reasoning-${index}`}
+                    reasoning={part.text}
+                    streaming={part.state === "streaming"}
+                  />
+                )
+                return
+              }
+
+              if (isToolPart(part)) {
+                const rawName = part.type === "dynamic-tool"
+                  ? part.toolName
+                  : part.type.replace("tool-", "")
+
+                if (rawName === "NexataAskQuestions") {
+                  blocks.push(
+                    <AskQuestionsRenderer
+                      key={`ask-${index}`}
+                      part={part}
+                      onSubmit={(toolCallId, answers) => {
+                        addToolOutput?.({
+                          toolCallId,
+                          tool: rawName,
+                          output: answers,
+                        })
+                      }}
+                    />
+                  )
+                  return
+                }
+
+                blocks.push(
+                  <ToolRenderer
+                    key={`tool-${index}`}
+                    part={part}
+                    onClick={() => {
+                      openTool({
+                        toolName: rawName,
+                        toolCallId: (part as { toolCallId?: string }).toolCallId ?? "",
+                        state: part.state,
+                        input: (part as { input?: unknown }).input,
+                        output: (part as { output?: unknown }).output,
+                      })
+                    }}
+                  />
+                )
+              }
+            })
+
+            // flush final bubble
+            flushBuffer()
+
+            return blocks
+          })()}
+
+          {/* Message Actions Toolbar */}
+          {!isEditing && isHovered && !isStreaming && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.15 }}
+              className={cn(
+                "flex items-center gap-0.5 rounded-lg border bg-background/95 backdrop-blur-sm px-1 py-0.5 shadow-sm",
+                isUser ? "self-end" : "self-start"
+              )}
+            >
+              {/* Copy button (for assistant messages with text) */}
+              {!isUser && messageText && (
+                <CopyButton
+                  content={messageText}
+                  copyMessage="Copied!"
+                />
+              )}
+
+              {/* Edit button (for user messages) */}
+              {isUser && (
+                <button
+                  onClick={handleStartEdit}
+                  className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                  title={chat_edit_button()}
+                >
+                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              )}
+
+              {/* Branch-off button (for assistant messages) */}
+              {!isUser && onBranchOff && (
+                <button
+                  onClick={() => onBranchOff(message.id)}
+                  className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                  title={chat_branch_off_button()}
+                >
+                  <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+                </button>
+              )}
+            </motion.div>
+          )}
+        </>
+      )}
 
       {showTimeStamp && createdAt && (
         <time className="text-xs opacity-50">
@@ -473,7 +612,7 @@ function getCredentialEmails(part: any): string[] {
   return output?.credentialEmail ? [output.credentialEmail] : []
 }
 
-function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
+function ToolRenderer({ part, onClick }: { part: UIMessage["parts"][number]; onClick?: () => void }) {
   if (!isToolPart(part)) return null
 
   const rawToolName =
@@ -495,7 +634,11 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
-      className="w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3"
+      className={cn(
+        "w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3",
+        onClick && "cursor-pointer hover:bg-muted/60 transition-colors"
+      )}
+      onClick={onClick}
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
