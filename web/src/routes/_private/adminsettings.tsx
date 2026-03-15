@@ -244,7 +244,7 @@ function AdminSettingsPage() {
 
 					<Button
 						variant="outline"
-						onClick={() => navigate({ to: '/chat' })}
+						onClick={() => navigate({ to: '/chat', search: { id: undefined } })}
 						className="cursor-pointer hover:bg-muted transition-colors"
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
@@ -356,12 +356,12 @@ function CompanyOverviewSection() {
 					</div>
 
 					<div className="hidden sm:block">
-            <TenantLogo
-            loading={tenantLoading}
-            logoUrl={myTenant?.logoUrl}
-            displayName={myTenant?.displayName}
-            />
-          </div>
+						<TenantLogo
+							loading={tenantLoading}
+							logoUrl={myTenant?.logoUrl}
+							displayName={myTenant?.displayName}
+						/>
+					</div>
 				</div>
 
 				<Separator />
@@ -389,31 +389,36 @@ function CompanyOverviewSection() {
 									</div>
 
 									<div className="flex flex-col gap-1">
-                    <label className="text-sm font-medium">
-                      {admin_company_overview_tenant_logo()}
-                    </label>
-                    <div className="flex items-center gap-2">
-                      <Input
-                        type="file"
-                        accept="image/*"
-                        className="w-full md:w-56 h-8 text-sm overflow-hidden file:hidden"
-                        onChange={(e) => setTenantLogo(e.target.files?.[0] ?? null)}
-                      />
-                      <AnimatePresence initial={false}>
-                        {tenantLogo && (
-                          <motion.div
-                            initial={{ opacity: 0, scale: 0.96 }}
-                            animate={{ opacity: 1, scale: 1 }}
-                            exit={{ opacity: 0, scale: 0.96 }}
-                            transition={{ duration: 0.15 }}
-                            className="flex items-center h-8"
-                          >
-                            <FilePreview file={tenantLogo} onRemove={() => setTenantLogo(null)} />
-                          </motion.div>
-                        )}
-                      </AnimatePresence>
-                    </div>
-                  </div>
+										<label className="text-sm font-medium">
+											{admin_company_overview_tenant_logo()}
+										</label>
+										<div className="flex items-center gap-2">
+											<Input
+												type="file"
+												accept="image/*"
+												className="w-full md:w-56 h-8 text-sm overflow-hidden file:hidden"
+												onChange={(e) =>
+													setTenantLogo(e.target.files?.[0] ?? null)
+												}
+											/>
+											<AnimatePresence initial={false}>
+												{tenantLogo && (
+													<motion.div
+														initial={{ opacity: 0, scale: 0.96 }}
+														animate={{ opacity: 1, scale: 1 }}
+														exit={{ opacity: 0, scale: 0.96 }}
+														transition={{ duration: 0.15 }}
+														className="flex items-center h-8"
+													>
+														<FilePreview
+															file={tenantLogo}
+															onRemove={() => setTenantLogo(null)}
+														/>
+													</motion.div>
+												)}
+											</AnimatePresence>
+										</div>
+									</div>
 
 									<div className="ml-auto flex items-end gap-2">
 										<Button
@@ -1630,35 +1635,41 @@ function UsersSection() {
 				<div className="space-y-2">
 					<p className="text-sm font-medium">{admin_users_invite_title()}</p>
 					<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-   					<Input
-              type="email"
-              placeholder={admin_users_invite_placeholder()}
-              value={inviteEmail}
-              onChange={(e) => setInviteEmail(e.target.value)}
-              className="flex-1 min-w-0"
-            />
-            <div className="flex items-center gap-2">
-                <div className="flex items-center gap-2 flex-1 sm:flex-none border border-border rounded-md px-3 h-9">
-                  <Checkbox
-                    id="invite-admin"
-                    className="cursor-pointer"
-                    checked={inviteIsAdmin}
-                    onCheckedChange={(v) => {
-                      const checked = !!v;
-                      setInviteIsAdmin(checked);
-                      setShowAdminWarning(checked);
-                      setInviteSuccess(false);
-                    }}
-                  />
-                  <Label htmlFor="invite-admin" className="text-xs font-medium cursor-pointer select-none">
-                    Admin
-                  </Label>
-              </div>
-              <AsyncConfirmButton className="flex-1 sm:flex-none" onClick={handleInviteUser}>
-                {admin_users_invite_send()}
-              </AsyncConfirmButton>
-            </div>
-          </div>
+						<Input
+							type="email"
+							placeholder={admin_users_invite_placeholder()}
+							value={inviteEmail}
+							onChange={(e) => setInviteEmail(e.target.value)}
+							className="flex-1 min-w-0"
+						/>
+						<div className="flex items-center gap-2">
+							<div className="flex items-center gap-2 flex-1 sm:flex-none border border-border rounded-md px-3 h-9">
+								<Checkbox
+									id="invite-admin"
+									className="cursor-pointer"
+									checked={inviteIsAdmin}
+									onCheckedChange={(v) => {
+										const checked = !!v;
+										setInviteIsAdmin(checked);
+										setShowAdminWarning(checked);
+										setInviteSuccess(false);
+									}}
+								/>
+								<Label
+									htmlFor="invite-admin"
+									className="text-xs font-medium cursor-pointer select-none"
+								>
+									Admin
+								</Label>
+							</div>
+							<AsyncConfirmButton
+								className="flex-1 sm:flex-none"
+								onClick={handleInviteUser}
+							>
+								{admin_users_invite_send()}
+							</AsyncConfirmButton>
+						</div>
+					</div>
 					<p className="text-xs text-muted-foreground">
 						{admin_users_invite_helper()}
 					</p>
@@ -1784,84 +1795,91 @@ function UsersSection() {
 										</div>
 
 										<AnimatePresence>
-                      {editingUserId === user.id && (
-                        <motion.div
-                          initial={{ opacity: 0, height: 0 }}
-                          animate={{ opacity: 1, height: 'auto' }}
-                          exit={{ opacity: 0, height: 0 }}
-                          transition={{ duration: 0.25 }}
-                          className="overflow-hidden mt-2"
-                        >
-                          <Separator className="my-2" />
+											{editingUserId === user.id && (
+												<motion.div
+													initial={{ opacity: 0, height: 0 }}
+													animate={{ opacity: 1, height: 'auto' }}
+													exit={{ opacity: 0, height: 0 }}
+													transition={{ duration: 0.25 }}
+													className="overflow-hidden mt-2"
+												>
+													<Separator className="my-2" />
 
-                          <div className="flex flex-col md:flex-row md:items-end gap-4 py-2 px-2">
-                            <div className="flex flex-col gap-1">
-                              <label className="text-sm font-medium">
-                                {admin_users_actions_display_name()}
-                              </label>
-                              <Input
-                                className="w-full md:w-56 h-8 text-sm"
-                                value={displayName}
-                                onChange={(e) => setDisplayName(e.target.value)}
-                              />
-                            </div>
+													<div className="flex flex-col md:flex-row md:items-end gap-4 py-2 px-2">
+														<div className="flex flex-col gap-1">
+															<label className="text-sm font-medium">
+																{admin_users_actions_display_name()}
+															</label>
+															<Input
+																className="w-full md:w-56 h-8 text-sm"
+																value={displayName}
+																onChange={(e) => setDisplayName(e.target.value)}
+															/>
+														</div>
 
-                            <div className="flex flex-col gap-1">
-                              <label className="text-sm font-medium">{admin_users_actions_img()}</label>
-                              <div className="flex items-center gap-2">
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  className="w-full md:w-48 h-8 text-sm overflow-hidden file:hidden"
-                                  onChange={(e) => setFile(e.target.files?.[0] ?? null)}
-                                />
-                                <AnimatePresence initial={false}>
-                                  {file && (
-                                    <motion.div
-                                      initial={{ opacity: 0, scale: 0.96 }}
-                                      animate={{ opacity: 1, scale: 1 }}
-                                      exit={{ opacity: 0, scale: 0.96 }}
-                                      transition={{ duration: 0.15 }}
-                                      className="flex items-center h-8"
-                                    >
-                                      <FilePreview file={file} onRemove={() => setFile(null)} />
-                                    </motion.div>
-                                  )}
-                                </AnimatePresence>
-                              </div>
-                            </div>
+														<div className="flex flex-col gap-1">
+															<label className="text-sm font-medium">
+																{admin_users_actions_img()}
+															</label>
+															<div className="flex items-center gap-2">
+																<Input
+																	type="file"
+																	accept="image/*"
+																	className="w-full md:w-48 h-8 text-sm overflow-hidden file:hidden"
+																	onChange={(e) =>
+																		setFile(e.target.files?.[0] ?? null)
+																	}
+																/>
+																<AnimatePresence initial={false}>
+																	{file && (
+																		<motion.div
+																			initial={{ opacity: 0, scale: 0.96 }}
+																			animate={{ opacity: 1, scale: 1 }}
+																			exit={{ opacity: 0, scale: 0.96 }}
+																			transition={{ duration: 0.15 }}
+																			className="flex items-center h-8"
+																		>
+																			<FilePreview
+																				file={file}
+																				onRemove={() => setFile(null)}
+																			/>
+																		</motion.div>
+																	)}
+																</AnimatePresence>
+															</div>
+														</div>
 
-                            <div className="ml-auto flex items-center gap-2">
-                              <Button
-                                variant="ghost"
-                                className="h-8 px-3 text-sm"
-                                onClick={() => {
-                                  setEditingUserId(null);
-                                  setDisplayName(user.displayName ?? '');
-                                  setFile(null);
-                                }}
-                              >
-                                {common_cancel()}
-                              </Button>
+														<div className="ml-auto flex items-center gap-2">
+															<Button
+																variant="ghost"
+																className="h-8 px-3 text-sm"
+																onClick={() => {
+																	setEditingUserId(null);
+																	setDisplayName(user.displayName ?? '');
+																	setFile(null);
+																}}
+															>
+																{common_cancel()}
+															</Button>
 
-                              <AsyncConfirmButton
-                                className="h-8 px-3 text-sm"
-                                onClick={async () => {
-                                  await editUserFn(user.id, {
-                                    displayName,
-                                    pfp: file ?? undefined,
-                                  });
-                                  setEditingUserId(null);
-                                  setFile(null);
-                                }}
-                              >
-                                {common_save_changes()}
-                              </AsyncConfirmButton>
-                            </div>
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+															<AsyncConfirmButton
+																className="h-8 px-3 text-sm"
+																onClick={async () => {
+																	await editUserFn(user.id, {
+																		displayName,
+																		pfp: file ?? undefined,
+																	});
+																	setEditingUserId(null);
+																	setFile(null);
+																}}
+															>
+																{common_save_changes()}
+															</AsyncConfirmButton>
+														</div>
+													</div>
+												</motion.div>
+											)}
+										</AnimatePresence>
 									</div>
 								</div>
 							);

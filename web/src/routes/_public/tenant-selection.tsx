@@ -77,7 +77,7 @@ export default function TenantSelectionPage() {
 		saveTokens(session.at, session.rt);
 		queryClient.clear();
 
-		navigate({ to: '/chat', replace: true });
+		navigate({ to: '/chat', search: { id: undefined }, replace: true });
 	}
 
 	return (

@@ -79,7 +79,7 @@ function BillingPage() {
 					</Button>
 					<Button
 						variant="outline"
-						onClick={() => navigate({ to: '/chat' })}
+						onClick={() => navigate({ to: '/chat', search: { id: undefined } })}
 						className="cursor-pointer"
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />

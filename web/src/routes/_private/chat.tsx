@@ -21,6 +21,9 @@ import {
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/chat')({
+	validateSearch: (search: Record<string, unknown>) => ({
+		id: typeof search.id === 'string' ? search.id : undefined,
+	}),
 	component: NexataChat,
 });
 
@@ -40,12 +43,13 @@ function normalizeParts(
 
 	return content.map((part: any) => {
 		if (part.type === 'tool-call' && part.toolName) {
+			const output = part.output ?? toolOutputMap?.get(part.toolCallId) ?? null;
 			return {
 				type: `tool-${part.toolName}`,
 				toolCallId: part.toolCallId,
-				state: 'output-available',
+				state: output != null ? 'output-available' : 'input-available',
 				input: part.input ?? {},
-				output: part.output ?? toolOutputMap?.get(part.toolCallId) ?? null,
+				output,
 			};
 		}
 		if (part.type === 'file') {
@@ -80,6 +84,31 @@ export function NexataChat() {
 	} = useChatUIStore();
 
 	const isNewChat = viewStatus === 'new';
+	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
+
+	// ----------------------------
+	// URL search param sync
+	// ----------------------------
+
+	const { id: searchThreadId } = Route.useSearch();
+
+	useEffect(() => {
+		if (searchThreadId && searchThreadId !== activeThreadId) {
+			hydrateChat(searchThreadId);
+		}
+	}, [searchThreadId]);
+
+	const navigate = Route.useNavigate();
+
+	useEffect(() => {
+		navigate({
+			search: (prev) => ({
+				...prev,
+				id: activeThreadId ?? undefined,
+			}),
+			replace: true,
+		});
+	}, [activeThreadId, navigate]);
 
 	// ----------------------------
 	// Thread data (React Query es la fuente de verdad del loading)
@@ -373,7 +402,6 @@ export function NexataChat() {
 	// ----------------------------
 
 	const branchOff = useBranchOffMessage();
-	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
 
 	const handleBranchOff = useCallback(
 		async (messageId: string) => {

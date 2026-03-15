@@ -179,7 +179,9 @@ function SettingsPage() {
 
 						<Button
 							variant="outline"
-							onClick={() => navigate({ to: '/chat' })}
+							onClick={() =>
+								navigate({ to: '/chat', search: { id: undefined } })
+							}
 							className="gap-2 cursor-pointer"
 						>
 							<ArrowLeft className="h-4 w-4" />

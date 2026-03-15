@@ -24,7 +24,7 @@ import {
 export const Route = createFileRoute('/_public/login')({
 	beforeLoad: () => {
 		if (isAuthenticated()) {
-			throw redirect({ to: '/chat' });
+			throw redirect({ to: '/chat', search: { id: undefined } });
 		}
 	},
 	component: LoginPage,

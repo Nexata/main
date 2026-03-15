@@ -340,7 +340,7 @@ export default function ProfilePage() {
 					<Button
 						className="cursor-pointer"
 						variant="outline"
-						onClick={() => navigate({ to: '/chat' })}
+						onClick={() => navigate({ to: '/chat', search: { id: undefined } })}
 					>
 						<ArrowLeft className="h-4 w-4 mr-2" />
 						{profile_back_to_chat()}

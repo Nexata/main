@@ -203,7 +203,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
       if (deletedThreadId === activeThreadId) {
         useChatUIStore.getState().startNewChat();
-        navigate({ to: '/chat' });
+        navigate({ to: '/chat', search: { id: undefined } });
       }
 
       await queryClient.invalidateQueries({
@@ -225,7 +225,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
     if (!threadId) startNewChat();
     else hydrateChat(threadId);
 
-    navigate({ to: '/chat' });
+    navigate({ to: '/chat', search: { id: undefined } });
     if (isMobileOverlay && onClose) onClose();
   };
 

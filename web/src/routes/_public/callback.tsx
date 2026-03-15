@@ -29,19 +29,19 @@ export default function CallbackPage() {
 			}
 
 			if (sessions.length === 1) {
-        const s = sessions[0];
-        if (!s) return;
+				const s = sessions[0];
+				if (!s) return;
 				saveTokens(s.at, s.rt);
-				navigate({ to: '/chat' });
+				navigate({ to: '/chat', search: { id: undefined } });
 				return;
 			}
 
 			const encodedSessions = encodeURIComponent(encoded);
 
-      navigate({
-        to: '/tenant-selection',
-        search: { sessions: encodedSessions },
-      });
+			navigate({
+				to: '/tenant-selection',
+				search: { sessions: encodedSessions },
+			});
 		} catch (err) {
 			console.error('Callback parse error:', err);
 			navigate({ to: '/login' });
