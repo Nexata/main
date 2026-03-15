@@ -336,6 +336,83 @@
 		"storage": {
 			"title": "Almacenamiento",
 			"description": "Gestioná qué archivos y carpetas puede utilizar Nexata para analizar, buscar y contextualizar información."
+		},
+		"files": {
+			"title": "Gestión de archivos",
+			"description": "Buscá, filtrá y administrá todos los archivos ingestados de tus proveedores.",
+			"filters": {
+				"label": "Filtros",
+				"semantic_search": "Búsqueda semántica",
+				"search_placeholder": "Buscar contenido…",
+				"file_name": "Nombre del archivo",
+				"name_placeholder": "Filtrar por nombre…",
+				"provider": "Proveedor",
+				"any_provider": "Cualquier proveedor…",
+				"file_type": "Tipo de archivo",
+				"any_type": "Cualquier tipo…",
+				"ingested_since": "Ingestado desde",
+				"pick_date": "Elegí una fecha…",
+				"apply": "Aplicar filtros",
+				"clear_all": "Limpiar todo"
+			},
+			"active_filters": {
+				"search": "Búsqueda: \"{query}\"",
+				"name": "Nombre: \"{name}\"",
+				"provider": "Proveedor: {provider}",
+				"type": "Tipo: {type}",
+				"since": "Desde: {date}",
+				"none": "Sin filtros activos"
+			},
+			"selection": {
+				"count": "{count} seleccionados"
+			},
+			"actions": {
+				"refresh": "Actualizar",
+				"delete": "Eliminar"
+			},
+			"table": {
+				"name": "Nombre",
+				"owner": "Propietario",
+				"provider": "Proveedor",
+				"type": "Tipo",
+				"ingested": "Ingestado",
+				"updated_at": "Actualizado",
+				"actions": "Acciones"
+			},
+			"empty": {
+				"title": "No se encontraron archivos",
+				"description": "Intentá ajustar los filtros o ingestar nuevos archivos desde tus fuentes conectadas."
+			},
+			"tooltip": {
+				"reingest": "Re-ingestar archivo",
+				"delete": "Eliminar archivo"
+			},
+			"pagination": {
+				"page_count": "{count} archivo(s) en esta página",
+				"no_results": "Sin resultados",
+				"page": "Página {page}"
+			},
+			"delete_dialog": {
+				"title_single": "¿Eliminar \"{name}\"?",
+				"title_bulk": "¿Eliminar {count} archivo(s)?",
+				"description_single": "\"{name}\" será eliminado permanentemente y no podrá recuperarse.",
+				"description_bulk": "Estás por eliminar permanentemente {count} archivo(s). Esta acción no se puede deshacer."
+			},
+			"toast": {
+				"delete_loading": "Eliminando {label}…",
+				"delete_success": "Eliminado",
+				"delete_success_desc": "{label} eliminado correctamente.",
+				"delete_error_desc": "No se pudo eliminar {label}.",
+				"reingest_loading": "Re-ingestando archivo…",
+				"reingest_success_desc": "El archivo fue re-ingestado correctamente.",
+				"reingest_error_desc": "No se pudo re-ingestar el archivo.",
+				"reingest_bulk_loading": "Re-ingestando {count} archivo(s)…",
+				"reingest_bulk_success_desc": "{count} archivo(s) re-ingestados.",
+				"reingest_bulk_error_desc": "No se pudieron re-ingestar los archivos seleccionados."
+			},
+			"user": {
+				"system": "sistema"
+			}
 		}
 	},
 	"admin": {

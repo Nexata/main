@@ -336,6 +336,83 @@
 		"storage": {
 			"title": "Storage",
 			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information."
+		},
+		"files": {
+			"title": "File Management",
+			"description": "Search, filter and manage all ingested files across providers.",
+			"filters": {
+				"label": "Filters",
+				"semantic_search": "Semantic search",
+				"search_placeholder": "Search content…",
+				"file_name": "File name",
+				"name_placeholder": "Filter by name…",
+				"provider": "Provider",
+				"any_provider": "Any provider…",
+				"file_type": "File type",
+				"any_type": "Any type…",
+				"ingested_since": "Ingested since",
+				"pick_date": "Pick a date…",
+				"apply": "Apply filters",
+				"clear_all": "Clear all"
+			},
+			"active_filters": {
+				"search": "Search: \"{query}\"",
+				"name": "Name: \"{name}\"",
+				"provider": "Provider: {provider}",
+				"type": "Type: {type}",
+				"since": "Since: {date}",
+				"none": "No active filters"
+			},
+			"selection": {
+				"count": "{count} selected"
+			},
+			"actions": {
+				"refresh": "Refresh",
+				"delete": "Delete"
+			},
+			"table": {
+				"name": "Name",
+				"owner": "Owner",
+				"provider": "Provider",
+				"type": "Type",
+				"ingested": "Ingested",
+				"updated_at": "Updated At",
+				"actions": "Actions"
+			},
+			"empty": {
+				"title": "No files found",
+				"description": "Try adjusting your filters or ingesting new files from your connected sources."
+			},
+			"tooltip": {
+				"reingest": "Re-ingest file",
+				"delete": "Delete file"
+			},
+			"pagination": {
+				"page_count": "{count} file(s) on this page",
+				"no_results": "No results",
+				"page": "Page {page}"
+			},
+			"delete_dialog": {
+				"title_single": "Delete \"{name}\"?",
+				"title_bulk": "Delete {count} file(s)?",
+				"description_single": "\"{name}\" will be permanently removed and cannot be recovered.",
+				"description_bulk": "You are about to permanently delete {count} file(s). This action cannot be undone."
+			},
+			"toast": {
+				"delete_loading": "Deleting {label}…",
+				"delete_success": "Deleted",
+				"delete_success_desc": "{label} removed successfully.",
+				"delete_error_desc": "Could not delete {label}.",
+				"reingest_loading": "Re-ingesting file…",
+				"reingest_success_desc": "File re-ingested successfully.",
+				"reingest_error_desc": "Could not re-ingest the file.",
+				"reingest_bulk_loading": "Re-ingesting {count} file(s)…",
+				"reingest_bulk_success_desc": "{count} file(s) re-ingested.",
+				"reingest_bulk_error_desc": "Could not re-ingest the selected files."
+			},
+			"user": {
+				"system": "system"
+			}
 		}
 	},
 	"admin": {

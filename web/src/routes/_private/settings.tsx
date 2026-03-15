@@ -73,6 +73,8 @@ import type { SearchFilesParams, SearchFilesResult } from '@/lib/file';
 import { useDeleteFiles, useIngestFiles, useSearchFiles } from '@/lib/file';
 import { useMe } from '@/lib/user';
 import {
+	'common.cancel' as common_cancel,
+	'common.delete' as common_delete,
 	'common.error' as common_error,
 	'common.success' as common_success,
 	'components.credentials.toast.delete.error' as components_credentials_toast_delete_error,
@@ -80,6 +82,59 @@ import {
 	'components.credentials.toast.delete.success' as components_credentials_toast_delete_success,
 	'settings.actions.admin_panel' as settings_actions_admin_panel,
 	'settings.actions.back_to_chat' as settings_actions_back_to_chat,
+	'settings.files.actions.delete' as settings_files_actions_delete,
+	'settings.files.actions.refresh' as settings_files_actions_refresh,
+	'settings.files.active_filters.name' as settings_files_active_filters_name,
+	'settings.files.active_filters.none' as settings_files_active_filters_none,
+	'settings.files.active_filters.provider' as settings_files_active_filters_provider,
+	'settings.files.active_filters.search' as settings_files_active_filters_search,
+	'settings.files.active_filters.since' as settings_files_active_filters_since,
+	'settings.files.active_filters.type' as settings_files_active_filters_type,
+	'settings.files.delete_dialog.description_bulk' as settings_files_delete_dialog_description_bulk,
+	'settings.files.delete_dialog.description_single' as settings_files_delete_dialog_description_single,
+	'settings.files.delete_dialog.title_bulk' as settings_files_delete_dialog_title_bulk,
+	'settings.files.delete_dialog.title_single' as settings_files_delete_dialog_title_single,
+	'settings.files.description' as settings_files_description,
+	'settings.files.empty.description' as settings_files_empty_description,
+	'settings.files.empty.title' as settings_files_empty_title,
+	'settings.files.filters.any_provider' as settings_files_filters_any_provider,
+	'settings.files.filters.any_type' as settings_files_filters_any_type,
+	'settings.files.filters.apply' as settings_files_filters_apply,
+	'settings.files.filters.clear_all' as settings_files_filters_clear_all,
+	'settings.files.filters.file_name' as settings_files_filters_file_name,
+	'settings.files.filters.file_type' as settings_files_filters_file_type,
+	'settings.files.filters.ingested_since' as settings_files_filters_ingested_since,
+	'settings.files.filters.label' as settings_files_filters_label,
+	'settings.files.filters.name_placeholder' as settings_files_filters_name_placeholder,
+	'settings.files.filters.pick_date' as settings_files_filters_pick_date,
+	'settings.files.filters.provider' as settings_files_filters_provider,
+	'settings.files.filters.search_placeholder' as settings_files_filters_search_placeholder,
+	'settings.files.filters.semantic_search' as settings_files_filters_semantic_search,
+	'settings.files.pagination.no_results' as settings_files_pagination_no_results,
+	'settings.files.pagination.page' as settings_files_pagination_page,
+	'settings.files.pagination.page_count' as settings_files_pagination_page_count,
+	'settings.files.selection.count' as settings_files_selection_count,
+	'settings.files.table.actions' as settings_files_table_actions,
+	'settings.files.table.ingested' as settings_files_table_ingested,
+	'settings.files.table.name' as settings_files_table_name,
+	'settings.files.table.owner' as settings_files_table_owner,
+	'settings.files.table.provider' as settings_files_table_provider,
+	'settings.files.table.type' as settings_files_table_type,
+	'settings.files.table.updated_at' as settings_files_table_updated_at,
+	'settings.files.title' as settings_files_title,
+	'settings.files.toast.delete_error_desc' as settings_files_toast_delete_error_desc,
+	'settings.files.toast.delete_loading' as settings_files_toast_delete_loading,
+	'settings.files.toast.delete_success' as settings_files_toast_delete_success,
+	'settings.files.toast.delete_success_desc' as settings_files_toast_delete_success_desc,
+	'settings.files.toast.reingest_bulk_error_desc' as settings_files_toast_reingest_bulk_error_desc,
+	'settings.files.toast.reingest_bulk_loading' as settings_files_toast_reingest_bulk_loading,
+	'settings.files.toast.reingest_bulk_success_desc' as settings_files_toast_reingest_bulk_success_desc,
+	'settings.files.toast.reingest_error_desc' as settings_files_toast_reingest_error_desc,
+	'settings.files.toast.reingest_loading' as settings_files_toast_reingest_loading,
+	'settings.files.toast.reingest_success_desc' as settings_files_toast_reingest_success_desc,
+	'settings.files.tooltip.delete' as settings_files_tooltip_delete,
+	'settings.files.tooltip.reingest' as settings_files_tooltip_reingest,
+	'settings.files.user.system' as settings_files_user_system,
 	'settings.meta.title' as settings_meta_title,
 	'settings.sources.description' as settings_sources_description,
 	'settings.sources.title' as settings_sources_title,
@@ -562,7 +617,11 @@ function TypeBadge({ type }: { type?: string | null }) {
 
 function UserMini({ user }: { user: SearchFilesResult[number]['ownedBy'] }) {
 	if (!user)
-		return <span className="text-xs text-muted-foreground italic">system</span>;
+		return (
+			<span className="text-xs text-muted-foreground italic">
+				{settings_files_user_system()}
+			</span>
+		);
 	return (
 		<div className="flex items-center gap-2 min-w-0">
 			{user.pfpUrl ? (
@@ -655,19 +714,40 @@ export function FilesManagementSection() {
 
 	const activeFilters: { key: keyof SearchFilesParams; label: string }[] = [
 		...(filters.query
-			? [{ key: 'query' as const, label: `Search: "${filters.query}"` }]
+			? [
+					{
+						key: 'query' as const,
+						label: settings_files_active_filters_search({
+							query: filters.query,
+						}),
+					},
+				]
 			: []),
 		...(filters.name
-			? [{ key: 'name' as const, label: `Name: "${filters.name}"` }]
+			? [
+					{
+						key: 'name' as const,
+						label: settings_files_active_filters_name({ name: filters.name }),
+					},
+				]
 			: []),
 		...(filters.provider
-			? [{ key: 'provider' as const, label: `Provider: ${filters.provider}` }]
+			? [
+					{
+						key: 'provider' as const,
+						label: settings_files_active_filters_provider({
+							provider: filters.provider,
+						}),
+					},
+				]
 			: []),
 		...(filters.type
 			? [
 					{
 						key: 'type' as const,
-						label: `Type: ${getTypeOption(filters.type)?.label ?? filters.type}`,
+						label: settings_files_active_filters_type({
+							type: getTypeOption(filters.type)?.label ?? filters.type,
+						}),
 					},
 				]
 			: []),
@@ -675,7 +755,9 @@ export function FilesManagementSection() {
 			? [
 					{
 						key: 'createdAt' as const,
-						label: `Since: ${filters.createdAt.split('T')[0]}`,
+						label: settings_files_active_filters_since({
+							date: filters.createdAt.split('T')[0]!,
+						}),
 					},
 				]
 			: []),
@@ -695,38 +777,42 @@ export function FilesManagementSection() {
 			deleteDialog.mode === 'single'
 				? `"${deleteDialog.fileName}"`
 				: `${deleteDialog.count} files`;
-		const toastId = infoToast.loading({ title: `Deleting ${label}…` });
+		const toastId = infoToast.loading({
+			title: settings_files_toast_delete_loading({ label }),
+		});
 		try {
 			await deleteMutation.mutateAsync({ ids });
 			setSelected(new Set());
 			setDeleteDialog({ open: false });
 			refetch();
 			infoToast.success(toastId, {
-				title: 'Deleted',
-				description: `${label} removed successfully.`,
+				title: settings_files_toast_delete_success(),
+				description: settings_files_toast_delete_success_desc({ label }),
 			});
 		} catch {
 			infoToast.error(toastId, {
-				title: 'Error',
-				description: `Could not delete ${label}.`,
+				title: common_error(),
+				description: settings_files_toast_delete_error_desc({ label }),
 			});
 		}
 	};
 
 	// CAMBIO 2: refresh unitario con infoToast
 	const handleSingleRefresh = async (fileId: string) => {
-		const toastId = infoToast.loading({ title: 'Re-ingesting file…' });
+		const toastId = infoToast.loading({
+			title: settings_files_toast_reingest_loading(),
+		});
 		try {
 			await ingestMutation.mutateAsync({ files: fileId, metadata: null });
 			refetch();
 			infoToast.success(toastId, {
-				title: 'Success',
-				description: 'File re-ingested successfully.',
+				title: common_success(),
+				description: settings_files_toast_reingest_success_desc(),
 			});
 		} catch {
 			infoToast.error(toastId, {
-				title: 'Error',
-				description: 'Could not re-ingest the file.',
+				title: common_error(),
+				description: settings_files_toast_reingest_error_desc(),
 			});
 		}
 	};
@@ -734,19 +820,23 @@ export function FilesManagementSection() {
 	// CAMBIO 2: refresh masivo con infoToast
 	const handleMassRefresh = async () => {
 		const toastId = infoToast.loading({
-			title: `Re-ingesting ${selected.size} file${selected.size !== 1 ? 's' : ''}…`,
+			title: settings_files_toast_reingest_bulk_loading({
+				count: String(selected.size),
+			}),
 		});
 		try {
 			await ingestMutation.mutateAsync({ files: 'mass', metadata: null });
 			refetch();
 			infoToast.success(toastId, {
-				title: 'Success',
-				description: `${selected.size} file${selected.size !== 1 ? 's' : ''} re-ingested.`,
+				title: common_success(),
+				description: settings_files_toast_reingest_bulk_success_desc({
+					count: String(selected.size),
+				}),
 			});
 		} catch {
 			infoToast.error(toastId, {
-				title: 'Error',
-				description: 'Could not re-ingest the selected files.',
+				title: common_error(),
+				description: settings_files_toast_reingest_bulk_error_desc(),
 			});
 		}
 	};
@@ -771,23 +861,31 @@ export function FilesManagementSection() {
 	const dialogTitle = !deleteDialog.open
 		? ''
 		: deleteDialog.mode === 'single'
-			? `Delete "${deleteDialog.fileName}"?`
-			: `Delete ${deleteDialog.count} file${deleteDialog.count !== 1 ? 's' : ''}?`;
+			? settings_files_delete_dialog_title_single({
+					name: deleteDialog.fileName,
+				})
+			: settings_files_delete_dialog_title_bulk({
+					count: String(deleteDialog.count),
+				});
 
 	const dialogDescription = !deleteDialog.open
 		? ''
 		: deleteDialog.mode === 'single'
-			? `"${deleteDialog.fileName}" will be permanently removed and cannot be recovered.`
-			: `You are about to permanently delete ${deleteDialog.count} file${deleteDialog.count !== 1 ? 's' : ''}. This action cannot be undone.`;
+			? settings_files_delete_dialog_description_single({
+					name: deleteDialog.fileName,
+				})
+			: settings_files_delete_dialog_description_bulk({
+					count: String(deleteDialog.count),
+				});
 
 	return (
 		<Card className="bg-sidebar">
 			<CardContent className="p-6 space-y-5">
 				{/* Header */}
 				<div>
-					<h2 className="text-lg font-semibold">File Management</h2>
+					<h2 className="text-lg font-semibold">{settings_files_title()}</h2>
 					<p className="text-sm text-muted-foreground">
-						Search, filter and manage all ingested files across providers.
+						{settings_files_description()}
 					</p>
 				</div>
 
@@ -796,19 +894,19 @@ export function FilesManagementSection() {
 				{/* Filter panel */}
 				<div className="rounded-lg border border-border bg-muted/20 p-4 space-y-4">
 					<p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-						Filters
+						{settings_files_filters_label()}
 					</p>
 
 					<div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
 						{/* Semantic search */}
 						<div className="flex flex-col gap-1">
 							<label className="text-xs font-medium text-muted-foreground">
-								Semantic search
+								{settings_files_filters_semantic_search()}
 							</label>
 							<div className="relative">
 								<Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
 								<Input
-									placeholder="Search content…"
+									placeholder={settings_files_filters_search_placeholder()}
 									className="pl-8 h-9 text-sm"
 									value={draft.query ?? ''}
 									onChange={(e) =>
@@ -824,10 +922,10 @@ export function FilesManagementSection() {
 						{/* File name */}
 						<div className="flex flex-col gap-1">
 							<label className="text-xs font-medium text-muted-foreground">
-								File name
+								{settings_files_filters_file_name()}
 							</label>
 							<Input
-								placeholder="Filter by name…"
+								placeholder={settings_files_filters_name_placeholder()}
 								className="h-9 text-sm"
 								value={draft.name ?? ''}
 								onChange={(e) =>
@@ -839,7 +937,7 @@ export function FilesManagementSection() {
 						{/* Provider */}
 						<div className="flex flex-col gap-1">
 							<label className="text-xs font-medium text-muted-foreground">
-								Provider
+								{settings_files_filters_provider()}
 							</label>
 							<Select
 								value={(draft.provider as string) ?? ''}
@@ -851,7 +949,9 @@ export function FilesManagementSection() {
 								}
 							>
 								<SelectTrigger className="h-9 min-h-9 px-3 py-1 text-sm w-full">
-									<SelectValue placeholder="Any provider…">
+									<SelectValue
+										placeholder={settings_files_filters_any_provider()}
+									>
 										{draft.provider
 											? (() => {
 													const opt = getProviderOption(
@@ -891,7 +991,7 @@ export function FilesManagementSection() {
 						{/* File type select */}
 						<div className="flex flex-col gap-1">
 							<label className="text-xs font-medium text-muted-foreground">
-								File type
+								{settings_files_filters_file_type()}
 							</label>
 							<Select
 								value={draft.type ?? ''}
@@ -900,7 +1000,7 @@ export function FilesManagementSection() {
 								}
 							>
 								<SelectTrigger className="h-9 min-h-9 px-3 py-1 text-sm w-full">
-									<SelectValue placeholder="Any type…">
+									<SelectValue placeholder={settings_files_filters_any_type()}>
 										{draft.type
 											? (() => {
 													const opt = getTypeOption(draft.type);
@@ -940,7 +1040,7 @@ export function FilesManagementSection() {
 						{/* CAMBIO 3: Ingested since — Popover + Calendar igual que billing */}
 						<div className="flex flex-col gap-1">
 							<label className="text-xs font-medium text-muted-foreground">
-								Ingested since
+								{settings_files_filters_ingested_since()}
 							</label>
 							<Popover open={datePickerOpen} onOpenChange={setDatePickerOpen}>
 								<PopoverTrigger>
@@ -954,7 +1054,7 @@ export function FilesManagementSection() {
 											<span>{format(selectedDate, 'PPP')}</span>
 										) : (
 											<span className="text-muted-foreground">
-												Pick a date…
+												{settings_files_filters_pick_date()}
 											</span>
 										)}
 										{selectedDate && (
@@ -996,7 +1096,8 @@ export function FilesManagementSection() {
 							onClick={applyFilters}
 							className="cursor-pointer gap-1.5"
 						>
-							<Search className="w-3.5 h-3.5" /> Apply filters
+							<Search className="w-3.5 h-3.5" />{' '}
+							{settings_files_filters_apply()}
 						</Button>
 						{activeFilters.length > 0 && (
 							<Button
@@ -1005,7 +1106,8 @@ export function FilesManagementSection() {
 								onClick={clearAllFilters}
 								className="cursor-pointer gap-1.5 text-muted-foreground"
 							>
-								<X className="w-3.5 h-3.5" /> Clear all
+								<X className="w-3.5 h-3.5" />{' '}
+								{settings_files_filters_clear_all()}
 							</Button>
 						)}
 					</div>
@@ -1024,7 +1126,7 @@ export function FilesManagementSection() {
 							))
 						) : (
 							<span className="text-xs text-muted-foreground/50 select-none">
-								No active filters
+								{settings_files_active_filters_none()}
 							</span>
 						)}
 					</div>
@@ -1032,7 +1134,9 @@ export function FilesManagementSection() {
 					<div className="flex items-center gap-2 shrink-0">
 						{hasSelection && (
 							<span className="text-xs text-muted-foreground">
-								{selected.size} selected
+								{settings_files_selection_count({
+									count: String(selected.size),
+								})}
 							</span>
 						)}
 						<Button
@@ -1042,7 +1146,8 @@ export function FilesManagementSection() {
 							disabled={!hasSelection}
 							className="gap-1.5 cursor-pointer disabled:opacity-40"
 						>
-							<RefreshCcw className="w-3.5 h-3.5" /> Refresh
+							<RefreshCcw className="w-3.5 h-3.5" />{' '}
+							{settings_files_actions_refresh()}
 						</Button>
 						{/* CAMBIO 1: bulk delete abre el dialog en modo "bulk" */}
 						<Button
@@ -1059,7 +1164,8 @@ export function FilesManagementSection() {
 							}
 							className="gap-1.5 cursor-pointer disabled:opacity-40"
 						>
-							<Trash2 className="w-3.5 h-3.5" /> Delete
+							<Trash2 className="w-3.5 h-3.5" />{' '}
+							{settings_files_actions_delete()}
 						</Button>
 					</div>
 				</div>
@@ -1076,25 +1182,25 @@ export function FilesManagementSection() {
 									/>
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Name
+									{settings_files_table_name()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Owner
+									{settings_files_table_owner()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Provider
+									{settings_files_table_provider()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Type
+									{settings_files_table_type()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Ingested
+									{settings_files_table_ingested()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									Updated At
+									{settings_files_table_updated_at()}
 								</TableHead>
 								<TableHead className="text-right font-semibold text-xs uppercase tracking-wider">
-									Actions
+									{settings_files_table_actions()}
 								</TableHead>
 							</TableRow>
 						</TableHeader>
