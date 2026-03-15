@@ -127,6 +127,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				? undefined
 				: await generateThreadTitle(body.prompt, languagePreference);
 
+			const assistantMessageId = crypto.randomUUID();
+
 			const doPersist = async (
 				responseMessages: ModelMessage[],
 				reason: FinishReason,
@@ -151,6 +153,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							},
 					fileIds: fileIds.length ? fileIds : undefined,
 					userMessageId: userMessage.id,
+					assistantMessageId,
 				});
 
 			// Final streaming
@@ -207,6 +210,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
+				generateMessageId: () => assistantMessageId,
 				messageMetadata: ({ part }) => {
 					if (part.type === 'start') return { threadId, threadTitle };
 				},
@@ -321,6 +325,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 			const languagePreference = body.languagePreference ?? activeUser.language;
 
+			const assistantMessageId = crypto.randomUUID();
+
 			const doPersist = async (
 				responseMessages: ModelMessage[],
 				reason: FinishReason,
@@ -333,6 +339,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					responseMessages,
 					reason,
 					messagesToPrepend: [toolResultMessage],
+					assistantMessageId,
 				});
 
 			const stream = streamText({
@@ -386,6 +393,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
+				generateMessageId: () => assistantMessageId,
 			});
 		},
 		{

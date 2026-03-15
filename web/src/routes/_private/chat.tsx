@@ -373,7 +373,7 @@ export function NexataChat() {
 		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 		await sendMessage(
-			{ text: newText, files: undefined },
+			{ text: newText, files: undefined, messageId },
 			{
 				body: {
 					threadId: activeThreadId ?? null,

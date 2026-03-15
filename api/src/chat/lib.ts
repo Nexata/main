@@ -365,6 +365,7 @@ export async function persistChat(params: {
 	newThread?: { prompt: string; title?: string; language?: Language };
 	fileIds?: string[];
 	userMessageId?: string;
+	assistantMessageId?: string;
 }) {
 	const {
 		threadId,
@@ -378,6 +379,7 @@ export async function persistChat(params: {
 		newThread,
 		fileIds,
 		userMessageId,
+		assistantMessageId,
 	} = params;
 
 	if (editedMessage)
@@ -416,7 +418,10 @@ export async function persistChat(params: {
 
 	const baseDate = new Date();
 	const messageValues = messagesToAppend.map((m, i) => ({
-		id: 'id' in m && typeof m.id === 'string' ? m.id : crypto.randomUUID(),
+		id:
+			i === messagesToAppend.length - 1 && m.role === 'assistant'
+				? assistantMessageId
+				: ((m as unknown as { id: string })?.id ?? crypto.randomUUID()),
 		threadId,
 		role: m.role as MessageRole,
 		content: m.content,
