@@ -47,9 +47,14 @@ export const realOauthScopes: Record<OauthScope, string[]> = {
 	[OauthScope.GMAIL]: ['https://www.googleapis.com/auth/gmail.readonly'],
 	[OauthScope.DRIVE]: ['https://www.googleapis.com/auth/drive.readonly'],
 	[OauthScope.CALENDAR]: ['https://www.googleapis.com/auth/calendar.readonly'],
-	[OauthScope.OUTLOOK]: ['Mail.Read'],
-	[OauthScope.MICROSOFT_CALENDAR]: ['Calendars.Read'],
-	[OauthScope.ONE_DRIVE]: ['Files.Read.All', 'Sites.Read.All'],
+	[OauthScope.OUTLOOK]: ['https://graph.microsoft.com/Mail.Read'],
+	[OauthScope.MICROSOFT_CALENDAR]: [
+		'https://graph.microsoft.com/Calendars.Read',
+	],
+	[OauthScope.ONE_DRIVE]: [
+		'https://graph.microsoft.com/Files.Read.All',
+		'https://graph.microsoft.com/Sites.Read.All',
+	],
 	[OauthScope.DROPBOX]: ['files.metadata.read', 'files.content.read'],
 } as const;
 
