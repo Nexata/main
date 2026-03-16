@@ -673,46 +673,54 @@ export default function Home() {
 				</section>
 
 				{/* ===== Data Sources Carousel ===== */}
-				<section className="px-6 py-16 max-w-6xl mx-auto text-center space-y-8 overflow-hidden">
-					<motion.div {...fadeUp} className="space-y-3">
-						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-							{c.sources.title}
-						</h2>
-						<p className="text-muted-foreground text-lg">
-							{c.sources.subtitle}
-						</p>
-					</motion.div>
+<section className="py-16 text-center space-y-10">
+  <motion.div {...fadeUp} className="space-y-3 px-6">
+    <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+      {c.sources.title}
+    </h2>
+    <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+      {c.sources.subtitle}
+    </p>
+  </motion.div>
 
-					<div className="relative">
-						{/* Fade edges */}
-						<div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-						<div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+  <div className="relative w-full overflow-hidden">
+    {/* Fade edges */}
+    <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+    <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
-						<div className="overflow-hidden py-4">
-							<motion.div
-								className="flex gap-8 w-max"
-								animate={{ x: [0, -((allSources.length * 100) / 2), 0] }}
-								transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
-							>
-								{[...allSources, ...allSources].map((source, i) => (
-									<div
-										key={`${source.id}-${i}`}
-										className="flex flex-col items-center min-w-20"
-									>
-										<img
-											src={source.icon}
-											alt={source.name}
-											className="w-14 h-14 object-contain rounded-lg shadow-sm"
-										/>
-										<span className="text-xs text-muted-foreground mt-2 font-medium">
-											{source.name}
-										</span>
-									</div>
-								))}
-							</motion.div>
-						</div>
-					</div>
-				</section>
+    <style>{`
+      @keyframes marquee {
+        0%   { transform: translateX(0); }
+        100% { transform: translateX(-50%); }
+      }
+      .marquee-track {
+        display: flex;
+        width: max-content;
+        animation: marquee 20s linear infinite;
+      }
+    `}</style>
+
+    <div className="py-4">
+      <div className="marquee-track">
+        {[...allSources, ...allSources].map((source, i) => (
+          <div
+            key={`${source.id}-${i}`}
+            className="flex flex-col items-center mx-5 sm:mx-8 w-14 sm:w-16 shrink-0"
+          >
+            <img
+              src={source.icon}
+              alt={source.name}
+              className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg"
+            />
+            <span className="text-xs text-muted-foreground mt-2 font-medium leading-tight text-center">
+              {source.name}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  </div>
+</section>
 
 				{/* ===== Meet Nexy ===== */}
 				<section
