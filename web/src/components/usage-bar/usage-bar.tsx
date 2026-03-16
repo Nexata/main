@@ -42,15 +42,25 @@ export function UsageBar({
 					<span>{label}</span>
 
 					{info && (
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-							</TooltipTrigger>
-							<TooltipContent className="max-w-xs text-xs">
-								{info}
-							</TooltipContent>
-						</Tooltip>
-					)}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors"
+                  aria-label="More information"
+                >
+                  <Info className="h-3.5 w-3.5" />
+                </button>
+              </TooltipTrigger>
+
+              <TooltipContent
+                side="top"
+                className="max-w-xs text-xs"
+              >
+                {info}
+              </TooltipContent>
+            </Tooltip>
+          )}
 				</div>
 
 				{loading ? (
