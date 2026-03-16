@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { motion } from 'framer-motion';
+import { motion, useInView } from 'framer-motion';
 import {
 	ArrowRight,
 	Calendar,
@@ -18,7 +18,7 @@ import {
 	X,
 	Zap,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { IoMoon, IoSunny } from 'react-icons/io5';
 import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
 import { useTheme } from '@/components/theme-provider';
@@ -640,87 +640,134 @@ export default function Home() {
 				</section>
 
 				{/* ===== Intro / What is Nexata ===== */}
-				<section
-					id="intro"
-					className="px-6 py-20 max-w-5xl mx-auto text-center space-y-8"
-				>
-					<motion.div {...fadeUp}>
-						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-							{c.intro.title}
-						</h2>
-						<p className="text-lg text-muted-foreground mt-4">{c.intro.body}</p>
-						<p className="text-muted-foreground mt-2">{c.intro.body2}</p>
-					</motion.div>
+        <section id="intro" className="px-6 py-20 max-w-5xl mx-auto space-y-12">
 
-					<motion.div className="mt-8 grid sm:grid-cols-2 gap-5" {...fadeUp}>
-						{c.intro.steps.map((step, i) => (
-							<Card
-								key={step.title}
-								className="p-6 text-left hover:shadow-md transition-shadow bg-background border"
-							>
-								<div className="flex items-center gap-3 mb-2">
-									<span className="flex items-center justify-center w-7 h-7 rounded-full bg-primary/10 text-primary text-sm font-bold">
-										{i + 1}
-									</span>
-									<h3 className="text-lg font-semibold text-foreground">
-										{step.title}
-									</h3>
-								</div>
-								<p className="text-muted-foreground text-sm">{step.desc}</p>
-							</Card>
-						))}
-					</motion.div>
-				</section>
+          {/* Título centrado */}
+          <motion.div {...fadeUp} className="text-center">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+              {c.intro.title}
+            </h2>
+          </motion.div>
+
+          {/* Textos izquierda + Cards derecha */}
+          <motion.div {...fadeUp} className="grid md:grid-cols-2 gap-10 items-center">
+            {/* Textos */}
+            <div className="space-y-4 text-left">
+              <p className="text-lg text-muted-foreground leading-relaxed">
+                {c.intro.body}
+              </p>
+              <p className="text-muted-foreground leading-relaxed">
+                {c.intro.body2}
+              </p>
+            </div>
+
+            {/* Stat cards */}
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { value: '10x', label: language === 'es' ? 'más rápido que búsqueda manual' : 'faster than manual search' },
+                { value: '+8', label: language === 'es' ? 'integraciones disponibles' : 'available integrations' },
+                { value: '< 1min', label: language === 'es' ? 'para conectar tu primera fuente' : 'to connect your first source' },
+                { value: '100%', label: language === 'es' ? 'control de permisos por usuario' : 'per-user permission control' },
+              ].map((stat, i) => (
+                <motion.div
+                  key={stat.label}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  whileInView={{ opacity: 1, scale: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.3, delay: i * 0.08, ease: 'easeOut' }}
+                  className="rounded-xl border border-border bg-card p-5 flex flex-col gap-1 text-center"
+                >
+                  <span className="text-3xl font-bold text-primary">{stat.value}</span>
+                  <span className="text-xs text-muted-foreground leading-snug">{stat.label}</span>
+                </motion.div>
+              ))}
+            </div>
+          </motion.div>
+
+          {/* Stepper desktop */}
+          <div className="hidden sm:block">
+            <IntroStepper steps={c.intro.steps} />
+          </div>
+
+          {/* Stepper mobile */}
+          <div className="sm:hidden space-y-4">
+            {c.intro.steps.map((step, i) => (
+              <motion.div
+                key={step.title}
+                initial={{ opacity: 0, x: -16 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ duration: 0.4, delay: i * 0.1, ease: 'easeOut' }}
+                className="flex gap-4 text-left"
+              >
+                <div className="flex flex-col items-center gap-1 shrink-0">
+                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-sm">
+                    {i + 1}
+                  </span>
+                  {i < c.intro.steps.length - 1 && (
+                    <div className="w-px flex-1 min-h-6 bg-border" />
+                  )}
+                </div>
+                <div className="pb-4">
+                  <h3 className="text-base font-semibold text-foreground mb-1">
+                    {step.title}
+                  </h3>
+                  <p className="text-muted-foreground text-sm">{step.desc}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </section>
 
 				{/* ===== Data Sources Carousel ===== */}
-<section className="py-16 text-center space-y-10">
-  <motion.div {...fadeUp} className="space-y-3 px-6">
-    <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-      {c.sources.title}
-    </h2>
-    <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-      {c.sources.subtitle}
-    </p>
-  </motion.div>
+        <section className="py-16 text-center space-y-10">
+          <motion.div {...fadeUp} className="space-y-3 px-6">
+            <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+              {c.sources.title}
+            </h2>
+            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
+              {c.sources.subtitle}
+            </p>
+          </motion.div>
 
-  <div className="relative w-full overflow-hidden">
-    {/* Fade edges */}
-    <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-    <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+          <div className="relative w-full overflow-hidden">
+            {/* Fade edges */}
+            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
 
-    <style>{`
-      @keyframes marquee {
-        0%   { transform: translateX(0); }
-        100% { transform: translateX(-50%); }
-      }
-      .marquee-track {
-        display: flex;
-        width: max-content;
-        animation: marquee 20s linear infinite;
-      }
-    `}</style>
+            <style>{`
+              @keyframes marquee {
+                0%   { transform: translateX(0); }
+                100% { transform: translateX(-50%); }
+              }
+              .marquee-track {
+                display: flex;
+                width: max-content;
+                animation: marquee 20s linear infinite;
+              }
+            `}</style>
 
-    <div className="py-4">
-      <div className="marquee-track">
-        {[...allSources, ...allSources].map((source, i) => (
-          <div
-            key={`${source.id}-${i}`}
-            className="flex flex-col items-center mx-5 sm:mx-8 w-14 sm:w-16 shrink-0"
-          >
-            <img
-              src={source.icon}
-              alt={source.name}
-              className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg"
-            />
-            <span className="text-xs text-muted-foreground mt-2 font-medium leading-tight text-center">
-              {source.name}
-            </span>
+            <div className="py-4">
+              <div className="marquee-track">
+                {[...allSources, ...allSources].map((source, i) => (
+                  <div
+                    key={`${source.id}-${i}`}
+                    className="flex flex-col items-center mx-5 sm:mx-8 w-14 sm:w-16 shrink-0"
+                  >
+                    <img
+                      src={source.icon}
+                      alt={source.name}
+                      className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg"
+                    />
+                    <span className="text-xs text-muted-foreground mt-2 font-medium leading-tight text-center">
+                      {source.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-        ))}
-      </div>
-    </div>
-  </div>
-</section>
+        </section>
 
 				{/* ===== Meet Nexy ===== */}
 				<section
@@ -977,4 +1024,79 @@ function Flag({ country }: { country: string }) {
 			style={{ width: 18, height: 12 }}
 		/>
 	);
+}
+
+function IntroStepper({ steps }: { steps: { title: string; desc: string }[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const isInView = useInView(ref, { once: true, margin: '-100px' });
+  const [active, setActive] = useState(-1);
+
+  useEffect(() => {
+    if (!isInView) return;
+    steps.forEach((_, i) => {
+      setTimeout(() => setActive(i), i * 400);
+    });
+  }, [isInView, steps]);
+
+  return (
+    <div ref={ref} className="relative">
+      {/* Línea de fondo */}
+      <div className="absolute top-5 left-[calc(12.5%+16px)] right-[calc(12.5%+16px)] h-px bg-border" />
+
+      {/* Línea de progreso animada */}
+      <motion.div
+        className="absolute top-5 left-[calc(12.5%+16px)] h-px bg-primary origin-left"
+        initial={{ scaleX: 0 }}
+        animate={{ scaleX: isInView ? 1 : 0 }}
+        transition={{ duration: 1.4, delay: 0.2, ease: 'easeInOut' }}
+        style={{ right: 'calc(12.5% + 16px)' }}
+      />
+
+      {/* Steps */}
+      <div className="grid grid-cols-4 gap-4">
+        {steps.map((step, i) => {
+          const done = active >= i;
+          return (
+            <motion.div
+              key={step.title}
+              initial={{ opacity: 0, y: 16 }}
+              animate={done ? { opacity: 1, y: 0 } : {}}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
+              className="flex flex-col items-center text-center gap-3"
+            >
+              {/* Círculo */}
+              <motion.span
+                animate={
+                  done
+                    ? { backgroundColor: 'hsl(var(--primary))', color: 'hsl(var(--primary-foreground))', scale: 1.1 }
+                    : { backgroundColor: 'hsl(var(--muted))', color: 'hsl(var(--muted-foreground))', scale: 1 }
+                }
+                transition={{ duration: 0.3 }}
+                className="flex items-center justify-center w-10 h-10 rounded-full text-sm font-bold shadow-sm z-10 relative"
+              >
+                {i + 1}
+              </motion.span>
+
+              <div>
+                <h3
+                  className={`text-sm font-semibold transition-colors duration-300 ${
+                    done ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {step.title}
+                </h3>
+                <p
+                  className={`text-xs mt-1 leading-relaxed transition-colors duration-300 ${
+                    done ? 'text-muted-foreground' : 'text-muted-foreground/40'
+                  }`}
+                >
+                  {step.desc}
+                </p>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </div>
+  );
 }
