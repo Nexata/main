@@ -1,22 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { motion, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import {
-	ArrowRight,
-	Calendar,
-	ClipboardList,
-	FileText,
-	Link,
-	Lock,
-	LogIn,
-	Mail,
-	Menu,
-	MessageCircle,
-	MessageSquare,
-	Quote,
-	Rocket,
-	Search,
-	X,
-	Zap,
+  ArrowRight,
+  ArrowUp,
+  Brain,
+  Calendar,
+  Check,
+  ClipboardList,
+  FileText,
+  Link,
+  Lock,
+  LogIn,
+  Mail,
+  Menu,
+  MessageCircle,
+  MessageSquare,
+  Paperclip,
+  Quote,
+  Rocket,
+  Search,
+  X,
+  Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import { IoMoon, IoSunny } from 'react-icons/io5';
@@ -769,48 +773,27 @@ export default function Home() {
           </div>
         </section>
 
-				{/* ===== Meet Nexy ===== */}
-				<section
-					id="nexy"
-					className="px-6 py-20 bg-gradient-to-b from-primary/5 to-background"
-				>
-					<div className="max-w-6xl mx-auto space-y-12">
-						<motion.div
-							{...fadeUp}
-							className="text-center max-w-3xl mx-auto space-y-4"
-						>
-							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-								{c.nexy.title}
-							</h2>
-							<p className="text-lg text-muted-foreground">{c.nexy.subtitle}</p>
-						</motion.div>
+        {/* ===== Meet Nexy ===== */}
+        <section
+          id="nexy"
+          className="px-6 py-20 bg-gradient-to-b from-primary/5 to-background"
+        >
+          <div className="max-w-6xl mx-auto space-y-12">
+            <motion.div
+              {...fadeUp}
+              className="text-center max-w-3xl mx-auto space-y-4"
+            >
+              <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+                {c.nexy.title}
+              </h2>
+              <p className="text-lg text-muted-foreground">{c.nexy.subtitle}</p>
+            </motion.div>
 
-						<motion.div
-							{...fadeUp}
-							className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"
-						>
-							{c.nexy.features.map((feat) => {
-								const Icon = feat.icon;
-								return (
-									<Card
-										key={feat.title}
-										className="p-6 hover:shadow-md transition-shadow bg-background/80 backdrop-blur-sm border"
-									>
-										<div className="flex items-center gap-3 mb-3">
-											<div className="flex items-center justify-center w-9 h-9 rounded-lg bg-primary/10">
-												<Icon className="w-4.5 h-4.5 text-primary" />
-											</div>
-											<h3 className="font-semibold text-foreground">
-												{feat.title}
-											</h3>
-										</div>
-										<p className="text-muted-foreground text-sm">{feat.desc}</p>
-									</Card>
-								);
-							})}
-						</motion.div>
-					</div>
-				</section>
+            <motion.div {...fadeUp}>
+              <NexyShowcase features={c.nexy.features} language={language} />
+            </motion.div>
+          </div>
+        </section>
 
 				{/* ===== Use Cases ===== */}
 				<section
@@ -1096,6 +1079,262 @@ function IntroStepper({ steps }: { steps: { title: string; desc: string }[] }) {
             </motion.div>
           );
         })}
+      </div>
+    </div>
+  );
+}
+
+type ChatDemo = {
+  user: string;
+  reply: string;
+  toolLabel: string;
+  sources: { icon: string; label: string }[];
+};
+
+const NEXY_CHAT_DEMOS: ChatDemo[] = [
+  {
+    user: 'Donde esta el contrato con el cliente Acme de enero?',
+    toolLabel: 'Buscando en Google Drive...',
+    reply: 'Encontre 2 documentos relevantes. El mas reciente es "Contrato_Acme_v3.pdf" modificado el 14 ene, ubicado en Google Drive > Clientes > Acme.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Contrato_Acme_v3.pdf' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Google Drive' },
+    ],
+  },
+  {
+    user: 'Que se hablo sobre el presupuesto del proyecto Alpha?',
+    toolLabel: 'Buscando en Gmail...',
+    reply: 'Encontre un hilo de email del 3 mar con Paula y un archivo adjunto "budget_alpha_final.xlsx". Tambien hay una nota en Calendar del 5 mar.',
+    sources: [
+      { icon: '/datasource_icons/gmail.png', label: 'Email - Paula' },
+      { icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx' },
+    ],
+  },
+  {
+    user: 'Cuando es la proxima reunion con el equipo de diseno?',
+    toolLabel: 'Consultando Google Calendar...',
+    reply: 'Tenes una reunion "Sync Diseno Q2" manana a las 10:00 AM con Marcos, Sofia y Laura. El doc de agenda esta vinculado al evento.',
+    sources: [
+      { icon: '/datasource_icons/gcalendar.png', label: 'Google Calendar' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Agenda Sync Q2' },
+    ],
+  },
+  {
+    user: 'Como proceso una factura de proveedor nuevo?',
+    toolLabel: 'Buscando en archivos...',
+    reply: 'El proceso tiene 4 pasos. Encontre la guia oficial "Proceso_Facturas_v2.pdf" en el drive de Finanzas, actualizada el mes pasado.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Proceso_Facturas_v2.pdf' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Drive - Finanzas' },
+    ],
+  },
+  {
+    user: 'Resumi el informe trimestral Q1 2024',
+    toolLabel: 'Leyendo documento...',
+    reply: 'El informe Q1 2024 muestra un crecimiento del 18% en ingresos. Los puntos clave son: expansion LATAM, lanzamiento producto B y reduccion de costos operativos.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Informe_Q1_2024.pdf' },
+      { icon: '/nexata_logo.png', label: '3 paginas analizadas' },
+    ],
+  },
+];
+
+const NEXY_CHAT_DEMOS_EN: ChatDemo[] = [
+  {
+    user: 'Where is the Acme client contract from January?',
+    toolLabel: 'Searching Google Drive...',
+    reply: 'I found 2 relevant documents. The most recent is "Contract_Acme_v3.pdf" modified on Jan 14, located in Google Drive > Clients > Acme.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Contract_Acme_v3.pdf' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Google Drive' },
+    ],
+  },
+  {
+    user: 'What was discussed about the Alpha project budget?',
+    toolLabel: 'Searching Gmail...',
+    reply: 'I found an email thread from Mar 3 with Paula and an attachment "budget_alpha_final.xlsx". There is also a Calendar note from Mar 5.',
+    sources: [
+      { icon: '/datasource_icons/gmail.png', label: 'Email - Paula' },
+      { icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx' },
+    ],
+  },
+  {
+    user: 'When is the next meeting with the design team?',
+    toolLabel: 'Checking Google Calendar...',
+    reply: 'You have a "Design Sync Q2" meeting tomorrow at 10:00 AM with Marcos, Sofia and Laura. The agenda doc is linked to the event.',
+    sources: [
+      { icon: '/datasource_icons/gcalendar.png', label: 'Google Calendar' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Agenda Sync Q2' },
+    ],
+  },
+  {
+    user: 'How do I process a new vendor invoice?',
+    toolLabel: 'Searching files...',
+    reply: 'The process has 4 steps. I found the official guide "Invoice_Process_v2.pdf" in the Finance drive, updated last month.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Invoice_Process_v2.pdf' },
+      { icon: '/datasource_icons/gdrive.png', label: 'Drive - Finance' },
+    ],
+  },
+  {
+    user: 'Summarize the Q1 2024 quarterly report',
+    toolLabel: 'Reading document...',
+    reply: 'The Q1 2024 report shows 18% revenue growth. Key highlights: LATAM expansion, product B launch, and operational cost reduction.',
+    sources: [
+      { icon: '/datasource_icons/gdrive.png', label: 'Report_Q1_2024.pdf' },
+      { icon: '/nexata_logo.png', label: '3 pages analyzed' },
+    ],
+  },
+];
+
+function NexyShowcase({
+  features,
+  language,
+}: {
+  features: { icon: typeof Search; title: string; desc: string }[];
+  language: Language;
+}) {
+  const [active, setActive] = useState(0);
+  const demos = language === 'en' ? NEXY_CHAT_DEMOS_EN : NEXY_CHAT_DEMOS;
+  const demo = demos[active];
+
+  return (
+    <div className="grid lg:grid-cols-2 gap-6 items-start">
+      {/* Columna izquierda: lista de features */}
+      <div className="flex flex-col gap-2">
+        {features.map((feat, i) => {
+          const Icon = feat.icon;
+          const isActive = active === i;
+          return (
+            <button
+              key={feat.title}
+              onClick={() => setActive(i)}
+              className={`w-full text-left flex items-start gap-4 p-4 rounded-xl border transition-all duration-200 cursor-pointer
+                ${isActive
+                  ? 'border-primary/30 bg-primary/5'
+                  : 'border-transparent hover:border-border hover:bg-foreground/[0.02]'
+                }`}
+            >
+              <div
+                className={`flex items-center justify-center w-9 h-9 rounded-lg shrink-0 transition-colors duration-200
+                  ${isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}
+              >
+                <Icon className="w-4 h-4" />
+              </div>
+              <div>
+                <p className={`text-sm font-semibold transition-colors duration-200 ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>
+                  {feat.title}
+                </p>
+                <p className={`text-xs mt-0.5 leading-relaxed transition-colors duration-200 ${isActive ? 'text-muted-foreground' : 'text-muted-foreground/50'}`}>
+                  {feat.desc}
+                </p>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Columna derecha: chat mock */}
+      <div className="lg:sticky lg:top-24">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -12 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+            className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col"
+            style={{ height: 420 }}
+          >
+            {/* Header */}
+            <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30 shrink-0">
+              <img src="/nexata_logo.png" alt="Nexy" className="w-6 h-6 object-contain" />
+              <span className="text-sm font-semibold text-foreground">Nexy</span>
+              <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
+                {language === 'es' ? 'En linea' : 'Online'}
+              </span>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-hidden px-4 py-4 flex flex-col gap-3">
+
+              {/* Mensaje usuario */}
+              <div className="flex justify-end">
+                <motion.div
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25, ease: 'easeOut' }}
+                  className="relative break-words rounded-lg p-3 text-sm max-w-[85%] bg-muted text-foreground"
+                >
+                  {demo.user}
+                </motion.div>
+              </div>
+
+              {/* Tool call — réplica exacta de ToolRenderer */}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.1, ease: 'easeOut' }}
+                className="w-full rounded-lg border bg-muted/40 px-4 py-3"
+              >
+                <div className="flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <img
+                      src={demo.sources[0]?.icon ?? '/nexata_logo.png'}
+                      alt="tool"
+                      className="h-5 w-5 shrink-0 object-contain"
+                    />
+                    <span className="text-sm font-medium truncate text-foreground">
+                      {demo.toolLabel}
+                    </span>
+                  </div>
+                  <Check className="h-4 w-4 text-green-500 shrink-0" />
+                </div>
+              </motion.div>
+
+              {/* Respuesta Nexy */}
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.25, delay: 0.2, ease: 'easeOut' }}
+                className="relative break-words rounded-lg p-3 text-sm max-w-[85%] bg-transparent text-foreground"
+              >
+                {demo.reply}
+              </motion.div>
+
+            </div>
+
+            {/* Input — réplica exacta MessageInput compacto */}
+            <div className="px-4 pb-4 shrink-0">
+              <div
+                className="relative w-full border bg-muted shadow-sm px-2 py-2 flex items-center gap-2"
+                style={{ borderRadius: 999 }}
+              >
+                {/* Brain icon — mismo que MessageInput */}
+                <div className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground shrink-0">
+                  <Brain className="h-5 w-5" />
+                </div>
+
+                {/* Placeholder */}
+                <span className="flex-1 text-sm text-muted-foreground/50 select-none leading-5 py-2">
+                  {language === 'es' ? 'Preguntale algo a Nexy...' : 'Ask Nexy something...'}
+                </span>
+
+                {/* Paperclip + ArrowUp — mismo que MessageInput */}
+                <div className="flex items-center gap-1">
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center text-muted-foreground">
+                    <Paperclip className="h-5 w-5" />
+                  </div>
+                  <div className="h-8 w-8 rounded-full bg-foreground text-background flex items-center justify-center shrink-0 opacity-40">
+                    <ArrowUp className="h-5 w-5" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+          </motion.div>
+        </AnimatePresence>
       </div>
     </div>
   );
