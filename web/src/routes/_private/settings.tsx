@@ -1215,11 +1215,8 @@ export function FilesManagementSection() {
 											<div className="rounded-full bg-muted p-3">
 												<FileText className="w-5 h-5 text-muted-foreground" />
 											</div>
-											<p className="text-sm font-medium">No files found</p>
-											<p className="text-xs text-muted-foreground max-w-xs">
-												Try adjusting your filters or ingesting new files from
-												your connected sources.
-											</p>
+											<p className="text-sm font-medium">{settings_files_empty_title()}</p>
+											<p className="text-xs text-muted-foreground max-w-xs">{settings_files_empty_description()}</p>
 										</div>
 									</TableCell>
 								</TableRow>
@@ -1294,7 +1291,9 @@ export function FilesManagementSection() {
 																<RefreshCcw className="w-3.5 h-3.5" />
 															</Button>
 														</TooltipTrigger>
-														<TooltipContent>Re-ingest file</TooltipContent>
+														<TooltipContent>
+                              {settings_files_tooltip_reingest()}
+                            </TooltipContent>
 													</Tooltip>
 													<Tooltip>
 														<TooltipTrigger>
@@ -1315,7 +1314,9 @@ export function FilesManagementSection() {
 																<Trash2 className="w-3.5 h-3.5" />
 															</Button>
 														</TooltipTrigger>
-														<TooltipContent>Delete file</TooltipContent>
+														<TooltipContent>
+                              {settings_files_tooltip_delete()}
+                            </TooltipContent>
 													</Tooltip>
 												</TooltipProvider>
 											</div>
@@ -1327,17 +1328,17 @@ export function FilesManagementSection() {
 						<TableFooter className="bg-muted/30">
 							<TableRow>
 								<TableCell colSpan={5}>
-									<span className="text-xs text-muted-foreground">
-										{files.length > 0
-											? `${files.length} file${files.length !== 1 ? 's' : ''} on this page`
-											: 'No results'}
-									</span>
+  								<span className="text-xs text-muted-foreground">
+                    {files.length > 0
+                      ? settings_files_pagination_page_count({count: String(files.length)})
+                      : settings_files_pagination_no_results()}
+                  </span>
 								</TableCell>
 								<TableCell colSpan={3}>
 									<div className="flex items-center justify-end gap-2">
-										<span className="text-xs text-muted-foreground">
-											Page {currentPage}
-										</span>
+									  <span className="text-xs text-muted-foreground">
+                      {settings_files_pagination_page({page: String(currentPage)})}
+                    </span>
 										<Button
 											size="sm"
 											variant="outline"
@@ -1375,20 +1376,21 @@ export function FilesManagementSection() {
 						<DialogDescription>{dialogDescription}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2">
-						<Button
-							variant="outline"
-							className="cursor-pointer"
-							onClick={() => setDeleteDialog({ open: false })}
-						>
-							Cancel
-						</Button>
-						<Button
-							variant="destructive"
-							className="cursor-pointer"
-							onClick={handleConfirmDelete}
-						>
-							Delete
-						</Button>
+  					<Button
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => setDeleteDialog({ open: false })}
+            >
+              {common_cancel()}
+            </Button>
+
+            <Button
+              variant="destructive"
+              className="cursor-pointer"
+              onClick={handleConfirmDelete}
+            >
+              {common_delete()}
+            </Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>
