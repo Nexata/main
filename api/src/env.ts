@@ -50,7 +50,10 @@ export const FALLBACK_BEHAVIOR: {
 
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	models: [deepinfra('deepseek-ai/DeepSeek-V3.2'), groq('openai/gpt-oss-120b')],
+	models: [
+		deepinfra('nvidia/NVIDIA-Nemotron-3-Super-120B-A12B'),
+		groq('openai/gpt-oss-120b'),
+	],
 });
 
 export const LIGHT_MODEL = createFallback({
