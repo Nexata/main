@@ -23,6 +23,12 @@ import { CopyButton } from "@/components/ui/copy-button"
 import { useChatUIStore } from "@/lib/chat.store"
 import { useToolDetailStore } from "@/lib/tool-detail.store"
 import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
+import {
   'components.reasoning_block.title' as components_reasoning_block_title,
   'components.reasoning_block.description' as components_reasoning_block_description,
   'tools.gmail.search' as tools_gmail_search,
@@ -117,7 +123,7 @@ import {
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
-  'chat.branch_off.button' as chat_branch_off_button,
+  'chat.branch_off.button' as chat_branch_off_button
 } from '@/paraglide/messages.js';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -418,32 +424,44 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             >
               {/* Copy button (for assistant messages with text) */}
               {!isUser && messageText && (
-                <CopyButton
-                  content={messageText}
-                  copyMessage="Copied!"
-                />
+                <CopyButton content={messageText} />
               )}
 
               {/* Edit button (for user messages) */}
               {isUser && (
-                <button
-                  onClick={handleStartEdit}
-                  className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
-                  title={chat_edit_button()}
-                >
-                  <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={handleStartEdit}
+                      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+
+                  <TooltipContent side="bottom">
+                    {chat_edit_button()}
+                  </TooltipContent>
+                </Tooltip>
               )}
 
-              {/* Branch-off button (for assistant messages) */}
               {!isUser && onBranchOff && (
-                <button
-                  onClick={() => onBranchOff(message.id)}
-                  className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
-                  title={chat_branch_off_button()}
-                >
-                  <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
-                </button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        onClick={() => onBranchOff(message.id)}
+                        className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                      >
+                        <GitBranch className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </TooltipTrigger>
+
+                    <TooltipContent side="bottom">
+                      {chat_branch_off_button()}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               )}
             </div>
           )}

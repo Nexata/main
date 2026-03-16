@@ -248,6 +248,10 @@
 			"thinking": "Pensando",
 			"error": "Ocurrió un error al procesar tu mensaje"
 		},
+		"copy":{
+		  "copy": "Copiar",
+			"copied": "Copiado"
+		},
 		"edit": {
 			"button": "Editar",
 			"confirm_title": "¿Editar mensaje?",
