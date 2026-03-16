@@ -51,10 +51,7 @@ export const realOauthScopes: Record<OauthScope, string[]> = {
 	[OauthScope.MICROSOFT_CALENDAR]: [
 		'https://graph.microsoft.com/Calendars.Read',
 	],
-	[OauthScope.ONE_DRIVE]: [
-		'https://graph.microsoft.com/Files.Read.All',
-		'https://graph.microsoft.com/Sites.Read.All',
-	],
+	[OauthScope.ONE_DRIVE]: ['https://graph.microsoft.com/Files.Read.All'],
 	[OauthScope.DROPBOX]: ['files.metadata.read', 'files.content.read'],
 } as const;
 
