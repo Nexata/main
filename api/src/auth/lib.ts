@@ -19,7 +19,6 @@ import { requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { lowerEq } from '@api/utils/sql';
 import { Nullish } from '@api/utils/type';
-import { captureException } from '@sentry/bun';
 import { and, eq, inArray } from 'drizzle-orm';
 import { redirect, type Static, t } from 'elysia';
 import { decodeIdToken, type OAuth2Tokens } from 'elysia-oauth2';
@@ -113,22 +112,14 @@ export async function authorizeOauthCallback(
 	const q = await cache.getdel<OauthExtendedState>(query.state);
 	if (!q) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
 
-	if (q.flow === 'credential') {
-		captureException(new Error('OAuth scope debug'), {
-			extra: {
-				provider,
-				requestedScope: q.scope,
-				expectedScopes: realOauthScopes[q.scope],
-				returnedScopes: tokens.scopes(),
-			},
-		});
+	if (
+		q.flow === 'credential' &&
+		realOauthScopes[q.scope].some((s) => !tokens.scopes().includes(s))
+	)
+		throw httpError(HttpCode.CONFLICT, ErrorCode.SCOPE_MISMATCH);
 
-		if (realOauthScopes[q.scope].some((s) => !tokens.scopes().includes(s)))
-			throw httpError(HttpCode.CONFLICT, ErrorCode.SCOPE_MISMATCH);
-
-		if (!tokens.hasRefreshToken())
-			throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN);
-	}
+	if (q.flow === 'credential' && !tokens.hasRefreshToken())
+		throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN);
 
 	const metadata = await metadataFunc(
 		await Promise.resolve()
