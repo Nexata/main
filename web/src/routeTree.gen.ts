@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PublicTycRouteImport } from './routes/_public/tyc'
 import { Route as PublicTenantSelectionRouteImport } from './routes/_public/tenant-selection'
 import { Route as PublicPrivacyPolicyRouteImport } from './routes/_public/privacy-policy'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
@@ -37,6 +38,11 @@ const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
+} as any)
+const PublicTycRoute = PublicTycRouteImport.update({
+  id: '/tyc',
+  path: '/tyc',
+  getParentRoute: () => PublicRouteRoute,
 } as any)
 const PublicTenantSelectionRoute = PublicTenantSelectionRouteImport.update({
   id: '/tenant-selection',
@@ -114,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/login': typeof PublicLoginRoute
   '/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
+  '/tyc': typeof PublicTycRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/login': typeof PublicLoginRoute
   '/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
+  '/tyc': typeof PublicTycRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -147,6 +155,7 @@ export interface FileRoutesById {
   '/_public/login': typeof PublicLoginRoute
   '/_public/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/_public/tenant-selection': typeof PublicTenantSelectionRoute
+  '/_public/tyc': typeof PublicTycRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -164,6 +173,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/tenant-selection'
+    | '/tyc'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/login'
     | '/privacy-policy'
     | '/tenant-selection'
+    | '/tyc'
   id:
     | '__root__'
     | '/'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/_public/login'
     | '/_public/privacy-policy'
     | '/_public/tenant-selection'
+    | '/_public/tyc'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/_public/tyc': {
+      id: '/_public/tyc'
+      path: '/tyc'
+      fullPath: '/tyc'
+      preLoaderRoute: typeof PublicTycRouteImport
+      parentRoute: typeof PublicRouteRoute
     }
     '/_public/tenant-selection': {
       id: '/_public/tenant-selection'
@@ -344,6 +363,7 @@ interface PublicRouteRouteChildren {
   PublicLoginRoute: typeof PublicLoginRoute
   PublicPrivacyPolicyRoute: typeof PublicPrivacyPolicyRoute
   PublicTenantSelectionRoute: typeof PublicTenantSelectionRoute
+  PublicTycRoute: typeof PublicTycRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
@@ -352,6 +372,7 @@ const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicLoginRoute: PublicLoginRoute,
   PublicPrivacyPolicyRoute: PublicPrivacyPolicyRoute,
   PublicTenantSelectionRoute: PublicTenantSelectionRoute,
+  PublicTycRoute: PublicTycRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(

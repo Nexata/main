@@ -944,6 +944,12 @@ export default function Home() {
               >
                 {language === 'es' ? 'Politica de Privacidad' : 'Privacy Policy'}
               </button>
+              <button
+                onClick={() => navigate({ to: '/tyc' })}
+                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                {language === 'es' ? 'Terminos y Condiciones' : 'Terms and Conditions'}
+              </button>
               <p className="text-xs text-muted-foreground">
                 &copy; {new Date().getFullYear()} Nexata
               </p>
