@@ -140,7 +140,10 @@ import {
 	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
 	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
 	'admin.company_overview.title' as admin_company_overview_title,
-	'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
+  'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
+  'admin.company_overview.message_balance_info' as admin_company_overview_message_balance_info,
+  'admin.company_overview.embeddings_balance_info' as admin_company_overview_embeddings_balance_info,
+  'admin.company_overview.storage_balance_info' as admin_company_overview_storage_balance_info,
 	'admin.header.back_to_chat' as admin_header_back_to_chat,
 	'admin.header.personal_panel' as admin_header_personal_panel,
 	'admin.header.subtitle' as admin_header_subtitle,
@@ -455,7 +458,8 @@ function CompanyOverviewSection() {
 
 				<div className="space-y-4">
 					<UsageBar
-						label={admin_company_overview_message_balance()}
+            label={admin_company_overview_message_balance()}
+            info={admin_company_overview_message_balance_info()}
 						used={messageUsed}
 						total={messageTotal}
 						colorClass="bg-primary"
@@ -463,16 +467,18 @@ function CompanyOverviewSection() {
 					/>
 
 					<UsageBar
-						label={admin_company_overview_embeddings_balance()}
+            label={admin_company_overview_embeddings_balance()}
+						info={admin_company_overview_embeddings_balance_info()}
 						used={embeddingsUsed / 1_000_000}
 						total={embeddingsTotal / 1_000_000}
 						unit="M"
-						colorClass="bg-indigo-500"
+						colorClass="bg-violet-500"
 						loading={usageLoading}
 					/>
 
 					<UsageBar
-						label={admin_company_overview_storage_balance()}
+            label={admin_company_overview_storage_balance()}
+						info={admin_company_overview_storage_balance_info()}
 						used={storageUsed}
 						total={storageTotal}
 						colorClass="bg-emerald-500"

@@ -64,11 +64,13 @@ export function Chat({
 
   const assistantHasText =
     lastMessage?.role === "assistant" &&
-    lastMessage.parts?.some(
-      (p) => p.type === "text" && (p.text?.length ?? 0) > 0
-    )
+    lastMessage.parts?.some((p) => p.type === "text" && (p.text?.length ?? 0) > 0)
 
-  const showThinking = isStreaming && !assistantHasText
+  const assistantHasReasoning =
+    lastMessage?.role === "assistant" &&
+    lastMessage.parts?.some((p) => p.type === "reasoning")
+
+  const showThinking = isStreaming && !assistantHasText && !assistantHasReasoning
 
   const messagesRef = useRef(messages)
   messagesRef.current = messages
