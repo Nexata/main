@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { paraglideVitePlugin } from '@inlang/paraglide-js';
+import { sentryVitePlugin } from '@sentry/vite-plugin';
 import tailwindcss from '@tailwindcss/vite';
 import { tanstackRouter } from '@tanstack/router-plugin/vite';
 import react from '@vitejs/plugin-react';
@@ -8,6 +9,9 @@ import { VitePWA } from 'vite-plugin-pwa';
 
 // https://vite.dev/config/
 export default defineConfig({
+	build: {
+		sourcemap: true,
+	},
 	plugins: [
 		tanstackRouter({ target: 'react', autoCodeSplitting: true }),
 		paraglideVitePlugin({
@@ -77,6 +81,15 @@ export default defineConfig({
 			devOptions: {
 				enabled: false,
 			},
+		}),
+		sentryVitePlugin({
+			org: process.env.SENTRY_ORG,
+			project: process.env.SENTRY_PROJECT,
+			authToken: process.env.SENTRY_AUTH_TOKEN,
+			sourcemaps: {
+				filesToDeleteAfterUpload: ['./dist/**/*.map'],
+			},
+			disable: !process.env.SENTRY_AUTH_TOKEN,
 		}),
 	],
 	resolve: {
