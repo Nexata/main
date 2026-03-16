@@ -141,10 +141,12 @@
 			"reduce_selection": "Reduce la selección para continuar",
 			"toast_loading_title": "Iniciando ingesta",
 			"toast_loading_description": "{count} archivos en cola",
-			"toast_success_title": "Ingesta iniciada",
-			"toast_success_description": "Los archivos fueron correctamente ingeridos",
+			"toast_success_title": "Ingesta completada",
+			"toast_success_ok": "{count} archivos ingeridos",
+			"toast_success_unmodified": "{count} sin cambios",
+			"toast_success_failed": "{count} fallidos",
 			"toast_error_title": "Falló la ingesta",
-			"toast_error_description": "Ocurrió un error durante el proceso",
+			"toast_error_all_failed": "{count} archivos fallaron durante la ingesta",
 			"unsupported_extension": "Esta extensión de archivo no es compatible con la ingesta"
 		},
 

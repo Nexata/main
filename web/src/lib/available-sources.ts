@@ -18,6 +18,12 @@ import {
 type OauthProvider = `${CredentialItem['provider']}`;
 type OauthScope = `${CredentialItem['scope']}`;
 
+export type IngestResult = {
+	ok: number;
+	unmodified: number;
+	failed: number;
+};
+
 export type SourceConfig = {
 	id: string;
 	provider: OauthProvider;
@@ -30,7 +36,7 @@ export type SourceConfig = {
 		credentialId: string,
 		input?: ListDriveDirInput,
 	) => Promise<any>;
-	ingest?: (payload: IngestPayload) => Promise<any>;
+	ingest?: (payload: IngestPayload) => Promise<IngestResult>;
 };
 
 export function credentialsBySource(

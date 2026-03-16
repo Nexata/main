@@ -1,3 +1,4 @@
+import { useQueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -39,9 +40,11 @@ import {
   "components.file_tree.toast_loading_title" as components_file_tree_toast_loading_title,
   "components.file_tree.toast_loading_description" as components_file_tree_toast_loading_description,
   "components.file_tree.toast_success_title" as components_file_tree_toast_success_title,
-  "components.file_tree.toast_success_description" as components_file_tree_toast_success_description,
+  "components.file_tree.toast_success_ok" as components_file_tree_toast_success_ok,
+  "components.file_tree.toast_success_unmodified" as components_file_tree_toast_success_unmodified,
+  "components.file_tree.toast_success_failed" as components_file_tree_toast_success_failed,
   "components.file_tree.toast_error_title" as components_file_tree_toast_error_title,
-  "components.file_tree.toast_error_description" as components_file_tree_toast_error_description,
+  "components.file_tree.toast_error_all_failed" as components_file_tree_toast_error_all_failed,
   "components.file_tree.unsupported_extension" as components_file_tree_unsupported_extension,
   "common.cancel" as common_cancel,
   "common.confirm" as common_confirm
@@ -131,6 +134,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const current = history[historyIndex];
 
   const deleteMutation = useDeleteFiles();
+  const queryClient = useQueryClient();
   const { data: usage } = useBillingUsage();
   const storageUsed = usage?.storage?.used ?? 0;
   const storageLimit = usage?.storage?.limit ?? 1;
@@ -314,7 +318,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
     });
 
     try {
-      await Promise.all([
+      const [ingestResult] = await Promise.all([
         toIngestIds.length > 0
           ? source.ingest({
               credentialId,
@@ -323,29 +327,52 @@ export function StorageFileTree({ credentialId, source }: Props) {
                 return { id, isDir: file?.ext === "dir"};
               }),
             })
-          : Promise.resolve(),
+          : Promise.resolve(undefined),
 
         toDeleteIds.length > 0
           ? deleteMutation.mutateAsync({ ids: toDeleteIds })
           : Promise.resolve(),
       ]);
 
-      infoToast.success(toastId, {
-        title: components_file_tree_toast_success_title(),
-        description: components_file_tree_toast_success_description(),
-      });
+      if (ingestResult) {
+        const { ok, unmodified, failed } = ingestResult;
+
+        if (ok === 0 && failed > 0) {
+          // All files failed
+          infoToast.error(toastId, {
+            title: components_file_tree_toast_error_title(),
+            description: components_file_tree_toast_error_all_failed({ count: failed }),
+          });
+        } else {
+          // Full or partial success
+          const parts: string[] = [components_file_tree_toast_success_ok({ count: ok })];
+          if (unmodified > 0) parts.push(components_file_tree_toast_success_unmodified({ count: unmodified }));
+          if (failed > 0) parts.push(components_file_tree_toast_success_failed({ count: failed }));
+
+          infoToast.success(toastId, {
+            title: components_file_tree_toast_success_title(),
+            description: parts.join(" · "),
+          });
+        }
+      } else {
+        // Only deletions were performed
+        infoToast.success(toastId, {
+          title: components_file_tree_toast_success_title(),
+        });
+      }
 
       setSelectedForIngest(new Map());
       setMarkedForDelete(new Map());
 
       await fetchDir(current?.id);
+      await queryClient.invalidateQueries({ queryKey: ["platform-files"] });
 
     } catch (err) {
       console.error(err);
 
       infoToast.error(toastId, {
         title: components_file_tree_toast_error_title(),
-        description: components_file_tree_toast_error_description(),
+        description: components_file_tree_toast_error_all_failed({ count: toIngestIds.length }),
       });
     }
   }

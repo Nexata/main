@@ -486,6 +486,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							role: messagesToCopy.role,
 							content: messagesToCopy.content,
 							extraReason: messagesToCopy.extraReason,
+							finishReason: messagesToCopy.finishReason,
 							threadId: sql`${newThreadId}`.as('thread_id'),
 							createdAt: messagesToCopy.createdAt,
 						})

@@ -141,10 +141,12 @@
 			"reduce_selection": "Reduce selection to continue",
 			"toast_loading_title": "Starting ingestion",
 			"toast_loading_description": "{count} files queued",
-			"toast_success_title": "Ingestion started",
-			"toast_success_description": "The files were successfully ingested",
+			"toast_success_title": "Ingestion completed",
+			"toast_success_ok": "{count} files ingested",
+			"toast_success_unmodified": "{count} unmodified",
+			"toast_success_failed": "{count} failed",
 			"toast_error_title": "Ingestion failed",
-			"toast_error_description": "Something went wrong during processing",
+			"toast_error_all_failed": "{count} files failed during ingestion",
 			"unsupported_extension": "This file extension is not supported for ingestion"
 		},
 
