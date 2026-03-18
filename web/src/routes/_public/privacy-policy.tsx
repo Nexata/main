@@ -1,7 +1,6 @@
-import { createFileRoute } from '@tanstack/react-router';
+import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
-import { useState, useEffect } from 'react';
-import { useNavigate } from '@tanstack/react-router';
+import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar/navbar';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import type { Language } from '@/lib/user';
@@ -11,546 +10,499 @@ import {
 	'navbar.nav_nexy' as navbar_nav_nexy,
 	'navbar.nav_use_cases' as navbar_nav_use_cases,
 	'navbar.nav_features' as navbar_nav_features,
+	'privacy_policy.title' as pp_title,
+	'privacy_policy.last_updated' as pp_last_updated,
+	'privacy_policy.footer_tagline' as pp_footer_tagline,
+	'privacy_policy.intro.title' as pp_intro_title,
+	'privacy_policy.intro.p1_a' as pp_intro_p1_a,
+	'privacy_policy.intro.p1_b' as pp_intro_p1_b,
+	'privacy_policy.intro.p2' as pp_intro_p2,
+	'privacy_policy.intro.p3' as pp_intro_p3,
+	'privacy_policy.intro.notice_label' as pp_intro_notice_label,
+	'privacy_policy.intro.notice_text' as pp_intro_notice_text,
+	'privacy_policy.scope.title' as pp_scope_title,
+	'privacy_policy.scope.applies_to' as pp_scope_applies_to,
+	'privacy_policy.scope.item_1' as pp_scope_item_1,
+	'privacy_policy.scope.item_2' as pp_scope_item_2,
+	'privacy_policy.scope.item_3' as pp_scope_item_3,
+	'privacy_policy.scope.item_4' as pp_scope_item_4,
+	'privacy_policy.scope.item_5' as pp_scope_item_5,
+	'privacy_policy.scope.not_applies_to' as pp_scope_not_applies_to,
+	'privacy_policy.scope.not_item_1' as pp_scope_not_item_1,
+	'privacy_policy.scope.not_item_2' as pp_scope_not_item_2,
+	'privacy_policy.data_collected.title' as pp_data_title,
+	'privacy_policy.data_collected.s31_title' as pp_data_s31_title,
+	'privacy_policy.data_collected.s31_item_1' as pp_data_s31_item_1,
+	'privacy_policy.data_collected.s31_item_2' as pp_data_s31_item_2,
+	'privacy_policy.data_collected.s31_item_3' as pp_data_s31_item_3,
+	'privacy_policy.data_collected.s31_item_4' as pp_data_s31_item_4,
+	'privacy_policy.data_collected.s31_item_5' as pp_data_s31_item_5,
+	'privacy_policy.data_collected.s32_title' as pp_data_s32_title,
+	'privacy_policy.data_collected.s32_item_1' as pp_data_s32_item_1,
+	'privacy_policy.data_collected.s32_item_2' as pp_data_s32_item_2,
+	'privacy_policy.data_collected.s32_item_3' as pp_data_s32_item_3,
+	'privacy_policy.data_collected.s32_item_4' as pp_data_s32_item_4,
+	'privacy_policy.data_collected.s32_item_5' as pp_data_s32_item_5,
+	'privacy_policy.data_collected.s33_title' as pp_data_s33_title,
+	'privacy_policy.data_collected.s33_item_1' as pp_data_s33_item_1,
+	'privacy_policy.data_collected.s33_item_2' as pp_data_s33_item_2,
+	'privacy_policy.data_collected.s33_item_3' as pp_data_s33_item_3,
+	'privacy_policy.data_collected.s33_item_4' as pp_data_s33_item_4,
+	'privacy_policy.usage.title' as pp_usage_title,
+	'privacy_policy.usage.s41_title' as pp_usage_s41_title,
+	'privacy_policy.usage.s41_item_1' as pp_usage_s41_item_1,
+	'privacy_policy.usage.s41_item_2' as pp_usage_s41_item_2,
+	'privacy_policy.usage.s41_item_3' as pp_usage_s41_item_3,
+	'privacy_policy.usage.s41_item_4' as pp_usage_s41_item_4,
+	'privacy_policy.usage.s41_item_5' as pp_usage_s41_item_5,
+	'privacy_policy.usage.s42_title' as pp_usage_s42_title,
+	'privacy_policy.usage.s42_item_1' as pp_usage_s42_item_1,
+	'privacy_policy.usage.s42_item_2' as pp_usage_s42_item_2,
+	'privacy_policy.usage.s42_item_3' as pp_usage_s42_item_3,
+	'privacy_policy.usage.s42_item_4' as pp_usage_s42_item_4,
+	'privacy_policy.usage.never_label' as pp_usage_never_label,
+	'privacy_policy.usage.never_item_1' as pp_usage_never_item_1,
+	'privacy_policy.usage.never_item_2' as pp_usage_never_item_2,
+	'privacy_policy.usage.never_item_3' as pp_usage_never_item_3,
+	'privacy_policy.usage.never_item_4' as pp_usage_never_item_4,
+	'privacy_policy.sharing.title' as pp_sharing_title,
+	'privacy_policy.sharing.intro' as pp_sharing_intro,
+	'privacy_policy.sharing.provider_label' as pp_sharing_provider_label,
+	'privacy_policy.sharing.provider_desc' as pp_sharing_provider_desc,
+	'privacy_policy.sharing.connected_label' as pp_sharing_connected_label,
+	'privacy_policy.sharing.connected_desc' as pp_sharing_connected_desc,
+	'privacy_policy.sharing.legal_label' as pp_sharing_legal_label,
+	'privacy_policy.sharing.legal_desc' as pp_sharing_legal_desc,
+	'privacy_policy.sharing.never_label' as pp_sharing_never_label,
+	'privacy_policy.sharing.never_text' as pp_sharing_never_text,
+	'privacy_policy.retention.title' as pp_retention_title,
+	'privacy_policy.retention.account_label' as pp_retention_account_label,
+	'privacy_policy.retention.account_desc' as pp_retention_account_desc,
+	'privacy_policy.retention.content_label' as pp_retention_content_label,
+	'privacy_policy.retention.content_desc' as pp_retention_content_desc,
+	'privacy_policy.retention.logs_label' as pp_retention_logs_label,
+	'privacy_policy.retention.logs_desc' as pp_retention_logs_desc,
+	'privacy_policy.retention.history_label' as pp_retention_history_label,
+	'privacy_policy.retention.history_desc' as pp_retention_history_desc,
+	'privacy_policy.rights.title' as pp_rights_title,
+	'privacy_policy.rights.intro' as pp_rights_intro,
+	'privacy_policy.rights.access_label' as pp_rights_access_label,
+	'privacy_policy.rights.access_desc' as pp_rights_access_desc,
+	'privacy_policy.rights.rectification_label' as pp_rights_rectification_label,
+	'privacy_policy.rights.rectification_desc' as pp_rights_rectification_desc,
+	'privacy_policy.rights.erasure_label' as pp_rights_erasure_label,
+	'privacy_policy.rights.erasure_desc' as pp_rights_erasure_desc,
+	'privacy_policy.rights.portability_label' as pp_rights_portability_label,
+	'privacy_policy.rights.portability_desc' as pp_rights_portability_desc,
+	'privacy_policy.rights.objection_label' as pp_rights_objection_label,
+	'privacy_policy.rights.objection_desc' as pp_rights_objection_desc,
+	'privacy_policy.rights.restriction_label' as pp_rights_restriction_label,
+	'privacy_policy.rights.restriction_desc' as pp_rights_restriction_desc,
+	'privacy_policy.rights.contact' as pp_rights_contact,
+	'privacy_policy.security.title' as pp_security_title,
+	'privacy_policy.security.rest_label' as pp_security_rest_label,
+	'privacy_policy.security.rest_desc' as pp_security_rest_desc,
+	'privacy_policy.security.transit_label' as pp_security_transit_label,
+	'privacy_policy.security.transit_desc' as pp_security_transit_desc,
+	'privacy_policy.security.access_label' as pp_security_access_label,
+	'privacy_policy.security.access_desc' as pp_security_access_desc,
+	'privacy_policy.security.monitoring_label' as pp_security_monitoring_label,
+	'privacy_policy.security.monitoring_desc' as pp_security_monitoring_desc,
+	'privacy_policy.children.title' as pp_children_title,
+	'privacy_policy.children.p1' as pp_children_p1,
+	'privacy_policy.children.p2' as pp_children_p2,
+	'privacy_policy.changes.title' as pp_changes_title,
+	'privacy_policy.changes.intro' as pp_changes_intro,
+	'privacy_policy.changes.item_1' as pp_changes_item_1,
+	'privacy_policy.changes.item_2' as pp_changes_item_2,
+	'privacy_policy.changes.item_3' as pp_changes_item_3,
+	'privacy_policy.changes.item_4' as pp_changes_item_4,
+	'privacy_policy.contact.title' as pp_contact_title,
+	'privacy_policy.contact.email_label' as pp_contact_email_label,
+	'privacy_policy.contact.legal_name_label' as pp_contact_legal_name_label,
+	'privacy_policy.contact.legal_name_value' as pp_contact_legal_name_value,
+	'privacy_policy.contact.representative_label' as pp_contact_representative_label,
+	'privacy_policy.contact.representative_value' as pp_contact_representative_value,
+	'privacy_policy.contact.languages_label' as pp_contact_languages_label,
+	'privacy_policy.contact.languages_value' as pp_contact_languages_value,
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_public/privacy-policy')({
-  component: PrivacyPolicy,
+	component: PrivacyPolicy,
 });
 
-// -------------------------------- TYPES --------------------------------
+// -------------------------------- CONSTANTS --------------------------------
 
-type Section = {
-  id: string;
-  title: string;
-  content: React.ReactNode;
-};
+const SECTION_IDS = [
+	'intro', 'scope', 'data-collected', 'usage', 'sharing',
+	'retention', 'rights', 'security', 'children', 'changes', 'contact',
+];
 
-// -------------------------------- CONTENT --------------------------------
+// -------------------------------- HELPERS --------------------------------
 
-function getSections(language: Language): Section[] {
-  const isEs = language === 'es';
+function BulletItem({ text }: { text: string }) {
+	return (
+		<li className="flex items-start gap-2">
+			<span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
+			<span>{text}</span>
+		</li>
+	);
+}
 
-  return [
-    {
-      id: 'intro',
-      title: isEs ? '1. Introduccion' : '1. Introduction',
-      content: isEs ? (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>Nexata es una plataforma de conocimiento empresarial desarrollada por <strong className="text-foreground">Nexata</strong> (actualmente operando como empresa individual en Argentina, con planes de constituirse como LLC en los Estados Unidos en el futuro cercano).</p>
-          <p>Esta Politica de Privacidad describe como recopilamos, usamos, compartimos y protegemos su informacion personal cuando utiliza nuestros servicios, incluyendo nuestra aplicacion web, API y cualquier otro medio mediante el cual interactue con nosotros.</p>
-          <p>Al utilizar Nexata, usted reconoce que ha leido, comprendido y acepta los terminos de esta Politica de Privacidad.</p>
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-            <strong>Importante:</strong> No vendemos sus datos personales a terceros bajo ninguna circunstancia. Nexata esta disenada desde cero con privacidad y seguridad como principios fundamentales.
-          </div>
-        </div>
-      ) : (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>Nexata is an enterprise knowledge platform developed by <strong className="text-foreground">Nexata</strong> (currently operating as a sole proprietorship in Argentina, with plans to incorporate as an LLC in the United States in the near future).</p>
-          <p>This Privacy Policy describes how we collect, use, share, and protect your personal information when you use our services, including our web application, API, and any other means by which you interact with us.</p>
-          <p>By using Nexata, you acknowledge that you have read, understood, and agree to the terms of this Privacy Policy.</p>
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-            <strong>Important:</strong> We do not sell your personal data to third parties under any circumstances. Nexata is designed from the ground up with privacy and security as core principles.
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'scope',
-      title: isEs ? '2. Alcance' : '2. Scope',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>{isEs ? 'Esta Politica de Privacidad se aplica a:' : 'This Privacy Policy applies to:'}</p>
-          <ul className="space-y-1.5 pl-4">
-            {(isEs ? [
-              'Todos los datos personales recopilados a traves de nuestro sitio web (nexata.app)',
-              'Nuestra aplicacion web y movil',
-              'Nuestra API y cualquier integracion con servicios externos',
-              'Comunicaciones entre usted y nuestro equipo de soporte',
-              'Datos generados por su uso de nuestras funcionalidades',
-            ] : [
-              'All personal data collected through our website (nexata.app)',
-              'Our web and mobile application',
-              'Our API and any integration with external services',
-              'Communications between you and our support team',
-              'Data generated by your use of our features',
-            ]).map((item, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-          <p>{isEs ? 'No se aplica a:' : 'It does not apply to:'}</p>
-          <ul className="space-y-1.5 pl-4">
-            {(isEs ? [
-              'Informacion recopilada por sitios web o servicios de terceros enlazados desde nuestra plataforma',
-              'Practicas de privacidad de los proveedores de servicios conectados (Google, Microsoft, Dropbox, etc.)',
-            ] : [
-              'Information collected by third-party websites or services linked from our platform',
-              'Privacy practices of connected service providers (Google, Microsoft, Dropbox, etc.)',
-            ]).map((item, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ),
-    },
-    {
-      id: 'data-collected',
-      title: isEs ? '3. Informacion que Recopilamos' : '3. Information We Collect',
-      content: (
-        <div className="space-y-6 text-muted-foreground text-sm leading-relaxed">
-          {[
-            {
-              subtitle: isEs ? '3.1 Informacion que nos proporciona directamente' : '3.1 Information You Provide Directly',
-              items: isEs ? [
-                'Direccion de correo electronico, nombre completo o nombre para mostrar',
-                'Identificador unico de usuario del proveedor (ID de Google, ID de Microsoft, etc.)',
-                'Fotografia de perfil (URL) y preferencia de idioma',
-                'Tokens de acceso y refresco OAuth 2.0 (almacenados cifrados)',
-                'Permisos otorgados y metadata de la conexion',
-              ] : [
-                'Email address, full name or display name',
-                'Unique user identifier from the provider (Google ID, Microsoft ID, etc.)',
-                'Profile photo (URL) and language preference',
-                'OAuth 2.0 access and refresh tokens (stored encrypted)',
-                'Granted permissions and connection metadata',
-              ],
-            },
-            {
-              subtitle: isEs ? '3.2 Informacion que recopilamos automaticamente' : '3.2 Information We Collect Automatically',
-              items: isEs ? [
-                'Direccion IP, tipo y version de navegador, sistema operativo',
-                'Paginas visitadas, tiempo de visita y marca de tiempo',
-                'Identificadores de dispositivo y de sesion',
-                'Preguntas y consultas realizadas a Nexy',
-                'Archivos adjuntos a hilos de conversacion',
-              ] : [
-                'IP address, browser type and version, operating system',
-                'Pages visited, visit time and timestamp',
-                'Device and session identifiers',
-                'Questions and queries made to Nexy',
-                'Files attached to conversation threads',
-              ],
-            },
-            {
-              subtitle: isEs ? '3.3 Informacion que derivamos de sus datos' : '3.3 Information We Derive From Your Data',
-              items: isEs ? [
-                'Metadatos de Archivo: nombre, tipo MIME, tamano, fechas, rutas',
-                'Fragmentos de Contenido para procesamiento eficiente y recuperacion contextual',
-                'Embeddings Vectoriales: representaciones numericas para busquedas semanticas (no reversibles)',
-                'Entidades y Topicos Extraidos para mejorar organizacion y resumen',
-              ] : [
-                'File Metadata: name, MIME type, size, dates, paths',
-                'Content Chunks for efficient processing and contextual retrieval',
-                'Vector Embeddings: numerical representations for semantic search (non-reversible)',
-                'Extracted Entities and Topics to improve organization and summaries',
-              ],
-            },
-          ].map((group, i) => (
-            <div key={i} className="space-y-2">
-              <p className="font-semibold text-foreground">{group.subtitle}</p>
-              <ul className="space-y-1.5 pl-4">
-                {group.items.map((item, j) => (
-                  <li key={j} className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: 'usage',
-      title: isEs ? '4. Como Utilizamos su Informacion' : '4. How We Use Your Information',
-      content: (
-        <div className="space-y-6 text-muted-foreground text-sm leading-relaxed">
-          {[
-            {
-              subtitle: isEs ? '4.1 Propositos Esenciales' : '4.1 Essential Purposes',
-              items: isEs ? [
-                'Autenticacion y autorizacion: verificar su identidad y gestionar el acceso',
-                'Conexion y sincronizacion de servicios externos',
-                'Busqueda y recuperacion de sus archivos conectados',
-                'Funcionalidad de Nexy: responder preguntas basadas en sus archivos',
-                'Gestion de conversaciones y soporte al cliente',
-              ] : [
-                'Authentication and authorization: verify identity and manage access',
-                'Connection and synchronization of external services',
-                'Search and retrieval within your connected files',
-                'Nexy functionality: answer questions based on your files',
-                'Conversation management and customer support',
-              ],
-            },
-            {
-              subtitle: isEs ? '4.2 Mejora y Desarrollo' : '4.2 Improvement and Development',
-              items: isEs ? [
-                'Analizar el uso de caracteristicas para hacer Nexata mas util',
-                'Comprender necesidades para priorizar nuevas funcionalidades',
-                'Monitorear rendimiento del sistema y tasas de error',
-                'Usar interacciones anonimizadas para mejorar la precision de Nexy',
-              ] : [
-                'Analyze feature usage to make Nexata more useful',
-                'Understand needs to prioritize new features',
-                'Monitor system performance and error rates',
-                'Use anonymized interactions to improve Nexy accuracy',
-              ],
-            },
-          ].map((group, i) => (
-            <div key={i} className="space-y-2">
-              <p className="font-semibold text-foreground">{group.subtitle}</p>
-              <ul className="space-y-1.5 pl-4">
-                {group.items.map((item, j) => (
-                  <li key={j} className="flex items-start gap-2">
-                    <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-          <div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-1.5">
-            <p className="font-semibold text-foreground text-sm">{isEs ? 'Nunca utilizamos su informacion para:' : 'We never use your information for:'}</p>
-            <ul className="space-y-1.5 pl-4">
-              {(isEs ? [
-                'Publicidad dirigida a terceros',
-                'Vender sus datos a anunciantes o agentes de datos',
-                'Crear perfiles de usuario para marketing externo',
-                'Entrenar modelos de IA compartidos con sus datos especificos',
-              ] : [
-                'Third-party targeted advertising',
-                'Selling your data to advertisers or data brokers',
-                'Creating user profiles for external marketing',
-                'Training shared AI models with your specific data',
-              ]).map((item, i) => (
-                <li key={i} className="flex items-start gap-2">
-                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
-                  {item}
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'sharing',
-      title: isEs ? '5. Comparticion y Divulgacion' : '5. Sharing and Disclosure',
-      content: (
-        <div className="space-y-4 text-muted-foreground text-sm leading-relaxed">
-          <p>{isEs ? 'Compartimos su informacion solo en circunstancias limitadas:' : 'We share your information only in limited circumstances:'}</p>
-          {[
-            {
-              label: isEs ? 'Proveedores de Servicios Esenciales' : 'Essential Service Providers',
-              desc: isEs ? 'AWS, Google Cloud o Azure para alojamiento; proveedores de autenticacion; servicios de correo para notificaciones. Todos bajo acuerdos estrictos de confidencialidad.' : 'AWS, Google Cloud or Azure for hosting; authentication providers; email services for notifications. All under strict confidentiality agreements.',
-            },
-            {
-              label: isEs ? 'Servicios Conectados (con su autorizacion)' : 'Connected Services (with your authorization)',
-              desc: isEs ? 'Facilitamos el intercambio entre Nexata y servicios externos unicamente segun sus instrucciones. Nunca modificamos ni eliminamos datos sin su accion explicita.' : 'We facilitate data exchange between Nexata and external services only per your instructions. We never modify or delete data without your explicit action.',
-            },
-            {
-              label: isEs ? 'Requerimiento Legal' : 'Legal Requirement',
-              desc: isEs ? 'Podemos divulgar informacion cuando sea requerido por ley, proceso judicial valido, o para proteger la seguridad personal de nuestros usuarios.' : 'We may disclose information when required by law, valid judicial process, or to protect the personal safety of our users.',
-            },
-          ].map((item, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <p className="font-semibold text-foreground">{item.label}</p>
-              <p>{item.desc}</p>
-            </div>
-          ))}
-          <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
-            <strong>{isEs ? 'Nunca:' : 'Never:'}</strong> {isEs ? 'vendemos sus datos personales, compartimos contenido de archivos con anunciantes, ni proporcionamos acceso a sus embeddings a terceros.' : 'we sell your personal data, share file contents with advertisers, or provide access to your embeddings to third parties.'}
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'retention',
-      title: isEs ? '6. Retencion de Datos' : '6. Data Retention',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          {[
-            {
-              label: isEs ? 'Informacion de Cuenta' : 'Account Information',
-              desc: isEs ? 'Retenida mientras su cuenta permanece activa. Al eliminar cuenta, credenciales se revocan inmediatamente y metadatos se eliminan en 30 dias.' : 'Retained while your account remains active. Upon account deletion, credentials are immediately revoked and metadata deleted within 30 days.',
-            },
-            {
-              label: isEs ? 'Contenido Ingestado y Metadatos' : 'Ingested Content and Metadata',
-              desc: isEs ? 'Al desconectar un servicio, se inicia un periodo de gracia de 7 dias. Despues, todos los datos derivados se eliminan de forma segura.' : 'Upon disconnecting a service, a 7-day grace period begins. After that, all derived data is securely deleted.',
-            },
-            {
-              label: isEs ? 'Logs de Acceso' : 'Access Logs',
-              desc: isEs ? 'Retenidos 18 meses para seguridad y solucion de problemas, luego eliminados o anonimizados.' : 'Retained for 18 months for security and troubleshooting, then deleted or anonymized.',
-            },
-            {
-              label: isEs ? 'Historial de Conversaciones' : 'Conversation History',
-              desc: isEs ? 'Almacenado temporalmente (max 24 horas de inactividad). Ningun historial se almacena permanentemente asociado a su identidad.' : 'Stored temporarily (max 24 hours of inactivity). No history is permanently stored associated with your identity.',
-            },
-          ].map((item, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <p className="font-semibold text-foreground">{item.label}</p>
-              <p>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: 'rights',
-      title: isEs ? '7. Sus Derechos' : '7. Your Rights',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>{isEs ? 'Dependiendo de su jurisdiccion, usted puede tener los siguientes derechos:' : 'Depending on your jurisdiction, you may have the following rights:'}</p>
-          <div className="grid sm:grid-cols-2 gap-3">
-            {(isEs ? [
-              { label: 'Acceso', desc: 'Solicitar una copia de su informacion personal' },
-              { label: 'Rectificacion', desc: 'Correccion de informacion inexacta o incompleta' },
-              { label: 'Supresion', desc: 'Solicitar la eliminacion de su informacion personal' },
-              { label: 'Portabilidad', desc: 'Recibir sus datos en formato legible por maquina' },
-              { label: 'Oposicion', desc: 'Objetar el procesamiento basado en intereses legitimos' },
-              { label: 'Restriccion', desc: 'Limitar el uso de su informacion en ciertas circunstancias' },
-            ] : [
-              { label: 'Access', desc: 'Request a copy of your personal information' },
-              { label: 'Rectification', desc: 'Correct inaccurate or incomplete information' },
-              { label: 'Erasure', desc: 'Request deletion of your personal information' },
-              { label: 'Portability', desc: 'Receive your data in a machine-readable format' },
-              { label: 'Objection', desc: 'Object to processing based on legitimate interests' },
-              { label: 'Restriction', desc: 'Limit the use of your information in certain circumstances' },
-            ]).map((right, i) => (
-              <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-1">
-                <p className="font-semibold text-foreground text-sm">{right.label}</p>
-                <p className="text-xs">{right.desc}</p>
-              </div>
-            ))}
-          </div>
-          <p>{isEs ? 'Para ejercer estos derechos, contactenos en:' : 'To exercise these rights, contact us at:'} <a href="mailto:privacy@nexata.app" className="text-primary underline underline-offset-2">privacy@nexata.app</a></p>
-        </div>
-      ),
-    },
-    {
-      id: 'security',
-      title: isEs ? '8. Seguridad de los Datos' : '8. Data Security',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          {[
-            { label: isEs ? 'Cifrado en Reposo' : 'Encryption at Rest', desc: isEs ? 'AES-256-GCM para todos los datos personales almacenados, incluyendo credenciales, metadata y contenido procesado.' : 'AES-256-GCM for all stored personal data, including credentials, metadata, and processed content.' },
-            { label: isEs ? 'Cifrado en Transito' : 'Encryption in Transit', desc: isEs ? 'TLS 1.2 o superior para todas las comunicaciones entre su navegador y nuestros servidores.' : 'TLS 1.2 or higher for all communications between your browser and our servers.' },
-            { label: isEs ? 'Control de Acceso' : 'Access Control', desc: isEs ? 'RBAC y principio de privilegio minimo para todo el acceso personal y de sistema. 2FA requerido para acceso administrativo.' : 'RBAC and least-privilege principle for all personal and system access. 2FA required for administrative access.' },
-            { label: isEs ? 'Monitoreo y Auditorias' : 'Monitoring and Audits', desc: isEs ? 'Registros de auditoria completos, monitoreo continuo de actividades sospechosas, escaneos regulares de vulnerabilidades y pruebas de penetracion.' : 'Complete audit logs, continuous monitoring of suspicious activities, regular vulnerability scans, and penetration testing.' },
-          ].map((item, i) => (
-            <div key={i} className="rounded-xl border border-border bg-card p-4 space-y-1">
-              <p className="font-semibold text-foreground">{item.label}</p>
-              <p>{item.desc}</p>
-            </div>
-          ))}
-        </div>
-      ),
-    },
-    {
-      id: 'children',
-      title: isEs ? '9. Privacidad de los Menores' : '9. Children\'s Privacy',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>{isEs ? 'Nexata no esta dirigida a ninos menores de 13 anos. No recopilamos intencionalmente informacion personal de menores de dicha edad.' : 'Nexata is not directed at children under 13. We do not intentionally collect personal information from individuals under that age.'}</p>
-          <p>{isEs ? 'Si descubrimos que hemos recopilado informacion de un menor sin verificacion de consentimiento parental valido, la eliminaremos de inmediato. Si usted es padre o madre y cree que su hijo nos ha proporcionado informacion, contactenos en privacy@nexata.app.' : 'If we discover we have collected information from a minor without valid parental consent verification, we will delete it immediately. If you are a parent and believe your child has provided us with information, contact us at privacy@nexata.app.'}</p>
-        </div>
-      ),
-    },
-    {
-      id: 'changes',
-      title: isEs ? '10. Cambios en esta Politica' : '10. Changes to This Policy',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          <p>{isEs ? 'Nos reservamos el derecho de modificar esta Politica en cualquier momento. Para cambios significativos:' : 'We reserve the right to modify this Policy at any time. For significant changes:'}</p>
-          <ul className="space-y-1.5 pl-4">
-            {(isEs ? [
-              'Notificacion por correo electronico a la direccion de su cuenta',
-              'Aviso destacado en la plataforma al iniciar sesion',
-              'Explicacion clara de que cambio y por que',
-              'Periodo de 30 dias para revisar antes de que surtan efecto',
-            ] : [
-              'Email notification to your account address',
-              'Prominent notice on the platform upon login',
-              'Clear explanation of what changed and why',
-              '30-day period to review before taking effect',
-            ]).map((item, i) => (
-              <li key={i} className="flex items-start gap-2">
-                <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-primary shrink-0" />
-                {item}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ),
-    },
-    {
-      id: 'contact',
-      title: isEs ? '11. Contacto' : '11. Contact',
-      content: (
-        <div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
-          {[
-            { label: isEs ? 'Correo de Privacidad' : 'Privacy Email', value: 'privacy@nexata.app', href: 'mailto:privacy@nexata.app' },
-            { label: isEs ? 'Nombre Legal' : 'Legal Name', value: isEs ? 'Nexata (empresa individual, Argentina)' : 'Nexata (sole proprietorship, Argentina)', href: null },
-            { label: isEs ? 'Representante de Datos' : 'Data Representative', value: 'Matias Merkier', href: null },
-            { label: isEs ? 'Idiomas de Atencion' : 'Support Languages', value: isEs ? 'Espanol e Ingles' : 'Spanish and English', href: null },
-          ].map((item, i) => (
-            <div key={i} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
-              <span className="text-foreground font-semibold shrink-0">{item.label}</span>
-              {item.href ? (
-                <a href={item.href} className="text-primary underline underline-offset-2 text-right">{item.value}</a>
-              ) : (
-                <span className="text-right">{item.value}</span>
-              )}
-            </div>
-          ))}
-        </div>
-      ),
-    },
-  ];
+function GrayBulletItem({ text }: { text: string }) {
+	return (
+		<li className="flex items-start gap-2">
+			<span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-muted-foreground/40 shrink-0" />
+			<span>{text}</span>
+		</li>
+	);
+}
+
+function InfoCard({ children }: { children: React.ReactNode }) {
+	return (
+		<div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 text-sm text-foreground">
+			{children}
+		</div>
+	);
+}
+
+function LabelCard({ label, desc }: { label: string; desc: string }) {
+	return (
+		<div className="rounded-xl border border-border bg-card p-4 space-y-1">
+			<p className="font-semibold text-foreground">{label}</p>
+			<p className="text-muted-foreground text-sm">{desc}</p>
+		</div>
+	);
+}
+
+function SubGroup({ title, items }: { title: string; items: string[] }) {
+	return (
+		<div className="space-y-2">
+			<p className="font-semibold text-foreground">{title}</p>
+			<ul className="space-y-1.5 pl-4">
+				{items.map((item) => <BulletItem key={item} text={item} />)}
+			</ul>
+		</div>
+	);
+}
+
+function Section({
+	id, title, children, isLast,
+}: {
+	id: string;
+	title: string;
+	children: React.ReactNode;
+	isLast?: boolean;
+}) {
+	return (
+		<motion.div
+			id={id}
+			initial={{ opacity: 0, y: 24 }}
+			whileInView={{ opacity: 1, y: 0 }}
+			viewport={{ once: true }}
+			transition={{ duration: 0.4, ease: 'easeOut' }}
+			className="space-y-4 scroll-mt-28"
+		>
+			<h2 className="text-xl font-bold text-foreground">{title}</h2>
+			<div className="space-y-3 text-muted-foreground text-sm leading-relaxed">
+				{children}
+			</div>
+			{!isLast && <div className="border-b border-foreground/5 pt-4" />}
+		</motion.div>
+	);
 }
 
 // -------------------------------- MAIN COMPONENT --------------------------------
 
 export default function PrivacyPolicy() {
-  const navigate = useNavigate();
-  const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
-  const [activeSection, setActiveSection] = useState('intro');
+	const navigate = useNavigate();
+	const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
+	const [activeSection, setActiveSection] = useState('intro');
 
-  const sections = getSections(language);
+	const lc = { locale: language };
 
-  useEffect(() => {
-    const sectionIds = getSections(language).map((s) => s.id);
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            setActiveSection(entry.target.id);
-          }
-        });
-      },
-      { rootMargin: '-80px 0px -60% 0px' }
-    );
-    sectionIds.forEach((id) => {
-      const el = document.getElementById(id);
-      if (el) observer.observe(el);
-    });
-    return () => observer.disconnect();
-  }, [language]);
+	useEffect(() => {
+		const observer = new IntersectionObserver(
+			(entries) => {
+				for (const entry of entries) {
+					if (entry.isIntersecting) setActiveSection(entry.target.id);
+				}
+			},
+			{ rootMargin: '-80px 0px -60% 0px' },
+		);
+		for (const id of SECTION_IDS) {
+			const el = document.getElementById(id);
+			if (el) observer.observe(el);
+		}
+		return () => observer.disconnect();
+	}, []);
 
-  const locale = { locale: language };
-  const navSections = [
-    { id: 'hero', label: navbar_nav_home({}, locale) },
-    { id: 'intro', label: navbar_nav_platform({}, locale) },
-    { id: 'nexy', label: navbar_nav_nexy({}, locale) },
-    { id: 'usecases', label: navbar_nav_use_cases({}, locale) },
-    { id: 'features', label: navbar_nav_features({}, locale) },
-  ];
+	const tocSections = [
+		{ id: 'intro', title: pp_intro_title({}, lc) },
+		{ id: 'scope', title: pp_scope_title({}, lc) },
+		{ id: 'data-collected', title: pp_data_title({}, lc) },
+		{ id: 'usage', title: pp_usage_title({}, lc) },
+		{ id: 'sharing', title: pp_sharing_title({}, lc) },
+		{ id: 'retention', title: pp_retention_title({}, lc) },
+		{ id: 'rights', title: pp_rights_title({}, lc) },
+		{ id: 'security', title: pp_security_title({}, lc) },
+		{ id: 'children', title: pp_children_title({}, lc) },
+		{ id: 'changes', title: pp_changes_title({}, lc) },
+		{ id: 'contact', title: pp_contact_title({}, lc) },
+	];
 
-  const scrollToSection = (id: string) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-      setActiveSection(id);
-    }
-  };
+	const navSections = [
+		{ id: 'hero', label: navbar_nav_home({}, lc) },
+		{ id: 'intro', label: navbar_nav_platform({}, lc) },
+		{ id: 'nexy', label: navbar_nav_nexy({}, lc) },
+		{ id: 'usecases', label: navbar_nav_use_cases({}, lc) },
+		{ id: 'features', label: navbar_nav_features({}, lc) },
+	];
 
-  return (
-    <div className="min-h-screen w-full bg-background text-foreground flex flex-col">
+	const scrollToSection = (id: string) => {
+		const el = document.getElementById(id);
+		if (el) {
+			el.scrollIntoView({ behavior: 'smooth' });
+			setActiveSection(id);
+		}
+	};
 
-      {/* Navbar */}
-      <Navbar
-        language={language}
-        onLanguageChange={setLanguage}
-        navSections={navSections}
-        mobileMenuSections={navSections}
-        onScrollToSection={() => navigate({ to: '/home' })}
-        onLogoClick={() => navigate({ to: '/home' })}
-        showMobileLogin
-      />
+	return (
+		<div className="min-h-screen w-full bg-background text-foreground flex flex-col">
+			<Navbar
+				language={language}
+				onLanguageChange={setLanguage}
+				navSections={navSections}
+				mobileMenuSections={navSections}
+				onScrollToSection={() => navigate({ to: '/home' })}
+				onLogoClick={() => navigate({ to: '/home' })}
+				showMobileLogin
+			/>
 
-      <main className="flex-1 pt-20 pb-20">
-        <div className="max-w-6xl mx-auto px-6">
+			<main className="flex-1 pt-20 pb-20">
+				<div className="max-w-6xl mx-auto px-6">
 
-          {/* Hero */}
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
-            className="text-center py-16 space-y-4"
-          >
-            <h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
-              {language === 'es' ? 'Politica de Privacidad' : 'Privacy Policy'}
-            </h1>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              {language === 'es'
-                ? 'Ultima actualizacion: 16 de marzo de 2026 · Version 1.0'
-                : 'Last updated: March 16, 2026 · Version 1.0'}
-            </p>
-          </motion.div>
+					{/* Hero */}
+					<motion.div
+						initial={{ opacity: 0, y: -20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.6 }}
+						className="text-center py-16 space-y-4"
+					>
+						<h1 className="text-4xl sm:text-5xl font-bold text-foreground tracking-tight">
+							{pp_title({}, lc)}
+						</h1>
+						<p className="text-muted-foreground text-lg max-w-xl mx-auto">
+							{pp_last_updated({}, lc)}
+						</p>
+					</motion.div>
 
-          {/* Layout: sidebar + content */}
-          <div className="grid lg:grid-cols-[240px_1fr] gap-10 items-start">
+					<div className="grid lg:grid-cols-[240px_1fr] gap-10 items-start">
 
-            {/* Sidebar TOC — sticky, solo desktop */}
-            <aside className="hidden lg:block lg:sticky lg:top-24 space-y-1">
-              {sections.map((sec) => (
-                <button
-                  key={sec.id}
-                  onClick={() => scrollToSection(sec.id)}
-                  className={`w-full text-left text-xs px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer
-                    ${activeSection === sec.id
-                      ? 'bg-primary/10 text-primary font-semibold'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
-                    }`}
-                >
-                  {sec.title}
-                </button>
-              ))}
-            </aside>
+						{/* Sidebar TOC */}
+						<aside className="hidden lg:block lg:sticky lg:top-24 space-y-1">
+							{tocSections.map((sec) => (
+								<button
+									key={sec.id}
+									type="button"
+									onClick={() => scrollToSection(sec.id)}
+									className={`w-full text-left text-xs px-3 py-2 rounded-lg transition-all duration-150 cursor-pointer ${
+										activeSection === sec.id
+											? 'bg-primary/10 text-primary font-semibold'
+											: 'text-muted-foreground hover:text-foreground hover:bg-foreground/5'
+									}`}
+								>
+									{sec.title}
+								</button>
+							))}
+						</aside>
 
-            {/* Content */}
-            <div className="space-y-10">
-              {sections.map((sec, i) => (
-                <motion.div
-                  key={sec.id}
-                  id={sec.id}
-                  initial={{ opacity: 0, y: 24 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.4, delay: i * 0.03, ease: 'easeOut' }}
-                  className="space-y-4 scroll-mt-28"
-                >
-                  <h2 className="text-xl font-bold text-foreground">{sec.title}</h2>
-                  <div>{sec.content}</div>
-                  {i < sections.length - 1 && (
-                    <div className="border-b border-foreground/5 pt-4" />
-                  )}
-                </motion.div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </main>
+						{/* Content */}
+						<div className="space-y-10">
 
-      {/* Footer */}
-      <footer className="border-t border-foreground/5 px-6 py-8">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <img src="/nexata_logo.png" alt="Nexata" className="w-7 h-7 object-contain" />
-            <span className="text-sm text-muted-foreground">
-              {language === 'es' ? 'Tu conocimiento empresarial, unificado.' : 'Your enterprise knowledge, unified.'}
-            </span>
-          </div>
-          <p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Nexata</p>
-        </div>
-      </footer>
+							{/* 1. Intro */}
+							<Section id="intro" title={pp_intro_title({}, lc)}>
+								<p>
+									{pp_intro_p1_a({}, lc)}{' '}
+									<strong className="text-foreground">Nexata</strong>{' '}
+									{pp_intro_p1_b({}, lc)}
+								</p>
+								<p>{pp_intro_p2({}, lc)}</p>
+								<p>{pp_intro_p3({}, lc)}</p>
+								<InfoCard>
+									<strong>{pp_intro_notice_label({}, lc)}:</strong>{' '}
+									{pp_intro_notice_text({}, lc)}
+								</InfoCard>
+							</Section>
 
-    </div>
-  );
+							{/* 2. Scope */}
+							<Section id="scope" title={pp_scope_title({}, lc)}>
+								<p>{pp_scope_applies_to({}, lc)}</p>
+								<ul className="space-y-1.5 pl-4">
+									{[pp_scope_item_1, pp_scope_item_2, pp_scope_item_3, pp_scope_item_4, pp_scope_item_5].map((fn) => (
+										<BulletItem key={fn({}, lc)} text={fn({}, lc)} />
+									))}
+								</ul>
+								<p>{pp_scope_not_applies_to({}, lc)}</p>
+								<ul className="space-y-1.5 pl-4">
+									{[pp_scope_not_item_1, pp_scope_not_item_2].map((fn) => (
+										<GrayBulletItem key={fn({}, lc)} text={fn({}, lc)} />
+									))}
+								</ul>
+							</Section>
+
+							{/* 3. Data Collected */}
+							<Section id="data-collected" title={pp_data_title({}, lc)}>
+								<div className="space-y-6">
+									<SubGroup
+										title={pp_data_s31_title({}, lc)}
+										items={[pp_data_s31_item_1, pp_data_s31_item_2, pp_data_s31_item_3, pp_data_s31_item_4, pp_data_s31_item_5].map((fn) => fn({}, lc))}
+									/>
+									<SubGroup
+										title={pp_data_s32_title({}, lc)}
+										items={[pp_data_s32_item_1, pp_data_s32_item_2, pp_data_s32_item_3, pp_data_s32_item_4, pp_data_s32_item_5].map((fn) => fn({}, lc))}
+									/>
+									<SubGroup
+										title={pp_data_s33_title({}, lc)}
+										items={[pp_data_s33_item_1, pp_data_s33_item_2, pp_data_s33_item_3, pp_data_s33_item_4].map((fn) => fn({}, lc))}
+									/>
+								</div>
+							</Section>
+
+							{/* 4. Usage */}
+							<Section id="usage" title={pp_usage_title({}, lc)}>
+								<div className="space-y-6">
+									<SubGroup
+										title={pp_usage_s41_title({}, lc)}
+										items={[pp_usage_s41_item_1, pp_usage_s41_item_2, pp_usage_s41_item_3, pp_usage_s41_item_4, pp_usage_s41_item_5].map((fn) => fn({}, lc))}
+									/>
+									<SubGroup
+										title={pp_usage_s42_title({}, lc)}
+										items={[pp_usage_s42_item_1, pp_usage_s42_item_2, pp_usage_s42_item_3, pp_usage_s42_item_4].map((fn) => fn({}, lc))}
+									/>
+									<div className="rounded-xl border border-border bg-muted/30 px-4 py-3 space-y-1.5">
+										<p className="font-semibold text-foreground text-sm">{pp_usage_never_label({}, lc)}</p>
+										<ul className="space-y-1.5 pl-4">
+											{[pp_usage_never_item_1, pp_usage_never_item_2, pp_usage_never_item_3, pp_usage_never_item_4].map((fn) => (
+												<GrayBulletItem key={fn({}, lc)} text={fn({}, lc)} />
+											))}
+										</ul>
+									</div>
+								</div>
+							</Section>
+
+							{/* 5. Sharing */}
+							<Section id="sharing" title={pp_sharing_title({}, lc)}>
+								<p>{pp_sharing_intro({}, lc)}</p>
+								<div className="space-y-3">
+									<LabelCard label={pp_sharing_provider_label({}, lc)} desc={pp_sharing_provider_desc({}, lc)} />
+									<LabelCard label={pp_sharing_connected_label({}, lc)} desc={pp_sharing_connected_desc({}, lc)} />
+									<LabelCard label={pp_sharing_legal_label({}, lc)} desc={pp_sharing_legal_desc({}, lc)} />
+								</div>
+								<InfoCard>
+									<strong>{pp_sharing_never_label({}, lc)}:</strong>{' '}
+									{pp_sharing_never_text({}, lc)}
+								</InfoCard>
+							</Section>
+
+							{/* 6. Retention */}
+							<Section id="retention" title={pp_retention_title({}, lc)}>
+								<div className="space-y-3">
+									<LabelCard label={pp_retention_account_label({}, lc)} desc={pp_retention_account_desc({}, lc)} />
+									<LabelCard label={pp_retention_content_label({}, lc)} desc={pp_retention_content_desc({}, lc)} />
+									<LabelCard label={pp_retention_logs_label({}, lc)} desc={pp_retention_logs_desc({}, lc)} />
+									<LabelCard label={pp_retention_history_label({}, lc)} desc={pp_retention_history_desc({}, lc)} />
+								</div>
+							</Section>
+
+							{/* 7. Rights */}
+							<Section id="rights" title={pp_rights_title({}, lc)}>
+								<p>{pp_rights_intro({}, lc)}</p>
+								<div className="grid sm:grid-cols-2 gap-3">
+									{[
+									{ label: pp_rights_access_label({}, lc), desc: pp_rights_access_desc({}, lc) },
+									{ label: pp_rights_rectification_label({}, lc), desc: pp_rights_rectification_desc({}, lc) },
+									{ label: pp_rights_erasure_label({}, lc), desc: pp_rights_erasure_desc({}, lc) },
+									{ label: pp_rights_portability_label({}, lc), desc: pp_rights_portability_desc({}, lc) },
+									{ label: pp_rights_objection_label({}, lc), desc: pp_rights_objection_desc({}, lc) },
+									{ label: pp_rights_restriction_label({}, lc), desc: pp_rights_restriction_desc({}, lc) },
+								].map(({ label, desc }) => (
+									<div key={label} className="rounded-xl border border-border bg-card p-4 space-y-1">
+										<p className="font-semibold text-foreground text-sm">{label}</p>
+										<p className="text-xs text-muted-foreground">{desc}</p>
+										</div>
+									))}
+								</div>
+								<p>
+									{pp_rights_contact({}, lc)}{' '}
+									<a href="mailto:privacy@nexata.app" className="text-primary underline underline-offset-2">
+										privacy@nexata.app
+									</a>
+								</p>
+							</Section>
+
+							{/* 8. Security */}
+							<Section id="security" title={pp_security_title({}, lc)}>
+								<div className="space-y-3">
+									<LabelCard label={pp_security_rest_label({}, lc)} desc={pp_security_rest_desc({}, lc)} />
+									<LabelCard label={pp_security_transit_label({}, lc)} desc={pp_security_transit_desc({}, lc)} />
+									<LabelCard label={pp_security_access_label({}, lc)} desc={pp_security_access_desc({}, lc)} />
+									<LabelCard label={pp_security_monitoring_label({}, lc)} desc={pp_security_monitoring_desc({}, lc)} />
+								</div>
+							</Section>
+
+							{/* 9. Children */}
+							<Section id="children" title={pp_children_title({}, lc)}>
+								<p>{pp_children_p1({}, lc)}</p>
+								<p>{pp_children_p2({}, lc)}</p>
+							</Section>
+
+							{/* 10. Changes */}
+							<Section id="changes" title={pp_changes_title({}, lc)}>
+								<p>{pp_changes_intro({}, lc)}</p>
+								<ul className="space-y-1.5 pl-4">
+									{[pp_changes_item_1, pp_changes_item_2, pp_changes_item_3, pp_changes_item_4].map((fn) => (
+										<BulletItem key={fn({}, lc)} text={fn({}, lc)} />
+									))}
+								</ul>
+							</Section>
+
+							{/* 11. Contact */}
+							<Section id="contact" title={pp_contact_title({}, lc)} isLast>
+								<div className="space-y-3">
+									<div className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
+										<span className="font-semibold text-foreground shrink-0 text-sm">{pp_contact_email_label({}, lc)}</span>
+										<a href="mailto:privacy@nexata.app" className="text-primary underline underline-offset-2 text-right text-sm">
+											privacy@nexata.app
+										</a>
+									</div>
+									{[
+									{ label: pp_contact_legal_name_label({}, lc), value: pp_contact_legal_name_value({}, lc) },
+									{ label: pp_contact_representative_label({}, lc), value: pp_contact_representative_value({}, lc) },
+									{ label: pp_contact_languages_label({}, lc), value: pp_contact_languages_value({}, lc) },
+								].map(({ label, value }) => (
+									<div key={label} className="flex items-start justify-between gap-4 rounded-xl border border-border bg-card p-4">
+										<span className="font-semibold text-foreground shrink-0 text-sm">{label}</span>
+										<span className="text-right text-sm text-muted-foreground">{value}</span>
+										</div>
+									))}
+								</div>
+							</Section>
+
+						</div>
+					</div>
+				</div>
+			</main>
+
+			<footer className="border-t border-foreground/5 px-6 py-8">
+				<div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+					<div className="flex items-center gap-3">
+						<img src="/nexata_logo.png" alt="Nexata" className="w-7 h-7 object-contain" />
+						<span className="text-sm text-muted-foreground">{pp_footer_tagline({}, lc)}</span>
+					</div>
+					<p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Nexata</p>
+				</div>
+			</footer>
+		</div>
+	);
 }

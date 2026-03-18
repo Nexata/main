@@ -929,5 +929,156 @@
 			"ask_questions_success": "Preguntas generadas",
 			"ask_questions_error": "Error al generar preguntas"
 		}
+	},
+
+	"privacy_policy": {
+		"title": "Politica de Privacidad",
+		"last_updated": "Ultima actualizacion: 16 de marzo de 2026 · Version 1.0",
+		"footer_tagline": "Tu conocimiento empresarial, unificado.",
+
+		"intro": {
+			"title": "1. Introduccion",
+			"p1_a": "Nexata es una plataforma de conocimiento empresarial desarrollada por",
+			"p1_b": "(actualmente operando como empresa individual en Argentina, con planes de constituirse como LLC en los Estados Unidos en el futuro cercano).",
+			"p2": "Esta Politica de Privacidad describe como recopilamos, usamos, compartimos y protegemos su informacion personal cuando utiliza nuestros servicios, incluyendo nuestra aplicacion web, API y cualquier otro medio mediante el cual interactue con nosotros.",
+			"p3": "Al utilizar Nexata, usted reconoce que ha leido, comprendido y acepta los terminos de esta Politica de Privacidad.",
+			"notice_label": "Importante",
+			"notice_text": "No vendemos sus datos personales a terceros bajo ninguna circunstancia. Nexata esta disenada desde cero con privacidad y seguridad como principios fundamentales."
+		},
+
+		"scope": {
+			"title": "2. Alcance",
+			"applies_to": "Esta Politica de Privacidad se aplica a:",
+			"item_1": "Todos los datos personales recopilados a traves de nuestro sitio web (nexata.app)",
+			"item_2": "Nuestra aplicacion web y movil",
+			"item_3": "Nuestra API y cualquier integracion con servicios externos",
+			"item_4": "Comunicaciones entre usted y nuestro equipo de soporte",
+			"item_5": "Datos generados por su uso de nuestras funcionalidades",
+			"not_applies_to": "No se aplica a:",
+			"not_item_1": "Informacion recopilada por sitios web o servicios de terceros enlazados desde nuestra plataforma",
+			"not_item_2": "Practicas de privacidad de los proveedores de servicios conectados (Google, Microsoft, Dropbox, etc.)"
+		},
+
+		"data_collected": {
+			"title": "3. Informacion que Recopilamos",
+			"s31_title": "3.1 Informacion que nos proporciona directamente",
+			"s31_item_1": "Direccion de correo electronico, nombre completo o nombre para mostrar",
+			"s31_item_2": "Identificador unico de usuario del proveedor (ID de Google, ID de Microsoft, etc.)",
+			"s31_item_3": "Fotografia de perfil (URL) y preferencia de idioma",
+			"s31_item_4": "Tokens de acceso y refresco OAuth 2.0 (almacenados cifrados)",
+			"s31_item_5": "Permisos otorgados y metadata de la conexion",
+			"s32_title": "3.2 Informacion que recopilamos automaticamente",
+			"s32_item_1": "Direccion IP, tipo y version de navegador, sistema operativo",
+			"s32_item_2": "Paginas visitadas, tiempo de visita y marca de tiempo",
+			"s32_item_3": "Identificadores de dispositivo y de sesion",
+			"s32_item_4": "Preguntas y consultas realizadas a Nexy",
+			"s32_item_5": "Archivos adjuntos a hilos de conversacion",
+			"s33_title": "3.3 Informacion que derivamos de sus datos",
+			"s33_item_1": "Metadatos de Archivo: nombre, tipo MIME, tamano, fechas, rutas",
+			"s33_item_2": "Fragmentos de Contenido para procesamiento eficiente y recuperacion contextual",
+			"s33_item_3": "Embeddings Vectoriales: representaciones numericas para busquedas semanticas (no reversibles)",
+			"s33_item_4": "Entidades y Topicos Extraidos para mejorar organizacion y resumen"
+		},
+
+		"usage": {
+			"title": "4. Como Utilizamos su Informacion",
+			"s41_title": "4.1 Propositos Esenciales",
+			"s41_item_1": "Autenticacion y autorizacion: verificar su identidad y gestionar el acceso",
+			"s41_item_2": "Conexion y sincronizacion de servicios externos",
+			"s41_item_3": "Busqueda y recuperacion de sus archivos conectados",
+			"s41_item_4": "Funcionalidad de Nexy: responder preguntas basadas en sus archivos",
+			"s41_item_5": "Gestion de conversaciones y soporte al cliente",
+			"s42_title": "4.2 Mejora y Desarrollo",
+			"s42_item_1": "Analizar el uso de caracteristicas para hacer Nexata mas util",
+			"s42_item_2": "Comprender necesidades para priorizar nuevas funcionalidades",
+			"s42_item_3": "Monitorear rendimiento del sistema y tasas de error",
+			"s42_item_4": "Usar interacciones anonimizadas para mejorar la precision de Nexy",
+			"never_label": "Nunca utilizamos su informacion para:",
+			"never_item_1": "Publicidad dirigida a terceros",
+			"never_item_2": "Vender sus datos a anunciantes o agentes de datos",
+			"never_item_3": "Crear perfiles de usuario para marketing externo",
+			"never_item_4": "Entrenar modelos de IA compartidos con sus datos especificos"
+		},
+
+		"sharing": {
+			"title": "5. Comparticion y Divulgacion",
+			"intro": "Compartimos su informacion solo en circunstancias limitadas:",
+			"provider_label": "Proveedores de Servicios Esenciales",
+			"provider_desc": "AWS, Google Cloud o Azure para alojamiento; proveedores de autenticacion; servicios de correo para notificaciones. Todos bajo acuerdos estrictos de confidencialidad.",
+			"connected_label": "Servicios Conectados (con su autorizacion)",
+			"connected_desc": "Facilitamos el intercambio entre Nexata y servicios externos unicamente segun sus instrucciones. Nunca modificamos ni eliminamos datos sin su accion explicita.",
+			"legal_label": "Requerimiento Legal",
+			"legal_desc": "Podemos divulgar informacion cuando sea requerido por ley, proceso judicial valido, o para proteger la seguridad personal de nuestros usuarios.",
+			"never_label": "Nunca",
+			"never_text": "vendemos sus datos personales, compartimos contenido de archivos con anunciantes, ni proporcionamos acceso a sus embeddings a terceros."
+		},
+
+		"retention": {
+			"title": "6. Retencion de Datos",
+			"account_label": "Informacion de Cuenta",
+			"account_desc": "Retenida mientras su cuenta permanece activa. Al eliminar cuenta, credenciales se revocan inmediatamente y metadatos se eliminan en 30 dias.",
+			"content_label": "Contenido Ingestado y Metadatos",
+			"content_desc": "Al desconectar un servicio, se inicia un periodo de gracia de 7 dias. Despues, todos los datos derivados se eliminan de forma segura.",
+			"logs_label": "Logs de Acceso",
+			"logs_desc": "Retenidos 18 meses para seguridad y solucion de problemas, luego eliminados o anonimizados.",
+			"history_label": "Historial de Conversaciones",
+			"history_desc": "Almacenado temporalmente (max 24 horas de inactividad). Ningun historial se almacena permanentemente asociado a su identidad."
+		},
+
+		"rights": {
+			"title": "7. Sus Derechos",
+			"intro": "Dependiendo de su jurisdiccion, usted puede tener los siguientes derechos:",
+			"access_label": "Acceso",
+			"access_desc": "Solicitar una copia de su informacion personal",
+			"rectification_label": "Rectificacion",
+			"rectification_desc": "Correccion de informacion inexacta o incompleta",
+			"erasure_label": "Supresion",
+			"erasure_desc": "Solicitar la eliminacion de su informacion personal",
+			"portability_label": "Portabilidad",
+			"portability_desc": "Recibir sus datos en formato legible por maquina",
+			"objection_label": "Oposicion",
+			"objection_desc": "Objetar el procesamiento basado en intereses legitimos",
+			"restriction_label": "Restriccion",
+			"restriction_desc": "Limitar el uso de su informacion en ciertas circunstancias",
+			"contact": "Para ejercer estos derechos, contactenos en:"
+		},
+
+		"security": {
+			"title": "8. Seguridad de los Datos",
+			"rest_label": "Cifrado en Reposo",
+			"rest_desc": "AES-256-GCM para todos los datos personales almacenados, incluyendo credenciales, metadata y contenido procesado.",
+			"transit_label": "Cifrado en Transito",
+			"transit_desc": "TLS 1.2 o superior para todas las comunicaciones entre su navegador y nuestros servidores.",
+			"access_label": "Control de Acceso",
+			"access_desc": "RBAC y principio de privilegio minimo para todo el acceso personal y de sistema. 2FA requerido para acceso administrativo.",
+			"monitoring_label": "Monitoreo y Auditorias",
+			"monitoring_desc": "Registros de auditoria completos, monitoreo continuo de actividades sospechosas, escaneos regulares de vulnerabilidades y pruebas de penetracion."
+		},
+
+		"children": {
+			"title": "9. Privacidad de los Menores",
+			"p1": "Nexata no esta dirigida a ninos menores de 13 anos. No recopilamos intencionalmente informacion personal de menores de dicha edad.",
+			"p2": "Si descubrimos que hemos recopilado informacion de un menor sin verificacion de consentimiento parental valido, la eliminaremos de inmediato. Si usted es padre o madre y cree que su hijo nos ha proporcionado informacion, contactenos en privacy@nexata.app."
+		},
+
+		"changes": {
+			"title": "10. Cambios en esta Politica",
+			"intro": "Nos reservamos el derecho de modificar esta Politica en cualquier momento. Para cambios significativos:",
+			"item_1": "Notificacion por correo electronico a la direccion de su cuenta",
+			"item_2": "Aviso destacado en la plataforma al iniciar sesion",
+			"item_3": "Explicacion clara de que cambio y por que",
+			"item_4": "Periodo de 30 dias para revisar antes de que surtan efecto"
+		},
+
+		"contact": {
+			"title": "11. Contacto",
+			"email_label": "Correo de Privacidad",
+			"legal_name_label": "Nombre Legal",
+			"legal_name_value": "Nexata (empresa individual, Argentina)",
+			"representative_label": "Representante de Datos",
+			"representative_value": "Matias Merkier",
+			"languages_label": "Idiomas de Atencion",
+			"languages_value": "Espanol e Ingles"
+		}
 	}
 }
