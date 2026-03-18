@@ -34,12 +34,7 @@ import {
 } from '@/components/ui/dialog';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-} from '@/components/ui/select';
+import { LanguageSelector } from '@/components/language-selector/language-selector';
 import { Separator } from '@/components/ui/separator';
 import {
 	Tooltip,
@@ -47,7 +42,6 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import { clearTokens } from '@/lib/auth';
 import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
 import { getTenantSessions } from '@/lib/tenant-session';
@@ -998,63 +992,6 @@ function ConfirmDeleteApiKeyModal({
 				</DialogFooter>
 			</DialogContent>
 		</Dialog>
-	);
-}
-
-// ------------------------------------------------------------------------------------------
-// ------------------------------------- LANGUAGE SELECTOR ----------------------------------
-// ------------------------------------------------------------------------------------------
-
-function LanguageSelector({
-	value,
-	onChange,
-}: {
-	value: Language;
-	onChange: (v: Language) => void;
-}) {
-	const current =
-		LANGUAGE_OPTIONS.find((l) => l.value === value) ?? LANGUAGE_OPTIONS[0];
-
-	return (
-		<Select value={value} onValueChange={(v) => onChange(v as Language)}>
-			<SelectTrigger
-				className="
-          h-8
-          min-w-18
-          px-2
-          gap-2
-          border-none
-          bg-transparent
-          hover:bg-muted/60
-          flex items-center
-        "
-			>
-				<Flag country={current.country} />
-				<span className="hidden sm:inline text-xs font-medium uppercase">
-					{current.value}
-				</span>
-			</SelectTrigger>
-
-			<SelectContent align="start">
-				{LANGUAGE_OPTIONS.map((lang) => (
-					<SelectItem key={lang.value} value={lang.value}>
-						<div className="flex items-center gap-2">
-							<Flag country={lang.country} />
-							<span className="text-sm uppercase">{lang.value}</span>
-						</div>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
-function Flag({ country }: { country: string }) {
-	return (
-		<span
-			className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
-			style={{ width: 18, height: 12 }}
-		/>
 	);
 }
 

@@ -215,6 +215,16 @@
 		}
 	},
 
+	"navbar": {
+		"login": "Log In",
+		"toggle_theme": "Toggle theme",
+		"nav_home": "Home",
+		"nav_platform": "Platform",
+		"nav_nexy": "Nexy",
+		"nav_use_cases": "Use Cases",
+		"nav_features": "Features"
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Login"

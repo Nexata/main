@@ -215,6 +215,16 @@
 		}
 	},
 
+	"navbar": {
+		"login": "Iniciar Sesión",
+		"toggle_theme": "Cambiar tema",
+		"nav_home": "Inicio",
+		"nav_platform": "Plataforma",
+		"nav_nexy": "Nexy",
+		"nav_use_cases": "Casos de uso",
+		"nav_features": "Funciones"
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Iniciar sesión"

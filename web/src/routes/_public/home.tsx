@@ -12,33 +12,19 @@ import {
   Lock,
   LogIn,
   Mail,
-  Menu,
   MessageCircle,
   MessageSquare,
   Paperclip,
   Quote,
   Rocket,
   Search,
-  X,
   Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import { IoMoon, IoSunny } from 'react-icons/io5';
 import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
-import { useTheme } from '@/components/theme-provider';
+import { Navbar } from '@/components/navbar/navbar';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-} from '@/components/ui/select';
-import {
-	Tooltip,
-	TooltipContent,
-	TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import {
 	DINAMIC_DATA_SOURCES,
@@ -477,12 +463,9 @@ const fadeUp = {
 
 export default function Home() {
 	const navigate = useNavigate();
-	const { theme, setTheme } = useTheme();
 	const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
 	const [registerOpen, setRegisterOpen] = useState(false);
-	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-	const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
 	const c = getContent(language);
 
 	const scrollToSection = (id: string) => {
@@ -495,98 +478,15 @@ export default function Home() {
 	return (
 		<div className="min-h-screen w-full bg-background text-foreground flex flex-col relative">
 			{/* -------------------- Navbar -------------------- */}
-			<nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-foreground/5">
-				<div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4">
-					<div className="flex items-center gap-6">
-						<img
-							src="/nexata_logo.png"
-							alt="Nexata"
-							className="w-9 h-9 object-contain cursor-pointer"
-							onClick={() => scrollToSection('hero')}
-						/>
-
-						<div className="hidden md:flex items-center gap-1">
-							{c.nav.sections.map((sec) => (
-								<button
-									key={sec.id}
-									onClick={() => scrollToSection(sec.id)}
-									className="cursor-pointer text-sm font-medium text-muted-foreground px-3 py-1.5 rounded-md transition-colors hover:text-foreground hover:bg-foreground/5"
-								>
-									{sec.label}
-								</button>
-							))}
-						</div>
-					</div>
-
-					<div className="flex items-center gap-4">
-						<LanguageSelector value={language} onChange={setLanguage} />
-						<Tooltip>
-							<TooltipTrigger>
-								<span
-									className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors text-lg"
-									onClick={toggleTheme}
-								>
-									{theme === 'dark' ? <IoSunny /> : <IoMoon />}
-								</span>
-							</TooltipTrigger>
-							<TooltipContent side="bottom">
-								{language === 'es' ? 'Cambiar tema' : 'Toggle theme'}
-							</TooltipContent>
-						</Tooltip>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="hidden sm:inline-flex gap-1.5"
-							onClick={() => navigate({ to: '/login' })}
-						>
-							<LogIn className="w-3.5 h-3.5" />
-							{c.hero.login}
-						</Button>
-
-						{/* Mobile hamburger */}
-						<button
-							className="md:hidden cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-							onClick={() => setMobileMenuOpen((v) => !v)}
-						>
-							{mobileMenuOpen ? (
-								<X className="w-5 h-5" />
-							) : (
-								<Menu className="w-5 h-5" />
-							)}
-						</button>
-					</div>
-				</div>
-
-				{/* Mobile menu dropdown */}
-				{mobileMenuOpen && (
-					<div className="md:hidden border-t border-foreground/5 bg-background/95 backdrop-blur-xl px-4 pb-4 pt-2 flex flex-col gap-1">
-						{c.nav.sections.map((sec) => (
-							<button
-								key={sec.id}
-								onClick={() => {
-									scrollToSection(sec.id);
-									setMobileMenuOpen(false);
-								}}
-								className="cursor-pointer text-sm font-medium text-muted-foreground px-3 py-2 rounded-md transition-colors hover:text-foreground hover:bg-foreground/5 text-left"
-							>
-								{sec.label}
-							</button>
-						))}
-						<Button
-							variant="ghost"
-							size="sm"
-							className="sm:hidden justify-start gap-1.5 mt-1"
-							onClick={() => {
-								navigate({ to: '/login' });
-								setMobileMenuOpen(false);
-							}}
-						>
-							<LogIn className="w-3.5 h-3.5" />
-							{c.hero.login}
-						</Button>
-					</div>
-				)}
-			</nav>
+			<Navbar
+				language={language}
+				onLanguageChange={setLanguage}
+				navSections={c.nav.sections}
+				mobileMenuSections={c.nav.sections}
+				onScrollToSection={scrollToSection}
+				onLogoClick={() => scrollToSection('hero')}
+				showMobileLogin
+			/>
 
 			{/* -------------------- Content -------------------- */}
 			<main className="flex flex-col">
@@ -965,62 +865,6 @@ export default function Home() {
 				language={language}
 			/>
 		</div>
-	);
-}
-
-// -------------------------------- LANGUAGE SELECTOR --------------------------------
-function LanguageSelector({
-	value,
-	onChange,
-}: {
-	value: Language;
-	onChange: (v: Language) => void;
-}) {
-	const current =
-		LANGUAGE_OPTIONS.find((l) => l.value === value) ?? LANGUAGE_OPTIONS[0];
-
-	return (
-		<Select value={value} onValueChange={(v) => onChange(v as Language)}>
-			<SelectTrigger
-				className="
-          h-8
-          min-w-18
-          px-2
-          gap-2
-          border-none
-          bg-transparent
-          hover:bg-muted/60
-          flex items-center
-        "
-			>
-				<Flag country={current.country} />
-				<span className="hidden sm:inline text-xs font-medium uppercase text-foreground">
-					{current.value}
-				</span>
-			</SelectTrigger>
-
-			<SelectContent align="start" className="bg-background text-foreground">
-				{LANGUAGE_OPTIONS.map((lang) => (
-					<SelectItem key={lang.value} value={lang.value}>
-						<div className="flex items-center gap-2">
-							<Flag country={lang.country} />
-							<span className="text-sm uppercase text-foreground">
-								{lang.value}
-							</span>
-						</div>
-					</SelectItem>
-				))}
-			</SelectContent>
-		</Select>
-	);
-}
-
-function Flag({ country }: { country: string }) {
-	return (
-		<span
-			className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
-			style={{ width: 18, height: 12 }}
-		/>
 	);
 }
 

@@ -1,24 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { useState } from 'react';
-import { useTheme } from '@/components/theme-provider';
-import { IoMoon, IoSunny } from 'react-icons/io5';
-import { Button } from '@/components/ui/button';
-import { LogIn, Menu, X } from 'lucide-react';
 import { useNavigate } from '@tanstack/react-router';
+import { Navbar } from '@/components/navbar/navbar';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import type { Language } from '@/lib/user';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-} from '@/components/ui/select';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
+	'navbar.nav_home' as navbar_nav_home,
+	'navbar.nav_platform' as navbar_nav_platform,
+	'navbar.nav_nexy' as navbar_nav_nexy,
+	'navbar.nav_use_cases' as navbar_nav_use_cases,
+	'navbar.nav_features' as navbar_nav_features,
+} from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_public/privacy-policy')({
   component: PrivacyPolicy,
@@ -33,13 +26,6 @@ type Section = {
 };
 
 // -------------------------------- CONTENT --------------------------------
-
-const fadeUp = {
-  initial: { opacity: 0, y: 24 },
-  whileInView: { opacity: 1, y: 0 },
-  viewport: { once: true },
-  transition: { duration: 0.5, ease: 'easeOut' },
-};
 
 function getSections(language: Language): Section[] {
   const isEs = language === 'es';
@@ -429,56 +415,23 @@ function getSections(language: Language): Section[] {
   ];
 }
 
-// -------------------------------- LANGUAGE SELECTOR --------------------------------
-
-function LanguageSelector({
-  value,
-  onChange,
-}: {
-  value: Language;
-  onChange: (v: Language) => void;
-}) {
-  const current = LANGUAGE_OPTIONS.find((l) => l.value === value) ?? LANGUAGE_OPTIONS[0];
-  return (
-    <Select value={value} onValueChange={(v) => onChange(v as Language)}>
-      <SelectTrigger className="h-8 min-w-18 px-2 gap-2 border-none bg-transparent hover:bg-muted/60 flex items-center">
-        <Flag country={current.country} />
-        <span className="hidden sm:inline text-xs font-medium uppercase text-foreground">{current.value}</span>
-      </SelectTrigger>
-      <SelectContent align="start" className="bg-background text-foreground">
-        {LANGUAGE_OPTIONS.map((lang) => (
-          <SelectItem key={lang.value} value={lang.value}>
-            <div className="flex items-center gap-2">
-              <Flag country={lang.country} />
-              <span className="text-sm uppercase text-foreground">{lang.value}</span>
-            </div>
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  );
-}
-
-function Flag({ country }: { country: string }) {
-  return (
-    <span
-      className={`fi fi-${country} rounded-sm shrink-0 inline-block`}
-      style={{ width: 18, height: 12 }}
-    />
-  );
-}
-
 // -------------------------------- MAIN COMPONENT --------------------------------
 
 export default function PrivacyPolicy() {
   const navigate = useNavigate();
-  const { theme, setTheme } = useTheme();
   const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [activeSection, setActiveSection] = useState('intro');
 
-  const toggleTheme = () => setTheme(theme === 'dark' ? 'light' : 'dark');
   const sections = getSections(language);
+
+  const locale = { locale: language };
+  const navSections = [
+    { id: 'hero', label: navbar_nav_home({}, locale) },
+    { id: 'intro', label: navbar_nav_platform({}, locale) },
+    { id: 'nexy', label: navbar_nav_nexy({}, locale) },
+    { id: 'usecases', label: navbar_nav_use_cases({}, locale) },
+    { id: 'features', label: navbar_nav_features({}, locale) },
+  ];
 
   const scrollToSection = (id: string) => {
     const el = document.getElementById(id);
@@ -492,59 +445,15 @@ export default function PrivacyPolicy() {
     <div className="min-h-screen w-full bg-background text-foreground flex flex-col">
 
       {/* Navbar */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-background/60 backdrop-blur-xl border-b border-foreground/5">
-        <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 py-4">
-          <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate({ to: '/home' })}>
-            <img src="/nexata_logo.png" alt="Nexata" className="w-8 h-8 object-contain" />
-            <span className="text-sm font-semibold text-foreground hidden sm:inline">Nexata</span>
-          </div>
-          <div className="flex items-center gap-4">
-            <LanguageSelector value={language} onChange={setLanguage} />
-            <Tooltip>
-              <TooltipTrigger>
-                <span
-                  className="text-muted-foreground hover:text-foreground cursor-pointer transition-colors text-lg"
-                  onClick={toggleTheme}
-                >
-                  {theme === 'dark' ? <IoSunny /> : <IoMoon />}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                {language === 'es' ? 'Cambiar tema' : 'Toggle theme'}
-              </TooltipContent>
-            </Tooltip>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="hidden sm:inline-flex gap-1.5"
-              onClick={() => navigate({ to: '/login' })}
-            >
-              <LogIn className="w-3.5 h-3.5" />
-              {language === 'es' ? 'Iniciar Sesion' : 'Log In'}
-            </Button>
-            <button
-              className="md:hidden cursor-pointer text-muted-foreground hover:text-foreground transition-colors"
-              onClick={() => setMobileMenuOpen((v) => !v)}
-            >
-              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-            </button>
-          </div>
-        </div>
-
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t border-foreground/5 bg-background/95 backdrop-blur-xl px-4 pb-4 pt-2 flex flex-col gap-1">
-            {sections.map((sec) => (
-              <button
-                key={sec.id}
-                onClick={() => { scrollToSection(sec.id); setMobileMenuOpen(false); }}
-                className="cursor-pointer text-sm font-medium text-muted-foreground px-3 py-2 rounded-md transition-colors hover:text-foreground hover:bg-foreground/5 text-left"
-              >
-                {sec.title}
-              </button>
-            ))}
-          </div>
-        )}
-      </nav>
+      <Navbar
+        language={language}
+        onLanguageChange={setLanguage}
+        navSections={navSections}
+        mobileMenuSections={navSections}
+        onScrollToSection={() => navigate({ to: '/home' })}
+        onLogoClick={() => navigate({ to: '/home' })}
+        showMobileLogin
+      />
 
       <main className="flex-1 pt-20 pb-20">
         <div className="max-w-6xl mx-auto px-6">
