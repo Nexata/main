@@ -3,8 +3,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar/navbar';
 import { Footer } from '@/components/footer/footer';
-import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
-import type { Language } from '@/lib/user';
+import { usePersistedLanguage } from '@/hooks/use-sync-language';
 import {
 	'navbar.nav_home' as navbar_nav_home,
 	'navbar.nav_platform' as navbar_nav_platform,
@@ -173,7 +172,7 @@ function Section({
 
 export default function TermsAndConditions() {
 	const navigate = useNavigate();
-	const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
+	const [language, setLanguage] = usePersistedLanguage();
 	const [activeSection, setActiveSection] = useState('acceptance');
 
 	const lc = { locale: language };

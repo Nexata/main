@@ -118,6 +118,7 @@ import {
 	'user.profile.info.messages_used' as user_profile_info_messages_used,
 } from '@/paraglide/messages.js';
 import { isLocale, setLocale } from '@/paraglide/runtime';
+import { usePersistedLanguage } from '@/hooks/use-sync-language';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
@@ -130,7 +131,7 @@ export default function ProfilePage() {
 	const updateMe = useUpdateMe();
 	const [editing, setEditing] = useState(false);
 	const [displayName, setDisplayName] = useState('');
-	const [language, setLanguage] = useState<Language>('es' as Language);
+	const [language, setLanguage] = usePersistedLanguage();
 	const [file, setFile] = useState<File | null>(null);
 	const deleteMyDevice = useDeleteMyDevice();
 	const deleteMe = useDeleteMe();
@@ -148,7 +149,6 @@ export default function ProfilePage() {
 	useEffect(() => {
 		document.title = `Nexata | ${profile_header_title()}`;
 		if (me?.displayName) setDisplayName(me.displayName);
-		if (me?.language) setLanguage(me.language);
 	}, [me]);
 
 	// Get Fingerprint

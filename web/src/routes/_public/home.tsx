@@ -26,7 +26,7 @@ import { Navbar } from '@/components/navbar/navbar';
 import { Footer } from '@/components/footer/footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
+import { LANGUAGE_OPTIONS, usePersistedLanguage } from '@/hooks/use-sync-language';
 import {
 	DINAMIC_DATA_SOURCES,
 	STORAGE_DATA_SOURCES,
@@ -464,7 +464,7 @@ const fadeUp = {
 
 export default function Home() {
 	const navigate = useNavigate();
-	const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
+	const [language, setLanguage] = usePersistedLanguage();
 	const [registerOpen, setRegisterOpen] = useState(false);
 
 	const c = getContent(language);

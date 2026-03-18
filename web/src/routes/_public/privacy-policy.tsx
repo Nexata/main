@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar/navbar';
 import { Footer } from '@/components/footer/footer';
-import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
+import { LANGUAGE_OPTIONS, usePersistedLanguage } from '@/hooks/use-sync-language';
 import type { Language } from '@/lib/user';
 import {
 	'navbar.nav_home' as navbar_nav_home,
@@ -216,7 +216,7 @@ function Section({
 
 export default function PrivacyPolicy() {
 	const navigate = useNavigate();
-	const [language, setLanguage] = useState<Language>(LANGUAGE_OPTIONS[0].value);
+	const [language, setLanguage] = usePersistedLanguage();
 	const [activeSection, setActiveSection] = useState('intro');
 
 	const lc = { locale: language };
