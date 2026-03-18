@@ -225,6 +225,12 @@
 		"nav_features": "Funciones"
 	},
 
+	"footer": {
+		"tagline": "Tu conocimiento empresarial, unificado.",
+		"privacy_policy": "Politica de Privacidad",
+		"terms": "Terminos y Condiciones"
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Iniciar sesión"

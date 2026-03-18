@@ -225,6 +225,12 @@
 		"nav_features": "Features"
 	},
 
+	"footer": {
+		"tagline": "Your enterprise knowledge, unified.",
+		"privacy_policy": "Privacy Policy",
+		"terms": "Terms and Conditions"
+	},
+
 	"login": {
 		"meta": {
 			"title": "Nexata | Login"

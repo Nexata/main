@@ -23,6 +23,7 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
 import { Navbar } from '@/components/navbar/navbar';
+import { Footer } from '@/components/footer/footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
@@ -824,38 +825,7 @@ export default function Home() {
 				</section>
 
 				{/* ===== Footer ===== */}
-        <footer className="border-t border-foreground/5 px-6 py-8">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <img
-                src="/nexata_logo.png"
-                alt="Nexata"
-                className="w-7 h-7 object-contain"
-              />
-              <span className="text-sm text-muted-foreground">
-                {c.footer.tagline}
-              </span>
-            </div>
-
-            <div className="flex items-center gap-6">
-              <button
-                onClick={() => navigate({ to: '/privacy-policy' })}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {language === 'es' ? 'Politica de Privacidad' : 'Privacy Policy'}
-              </button>
-              <button
-                onClick={() => navigate({ to: '/tyc' })}
-                className="text-xs text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-              >
-                {language === 'es' ? 'Terminos y Condiciones' : 'Terms and Conditions'}
-              </button>
-              <p className="text-xs text-muted-foreground">
-                &copy; {new Date().getFullYear()} Nexata
-              </p>
-            </div>
-          </div>
-        </footer>
+				<Footer language={language} />
 			</main>
 
 			{/* -------------------- Registration Modal -------------------- */}

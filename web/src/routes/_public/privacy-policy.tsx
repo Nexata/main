@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { Navbar } from '@/components/navbar/navbar';
+import { Footer } from '@/components/footer/footer';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import type { Language } from '@/lib/user';
 import {
@@ -12,7 +13,6 @@ import {
 	'navbar.nav_features' as navbar_nav_features,
 	'privacy_policy.title' as pp_title,
 	'privacy_policy.last_updated' as pp_last_updated,
-	'privacy_policy.footer_tagline' as pp_footer_tagline,
 	'privacy_policy.intro.title' as pp_intro_title,
 	'privacy_policy.intro.p1_a' as pp_intro_p1_a,
 	'privacy_policy.intro.p1_b' as pp_intro_p1_b,
@@ -494,15 +494,7 @@ export default function PrivacyPolicy() {
 				</div>
 			</main>
 
-			<footer className="border-t border-foreground/5 px-6 py-8">
-				<div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
-					<div className="flex items-center gap-3">
-						<img src="/nexata_logo.png" alt="Nexata" className="w-7 h-7 object-contain" />
-						<span className="text-sm text-muted-foreground">{pp_footer_tagline({}, lc)}</span>
-					</div>
-					<p className="text-xs text-muted-foreground">&copy; {new Date().getFullYear()} Nexata</p>
-				</div>
-			</footer>
+			<Footer language={language} />
 		</div>
 	);
 }
