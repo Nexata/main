@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from '@tanstack/react-router';
 import { Navbar } from '@/components/navbar/navbar';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
@@ -423,6 +423,25 @@ export default function PrivacyPolicy() {
   const [activeSection, setActiveSection] = useState('intro');
 
   const sections = getSections(language);
+
+  useEffect(() => {
+    const sectionIds = getSections(language).map((s) => s.id);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: '-80px 0px -60% 0px' }
+    );
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [language]);
 
   const locale = { locale: language };
   const navSections = [

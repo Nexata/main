@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navbar } from '@/components/navbar/navbar';
 import { LANGUAGE_OPTIONS } from '@/hooks/use-sync-language';
 import type { Language } from '@/lib/user';
@@ -411,6 +411,25 @@ export default function TermsAndConditions() {
   const [activeSection, setActiveSection] = useState('acceptance');
 
   const sections = getSections(language);
+
+  useEffect(() => {
+    const sectionIds = getSections(language).map((s) => s.id);
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setActiveSection(entry.target.id);
+          }
+        });
+      },
+      { rootMargin: '-80px 0px -60% 0px' }
+    );
+    sectionIds.forEach((id) => {
+      const el = document.getElementById(id);
+      if (el) observer.observe(el);
+    });
+    return () => observer.disconnect();
+  }, [language]);
 
   const locale = { locale: language };
   const navSections = [
