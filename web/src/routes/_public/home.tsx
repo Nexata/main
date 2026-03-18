@@ -699,71 +699,32 @@ export default function Home() {
 				{/* ===== Use Cases ===== */}
 				<section
 					id="usecases"
-					className="px-6 py-20 max-w-6xl mx-auto space-y-12"
+					className="px-6 py-20 bg-gradient-to-b from-muted/20 to-background"
 				>
-					<motion.h2
-						className="text-3xl sm:text-4xl font-bold text-foreground text-center"
-						{...fadeUp}
-					>
-						{c.usecases.title}
-					</motion.h2>
-
-					<motion.div {...fadeUp} className="grid md:grid-cols-2 gap-6">
-						{c.usecases.items.map((uc) => (
-							<Card
-								key={uc.title}
-								className="p-6 hover:shadow-md transition-shadow bg-background border"
-							>
-								<h3 className="text-lg font-semibold text-foreground mb-3">
-									{uc.title}
-								</h3>
-								<p className="text-sm text-muted-foreground font-medium mb-1">
-									{language === 'es' ? 'Problema:' : 'Problem:'}
-								</p>
-								<p className="text-muted-foreground text-sm mb-3">
-									{uc.problem}
-								</p>
-								<p className="text-sm text-muted-foreground font-medium mb-1">
-									{language === 'es'
-										? 'Solucion con Nexata:'
-										: 'Solution with Nexata:'}
-								</p>
-								<p className="text-muted-foreground text-sm">{uc.solution}</p>
-							</Card>
-						))}
-					</motion.div>
+					<div className="max-w-6xl mx-auto space-y-12">
+						<motion.div {...fadeUp} className="text-center">
+							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+								{c.usecases.title}
+							</h2>
+						</motion.div>
+						<motion.div {...fadeUp}>
+							<UseCasesInteractive items={c.usecases.items} language={language} />
+						</motion.div>
+					</div>
 				</section>
 
 				{/* ===== Features ===== */}
 				<section
 					id="features"
-					className="px-6 py-20 max-w-6xl mx-auto text-center space-y-12"
+					className="px-6 py-20 max-w-6xl mx-auto space-y-12"
 				>
-					<motion.h2
-						className="text-3xl sm:text-4xl font-bold text-foreground"
-						{...fadeUp}
-					>
-						{c.features.title}
-					</motion.h2>
-
-					<motion.div {...fadeUp} className="grid md:grid-cols-3 gap-6">
-						{c.features.items.map((feat) => {
-							const Icon = feat.icon;
-							return (
-								<Card
-									key={feat.title}
-									className="p-6 hover:shadow-md transition-shadow bg-background border flex flex-col items-center text-center"
-								>
-									<div className="flex items-center justify-center w-12 h-12 rounded-xl bg-primary/10 mb-4">
-										<Icon className="w-5 h-5 text-primary" />
-									</div>
-									<h3 className="text-lg font-semibold text-foreground mb-2">
-										{feat.title}
-									</h3>
-									<p className="text-muted-foreground text-sm">{feat.desc}</p>
-								</Card>
-							);
-						})}
+					<motion.div {...fadeUp} className="text-center">
+						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+							{c.features.title}
+						</h2>
+					</motion.div>
+					<motion.div {...fadeUp}>
+						<FeaturesBento items={c.features.items} />
 					</motion.div>
 				</section>
 
@@ -776,22 +737,8 @@ export default function Home() {
 						>
 							{c.why.title}
 						</motion.h2>
-
-						<motion.div {...fadeUp} className="grid md:grid-cols-3 gap-6">
-							{c.why.testimonials.map((t) => (
-								<Card
-									key={t.role}
-									className="p-6 hover:shadow-md transition-shadow bg-background border"
-								>
-									<Quote className="w-6 h-6 text-primary/40 mb-3" />
-									<p className="text-foreground italic text-sm leading-relaxed mb-4">
-										"{t.quote}"
-									</p>
-									<p className="text-xs text-muted-foreground font-semibold uppercase tracking-wide">
-										— {t.role}
-									</p>
-								</Card>
-							))}
+						<motion.div {...fadeUp}>
+							<TestimonialsShowcase testimonials={c.why.testimonials} />
 						</motion.div>
 					</div>
 				</section>
@@ -1164,6 +1111,350 @@ function NexyShowcase({
 
           </motion.div>
         </AnimatePresence>
+      </div>
+    </div>
+  );
+}
+
+// -------------------------------- USE CASES --------------------------------
+
+const USE_CASE_ICONS_MAP = [Search, Mail, FileText, Calendar, ClipboardList];
+
+function UseCasesInteractive({
+  items,
+  language,
+}: {
+  items: { title: string; problem: string; solution: string }[];
+  language: Language;
+}) {
+  const [active, setActive] = useState(0);
+  const [mobileOpen, setMobileOpen] = useState<number | null>(0);
+
+  return (
+    <>
+      {/* Desktop: sidebar + animated panel */}
+      <div className="hidden lg:grid lg:grid-cols-5 gap-6">
+        {/* Sidebar list */}
+        <div className="lg:col-span-2 flex flex-col gap-2">
+          {items.map((uc, i) => {
+            const Icon = USE_CASE_ICONS_MAP[i];
+            const isActive = active === i;
+            return (
+              <button
+                key={uc.title}
+                type="button"
+                onClick={() => setActive(i)}
+                className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer ${
+                  isActive
+                    ? 'border-primary/40 bg-primary/5 shadow-sm'
+                    : 'border-border/50 hover:border-border hover:bg-foreground/[0.02]'
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors duration-200 ${
+                    isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                <span
+                  className={`text-sm font-medium leading-tight flex-1 transition-colors duration-200 ${
+                    isActive ? 'text-foreground' : 'text-muted-foreground'
+                  }`}
+                >
+                  {uc.title}
+                </span>
+                <motion.div
+                  initial={false}
+                  animate={{ opacity: isActive ? 1 : 0, x: isActive ? 0 : -6 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ArrowRight className="w-4 h-4 text-primary shrink-0" />
+                </motion.div>
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Detail panel */}
+        <div className="lg:col-span-3">
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={active}
+              initial={{ opacity: 0, x: 14, scale: 0.98 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: -14, scale: 0.98 }}
+              transition={{ duration: 0.25, ease: 'easeOut' }}
+              className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col"
+            >
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-border bg-primary/[0.04] flex items-center gap-3">
+                {(() => {
+                  const Icon = USE_CASE_ICONS_MAP[active];
+                  return (
+                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0">
+                      <Icon className="w-5 h-5 text-primary" />
+                    </div>
+                  );
+                })()}
+                <div>
+                  <p className="text-[11px] font-semibold text-primary/60 uppercase tracking-widest mb-0.5">
+                    {active + 1} / {items.length}
+                  </p>
+                  <h3 className="text-base font-semibold text-foreground leading-tight">
+                    {items[active].title}
+                  </h3>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-5">
+                {/* Problem */}
+                <div className="rounded-xl bg-destructive/5 border border-destructive/10 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-destructive/60 shrink-0" />
+                    <span className="text-[11px] font-semibold text-destructive/80 uppercase tracking-widest">
+                      {language === 'es' ? 'Problema' : 'Problem'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {items[active].problem}
+                  </p>
+                </div>
+
+                {/* Arrow divider */}
+                <div className="flex justify-center">
+                  <div className="flex flex-col items-center gap-1">
+                    <div className="w-px h-3 bg-border" />
+                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
+                      <ArrowRight className="w-3 h-3 text-primary rotate-90" />
+                    </div>
+                    <div className="w-px h-3 bg-border" />
+                  </div>
+                </div>
+
+                {/* Solution */}
+                <div className="rounded-xl bg-primary/5 border border-primary/15 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                    <span className="text-[11px] font-semibold text-primary uppercase tracking-widest">
+                      {language === 'es' ? 'Solución con Nexata' : 'Solution with Nexata'}
+                    </span>
+                  </div>
+                  <p className="text-sm text-foreground leading-relaxed">
+                    {items[active].solution}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </div>
+
+      {/* Mobile: accordion */}
+      <div className="lg:hidden space-y-3">
+        {items.map((uc, i) => {
+          const Icon = USE_CASE_ICONS_MAP[i];
+          const isOpen = mobileOpen === i;
+          return (
+            <div key={uc.title} className="rounded-xl border border-border overflow-hidden bg-card">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(isOpen ? null : i)}
+                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-200 ${
+                  isOpen ? 'border-b border-border bg-primary/5' : 'hover:bg-foreground/[0.02]'
+                }`}
+              >
+                <div
+                  className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors ${
+                    isOpen ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </div>
+                <span
+                  className={`text-sm font-medium flex-1 ${isOpen ? 'text-foreground' : 'text-muted-foreground'}`}
+                >
+                  {uc.title}
+                </span>
+                <motion.div
+                  animate={{ rotate: isOpen ? 90 : 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                </motion.div>
+              </button>
+              <AnimatePresence initial={false}>
+                {isOpen && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-4 space-y-3">
+                      <div className="rounded-lg bg-destructive/5 border border-destructive/10 p-3 space-y-1.5">
+                        <span className="text-[11px] font-semibold text-destructive/80 uppercase tracking-widest">
+                          {language === 'es' ? 'Problema' : 'Problem'}
+                        </span>
+                        <p className="text-sm text-muted-foreground leading-relaxed">{uc.problem}</p>
+                      </div>
+                      <div className="rounded-lg bg-primary/5 border border-primary/15 p-3 space-y-1.5">
+                        <span className="text-[11px] font-semibold text-primary uppercase tracking-widest">
+                          {language === 'es' ? 'Solución con Nexata' : 'Solution with Nexata'}
+                        </span>
+                        <p className="text-sm text-foreground leading-relaxed">{uc.solution}</p>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+// -------------------------------- FEATURES BENTO --------------------------------
+
+function FeaturesBento({
+  items,
+}: {
+  items: { icon: typeof Search; title: string; desc: string }[];
+}) {
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {items.map((feat, i) => {
+        const Icon = feat.icon;
+        return (
+          <motion.div
+            key={feat.title}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.4, delay: i * 0.07, ease: 'easeOut' }}
+            whileHover={{ y: -4, transition: { duration: 0.2 } }}
+            className="group"
+          >
+            <Card className="relative h-full p-6 border border-border hover:border-primary/30 transition-all duration-300 overflow-hidden bg-card hover:shadow-lg">
+              {/* Decorative number */}
+              <span className="absolute top-4 right-4 text-6xl font-black text-foreground/[0.04] leading-none select-none pointer-events-none">
+                {String(i + 1).padStart(2, '0')}
+              </span>
+
+              {/* Hover glow */}
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
+
+              {/* Icon */}
+              <div className="relative w-12 h-12 rounded-2xl flex items-center justify-center mb-5 bg-primary/10 group-hover:bg-primary/20 transition-colors duration-300">
+                <Icon className="w-5 h-5 text-primary" />
+              </div>
+
+              {/* Content */}
+              <div className="relative">
+                <h3 className="text-base font-semibold text-foreground mb-2">{feat.title}</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feat.desc}</p>
+              </div>
+            </Card>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
+
+// -------------------------------- TESTIMONIALS --------------------------------
+
+function TestimonialsShowcase({
+  testimonials,
+}: {
+  testimonials: { role: string; quote: string }[];
+}) {
+  const [active, setActive] = useState(0);
+
+  useEffect(() => {
+    const timer = setInterval(() => {
+      setActive((prev) => (prev + 1) % testimonials.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [testimonials.length]);
+
+  return (
+    <div className="space-y-6">
+      {/* Desktop: 3 cards, center elevated */}
+      <div className="hidden lg:grid lg:grid-cols-3 gap-6 items-center">
+        {testimonials.map((t, i) => {
+          const isCenter = i === 1;
+          return (
+            <motion.div
+              key={t.role}
+              initial={{ opacity: 0, y: 24 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: i * 0.12 }}
+              className={`relative rounded-2xl border p-6 flex flex-col gap-4 overflow-hidden transition-all duration-300 ${
+                isCenter
+                  ? 'border-primary/40 bg-gradient-to-b from-primary/5 to-card shadow-xl scale-[1.04] z-10'
+                  : 'border-border bg-card hover:border-primary/20 hover:shadow-md'
+              }`}
+            >
+              <Quote className="w-9 h-9 text-primary/20 shrink-0" />
+              <p className="text-sm text-foreground leading-relaxed italic flex-1">{t.quote}</p>
+              <div className="flex items-center gap-3 pt-3 border-t border-border">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                  <span className="text-sm font-bold text-primary">{t.role.charAt(0)}</span>
+                </div>
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                  {t.role}
+                </p>
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      {/* Mobile/Tablet: auto-carousel */}
+      <div className="lg:hidden">
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, x: 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -24 }}
+            transition={{ duration: 0.3, ease: 'easeOut' }}
+            className="rounded-2xl border border-primary/30 bg-gradient-to-b from-primary/5 to-card p-6 flex flex-col gap-4 overflow-hidden"
+          >
+            <Quote className="w-8 h-8 text-primary/20 shrink-0" />
+            <p className="text-sm text-foreground leading-relaxed italic">
+              {testimonials[active].quote}
+            </p>
+            <div className="flex items-center gap-3 pt-3 border-t border-border">
+              <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center shrink-0 border border-primary/20">
+                <span className="text-sm font-bold text-primary">
+                  {testimonials[active].role.charAt(0)}
+                </span>
+              </div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                {testimonials[active].role}
+              </p>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+        {/* Navigation dots */}
+        <div className="flex justify-center gap-2 mt-4">
+          {testimonials.map((_, i) => (
+            <button
+              key={`dot-${i}`}
+              type="button"
+              onClick={() => setActive(i)}
+              className={`transition-all duration-300 rounded-full ${
+                active === i ? 'w-6 h-2 bg-primary' : 'w-2 h-2 bg-border hover:bg-muted-foreground'
+              }`}
+            />
+          ))}
+        </div>
       </div>
     </div>
   );
