@@ -1086,5 +1086,122 @@
 			"languages_label": "Idiomas de Atencion",
 			"languages_value": "Espanol e Ingles"
 		}
+	},
+
+	"tyc": {
+		"meta": {
+			"title": "Nexata | Terminos y Condiciones"
+		},
+		"title": "Terminos y Condiciones",
+		"last_updated": "Ultima actualizacion: 16 de marzo de 2026",
+
+		"acceptance": {
+			"title": "1. Aceptacion de los Terminos",
+			"p1": "Al acceder o utilizar los servicios de Nexata (en adelante, \"el Servicio\"), usted acepta quedar vinculado por estos Terminos y Condiciones. Si no esta de acuerdo, no utilice el Servicio."
+		},
+
+		"description": {
+			"title": "2. Descripcion del Servicio",
+			"p1": "Nexata es una plataforma de conocimiento empresarial que proporciona herramientas para buscar, gestionar e interactuar con datos de fuentes conectadas, incluyendo pero no limitado a:",
+			"item_1": "Google Drive, Gmail, Google Calendar",
+			"item_2": "Microsoft Outlook, OneDrive",
+			"item_3": "Dropbox",
+			"item_4": "Sistemas de credenciales y gestion de usuarios",
+			"infocard": "Nexata no almacena sus datos de origen. Actua como una capa de acceso y procesamiento que respeta los permisos y configuraciones de las fuentes conectadas."
+		},
+
+		"definitions": {
+			"title": "3. Definiciones",
+			"user_label": "Usuario",
+			"user_desc": "Cualquier persona que acceda o utilice el Servicio.",
+			"tenant_label": "Inquilino",
+			"tenant_desc": "La organizacion o entidad para la cual el Usuario esta autorizado a usar el Servicio.",
+			"tenant_admin_label": "Administrador de Inquilino",
+			"tenant_admin_desc": "Usuario con privilegios para gestionar configuraciones a nivel de inquilino.",
+			"regular_user_label": "Usuario Regular",
+			"regular_user_desc": "Usuario sin privilegios de administrador.",
+			"connected_sources_label": "Fuentes Conectadas",
+			"connected_sources_desc": "Servicios de terceros integrados con Nexata mediante autorizacion explicita del Usuario.",
+			"ingested_data_label": "Datos Ingestados",
+			"ingested_data_desc": "Archivos subidos directamente a Nexata o sincronizados desde Fuentes Conectadas y procesados por la plataforma.",
+			"external_data_label": "Datos Externos",
+			"external_data_desc": "Informacion recuperada en tiempo real de Fuentes Conectadas mediante consultas activas."
+		},
+
+		"obligations": {
+			"title": "4. Obligaciones del Usuario",
+			"s41_title": "4.1 Uso Autorizado",
+			"s41_intro": "Usted puede usar el Servicio unicamente para:",
+			"s41_item_1": "Acceder, buscar y recuperar datos de sus Fuentes Conectadas autorizadas.",
+			"s41_item_2": "Gestionar credenciales y permisos para esas Fuentes Conectadas.",
+			"s41_item_3": "Utilizar las herramientas provistas por Nexata segun su documentacion.",
+			"s41_item_4": "Cumplir con las politicas de su Inquilino y las leyes aplicables.",
+			"s42_title": "4.2 Uso Prohibido",
+			"s42_intro": "No debe:",
+			"s42_item_1": "Intentar evadir, desactivar o sobrepasar las medidas de seguridad de Nexata o Fuentes Conectadas.",
+			"s42_item_2": "Utilizar el Servicio para actividades ilegales, difamatorias o que infrinjan derechos de propiedad intelectual.",
+			"s42_item_3": "Recolectar o almacenar Datos Ingestados o Externos con fines no relacionados con el Servicio autorizado.",
+			"s42_item_4": "Compartir credenciales de Fuentes Conectadas con terceros no autorizados.",
+			"s42_item_5": "Interferir con el operativo de Nexata o fuentes de otros Usuarios.",
+			"s43_title": "4.3 Precision de los Datos",
+			"s43_intro": "Nexata se esfuerza por proporcionar resultados precisos basados en el estado actual de sus Fuentes Conectadas. Sin embargo:",
+			"s43_item_1": "Nexata no garantiza la precision, integridad o puntualidad de los Datos Ingestados o Externos.",
+			"s43_item_2": "Usted es responsable de verificar la idoneidad de los datos para su uso previsto.",
+			"s43_item_3": "Los retrasos o inconsistencias en Fuentes Conectadas pueden afectar el Servicio sin responsabilidad para Nexata."
+		},
+
+		"ip": {
+			"title": "5. Propiedad Intelectual",
+			"item_1": "Todos los derechos sobre el Servicio, incluyendo software, documentacion, interfaces y la marca \"Nexata\", son propiedad exclusiva de Nexata o sus licenciantes.",
+			"item_2": "Se le concede una licencia limitada, revocable, no exclusiva e intransferible para usar el Servicio unicamente conforme a estos Terminos.",
+			"item_3": "No debe eliminar, ocultar ni modificar avisos de propiedad intelectual incluidos en el Servicio."
+		},
+
+		"liability": {
+			"title": "6. Descargo de Responsabilidad",
+			"s61_title": "6.1 Limitacion de Responsabilidad",
+			"s61_intro": "En la maxima medida permitida por la ley, Nexata no sera responsable por danos indirectos, incidentales, especiales o punitivos derivados de:",
+			"s61_item_1": "Perdida de ganancias, ingresos, oportunidades comerciales o buena voluntad.",
+			"s61_item_2": "Danos derivados de inexactitudes en Datos Ingestados o Externos.",
+			"s61_item_3": "Interrupciones del servicio causadas por fallos en Fuentes Conectadas fuera del control razonable de Nexata.",
+			"s61_item_4": "Reclamaciones basadas en el incumplimiento de obligaciones de seguridad provenientes de acciones de terceros.",
+			"s62_title": "6.2 Exclusiones",
+			"s62_intro": "Nada en estos Terminos excluira ni limitara la responsabilidad de Nexata por:",
+			"s62_item_1": "Muerte o dano personal causado por negligencia grave.",
+			"s62_item_2": "Fraude o tergiversacion dolosa.",
+			"s62_item_3": "Responsabilidad que no pueda excluirse ni limitarse por ley aplicable."
+		},
+
+		"indemnification": {
+			"title": "7. Indemnizacion",
+			"intro": "Usted acepta indemnizar, defender y mantener indemne a Nexata, sus funcionarios, directores y agentes de y contra cualquier reclamacion, perdida, responsabilidad o dano que surjan de:",
+			"item_1": "Su incumplimiento de estos Terminos.",
+			"item_2": "Su violacion de cualquier ley aplicable o los derechos de un tercero.",
+			"item_3": "Su uso no autorizado o inadecuado del Servicio.",
+			"item_4": "Alegaciones de que su uso del Servicio provoco una infraccion de derechos de propiedad intelectual de terceros."
+		},
+
+		"privacy": {
+			"title": "8. Privacidad y Proteccion de Datos",
+			"p1": "Nexata procesa datos personales unicamente segun lo necesario para proporcionar el Servicio y conforme a su Politica de Privacidad. Las Fuentes Conectadas pueden tener sus propias practicas de privacidad; se le recomienda revisarlas.",
+			"infocard": "Nexata no es responsable de las practicas de privacidad o el manejo de datos de Fuentes Conectadas."
+		},
+
+		"modifications": {
+			"title": "9. Modificaciones a estos Terminos",
+			"p1": "Nexata se reserva el derecho de modificar o reemplazar estos Terminos en cualquier momento. Los cambios seran efectivos tras su publicacion. El uso continuado del Servicio despues de dichas modificaciones constituye la aceptacion de los Terminos revisados."
+		},
+
+		"law": {
+			"title": "10. Ley Aplicable y Jurisdiccion",
+			"p1": "Estos Terminos se rigen e interpretaran conforme a las leyes de los Estados Unidos de America. Cualquier disputa legal se sometera exclusivamente a los tribunales estatales o federales ubicados en el Condado de Santa Clara, California."
+		},
+
+		"contact": {
+			"title": "11. Contacto",
+			"p1": "Para preguntas sobre estos Terminos, contactenos en:",
+			"email_label": "Correo Legal",
+			"footer": "Fecha de entrada en vigor: 16 de marzo de 2026. Este documento se proporciona en espanol e ingles. En caso de discrepancia, prevalecera la version en ingles."
+		}
 	}
 }
