@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
-import { motion, useInView, AnimatePresence } from 'framer-motion';
+import { motion, useInView, AnimatePresence, useMotionValue, useAnimationFrame } from 'framer-motion';
 import {
   ArrowRight,
   ArrowUp,
@@ -635,43 +635,7 @@ export default function Home() {
             </p>
           </motion.div>
 
-          <div className="relative w-full overflow-hidden">
-            {/* Fade edges */}
-            <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
-            <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
-
-            <style>{`
-              @keyframes marquee {
-                0%   { transform: translateX(0); }
-                100% { transform: translateX(-50%); }
-              }
-              .marquee-track {
-                display: flex;
-                width: max-content;
-                animation: marquee 20s linear infinite;
-              }
-            `}</style>
-
-            <div className="py-4">
-              <div className="marquee-track">
-                {[...allSources, ...allSources].map((source, i) => (
-                  <div
-                    key={`${source.id}-${i}`}
-                    className="flex flex-col items-center mx-5 sm:mx-8 w-14 sm:w-16 shrink-0"
-                  >
-                    <img
-                      src={source.icon}
-                      alt={source.name}
-                      className="w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg"
-                    />
-                    <span className="text-xs text-muted-foreground mt-2 font-medium leading-tight text-center">
-                      {source.name}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
+          <SourcesMarquee sources={allSources} />
         </section>
 
         {/* ===== Meet Nexy ===== */}
@@ -783,6 +747,105 @@ export default function Home() {
 			/>
 		</div>
 	);
+}
+
+// -------------------------------- SOURCES MARQUEE --------------------------------
+
+function SourceIcon({ source }: { source: { id: string; name: string; icon: string } }) {
+  return (
+    <motion.div
+      className="flex flex-col items-center mx-5 sm:mx-8 w-14 sm:w-16 shrink-0 cursor-default"
+      whileHover="hovered"
+      initial="idle"
+    >
+      {/* Icon with glow */}
+      <div className="relative flex items-center justify-center">
+        <motion.div
+          variants={{
+            idle: { opacity: 0, scale: 0.6 },
+            hovered: { opacity: 1, scale: 1.4 },
+          }}
+          transition={{ duration: 0.2 }}
+          className="absolute w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-primary/25 blur-lg pointer-events-none"
+        />
+        <motion.img
+          src={source.icon}
+          alt={source.name}
+          variants={{
+            idle: { scale: 1, y: 0 },
+            hovered: { scale: 1.2, y: -4 },
+          }}
+          transition={{ duration: 0.2, ease: 'easeOut' }}
+          className="relative w-10 h-10 sm:w-12 sm:h-12 object-contain rounded-lg z-10"
+        />
+      </div>
+      {/* Name */}
+      <motion.span
+        variants={{
+          idle: { opacity: 0.55 },
+          hovered: { opacity: 1 },
+        }}
+        transition={{ duration: 0.15 }}
+        className="text-xs text-foreground mt-2 font-semibold leading-tight text-center"
+      >
+        {source.name}
+      </motion.span>
+    </motion.div>
+  );
+}
+
+function SourcesMarquee({
+  sources,
+}: {
+  sources: { id: string; name: string; icon: string }[];
+}) {
+  const trackRef = useRef<HTMLDivElement>(null);
+  const xVal = useMotionValue(0);
+  const isPausedRef = useRef(false);
+  const singleWidthRef = useRef(0);
+
+  // Measure one set's actual pixel width after mount
+  useEffect(() => {
+    const measure = () => {
+      if (trackRef.current) {
+        const w = trackRef.current.scrollWidth / 2;
+        if (w > 0) singleWidthRef.current = w;
+      }
+    };
+    measure();
+    const t = setTimeout(measure, 120);
+    return () => clearTimeout(t);
+  }, [sources]);
+
+  // Frame-by-frame drive — no CSS keyframes, no reset on re-render
+  useAnimationFrame((_, delta) => {
+    if (isPausedRef.current || singleWidthRef.current === 0) return;
+    const SPEED = 50; // px/s
+    const move = SPEED * Math.min(delta, 100) / 1000; // cap delta to avoid tab-switch jumps
+    let next = xVal.get() - move;
+    if (next <= -singleWidthRef.current) next += singleWidthRef.current;
+    xVal.set(next);
+  });
+
+  return (
+    <div
+      className="relative w-full overflow-hidden py-4"
+      onMouseEnter={() => { isPausedRef.current = true; }}
+      onMouseLeave={() => { isPausedRef.current = false; }}
+    >
+      <div className="absolute left-0 top-0 bottom-0 w-16 bg-gradient-to-r from-background to-transparent z-10 pointer-events-none" />
+      <div className="absolute right-0 top-0 bottom-0 w-16 bg-gradient-to-l from-background to-transparent z-10 pointer-events-none" />
+      <motion.div
+        ref={trackRef}
+        className="flex"
+        style={{ x: xVal, width: 'max-content' }}
+      >
+        {[...sources, ...sources].map((source, i) => (
+          <SourceIcon key={`${source.id}-${i}`} source={source} />
+        ))}
+      </motion.div>
+    </div>
+  );
 }
 
 function IntroStepper({ steps }: { steps: { title: string; desc: string }[] }) {
