@@ -860,105 +860,111 @@ function IntroStepper({ steps }: { steps: { title: string; desc: string }[] }) {
   );
 }
 
-type ChatDemo = {
-  user: string;
-  reply: string;
-  toolLabel: string;
-  sources: { icon: string; label: string }[];
-};
+type ChatMsg =
+  | { kind: 'user'; text: string }
+  | { kind: 'tool'; icon: string; label: string; detail: string }
+  | { kind: 'assistant'; text: string }
+  | { kind: 'assistant-list'; intro: string; items: string[] };
+
+type ChatDemo = { messages: ChatMsg[] };
 
 const NEXY_CHAT_DEMOS: ChatDemo[] = [
   {
-    user: 'Donde esta el contrato con el cliente Acme de enero?',
-    toolLabel: 'Buscando en Google Drive...',
-    reply: 'Encontre 2 documentos relevantes. El mas reciente es "Contrato_Acme_v3.pdf" modificado el 14 ene, ubicado en Google Drive > Clientes > Acme.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Contrato_Acme_v3.pdf' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Google Drive' },
+    // 1 user → 1 tool → 1 assistant
+    messages: [
+      { kind: 'user', text: 'Donde esta el contrato con el cliente Acme de enero?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Contrato_Acme_v3.pdf', detail: 'Google Drive · Clientes / Acme · modificado 14 ene' },
+      { kind: 'assistant', text: 'Encontré 2 versiones del contrato Acme. La más reciente es Contrato_Acme_v3.pdf, en Drive > Clientes > Acme. ¿Querés ver el historial de cambios?' },
     ],
   },
   {
-    user: 'Que se hablo sobre el presupuesto del proyecto Alpha?',
-    toolLabel: 'Buscando en Gmail...',
-    reply: 'Encontre un hilo de email del 3 mar con Paula y un archivo adjunto "budget_alpha_final.xlsx". Tambien hay una nota en Calendar del 5 mar.',
-    sources: [
-      { icon: '/datasource_icons/gmail.png', label: 'Email - Paula' },
-      { icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx' },
+    // 1 user → 2 tools → 1 assistant
+    messages: [
+      { kind: 'user', text: 'Que se habló sobre el presupuesto del proyecto Alpha?' },
+      { kind: 'tool', icon: '/datasource_icons/gmail.png', label: '3 emails encontrados', detail: 'Gmail · hilo con Paula · 3 mar' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx', detail: 'Google Drive · adjunto del hilo' },
+      { kind: 'assistant', text: 'En el hilo con Paula del 3 mar se acordó un presupuesto de $42.000. El archivo adjunto tiene el desglose por área. También hay una nota en Calendar del 5 mar.' },
     ],
   },
   {
-    user: 'Cuando es la proxima reunion con el equipo de diseno?',
-    toolLabel: 'Consultando Google Calendar...',
-    reply: 'Tenes una reunion "Sync Diseno Q2" manana a las 10:00 AM con Marcos, Sofia y Laura. El doc de agenda esta vinculado al evento.',
-    sources: [
-      { icon: '/datasource_icons/gcalendar.png', label: 'Google Calendar' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Agenda Sync Q2' },
+    // multi-turn: user → tool → assistant → user → tool → assistant
+    messages: [
+      { kind: 'user', text: 'Cuando es la proxima reunion con el equipo de diseño?' },
+      { kind: 'tool', icon: '/datasource_icons/gcalendar.png', label: 'Sync Diseño Q2', detail: 'Google Calendar · mañana 10:00 AM · 1 hora' },
+      { kind: 'assistant', text: 'Mañana a las 10:00 AM con Marcos, Sofía y Laura. Dura 1 hora.' },
+      { kind: 'user', text: 'Hay agenda preparada?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Agenda_Sync_Q2.docx', detail: 'Google Drive · vinculado al evento' },
+      { kind: 'assistant', text: 'Sí, encontré la agenda. Incluye revisión de mockups, feedback Q1, roadmap Q2 y notas de la reunión anterior.' },
     ],
   },
   {
-    user: 'Como proceso una factura de proveedor nuevo?',
-    toolLabel: 'Buscando en archivos...',
-    reply: 'El proceso tiene 4 pasos. Encontre la guia oficial "Proceso_Facturas_v2.pdf" en el drive de Finanzas, actualizada el mes pasado.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Proceso_Facturas_v2.pdf' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Drive - Finanzas' },
+    // 1 user → 1 tool → assistant con lista
+    messages: [
+      { kind: 'user', text: 'Como proceso una factura de proveedor nuevo?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Proceso_Facturas_v2.pdf', detail: 'Google Drive · Finanzas · actualizado hace 2 semanas' },
+      { kind: 'assistant-list', intro: 'El proceso tiene 4 pasos:', items: [
+        'Solicitar los datos fiscales al proveedor',
+        'Dar de alta en el sistema ERP con código único',
+        'Enviar la factura a Finanzas para validación',
+        'Confirmar recepción y registrar la fecha de pago',
+      ]},
     ],
   },
   {
-    user: 'Resumi el informe trimestral Q1 2024',
-    toolLabel: 'Leyendo documento...',
-    reply: 'El informe Q1 2024 muestra un crecimiento del 18% en ingresos. Los puntos clave son: expansion LATAM, lanzamiento producto B y reduccion de costos operativos.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Informe_Q1_2024.pdf' },
-      { icon: '/nexata_logo.png', label: '3 paginas analizadas' },
+    // 1 user → 2 tools → 1 assistant (resumen)
+    messages: [
+      { kind: 'user', text: 'Resumi el informe trimestral Q1 2024' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Informe_Q1_2024.pdf', detail: 'Google Drive · 24 páginas analizadas' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Presentacion_Q1_Board.pptx', detail: 'Google Drive · 18 slides procesadas' },
+      { kind: 'assistant', text: 'El Q1 2024 muestra un crecimiento del 18% en ingresos. Hitos clave: expansión LATAM (+3 países), lanzamiento del producto B y reducción del 12% en costos operativos.' },
     ],
   },
 ];
 
 const NEXY_CHAT_DEMOS_EN: ChatDemo[] = [
   {
-    user: 'Where is the Acme client contract from January?',
-    toolLabel: 'Searching Google Drive...',
-    reply: 'I found 2 relevant documents. The most recent is "Contract_Acme_v3.pdf" modified on Jan 14, located in Google Drive > Clients > Acme.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Contract_Acme_v3.pdf' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Google Drive' },
+    messages: [
+      { kind: 'user', text: 'Where is the Acme client contract from January?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Contract_Acme_v3.pdf', detail: 'Google Drive · Clients / Acme · modified Jan 14' },
+      { kind: 'assistant', text: 'I found 2 versions of the Acme contract. The most recent is Contract_Acme_v3.pdf, in Drive > Clients > Acme. Would you like to see the change history?' },
     ],
   },
   {
-    user: 'What was discussed about the Alpha project budget?',
-    toolLabel: 'Searching Gmail...',
-    reply: 'I found an email thread from Mar 3 with Paula and an attachment "budget_alpha_final.xlsx". There is also a Calendar note from Mar 5.',
-    sources: [
-      { icon: '/datasource_icons/gmail.png', label: 'Email - Paula' },
-      { icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx' },
+    messages: [
+      { kind: 'user', text: 'What was discussed about the Alpha project budget?' },
+      { kind: 'tool', icon: '/datasource_icons/gmail.png', label: '3 emails found', detail: 'Gmail · thread with Paula · Mar 3' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'budget_alpha_final.xlsx', detail: 'Google Drive · email attachment' },
+      { kind: 'assistant', text: "In Paula's thread from Mar 3, a $42,000 budget was agreed. The attached file has the full breakdown by area. There's also a Calendar note from Mar 5." },
     ],
   },
   {
-    user: 'When is the next meeting with the design team?',
-    toolLabel: 'Checking Google Calendar...',
-    reply: 'You have a "Design Sync Q2" meeting tomorrow at 10:00 AM with Marcos, Sofia and Laura. The agenda doc is linked to the event.',
-    sources: [
-      { icon: '/datasource_icons/gcalendar.png', label: 'Google Calendar' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Agenda Sync Q2' },
+    messages: [
+      { kind: 'user', text: 'When is the next meeting with the design team?' },
+      { kind: 'tool', icon: '/datasource_icons/gcalendar.png', label: 'Design Sync Q2', detail: 'Google Calendar · tomorrow 10:00 AM · 1 hour' },
+      { kind: 'assistant', text: 'Tomorrow at 10:00 AM with Marcos, Sofia and Laura. It lasts 1 hour.' },
+      { kind: 'user', text: 'Is there a prepared agenda?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Agenda_Sync_Q2.docx', detail: 'Google Drive · linked to the event' },
+      { kind: 'assistant', text: 'Yes, I found the agenda doc. It covers mockup review, Q1 feedback, Q2 roadmap and notes from the previous meeting.' },
     ],
   },
   {
-    user: 'How do I process a new vendor invoice?',
-    toolLabel: 'Searching files...',
-    reply: 'The process has 4 steps. I found the official guide "Invoice_Process_v2.pdf" in the Finance drive, updated last month.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Invoice_Process_v2.pdf' },
-      { icon: '/datasource_icons/gdrive.png', label: 'Drive - Finance' },
+    messages: [
+      { kind: 'user', text: 'How do I process a new vendor invoice?' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Invoice_Process_v2.pdf', detail: 'Google Drive · Finance · updated 2 weeks ago' },
+      { kind: 'assistant-list', intro: 'The process has 4 steps:', items: [
+        'Request fiscal data from the vendor',
+        'Register in the ERP with a unique code',
+        'Send invoice to Finance for validation',
+        'Confirm receipt and record the payment date',
+      ]},
     ],
   },
   {
-    user: 'Summarize the Q1 2024 quarterly report',
-    toolLabel: 'Reading document...',
-    reply: 'The Q1 2024 report shows 18% revenue growth. Key highlights: LATAM expansion, product B launch, and operational cost reduction.',
-    sources: [
-      { icon: '/datasource_icons/gdrive.png', label: 'Report_Q1_2024.pdf' },
-      { icon: '/nexata_logo.png', label: '3 pages analyzed' },
+    messages: [
+      { kind: 'user', text: 'Summarize the Q1 2024 quarterly report' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Report_Q1_2024.pdf', detail: 'Google Drive · 24 pages analyzed' },
+      { kind: 'tool', icon: '/datasource_icons/gdrive.png', label: 'Presentation_Q1_Board.pptx', detail: 'Google Drive · 18 slides processed' },
+      { kind: 'assistant', text: 'Q1 2024 shows 18% revenue growth. Key highlights: LATAM expansion (+3 countries), product B launch, and a 12% reduction in operational costs.' },
     ],
   },
 ];
@@ -972,7 +978,6 @@ function NexyShowcase({
 }) {
   const [active, setActive] = useState(0);
   const demos = language === 'en' ? NEXY_CHAT_DEMOS_EN : NEXY_CHAT_DEMOS;
-  const demo = demos[active];
 
   return (
     <div className="grid lg:grid-cols-2 gap-6 items-start">
@@ -1020,7 +1025,7 @@ function NexyShowcase({
             exit={{ opacity: 0, y: -12 }}
             transition={{ duration: 0.25, ease: 'easeOut' }}
             className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col"
-            style={{ height: 420 }}
+            style={{ height: 460 }}
           >
             {/* Header */}
             <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-muted/30 shrink-0">
@@ -1033,52 +1038,79 @@ function NexyShowcase({
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-hidden px-4 py-4 flex flex-col gap-3">
-
-              {/* Mensaje usuario */}
-              <div className="flex justify-end">
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, ease: 'easeOut' }}
-                  className="relative break-words rounded-lg p-3 text-sm max-w-[85%] bg-muted text-foreground"
-                >
-                  {demo.user}
-                </motion.div>
-              </div>
-
-              {/* Tool call — réplica exacta de ToolRenderer */}
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: 0.1, ease: 'easeOut' }}
-                className="w-full rounded-lg border bg-muted/40 px-4 py-3"
-              >
-                <div className="flex items-center justify-between gap-4">
-                  <div className="flex items-center gap-3 min-w-0">
-                    <img
-                      src={demo.sources[0]?.icon ?? '/nexata_logo.png'}
-                      alt="tool"
-                      className="h-5 w-5 shrink-0 object-contain"
-                    />
-                    <span className="text-sm font-medium truncate text-foreground">
-                      {demo.toolLabel}
-                    </span>
-                  </div>
-                  <Check className="h-4 w-4 text-green-500 shrink-0" />
-                </div>
-              </motion.div>
-
-              {/* Respuesta Nexy */}
-              <motion.div
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.25, delay: 0.2, ease: 'easeOut' }}
-                className="relative break-words rounded-lg p-3 text-sm max-w-[85%] bg-transparent text-foreground"
-              >
-                {demo.reply}
-              </motion.div>
-
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-2.5">
+              {demos[active].messages.map((msg, idx) => {
+                const delay = idx * 0.12;
+                if (msg.kind === 'user') {
+                  return (
+                    <div key={idx} className="flex justify-end">
+                      <motion.div
+                        initial={{ opacity: 0, y: 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.22, delay, ease: 'easeOut' }}
+                        className="break-words rounded-2xl rounded-tr-sm px-3 py-2 text-sm max-w-[82%] bg-muted text-foreground"
+                      >
+                        {msg.text}
+                      </motion.div>
+                    </div>
+                  );
+                }
+                if (msg.kind === 'tool') {
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay, ease: 'easeOut' }}
+                      className="w-full rounded-xl border border-border bg-muted/30 px-3 py-2.5"
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img src={msg.icon} alt="source" className="h-4 w-4 shrink-0 object-contain" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground truncate">{msg.label}</p>
+                          <p className="text-[10px] text-muted-foreground leading-tight">{msg.detail}</p>
+                        </div>
+                        <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                      </div>
+                    </motion.div>
+                  );
+                }
+                if (msg.kind === 'assistant') {
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay, ease: 'easeOut' }}
+                      className="max-w-[85%] px-1 py-0.5 text-sm text-foreground leading-relaxed"
+                    >
+                      {msg.text}
+                    </motion.div>
+                  );
+                }
+                if (msg.kind === 'assistant-list') {
+                  return (
+                    <motion.div
+                      key={idx}
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: 0.22, delay, ease: 'easeOut' }}
+                      className="max-w-[88%] space-y-1.5 px-1 py-0.5"
+                    >
+                      <p className="text-sm text-foreground">{msg.intro}</p>
+                      <ul className="space-y-1">
+                        {msg.items.map((item, j) => (
+                          <li key={j} className="flex items-start gap-2 text-sm text-muted-foreground">
+                            <span className="text-primary font-bold shrink-0 leading-5">{j + 1}.</span>
+                            {item}
+                          </li>
+                        ))}
+                      </ul>
+                    </motion.div>
+                  );
+                }
+                return null;
+              })}
             </div>
 
             {/* Input — réplica exacta MessageInput compacto */}
@@ -1128,192 +1160,264 @@ function UseCasesInteractive({
   language: Language;
 }) {
   const [active, setActive] = useState(0);
-  const [mobileOpen, setMobileOpen] = useState<number | null>(0);
 
   return (
-    <>
-      {/* Desktop: sidebar + animated panel */}
-      <div className="hidden lg:grid lg:grid-cols-5 gap-6">
-        {/* Sidebar list */}
-        <div className="lg:col-span-2 flex flex-col gap-2">
+    <div className="space-y-8">
+
+      {/* ===== DESKTOP ===== */}
+      <div className="hidden lg:flex lg:flex-col gap-10">
+
+        {/* — Horizontal process-flow navigator — */}
+        <div className="relative flex items-start justify-between">
+          {/* Track: background line */}
+          <div className="absolute top-6 left-[5%] right-[5%] h-px bg-border pointer-events-none" />
+          {/* Track: progress line */}
+          <motion.div
+            className="absolute top-6 left-[5%] h-px bg-primary pointer-events-none origin-left"
+            style={{ right: '5%' }}
+            animate={{ scaleX: active / Math.max(items.length - 1, 1) }}
+            transition={{ duration: 0.5, ease: 'easeInOut' }}
+          />
+
           {items.map((uc, i) => {
             const Icon = USE_CASE_ICONS_MAP[i];
             const isActive = active === i;
+            const isPast = active > i;
             return (
               <button
                 key={uc.title}
                 type="button"
                 onClick={() => setActive(i)}
-                className={`w-full text-left flex items-center gap-3 px-4 py-3 rounded-xl border transition-all duration-200 cursor-pointer ${
-                  isActive
-                    ? 'border-primary/40 bg-primary/5 shadow-sm'
-                    : 'border-border/50 hover:border-border hover:bg-foreground/[0.02]'
-                }`}
+                className="relative z-10 flex flex-col items-center gap-2.5 group cursor-pointer flex-1"
               >
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors duration-200 ${
-                    isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
+                {/* Solid bg-background cover keeps the track line hidden behind the icon */}
+                <div className="relative flex items-center justify-center">
+                  <div className="absolute w-[52px] h-[52px] bg-background rounded-2xl pointer-events-none" />
+                  <motion.div
+                    animate={isActive ? { scale: 1.12 } : { scale: 1 }}
+                    transition={{ duration: 0.2 }}
+                    className={`relative w-12 h-12 rounded-2xl flex items-center justify-center border-2 transition-all duration-200 ${
+                      isActive
+                        ? 'border-primary bg-primary text-primary-foreground shadow-[0_0_0_5px_hsl(var(--primary)/0.12)]'
+                        : isPast
+                        ? 'border-primary/50 bg-primary/10 text-primary'
+                        : 'border-border bg-background text-muted-foreground group-hover:border-primary/30 group-hover:text-foreground'
+                    }`}
+                  >
+                    {isPast ? <Check className="w-4 h-4" /> : <Icon className="w-4 h-4" />}
+                  </motion.div>
                 </div>
                 <span
-                  className={`text-sm font-medium leading-tight flex-1 transition-colors duration-200 ${
-                    isActive ? 'text-foreground' : 'text-muted-foreground'
+                  className={`text-[11px] font-medium text-center leading-tight max-w-[88px] transition-colors duration-200 ${
+                    isActive
+                      ? 'text-foreground font-semibold'
+                      : 'text-muted-foreground group-hover:text-foreground'
                   }`}
                 >
                   {uc.title}
                 </span>
-                <motion.div
-                  initial={false}
-                  animate={{ opacity: isActive ? 1 : 0, x: isActive ? 0 : -6 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArrowRight className="w-4 h-4 text-primary shrink-0" />
-                </motion.div>
               </button>
             );
           })}
         </div>
 
-        {/* Detail panel */}
-        <div className="lg:col-span-3">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={active}
-              initial={{ opacity: 0, x: 14, scale: 0.98 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: -14, scale: 0.98 }}
-              transition={{ duration: 0.25, ease: 'easeOut' }}
-              className="rounded-2xl border border-border bg-card overflow-hidden flex flex-col"
-            >
-              {/* Header */}
-              <div className="px-6 py-4 border-b border-border bg-primary/[0.04] flex items-center gap-3">
-                {(() => {
-                  const Icon = USE_CASE_ICONS_MAP[active];
-                  return (
-                    <div className="flex items-center justify-center w-9 h-9 rounded-xl bg-primary/10 shrink-0">
-                      <Icon className="w-5 h-5 text-primary" />
-                    </div>
-                  );
-                })()}
-                <div>
-                  <p className="text-[11px] font-semibold text-primary/60 uppercase tracking-widest mb-0.5">
-                    {active + 1} / {items.length}
-                  </p>
-                  <h3 className="text-base font-semibold text-foreground leading-tight">
+        {/* — Detail card: split Challenge / Solution — */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -16 }}
+            transition={{ duration: 0.28, ease: 'easeOut' }}
+            className="rounded-2xl border border-border bg-card overflow-hidden shadow-sm"
+          >
+            {/* Card header */}
+            <div className="flex items-center gap-4 px-8 py-5 border-b border-border bg-muted/20">
+              {(() => {
+                const Icon = USE_CASE_ICONS_MAP[active];
+                return (
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon className="w-5 h-5 text-primary" />
+                  </div>
+                );
+              })()}
+              <div>
+                <p className="text-[11px] font-bold text-primary/60 uppercase tracking-widest">
+                  {language === 'es' ? 'Caso' : 'Case'}{' '}
+                  {String(active + 1).padStart(2, '0')} / {items.length}
+                </p>
+                <h3 className="text-base font-semibold text-foreground leading-tight mt-0.5">
+                  {items[active].title}
+                </h3>
+              </div>
+              {/* Dot navigation */}
+              <div className="ml-auto flex items-center gap-2">
+                {items.map((_, i) => (
+                  <button
+                    key={`dot-${i}`}
+                    type="button"
+                    onClick={() => setActive(i)}
+                    className={`rounded-full transition-all duration-300 ${
+                      active === i
+                        ? 'w-5 h-2 bg-primary'
+                        : 'w-2 h-2 bg-border hover:bg-muted-foreground'
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Two-column body */}
+            <div className="grid grid-cols-2 divide-x divide-border">
+              {/* Challenge */}
+              <div className="p-8">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-6 h-6 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                    <span className="text-[11px] font-black text-destructive leading-none">!</span>
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-destructive/70">
+                    {language === 'es' ? 'El desafío' : 'The challenge'}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {items[active].problem}
+                </p>
+              </div>
+
+              {/* Solution */}
+              <div className="p-8 bg-primary/[0.025]">
+                <div className="flex items-center gap-2.5 mb-5">
+                  <div className="w-6 h-6 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Check className="w-3 h-3 text-primary" />
+                  </div>
+                  <span className="text-xs font-bold uppercase tracking-widest text-primary">
+                    {language === 'es' ? 'Con Nexata' : 'With Nexata'}
+                  </span>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">
+                  {items[active].solution}
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+      </div>
+
+      {/* ===== MOBILE: single card with pill tabs + prev/next ===== */}
+      <div className="lg:hidden space-y-4">
+
+        {/* Numbered pill tabs */}
+        <div className="flex gap-2 justify-center flex-wrap">
+          {items.map((uc, i) => {
+            const isActive = active === i;
+            const isPast = active > i;
+            return (
+              <button
+                key={`tab-${i}`}
+                type="button"
+                onClick={() => setActive(i)}
+                className={`flex items-center justify-center w-9 h-9 rounded-full border text-xs font-bold transition-all duration-200 ${
+                  isActive
+                    ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+                    : isPast
+                    ? 'border-primary/40 bg-primary/5 text-primary/70'
+                    : 'border-border text-muted-foreground hover:border-primary/30 hover:text-foreground'
+                }`}
+              >
+                {isPast ? <Check className="w-3.5 h-3.5" /> : String(i + 1).padStart(2, '0')}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Single animated card */}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={active}
+            initial={{ opacity: 0, x: 16 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -16 }}
+            transition={{ duration: 0.22, ease: 'easeOut' }}
+            className="rounded-2xl border border-border bg-card overflow-hidden"
+          >
+            {/* Card header */}
+            {(() => {
+              const Icon = USE_CASE_ICONS_MAP[active];
+              return (
+                <div className="flex items-center gap-3 px-4 py-3 bg-muted/30 border-b border-border">
+                  <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                    <Icon className="w-3.5 h-3.5 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold text-foreground flex-1 leading-tight">
                     {items[active].title}
                   </h3>
                 </div>
+              );
+            })()}
+
+            <div className="p-4 space-y-2">
+              {/* Challenge */}
+              <div className="rounded-xl bg-destructive/5 border border-destructive/10 p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-4 h-4 rounded-full bg-destructive/10 border border-destructive/20 flex items-center justify-center shrink-0">
+                    <span className="text-[9px] font-black text-destructive">!</span>
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-destructive/70">
+                    {language === 'es' ? 'Desafío' : 'Challenge'}
+                  </span>
+                </div>
+                <p className="text-sm text-muted-foreground leading-relaxed">{items[active].problem}</p>
               </div>
 
-              <div className="p-6 space-y-5">
-                {/* Problem */}
-                <div className="rounded-xl bg-destructive/5 border border-destructive/10 p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-destructive/60 shrink-0" />
-                    <span className="text-[11px] font-semibold text-destructive/80 uppercase tracking-widest">
-                      {language === 'es' ? 'Problema' : 'Problem'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed">
-                    {items[active].problem}
-                  </p>
-                </div>
-
-                {/* Arrow divider */}
-                <div className="flex justify-center">
-                  <div className="flex flex-col items-center gap-1">
-                    <div className="w-px h-3 bg-border" />
-                    <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                      <ArrowRight className="w-3 h-3 text-primary rotate-90" />
-                    </div>
-                    <div className="w-px h-3 bg-border" />
-                  </div>
-                </div>
-
-                {/* Solution */}
-                <div className="rounded-xl bg-primary/5 border border-primary/15 p-4 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                    <span className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-                      {language === 'es' ? 'Solución con Nexata' : 'Solution with Nexata'}
-                    </span>
-                  </div>
-                  <p className="text-sm text-foreground leading-relaxed">
-                    {items[active].solution}
-                  </p>
-                </div>
+              {/* Arrow connector */}
+              <div className="flex justify-center py-0.5">
+                <ArrowRight className="w-3.5 h-3.5 text-border rotate-90" />
               </div>
-            </motion.div>
-          </AnimatePresence>
+
+              {/* Solution */}
+              <div className="rounded-xl bg-primary/5 border border-primary/15 p-3">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <div className="w-4 h-4 rounded-full bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0">
+                    <Check className="w-2.5 h-2.5 text-primary" />
+                  </div>
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
+                    {language === 'es' ? 'Con Nexata' : 'With Nexata'}
+                  </span>
+                </div>
+                <p className="text-sm text-foreground leading-relaxed">{items[active].solution}</p>
+              </div>
+            </div>
+          </motion.div>
+        </AnimatePresence>
+
+        {/* Prev / Next */}
+        <div className="flex items-center justify-between px-1">
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={active === 0}
+            onClick={() => setActive((p) => Math.max(0, p - 1))}
+            className="gap-1.5 text-xs"
+          >
+            <ArrowRight className="w-3.5 h-3.5 rotate-180" />
+            {language === 'es' ? 'Anterior' : 'Prev'}
+          </Button>
+          <span className="text-xs text-muted-foreground font-mono tabular-nums">
+            {active + 1} / {items.length}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={active === items.length - 1}
+            onClick={() => setActive((p) => Math.min(items.length - 1, p + 1))}
+            className="gap-1.5 text-xs"
+          >
+            {language === 'es' ? 'Siguiente' : 'Next'}
+            <ArrowRight className="w-3.5 h-3.5" />
+          </Button>
         </div>
       </div>
-
-      {/* Mobile: accordion */}
-      <div className="lg:hidden space-y-3">
-        {items.map((uc, i) => {
-          const Icon = USE_CASE_ICONS_MAP[i];
-          const isOpen = mobileOpen === i;
-          return (
-            <div key={uc.title} className="rounded-xl border border-border overflow-hidden bg-card">
-              <button
-                type="button"
-                onClick={() => setMobileOpen(isOpen ? null : i)}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors duration-200 ${
-                  isOpen ? 'border-b border-border bg-primary/5' : 'hover:bg-foreground/[0.02]'
-                }`}
-              >
-                <div
-                  className={`flex items-center justify-center w-8 h-8 rounded-lg shrink-0 transition-colors ${
-                    isOpen ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
-                  }`}
-                >
-                  <Icon className="w-4 h-4" />
-                </div>
-                <span
-                  className={`text-sm font-medium flex-1 ${isOpen ? 'text-foreground' : 'text-muted-foreground'}`}
-                >
-                  {uc.title}
-                </span>
-                <motion.div
-                  animate={{ rotate: isOpen ? 90 : 0 }}
-                  transition={{ duration: 0.2 }}
-                >
-                  <ArrowRight className="w-4 h-4 text-muted-foreground shrink-0" />
-                </motion.div>
-              </button>
-              <AnimatePresence initial={false}>
-                {isOpen && (
-                  <motion.div
-                    initial={{ height: 0, opacity: 0 }}
-                    animate={{ height: 'auto', opacity: 1 }}
-                    exit={{ height: 0, opacity: 0 }}
-                    transition={{ duration: 0.25, ease: 'easeOut' }}
-                    className="overflow-hidden"
-                  >
-                    <div className="p-4 space-y-3">
-                      <div className="rounded-lg bg-destructive/5 border border-destructive/10 p-3 space-y-1.5">
-                        <span className="text-[11px] font-semibold text-destructive/80 uppercase tracking-widest">
-                          {language === 'es' ? 'Problema' : 'Problem'}
-                        </span>
-                        <p className="text-sm text-muted-foreground leading-relaxed">{uc.problem}</p>
-                      </div>
-                      <div className="rounded-lg bg-primary/5 border border-primary/15 p-3 space-y-1.5">
-                        <span className="text-[11px] font-semibold text-primary uppercase tracking-widest">
-                          {language === 'es' ? 'Solución con Nexata' : 'Solution with Nexata'}
-                        </span>
-                        <p className="text-sm text-foreground leading-relaxed">{uc.solution}</p>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
-          );
-        })}
-      </div>
-    </>
+    </div>
   );
 }
 
