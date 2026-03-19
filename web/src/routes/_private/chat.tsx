@@ -83,7 +83,7 @@ export function NexataChat() {
 		addUnreadThread,
 	} = useChatUIStore();
 
-	const isNewChat = viewStatus === 'new';
+	const isNewChat = viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle');
 	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
 
 	// ----------------------------
