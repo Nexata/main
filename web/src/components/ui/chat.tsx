@@ -455,8 +455,28 @@ export function ChatWelcome({
   return (
     <div className="flex flex-1 flex-col items-center justify-center px-4 gap-8 pb-6">
       {isLoading ? (
-        <div className="animate-pulse">
-          <div className="h-10 w-130 rounded-md bg-muted" />
+        <div className="flex flex-col items-center gap-8 w-full max-w-2xl animate-pulse">
+          {/* Heading */}
+          <div className="flex flex-col items-center gap-3 w-full px-4">
+            <div className="h-9 md:h-11 lg:h-14 w-[85%] md:w-[70%] rounded-xl bg-muted" />
+            <div className="h-9 md:h-11 lg:h-14 w-[55%] md:w-[45%] rounded-xl bg-muted" />
+          </div>
+
+          {/* Input box */}
+          <div className="w-full px-4 md:px-0">
+            <div className="h-[56px] w-full rounded-2xl bg-muted" />
+          </div>
+
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap gap-2 justify-center w-full px-4">
+            {[110, 155, 135, 165].map((w, i) => (
+              <div
+                key={i}
+                className="h-9 rounded-full bg-muted"
+                style={{ width: `${w}px` }}
+              />
+            ))}
+          </div>
         </div>
       ) : (
         <>
