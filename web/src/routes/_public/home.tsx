@@ -1,24 +1,26 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion, useInView, AnimatePresence, useMotionValue, useAnimationFrame } from 'framer-motion';
 import {
-  ArrowRight,
-  ArrowUp,
-  Brain,
-  Calendar,
-  Check,
-  ClipboardList,
-  FileText,
-  Link,
-  Lock,
-  LogIn,
-  Mail,
-  MessageCircle,
-  MessageSquare,
-  Paperclip,
-  Quote,
-  Rocket,
-  Search,
-  Zap,
+	ArrowRight,
+	ArrowUp,
+	Brain,
+	Calendar,
+	Check,
+	ChevronDown,
+	ClipboardList,
+	FileText,
+	Link,
+	Lock,
+	LogIn,
+	Mail,
+	MessageCircle,
+	MessageSquare,
+	Paperclip,
+	Quote,
+	Rocket,
+	Search,
+	Shield,
+	Zap,
 } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
@@ -26,430 +28,111 @@ import { Navbar } from '@/components/navbar/navbar';
 import { Footer } from '@/components/footer/footer';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
-import { LANGUAGE_OPTIONS, usePersistedLanguage } from '@/hooks/use-sync-language';
+import { usePersistedLanguage } from '@/hooks/use-sync-language';
 import {
 	DINAMIC_DATA_SOURCES,
 	STORAGE_DATA_SOURCES,
 } from '@/lib/available-sources';
 import type { Language } from '@/lib/user';
+import {
+	'home.hero.title' as home_hero_title,
+	'home.hero.tagline' as home_hero_tagline,
+	'home.hero.subtitle' as home_hero_subtitle,
+	'home.hero.cta' as home_hero_cta,
+	'home.hero.login' as home_hero_login,
+	'home.hero.trust_no_card' as home_hero_trust_no_card,
+	'home.hero.trust_setup' as home_hero_trust_setup,
+	'home.hero.trust_permissions' as home_hero_trust_permissions,
+	'home.hero.works_with' as home_hero_works_with,
+	'home.hero.scroll_label' as home_hero_scroll_label,
+	'home.intro.title' as home_intro_title,
+	'home.intro.body' as home_intro_body,
+	'home.intro.body2' as home_intro_body2,
+	'home.intro.stat_faster' as home_intro_stat_faster,
+	'home.intro.stat_integrations' as home_intro_stat_integrations,
+	'home.intro.stat_connect' as home_intro_stat_connect,
+	'home.intro.stat_permissions' as home_intro_stat_permissions,
+	'home.intro.step_1_title' as home_intro_step_1_title,
+	'home.intro.step_1_desc' as home_intro_step_1_desc,
+	'home.intro.step_2_title' as home_intro_step_2_title,
+	'home.intro.step_2_desc' as home_intro_step_2_desc,
+	'home.intro.step_3_title' as home_intro_step_3_title,
+	'home.intro.step_3_desc' as home_intro_step_3_desc,
+	'home.intro.step_4_title' as home_intro_step_4_title,
+	'home.intro.step_4_desc' as home_intro_step_4_desc,
+	'home.sources.title' as home_sources_title,
+	'home.sources.subtitle' as home_sources_subtitle,
+	'home.nexy.title' as home_nexy_title,
+	'home.nexy.subtitle' as home_nexy_subtitle,
+	'home.nexy.online' as home_nexy_online,
+	'home.nexy.ask_placeholder' as home_nexy_ask_placeholder,
+	'home.nexy.feature_1_title' as home_nexy_feature_1_title,
+	'home.nexy.feature_1_desc' as home_nexy_feature_1_desc,
+	'home.nexy.feature_2_title' as home_nexy_feature_2_title,
+	'home.nexy.feature_2_desc' as home_nexy_feature_2_desc,
+	'home.nexy.feature_3_title' as home_nexy_feature_3_title,
+	'home.nexy.feature_3_desc' as home_nexy_feature_3_desc,
+	'home.nexy.feature_4_title' as home_nexy_feature_4_title,
+	'home.nexy.feature_4_desc' as home_nexy_feature_4_desc,
+	'home.nexy.feature_5_title' as home_nexy_feature_5_title,
+	'home.nexy.feature_5_desc' as home_nexy_feature_5_desc,
+	'home.usecases.title' as home_usecases_title,
+	'home.usecases.challenge_label' as home_usecases_challenge_label,
+	'home.usecases.solution_label' as home_usecases_solution_label,
+	'home.usecases.case_prefix' as home_usecases_case_prefix,
+	'home.usecases.challenge_short' as home_usecases_challenge_short,
+	'home.usecases.solution_short' as home_usecases_solution_short,
+	'home.usecases.prev' as home_usecases_prev,
+	'home.usecases.next' as home_usecases_next,
+	'home.usecases.item_1_title' as home_usecases_item_1_title,
+	'home.usecases.item_1_problem' as home_usecases_item_1_problem,
+	'home.usecases.item_1_solution' as home_usecases_item_1_solution,
+	'home.usecases.item_2_title' as home_usecases_item_2_title,
+	'home.usecases.item_2_problem' as home_usecases_item_2_problem,
+	'home.usecases.item_2_solution' as home_usecases_item_2_solution,
+	'home.usecases.item_3_title' as home_usecases_item_3_title,
+	'home.usecases.item_3_problem' as home_usecases_item_3_problem,
+	'home.usecases.item_3_solution' as home_usecases_item_3_solution,
+	'home.usecases.item_4_title' as home_usecases_item_4_title,
+	'home.usecases.item_4_problem' as home_usecases_item_4_problem,
+	'home.usecases.item_4_solution' as home_usecases_item_4_solution,
+	'home.usecases.item_5_title' as home_usecases_item_5_title,
+	'home.usecases.item_5_problem' as home_usecases_item_5_problem,
+	'home.usecases.item_5_solution' as home_usecases_item_5_solution,
+	'home.features.title' as home_features_title,
+	'home.features.item_1_title' as home_features_item_1_title,
+	'home.features.item_1_desc' as home_features_item_1_desc,
+	'home.features.item_2_title' as home_features_item_2_title,
+	'home.features.item_2_desc' as home_features_item_2_desc,
+	'home.features.item_3_title' as home_features_item_3_title,
+	'home.features.item_3_desc' as home_features_item_3_desc,
+	'home.features.item_4_title' as home_features_item_4_title,
+	'home.features.item_4_desc' as home_features_item_4_desc,
+	'home.features.item_5_title' as home_features_item_5_title,
+	'home.features.item_5_desc' as home_features_item_5_desc,
+	'home.features.item_6_title' as home_features_item_6_title,
+	'home.features.item_6_desc' as home_features_item_6_desc,
+	'home.why.title' as home_why_title,
+	'home.why.testimonial_1_role' as home_why_testimonial_1_role,
+	'home.why.testimonial_1_quote' as home_why_testimonial_1_quote,
+	'home.why.testimonial_2_role' as home_why_testimonial_2_role,
+	'home.why.testimonial_2_quote' as home_why_testimonial_2_quote,
+	'home.why.testimonial_3_role' as home_why_testimonial_3_role,
+	'home.why.testimonial_3_quote' as home_why_testimonial_3_quote,
+	'home.cta.title' as home_cta_title,
+	'home.cta.subtitle' as home_cta_subtitle,
+	'home.cta.start' as home_cta_start,
+	'home.cta.demo' as home_cta_demo,
+	'navbar.nav_home' as navbar_nav_home,
+	'navbar.nav_platform' as navbar_nav_platform,
+	'navbar.nav_nexy' as navbar_nav_nexy,
+	'navbar.nav_use_cases' as navbar_nav_use_cases,
+	'navbar.nav_features' as navbar_nav_features,
+} from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_public/home')({
 	component: Home,
 });
-
-// -------------------------------- CONTENT --------------------------------
-
-type LangContent = {
-	nav: { sections: { id: string; label: string }[] };
-	hero: {
-		title: string;
-		tagline: string;
-		subtitle: string;
-		login: string;
-		cta: string;
-	};
-	intro: {
-		title: string;
-		body: string;
-		body2: string;
-		steps: { title: string; desc: string }[];
-	};
-	sources: { title: string; subtitle: string };
-	nexy: {
-		title: string;
-		subtitle: string;
-		features: { icon: typeof Search; title: string; desc: string }[];
-	};
-	usecases: {
-		title: string;
-		items: { title: string; problem: string; solution: string }[];
-	};
-	features: {
-		title: string;
-		items: { icon: typeof Search; title: string; desc: string }[];
-	};
-	why: {
-		title: string;
-		testimonials: { role: string; quote: string }[];
-	};
-	cta: { title: string; subtitle: string; start: string; demo: string };
-	footer: { tagline: string };
-};
-
-const CONTENT_ES: LangContent = {
-	nav: {
-		sections: [
-			{ id: 'hero', label: 'Inicio' },
-			{ id: 'intro', label: 'Plataforma' },
-			{ id: 'nexy', label: 'Nexy' },
-			{ id: 'usecases', label: 'Casos de uso' },
-			{ id: 'features', label: 'Funciones' },
-		],
-	},
-	hero: {
-		title: 'Tu conocimiento empresarial, una pregunta de distancia',
-		tagline: 'Potenciado por Nexy, tu asistente de conocimiento',
-		subtitle:
-			'Conecta. Busca. Encuentra. Un unico punto de acceso para todo el conocimiento de tu empresa, potenciado por inteligencia artificial.',
-		login: 'Iniciar Sesion',
-		cta: 'Empezar Gratis',
-	},
-	intro: {
-		title: 'El nexo de tu conocimiento empresarial',
-		body: 'Nexata es una plataforma de conocimiento empresarial disenada para resolver la fragmentacion de informacion que sufren las empresas modernas.',
-		body2:
-			'En lugar de saltar entre Google Drive, Gmail, Dropbox, calendarios y otros sistemas, Nexata unifica todos estos servicios en un unico buscador inteligente que entiende el contexto y devuelve respuestas precisas, no solo resultados.',
-		steps: [
-			{
-				title: 'Conecta',
-				desc: 'Vincula tus fuentes de trabajo (Google Workspace, Microsoft 365, Dropbox) en minutos.',
-			},
-			{
-				title: 'Indexa',
-				desc: 'La IA procesa y organiza automaticamente tus documentos, emails y eventos.',
-			},
-			{
-				title: 'Busca con inteligencia',
-				desc: "Hace preguntas naturales como 'Cuando enviamos el presupuesto al cliente X?'",
-			},
-			{
-				title: 'Obtene respuestas',
-				desc: 'Resultados instantaneos con contexto completo, citas exactas y enlaces directos.',
-			},
-		],
-	},
-	sources: {
-		title: 'Fuentes de datos conectables',
-		subtitle:
-			'Conecta tus herramientas favoritas y empieza a unificar tu conocimiento empresarial en segundos.',
-	},
-	nexy: {
-		title: 'Conoce a Nexy',
-		subtitle:
-			'El asistente inteligente que habla el idioma de tus datos. Mientras otras herramientas solo indexan archivos, Nexy comprende contexto, relaciones y significado.',
-		features: [
-			{
-				icon: Search,
-				title: 'Busqueda Semantica',
-				desc: 'Encontra documentos por concepto, no solo por palabra clave exacta.',
-			},
-			{
-				icon: Mail,
-				title: 'Sintesis Multi-fuente',
-				desc: 'Conecta informacion de correos, archivos y eventos en una respuesta unificada.',
-			},
-			{
-				icon: Calendar,
-				title: 'Contexto Temporal',
-				desc: 'Consulta eventos, plazos y cronologias vinculadas a tu documentacion.',
-			},
-			{
-				icon: MessageSquare,
-				title: 'Conversacion Natural',
-				desc: 'Hace preguntas en lenguaje cotidiano. Nexy interpreta intencion, no solo comandos.',
-			},
-			{
-				icon: FileText,
-				title: 'Lectura Asistida',
-				desc: 'Solicita resumenes, extraccion de datos especificos o comparativas entre versiones.',
-			},
-		],
-	},
-	usecases: {
-		title: 'Casos de uso',
-		items: [
-			{
-				title: 'Busqueda Inteligente de Documentos',
-				problem:
-					'Un equipo de ventas necesita encontrar rapidamente el ultimo contrato modificado con un cliente especifico entre miles de archivos.',
-				solution:
-					"Busca: 'contrato cliente XYZ modificado en enero'. Obtene: El documento exacto con historial de versiones. De 20 minutos a 10 segundos.",
-			},
-			{
-				title: 'Recuperacion de Contexto de Emails',
-				problem:
-					'Un gerente necesita recordar que se acordo en un email de hace 3 meses sobre un cambio de alcance.',
-				solution:
-					"Busca: 'cambio alcance proyecto dashboard febrero'. Obtene: El email especifico con el hilo completo y attachments.",
-			},
-			{
-				title: 'Gestion de Conocimiento Onboarding',
-				problem:
-					'Un nuevo empleado necesita aprender procesos y documentacion sin molestar al equipo.',
-				solution:
-					"Pregunta: 'Como proceso facturas de proveedores?' Obtene: Guias, procedimientos y referencias. Autonomia desde el dia 1.",
-			},
-			{
-				title: 'Integracion de Calendario y Documentos',
-				problem:
-					'Prepararse para una reunion requiere buscar manualmente emails, documentos y notas.',
-				solution:
-					"Busca: 'preparacion reunion cliente ABC de manana'. Obtene: Documentos relevantes, emails y notas previas.",
-			},
-			{
-				title: 'Compliance y Auditoria',
-				problem:
-					'Se necesita encontrar documentacion de auditoria o cumplimiento rapidamente.',
-				solution:
-					"Busca: 'documentos fiscales 2024 o contratos con clausula NDA'. Obtene: Listado completo con filtros avanzados.",
-			},
-		],
-	},
-	features: {
-		title: 'Caracteristicas principales',
-		items: [
-			{
-				icon: Search,
-				title: 'Busqueda Semantica',
-				desc: 'Entiende consultas en lenguaje natural, no solo palabras clave exactas.',
-			},
-			{
-				icon: Link,
-				title: 'Conectores Multiples',
-				desc: 'Google Drive, Gmail, Google Calendar, Dropbox, Microsoft 365.',
-			},
-			{
-				icon: Zap,
-				title: 'Respuestas Instantaneas',
-				desc: 'Resultados en segundos, no minutos de navegacion por carpetas.',
-			},
-			{
-				icon: ClipboardList,
-				title: 'Contexto Completo',
-				desc: 'Cada resultado incluye metadatos, fechas, participantes y enlaces directos.',
-			},
-			{
-				icon: Lock,
-				title: 'Seguridad Empresarial',
-				desc: 'Acceso controlado por permisos y scopes especificos por usuario.',
-			},
-			{
-				icon: MessageCircle,
-				title: 'Asistente IA Integrado',
-				desc: 'Nexy, tu asistente que conversa con tu conocimiento empresarial.',
-			},
-		],
-	},
-	why: {
-		title: 'Por que elegir Nexata?',
-		testimonials: [
-			{
-				role: 'Director de Operaciones',
-				quote:
-					'Antes de Nexy, buscar informacion era una expedicion. Ahora es una conversacion.',
-			},
-			{
-				role: 'Legal Corporativo',
-				quote:
-					'Nexy conecto un mail de hace 8 meses con una presentacion actual que resolvio un conflicto contractual. Eso no lo hace una busqueda normal.',
-			},
-			{
-				role: 'Manager de TI',
-				quote:
-					'Implementacion en minutos, no meses. Conectores nativos sin configuracion compleja. Control total de permisos.',
-			},
-		],
-	},
-	cta: {
-		title: 'No es busqueda. Es inteligencia.',
-		subtitle:
-			'Descubri lo que tu empresa ya sabe. Conecta tu primera fuente gratis y empieza a encontrar la informacion que importa.',
-		start: 'Empezar Gratis',
-		demo: 'Solicitar Demo',
-	},
-	footer: {
-		tagline: 'Tu conocimiento empresarial, unificado.',
-	},
-};
-
-const CONTENT_EN: LangContent = {
-	nav: {
-		sections: [
-			{ id: 'hero', label: 'Home' },
-			{ id: 'intro', label: 'Platform' },
-			{ id: 'nexy', label: 'Nexy' },
-			{ id: 'usecases', label: 'Use Cases' },
-			{ id: 'features', label: 'Features' },
-		],
-	},
-	hero: {
-		title: 'Your enterprise knowledge, one question away',
-		tagline: 'Powered by Nexy, your knowledge assistant',
-		subtitle:
-			"Connect. Search. Find. A single access point for all your company's knowledge, powered by artificial intelligence.",
-		login: 'Log In',
-		cta: 'Start Free',
-	},
-	intro: {
-		title: 'The nexus of your enterprise knowledge',
-		body: 'Nexata is an enterprise knowledge platform designed to solve the information fragmentation that modern businesses suffer from.',
-		body2:
-			'Instead of jumping between Google Drive, Gmail, Dropbox, calendars, and other systems, Nexata unifies all these services into a single intelligent search engine that understands context and delivers precise answers — not just results.',
-		steps: [
-			{
-				title: 'Connect',
-				desc: 'Link your work sources (Google Workspace, Microsoft 365, Dropbox) in minutes.',
-			},
-			{
-				title: 'Index',
-				desc: 'AI automatically processes and organizes your documents, emails, and events.',
-			},
-			{
-				title: 'Search intelligently',
-				desc: "Ask natural questions like 'When did we send the budget to client X?'",
-			},
-			{
-				title: 'Get answers',
-				desc: 'Instant results with full context, exact citations, and direct links.',
-			},
-		],
-	},
-	sources: {
-		title: 'Connectable data sources',
-		subtitle:
-			'Connect your favorite tools and start unifying your enterprise knowledge in seconds.',
-	},
-	nexy: {
-		title: 'Meet Nexy',
-		subtitle:
-			'The intelligent assistant that speaks the language of your data. While other tools only index files, Nexy understands context, relationships, and meaning.',
-		features: [
-			{
-				icon: Search,
-				title: 'Semantic Search',
-				desc: 'Find documents by concept, not just exact keywords.',
-			},
-			{
-				icon: Mail,
-				title: 'Multi-source Synthesis',
-				desc: 'Connect information from emails, files, and events into a unified answer.',
-			},
-			{
-				icon: Calendar,
-				title: 'Temporal Context',
-				desc: 'Query events, deadlines, and timelines linked to your documentation.',
-			},
-			{
-				icon: MessageSquare,
-				title: 'Natural Conversation',
-				desc: 'Ask questions in everyday language. Nexy interprets intent, not just commands.',
-			},
-			{
-				icon: FileText,
-				title: 'Assisted Reading',
-				desc: 'Request summaries, specific data extraction, or version comparisons.',
-			},
-		],
-	},
-	usecases: {
-		title: 'Use cases',
-		items: [
-			{
-				title: 'Intelligent Document Search',
-				problem:
-					'A sales team needs to quickly find the latest contract modified with a specific client among thousands of files.',
-				solution:
-					"Search: 'client XYZ contract modified in January'. Get: The exact document with version history. From 20 minutes to 10 seconds.",
-			},
-			{
-				title: 'Email Context Recovery',
-				problem:
-					'A manager needs to recall what was agreed in an email 3 months ago about a scope change.',
-				solution:
-					"Search: 'scope change dashboard project February'. Get: The specific email with the complete thread and attachments.",
-			},
-			{
-				title: 'Onboarding Knowledge Management',
-				problem:
-					'A new employee needs to learn processes and documentation without bothering the team.',
-				solution:
-					"Ask: 'How do I process vendor invoices?' Get: Guides, procedures, and references. Autonomy from day 1.",
-			},
-			{
-				title: 'Calendar & Document Integration',
-				problem:
-					'Preparing for a meeting requires manually searching emails, documents, and notes.',
-				solution:
-					"Search: 'preparation for ABC client meeting tomorrow'. Get: Relevant documents, emails, and previous notes.",
-			},
-			{
-				title: 'Compliance & Audit',
-				problem: 'Audit or compliance documentation needs to be found quickly.',
-				solution:
-					"Search: 'fiscal documents 2024 or contracts with NDA clause'. Get: Complete listing with advanced filters.",
-			},
-		],
-	},
-	features: {
-		title: 'Key features',
-		items: [
-			{
-				icon: Search,
-				title: 'Semantic Search',
-				desc: 'Understands natural language queries, not just exact keywords.',
-			},
-			{
-				icon: Link,
-				title: 'Multiple Connectors',
-				desc: 'Google Drive, Gmail, Google Calendar, Dropbox, Microsoft 365.',
-			},
-			{
-				icon: Zap,
-				title: 'Instant Answers',
-				desc: 'Results in seconds, not minutes of browsing through folders.',
-			},
-			{
-				icon: ClipboardList,
-				title: 'Full Context',
-				desc: 'Every result includes metadata, dates, participants, and direct links.',
-			},
-			{
-				icon: Lock,
-				title: 'Enterprise Security',
-				desc: 'Access controlled by user-specific permissions and scopes.',
-			},
-			{
-				icon: MessageCircle,
-				title: 'Integrated AI Assistant',
-				desc: 'Nexy, your assistant that converses with your enterprise knowledge.',
-			},
-		],
-	},
-	why: {
-		title: 'Why choose Nexata?',
-		testimonials: [
-			{
-				role: 'Operations Director',
-				quote:
-					"Before Nexy, searching for information was an expedition. Now it's a conversation.",
-			},
-			{
-				role: 'Corporate Legal',
-				quote:
-					"Nexy connected an 8-month-old email with a current presentation that resolved a contractual conflict. A normal search doesn't do that.",
-			},
-			{
-				role: 'IT Manager',
-				quote:
-					'Implementation in minutes, not months. Native connectors without complex configuration. Total permission control.',
-			},
-		],
-	},
-	cta: {
-		title: "It's not search. It's intelligence.",
-		subtitle:
-			'Discover what your company already knows. Connect your first source for free and start finding the information that matters.',
-		start: 'Start Free',
-		demo: 'Request Demo',
-	},
-	footer: {
-		tagline: 'Your enterprise knowledge, unified.',
-	},
-};
-
-function getContent(language: Language): LangContent {
-	return language === 'en' ? CONTENT_EN : CONTENT_ES;
-}
 
 // -------------------------------- ANIMATIONS --------------------------------
 
@@ -467,14 +150,87 @@ export default function Home() {
 	const [language, setLanguage] = usePersistedLanguage();
 	const [registerOpen, setRegisterOpen] = useState(false);
 
-	const c = getContent(language);
+	const lc = { locale: language };
+
+	const navSections = [
+		{ id: 'hero', label: navbar_nav_home({}, lc) },
+		{ id: 'intro', label: navbar_nav_platform({}, lc) },
+		{ id: 'nexy', label: navbar_nav_nexy({}, lc) },
+		{ id: 'usecases', label: navbar_nav_use_cases({}, lc) },
+		{ id: 'features', label: navbar_nav_features({}, lc) },
+	];
+
+	const nexyFeatures = [
+		{ icon: Search, title: home_nexy_feature_1_title({}, lc), desc: home_nexy_feature_1_desc({}, lc) },
+		{ icon: Mail, title: home_nexy_feature_2_title({}, lc), desc: home_nexy_feature_2_desc({}, lc) },
+		{ icon: Calendar, title: home_nexy_feature_3_title({}, lc), desc: home_nexy_feature_3_desc({}, lc) },
+		{ icon: MessageSquare, title: home_nexy_feature_4_title({}, lc), desc: home_nexy_feature_4_desc({}, lc) },
+		{ icon: FileText, title: home_nexy_feature_5_title({}, lc), desc: home_nexy_feature_5_desc({}, lc) },
+	];
+
+	const usecaseItems = [
+		{
+			title: home_usecases_item_1_title({}, lc),
+			problem: home_usecases_item_1_problem({}, lc),
+			solution: home_usecases_item_1_solution({}, lc),
+		},
+		{
+			title: home_usecases_item_2_title({}, lc),
+			problem: home_usecases_item_2_problem({}, lc),
+			solution: home_usecases_item_2_solution({}, lc),
+		},
+		{
+			title: home_usecases_item_3_title({}, lc),
+			problem: home_usecases_item_3_problem({}, lc),
+			solution: home_usecases_item_3_solution({}, lc),
+		},
+		{
+			title: home_usecases_item_4_title({}, lc),
+			problem: home_usecases_item_4_problem({}, lc),
+			solution: home_usecases_item_4_solution({}, lc),
+		},
+		{
+			title: home_usecases_item_5_title({}, lc),
+			problem: home_usecases_item_5_problem({}, lc),
+			solution: home_usecases_item_5_solution({}, lc),
+		},
+	];
+
+	const featureItems = [
+		{ icon: Search, title: home_features_item_1_title({}, lc), desc: home_features_item_1_desc({}, lc) },
+		{ icon: Link, title: home_features_item_2_title({}, lc), desc: home_features_item_2_desc({}, lc) },
+		{ icon: Zap, title: home_features_item_3_title({}, lc), desc: home_features_item_3_desc({}, lc) },
+		{ icon: ClipboardList, title: home_features_item_4_title({}, lc), desc: home_features_item_4_desc({}, lc) },
+		{ icon: Lock, title: home_features_item_5_title({}, lc), desc: home_features_item_5_desc({}, lc) },
+		{ icon: MessageCircle, title: home_features_item_6_title({}, lc), desc: home_features_item_6_desc({}, lc) },
+	];
+
+	const introSteps = [
+		{ title: home_intro_step_1_title({}, lc), desc: home_intro_step_1_desc({}, lc) },
+		{ title: home_intro_step_2_title({}, lc), desc: home_intro_step_2_desc({}, lc) },
+		{ title: home_intro_step_3_title({}, lc), desc: home_intro_step_3_desc({}, lc) },
+		{ title: home_intro_step_4_title({}, lc), desc: home_intro_step_4_desc({}, lc) },
+	];
+
+	const introStats = [
+		{ value: '10x', label: home_intro_stat_faster({}, lc) },
+		{ value: '+8', label: home_intro_stat_integrations({}, lc) },
+		{ value: '< 1min', label: home_intro_stat_connect({}, lc) },
+		{ value: '100%', label: home_intro_stat_permissions({}, lc) },
+	];
+
+	const testimonials = [
+		{ role: home_why_testimonial_1_role({}, lc), quote: home_why_testimonial_1_quote({}, lc) },
+		{ role: home_why_testimonial_2_role({}, lc), quote: home_why_testimonial_2_quote({}, lc) },
+		{ role: home_why_testimonial_3_role({}, lc), quote: home_why_testimonial_3_quote({}, lc) },
+	];
+
+	const allSources = [...DINAMIC_DATA_SOURCES, ...STORAGE_DATA_SOURCES];
 
 	const scrollToSection = (id: string) => {
 		const el = document.getElementById(id);
 		if (el) el.scrollIntoView({ behavior: 'smooth' });
 	};
-
-	const allSources = [...DINAMIC_DATA_SOURCES, ...STORAGE_DATA_SOURCES];
 
 	return (
 		<div className="min-h-screen w-full bg-background text-foreground flex flex-col relative">
@@ -482,8 +238,8 @@ export default function Home() {
 			<Navbar
 				language={language}
 				onLanguageChange={setLanguage}
-				navSections={c.nav.sections}
-				mobileMenuSections={c.nav.sections}
+				navSections={navSections}
+				mobileMenuSections={navSections}
 				onScrollToSection={scrollToSection}
 				onLogoClick={() => scrollToSection('hero')}
 				showMobileLogin
@@ -494,42 +250,101 @@ export default function Home() {
 				{/* ===== Hero ===== */}
 				<section
 					id="hero"
-					className="flex flex-col items-center justify-center text-center pt-32 pb-20 px-6 w-full bg-gradient-to-b from-primary/10 via-primary/5 to-background relative overflow-hidden"
+					className="flex flex-col items-center justify-center text-center pt-32 pb-28 px-6 w-full bg-gradient-to-b from-primary/10 via-primary/5 to-background relative overflow-hidden"
 				>
-					{/* Subtle background glow */}
-					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl pointer-events-none" />
+					{/* Dot grid texture */}
+					<div
+						className="absolute inset-0 pointer-events-none"
+						style={{
+							backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)',
+							backgroundSize: '28px 28px',
+							opacity: 0.6,
+						}}
+					/>
 
-					<motion.div
-						initial={{ opacity: 0, y: -20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.6 }}
-						className="flex flex-col items-center gap-5 max-w-2xl relative z-10"
-					>
-						<img
-							src="/nexata_logo.png"
-							alt="Nexata"
-							width={100}
-							height={100}
-							className="object-contain"
-						/>
-						<h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight">
-							{c.hero.title}
-						</h1>
-						<p className="text-base sm:text-lg text-primary font-medium">
-							{c.hero.tagline}
-						</p>
-						<p className="text-muted-foreground text-base sm:text-lg max-w-xl">
-							{c.hero.subtitle}
-						</p>
+					{/* Decorative glows */}
+					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] rounded-full bg-primary/[0.07] blur-3xl pointer-events-none" />
+					<div className="absolute -top-24 -left-24 w-[380px] h-[380px] rounded-full bg-primary/[0.06] blur-3xl pointer-events-none" />
+					<div className="absolute -bottom-16 -right-16 w-[300px] h-[300px] rounded-full bg-accent/[0.06] blur-3xl pointer-events-none" />
 
-						<div className="flex flex-col sm:flex-row gap-3 mt-4">
+					{/* Content */}
+					<div className="flex flex-col items-center gap-6 max-w-2xl relative z-10">
+
+						{/* Announcement badge */}
+						<motion.div
+							initial={{ opacity: 0, y: -12 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0 }}
+						>
+						</motion.div>
+
+						{/* Logo with pulse ring */}
+						<motion.div
+							initial={{ opacity: 0, scale: 0.85 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ duration: 0.5, delay: 0.1, ease: 'easeOut' }}
+							className="relative flex items-center justify-center"
+						>
+							<motion.div
+								animate={{ scale: [1, 1.22, 1], opacity: [0.25, 0.08, 0.25] }}
+								transition={{ duration: 3.5, repeat: Infinity, ease: 'easeInOut' }}
+								className="absolute w-28 h-28 rounded-full bg-primary/20 pointer-events-none"
+							/>
+							<img
+								src="/nexata_logo.png"
+								alt="Nexata"
+								width={88}
+								height={88}
+								className="object-contain relative z-10"
+							/>
+						</motion.div>
+
+						{/* Title */}
+						<motion.h1
+							initial={{ opacity: 0, y: 20 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.6, delay: 0.2 }}
+							className="text-4xl sm:text-5xl lg:text-6xl font-bold text-foreground leading-tight tracking-tight"
+						>
+							{home_hero_title({}, lc)}
+						</motion.h1>
+
+						{/* Tagline */}
+						<motion.p
+							initial={{ opacity: 0, y: 14 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0.3 }}
+							className="text-base sm:text-lg text-primary font-medium"
+						>
+							{home_hero_tagline({}, lc)}
+						</motion.p>
+
+						{/* Subtitle */}
+						<motion.p
+							initial={{ opacity: 0, y: 14 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0.35 }}
+							className="text-muted-foreground text-base sm:text-lg max-w-xl"
+						>
+							{home_hero_subtitle({}, lc)}
+						</motion.p>
+
+						{/* CTA Buttons */}
+						<motion.div
+							initial={{ opacity: 0, y: 14 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0.45 }}
+							className="flex flex-col sm:flex-row gap-3 mt-2"
+						>
 							<Button
 								size="lg"
-								className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg"
+								className="relative gap-2 overflow-hidden bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/25 group"
 								onClick={() => setRegisterOpen(true)}
 							>
+								<span className="absolute inset-0 -translate-x-full group-hover:translate-x-full bg-gradient-to-r from-transparent via-white/15 to-transparent transition-transform duration-700 ease-in-out pointer-events-none" />
 								<Rocket className="w-4 h-4" />
-								{c.hero.cta}
+								{home_hero_cta({}, lc)}
+								<ArrowRight className="w-4 h-4 opacity-70 group-hover:translate-x-0.5 transition-transform" />
 							</Button>
 							<Button
 								size="lg"
@@ -538,182 +353,322 @@ export default function Home() {
 								onClick={() => navigate({ to: '/login' })}
 							>
 								<LogIn className="w-4 h-4" />
-								{c.hero.login}
+								{home_hero_login({}, lc)}
 							</Button>
-						</div>
-					</motion.div>
+						</motion.div>
+
+						{/* Trust strip */}
+						<motion.div
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							transition={{ duration: 0.6, delay: 0.55 }}
+							className="flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 text-xs text-muted-foreground"
+						>
+							<span className="flex items-center gap-1.5">
+								<Shield className="w-3 h-3 text-primary/60" />
+								{home_hero_trust_no_card({}, lc)}
+							</span>
+							<span className="hidden sm:inline opacity-30">·</span>
+							<span className="flex items-center gap-1.5">
+								<Zap className="w-3 h-3 text-primary/60" />
+								{home_hero_trust_setup({}, lc)}
+							</span>
+							<span className="hidden sm:inline opacity-30">·</span>
+							<span className="flex items-center gap-1.5">
+								<Lock className="w-3 h-3 text-primary/60" />
+								{home_hero_trust_permissions({}, lc)}
+							</span>
+						</motion.div>
+
+						{/* Integration pills */}
+						<motion.div
+							initial={{ opacity: 0, y: 10 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ duration: 0.5, delay: 0.65 }}
+							className="flex items-center justify-center gap-1.5"
+						>
+							<span className="text-xs text-muted-foreground/50 font-medium">
+								{home_hero_works_with({}, lc)}
+							</span>
+							{allSources.slice(0, 5).map((src) => (
+								<div
+									key={src.id}
+									title={src.name}
+									className="flex items-center justify-center w-7 h-7 rounded-full border border-border bg-card/70 backdrop-blur-sm"
+								>
+									<img src={src.icon} alt={src.name} className="w-4 h-4 object-contain" />
+								</div>
+							))}
+							<div className="flex items-center justify-center rounded-full border border-border bg-card/70 px-2 py-0.5 backdrop-blur-sm">
+								<span className="text-xs text-muted-foreground font-medium">+{allSources.length - 5}</span>
+							</div>
+						</motion.div>
+
+					</div>
+
+					{/* Scroll cue */}
+					<motion.button
+						initial={{ opacity: 0 }}
+						animate={{ opacity: 1 }}
+						transition={{ duration: 0.6, delay: 1.0 }}
+						onClick={() => scrollToSection('intro')}
+						className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-1 text-muted-foreground/40 hover:text-muted-foreground/80 transition-colors z-10 cursor-pointer"
+						aria-label={home_hero_scroll_label({}, lc)}
+					>
+						<motion.div
+							animate={{ y: [0, 5, 0] }}
+							transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
+						>
+							<ChevronDown className="w-5 h-5" />
+						</motion.div>
+					</motion.button>
+
 				</section>
 
 				{/* ===== Intro / What is Nexata ===== */}
-        <section id="intro" className="px-6 py-20 max-w-5xl mx-auto space-y-12">
+				<section id="intro" className="relative overflow-hidden py-20">
+					{/* Decorative bg */}
+					<div className="absolute top-0 right-0 w-[500px] h-[500px] rounded-full bg-primary/[0.05] blur-3xl pointer-events-none -translate-y-1/3 translate-x-1/3" />
+					<div className="absolute bottom-0 left-0 w-[380px] h-[380px] rounded-full bg-accent/[0.04] blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/3" />
+					<div className="relative z-10 px-6 max-w-5xl mx-auto space-y-12">
 
-          {/* Título centrado */}
-          <motion.div {...fadeUp} className="text-center">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-              {c.intro.title}
-            </h2>
-          </motion.div>
+						{/* Title */}
+						<motion.div {...fadeUp} className="text-center">
+							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+								{home_intro_title({}, lc)}
+							</h2>
+						</motion.div>
 
-          {/* Textos izquierda + Cards derecha */}
-          <motion.div {...fadeUp} className="grid md:grid-cols-2 gap-10 items-center">
-            {/* Textos */}
-            <div className="space-y-4 text-left">
-              <p className="text-lg text-muted-foreground leading-relaxed">
-                {c.intro.body}
-              </p>
-              <p className="text-muted-foreground leading-relaxed">
-                {c.intro.body2}
-              </p>
-            </div>
+						{/* Text + Stat cards */}
+						<motion.div {...fadeUp} className="grid md:grid-cols-2 gap-10 items-center">
+							<div className="space-y-4 text-left">
+								<p className="text-lg text-muted-foreground leading-relaxed">
+									{home_intro_body({}, lc)}
+								</p>
+								<p className="text-muted-foreground leading-relaxed">
+									{home_intro_body2({}, lc)}
+								</p>
+							</div>
 
-            {/* Stat cards */}
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { value: '10x', label: language === 'es' ? 'más rápido que búsqueda manual' : 'faster than manual search' },
-                { value: '+8', label: language === 'es' ? 'integraciones disponibles' : 'available integrations' },
-                { value: '< 1min', label: language === 'es' ? 'para conectar tu primera fuente' : 'to connect your first source' },
-                { value: '100%', label: language === 'es' ? 'control de permisos por usuario' : 'per-user permission control' },
-              ].map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{ duration: 0.3, delay: i * 0.08, ease: 'easeOut' }}
-                  className="rounded-xl border border-border bg-card p-5 flex flex-col gap-1 text-center"
-                >
-                  <span className="text-3xl font-bold text-primary">{stat.value}</span>
-                  <span className="text-xs text-muted-foreground leading-snug">{stat.label}</span>
-                </motion.div>
-              ))}
-            </div>
-          </motion.div>
+							<div className="grid grid-cols-2 gap-3">
+								{introStats.map((stat, i) => (
+									<motion.div
+										key={stat.label}
+										initial={{ opacity: 0, scale: 0.9 }}
+										whileInView={{ opacity: 1, scale: 1 }}
+										viewport={{ once: true }}
+										transition={{ duration: 0.3, delay: i * 0.08, ease: 'easeOut' }}
+										className="rounded-xl border border-border bg-card p-5 flex flex-col gap-1 text-center"
+									>
+										<span className="text-3xl font-bold text-primary">{stat.value}</span>
+										<span className="text-xs text-muted-foreground leading-snug">{stat.label}</span>
+									</motion.div>
+								))}
+							</div>
+						</motion.div>
 
-          {/* Stepper desktop */}
-          <div className="hidden sm:block">
-            <IntroStepper steps={c.intro.steps} />
-          </div>
+						{/* Stepper desktop */}
+						<div className="hidden sm:block">
+							<IntroStepper steps={introSteps} />
+						</div>
 
-          {/* Stepper mobile */}
-          <div className="sm:hidden space-y-4">
-            {c.intro.steps.map((step, i) => (
-              <motion.div
-                key={step.title}
-                initial={{ opacity: 0, x: -16 }}
-                whileInView={{ opacity: 1, x: 0 }}
-                viewport={{ once: true }}
-                transition={{ duration: 0.4, delay: i * 0.1, ease: 'easeOut' }}
-                className="flex gap-4 text-left"
-              >
-                <div className="flex flex-col items-center gap-1 shrink-0">
-                  <span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-sm">
-                    {i + 1}
-                  </span>
-                  {i < c.intro.steps.length - 1 && (
-                    <div className="w-px flex-1 min-h-6 bg-border" />
-                  )}
-                </div>
-                <div className="pb-4">
-                  <h3 className="text-base font-semibold text-foreground mb-1">
-                    {step.title}
-                  </h3>
-                  <p className="text-muted-foreground text-sm">{step.desc}</p>
-                </div>
-              </motion.div>
-            ))}
-          </div>
-        </section>
+						{/* Stepper mobile */}
+						<div className="sm:hidden space-y-4">
+							{introSteps.map((step, i) => (
+								<motion.div
+									key={step.title}
+									initial={{ opacity: 0, x: -16 }}
+									whileInView={{ opacity: 1, x: 0 }}
+									viewport={{ once: true }}
+									transition={{ duration: 0.4, delay: i * 0.1, ease: 'easeOut' }}
+									className="flex gap-4 text-left"
+								>
+									<div className="flex flex-col items-center gap-1 shrink-0">
+										<span className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground text-sm font-bold shadow-sm">
+											{i + 1}
+										</span>
+										{i < introSteps.length - 1 && (
+											<div className="w-px flex-1 min-h-6 bg-border" />
+										)}
+									</div>
+									<div className="pb-4">
+										<h3 className="text-base font-semibold text-foreground mb-1">
+											{step.title}
+										</h3>
+										<p className="text-muted-foreground text-sm">{step.desc}</p>
+									</div>
+								</motion.div>
+							))}
+						</div>
+					</div>
+				</section>
 
 				{/* ===== Data Sources Carousel ===== */}
-        <section className="py-16 text-center space-y-10">
-          <motion.div {...fadeUp} className="space-y-3 px-6">
-            <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-              {c.sources.title}
-            </h2>
-            <p className="text-muted-foreground text-lg max-w-xl mx-auto">
-              {c.sources.subtitle}
-            </p>
-          </motion.div>
+				<section className="relative overflow-hidden py-16 text-center space-y-10">
+					{/* Crosshatch grid */}
+					<div
+						className="absolute inset-0 pointer-events-none"
+						style={{
+							backgroundImage: 'linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)',
+							backgroundSize: '40px 40px',
+							opacity: 0.3,
+						}}
+					/>
+					{/* Fade edges to background */}
+					<div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-background to-transparent pointer-events-none" />
+					<div className="absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+					{/* Center horizontal glow */}
+					<div className="absolute inset-x-0 top-1/2 -translate-y-1/2 h-32 bg-gradient-to-r from-background via-primary/[0.06] to-background pointer-events-none" />
+					<motion.div {...fadeUp} className="relative z-10 space-y-3 px-6">
+						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+							{home_sources_title({}, lc)}
+						</h2>
+						<p className="text-muted-foreground text-lg max-w-xl mx-auto">
+							{home_sources_subtitle({}, lc)}
+						</p>
+					</motion.div>
 
-          <SourcesMarquee sources={allSources} />
-        </section>
+					<div className="relative z-10">
+						<SourcesMarquee sources={allSources} />
+					</div>
+				</section>
 
-        {/* ===== Meet Nexy ===== */}
-        <section
-          id="nexy"
-          className="px-6 py-20 bg-gradient-to-b from-primary/5 to-background"
-        >
-          <div className="max-w-6xl mx-auto space-y-12">
-            <motion.div
-              {...fadeUp}
-              className="text-center max-w-3xl mx-auto space-y-4"
-            >
-              <h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-                {c.nexy.title}
-              </h2>
-              <p className="text-lg text-muted-foreground">{c.nexy.subtitle}</p>
-            </motion.div>
+				{/* ===== Meet Nexy ===== */}
+				<section
+					id="nexy"
+					className="relative overflow-hidden px-6 py-20 bg-gradient-to-b from-primary/8 via-primary/[0.04] to-background"
+				>
+					{/* Side glows */}
+					<div className="absolute left-0 top-1/2 -translate-y-1/2 w-[420px] h-[420px] rounded-full bg-primary/[0.06] blur-3xl pointer-events-none -translate-x-1/2" />
+					<div className="absolute right-0 bottom-0 w-[300px] h-[300px] rounded-full bg-accent/[0.05] blur-3xl pointer-events-none translate-x-1/3 translate-y-1/4" />
+					{/* Concentric rings decoration */}
+					<div className="absolute right-[-140px] top-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full border border-primary/[0.07] pointer-events-none" />
+					<div className="absolute right-[-100px] top-1/2 -translate-y-1/2 w-[380px] h-[380px] rounded-full border border-primary/[0.05] pointer-events-none" />
+					<div className="absolute right-[-60px] top-1/2 -translate-y-1/2 w-[240px] h-[240px] rounded-full border border-primary/[0.04] pointer-events-none" />
+					<div className="relative z-10 max-w-6xl mx-auto space-y-12">
+						<motion.div {...fadeUp} className="text-center max-w-3xl mx-auto space-y-4">
+							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+								{home_nexy_title({}, lc)}
+							</h2>
+							<p className="text-lg text-muted-foreground">{home_nexy_subtitle({}, lc)}</p>
+						</motion.div>
 
-            <motion.div {...fadeUp}>
-              <NexyShowcase features={c.nexy.features} language={language} />
-            </motion.div>
-          </div>
-        </section>
+						<motion.div {...fadeUp}>
+							<NexyShowcase
+								features={nexyFeatures}
+								onlineLabel={home_nexy_online({}, lc)}
+								askPlaceholder={home_nexy_ask_placeholder({}, lc)}
+								language={language}
+							/>
+						</motion.div>
+					</div>
+				</section>
 
 				{/* ===== Use Cases ===== */}
 				<section
 					id="usecases"
-					className="px-6 py-20 bg-gradient-to-b from-muted/20 to-background"
+					className="relative overflow-hidden px-6 py-20 bg-gradient-to-br from-muted/30 via-background to-background"
 				>
-					<div className="max-w-6xl mx-auto space-y-12">
+					{/* Diagonal stripe texture */}
+					<div
+						className="absolute inset-0 pointer-events-none"
+						style={{
+							backgroundImage: 'repeating-linear-gradient(135deg, transparent, transparent 48px, var(--color-border) 48px, var(--color-border) 49px)',
+							opacity: 0.18,
+						}}
+					/>
+					{/* Top-right glow */}
+					<div className="absolute top-0 right-0 w-[460px] h-[460px] rounded-full bg-primary/[0.05] blur-3xl pointer-events-none -translate-y-1/4 translate-x-1/4" />
+					{/* Bottom-left accent */}
+					<div className="absolute bottom-0 left-0 w-[300px] h-[300px] rounded-full bg-accent/[0.04] blur-3xl pointer-events-none translate-y-1/3 -translate-x-1/4" />
+					<div className="relative z-10 max-w-6xl mx-auto space-y-12">
 						<motion.div {...fadeUp} className="text-center">
 							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-								{c.usecases.title}
+								{home_usecases_title({}, lc)}
 							</h2>
 						</motion.div>
 						<motion.div {...fadeUp}>
-							<UseCasesInteractive items={c.usecases.items} language={language} />
+							<UseCasesInteractive
+								items={usecaseItems}
+								challengeLabel={home_usecases_challenge_label({}, lc)}
+								solutionLabel={home_usecases_solution_label({}, lc)}
+								casePrefix={home_usecases_case_prefix({}, lc)}
+								challengeShort={home_usecases_challenge_short({}, lc)}
+								solutionShort={home_usecases_solution_short({}, lc)}
+								prevLabel={home_usecases_prev({}, lc)}
+								nextLabel={home_usecases_next({}, lc)}
+							/>
 						</motion.div>
 					</div>
 				</section>
 
 				{/* ===== Features ===== */}
-				<section
-					id="features"
-					className="px-6 py-20 max-w-6xl mx-auto space-y-12"
-				>
-					<motion.div {...fadeUp} className="text-center">
-						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-							{c.features.title}
-						</h2>
-					</motion.div>
-					<motion.div {...fadeUp}>
-						<FeaturesBento items={c.features.items} />
-					</motion.div>
+				<section id="features" className="relative overflow-hidden py-20">
+					{/* Dot grid */}
+					<div
+						className="absolute inset-0 pointer-events-none"
+						style={{
+							backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)',
+							backgroundSize: '28px 28px',
+							opacity: 0.4,
+						}}
+					/>
+					{/* Fade top & bottom into background */}
+					<div className="absolute inset-x-0 top-0 h-36 bg-gradient-to-b from-background to-transparent pointer-events-none" />
+					<div className="absolute inset-x-0 bottom-0 h-36 bg-gradient-to-t from-background to-transparent pointer-events-none" />
+					{/* Center glow */}
+					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[640px] h-[640px] rounded-full bg-primary/[0.04] blur-3xl pointer-events-none" />
+					<div className="relative z-10 px-6 max-w-6xl mx-auto space-y-12">
+						<motion.div {...fadeUp} className="text-center">
+							<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
+								{home_features_title({}, lc)}
+							</h2>
+						</motion.div>
+						<motion.div {...fadeUp}>
+							<FeaturesBento items={featureItems} />
+						</motion.div>
+					</div>
 				</section>
 
 				{/* ===== Why Choose Nexata / Testimonials ===== */}
-				<section className="px-6 py-20 bg-gradient-to-b from-muted/30 to-background">
-					<div className="max-w-6xl mx-auto space-y-12">
-						<motion.h2
-							className="text-3xl sm:text-4xl font-bold text-foreground text-center"
-							{...fadeUp}
-						>
-							{c.why.title}
+				<section className="relative overflow-hidden px-6 py-20 bg-gradient-to-b from-muted/40 to-background">
+					{/* Subtle color overlay */}
+					<div className="absolute inset-0 bg-gradient-to-br from-primary/[0.03] via-transparent to-accent/[0.03] pointer-events-none" />
+					{/* Concentric rings */}
+					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[820px] h-[820px] rounded-full border border-border/40 pointer-events-none" />
+					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full border border-border/25 pointer-events-none" />
+					<div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 w-[380px] h-[380px] rounded-full border border-border/15 pointer-events-none" />
+					<div className="relative z-10 max-w-6xl mx-auto space-y-12">
+						<motion.h2 {...fadeUp} className="text-3xl sm:text-4xl font-bold text-foreground text-center">
+							{home_why_title({}, lc)}
 						</motion.h2>
 						<motion.div {...fadeUp}>
-							<TestimonialsShowcase testimonials={c.why.testimonials} />
+							<TestimonialsShowcase testimonials={testimonials} />
 						</motion.div>
 					</div>
 				</section>
 
 				{/* ===== Final CTA ===== */}
-				<section className="px-6 py-24 text-center">
-					<motion.div {...fadeUp} className="max-w-2xl mx-auto space-y-6">
+				<section className="relative overflow-hidden px-6 py-24 text-center bg-gradient-to-b from-primary/10 via-primary/5 to-background">
+					{/* Dot grid */}
+					<div
+						className="absolute inset-0 pointer-events-none"
+						style={{
+							backgroundImage: 'radial-gradient(circle, var(--color-border) 1px, transparent 1px)',
+							backgroundSize: '28px 28px',
+							opacity: 0.5,
+						}}
+					/>
+					{/* Central glow */}
+					<div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/[0.08] blur-3xl pointer-events-none" />
+					<div className="absolute -top-24 right-1/4 w-[280px] h-[280px] rounded-full bg-accent/[0.06] blur-3xl pointer-events-none" />
+					{/* Top accent line */}
+					<div className="absolute top-0 left-1/2 -translate-x-1/2 h-px w-2/3 max-w-xs bg-gradient-to-r from-transparent via-primary/50 to-transparent pointer-events-none" />
+					<motion.div {...fadeUp} className="relative z-10 max-w-2xl mx-auto space-y-6">
 						<h2 className="text-3xl sm:text-4xl font-bold text-foreground">
-							{c.cta.title}
+							{home_cta_title({}, lc)}
 						</h2>
-						<p className="text-muted-foreground text-lg">{c.cta.subtitle}</p>
+						<p className="text-muted-foreground text-lg">{home_cta_subtitle({}, lc)}</p>
 						<div className="flex flex-col sm:flex-row justify-center gap-3 mt-6">
 							<Button
 								size="lg"
@@ -721,7 +676,7 @@ export default function Home() {
 								onClick={() => setRegisterOpen(true)}
 							>
 								<Rocket className="w-4 h-4" />
-								{c.cta.start}
+								{home_cta_start({}, lc)}
 								<ArrowRight className="w-4 h-4" />
 							</Button>
 							<Button
@@ -729,7 +684,7 @@ export default function Home() {
 								variant="outline"
 								onClick={() => scrollToSection('nexy')}
 							>
-								{c.cta.demo}
+								{home_cta_demo({}, lc)}
 							</Button>
 						</div>
 					</motion.div>
@@ -1034,9 +989,13 @@ const NEXY_CHAT_DEMOS_EN: ChatDemo[] = [
 
 function NexyShowcase({
   features,
+  onlineLabel,
+  askPlaceholder,
   language,
 }: {
   features: { icon: typeof Search; title: string; desc: string }[];
+  onlineLabel: string;
+  askPlaceholder: string;
   language: Language;
 }) {
   const [active, setActive] = useState(0);
@@ -1096,7 +1055,7 @@ function NexyShowcase({
               <span className="text-sm font-semibold text-foreground">Nexy</span>
               <span className="ml-auto flex items-center gap-1.5 text-xs text-emerald-500 font-medium">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block" />
-                {language === 'es' ? 'En linea' : 'Online'}
+                {onlineLabel}
               </span>
             </div>
 
@@ -1189,7 +1148,7 @@ function NexyShowcase({
 
                 {/* Placeholder */}
                 <span className="flex-1 text-sm text-muted-foreground/50 select-none leading-5 py-2">
-                  {language === 'es' ? 'Preguntale algo a Nexy...' : 'Ask Nexy something...'}
+                  {askPlaceholder}
                 </span>
 
                 {/* Paperclip + ArrowUp — mismo que MessageInput */}
@@ -1217,10 +1176,22 @@ const USE_CASE_ICONS_MAP = [Search, Mail, FileText, Calendar, ClipboardList];
 
 function UseCasesInteractive({
   items,
-  language,
+  challengeLabel,
+  solutionLabel,
+  casePrefix,
+  challengeShort,
+  solutionShort,
+  prevLabel,
+  nextLabel,
 }: {
   items: { title: string; problem: string; solution: string }[];
-  language: Language;
+  challengeLabel: string;
+  solutionLabel: string;
+  casePrefix: string;
+  challengeShort: string;
+  solutionShort: string;
+  prevLabel: string;
+  nextLabel: string;
 }) {
   const [active, setActive] = useState(0);
 
@@ -1306,7 +1277,7 @@ function UseCasesInteractive({
               })()}
               <div>
                 <p className="text-[11px] font-bold text-primary/60 uppercase tracking-widest">
-                  {language === 'es' ? 'Caso' : 'Case'}{' '}
+                  {casePrefix}{' '}
                   {String(active + 1).padStart(2, '0')} / {items.length}
                 </p>
                 <h3 className="text-base font-semibold text-foreground leading-tight mt-0.5">
@@ -1339,7 +1310,7 @@ function UseCasesInteractive({
                     <span className="text-[11px] font-black text-destructive leading-none">!</span>
                   </div>
                   <span className="text-xs font-bold uppercase tracking-widest text-destructive/70">
-                    {language === 'es' ? 'El desafío' : 'The challenge'}
+                    {challengeLabel}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">
@@ -1354,7 +1325,7 @@ function UseCasesInteractive({
                     <Check className="w-3 h-3 text-primary" />
                   </div>
                   <span className="text-xs font-bold uppercase tracking-widest text-primary">
-                    {language === 'es' ? 'Con Nexata' : 'With Nexata'}
+                    {solutionLabel}
                   </span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed">
@@ -1426,7 +1397,7 @@ function UseCasesInteractive({
                     <span className="text-[9px] font-black text-destructive">!</span>
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-destructive/70">
-                    {language === 'es' ? 'Desafío' : 'Challenge'}
+                    {challengeShort}
                   </span>
                 </div>
                 <p className="text-sm text-muted-foreground leading-relaxed">{items[active].problem}</p>
@@ -1444,7 +1415,7 @@ function UseCasesInteractive({
                     <Check className="w-2.5 h-2.5 text-primary" />
                   </div>
                   <span className="text-[10px] font-bold uppercase tracking-widest text-primary">
-                    {language === 'es' ? 'Con Nexata' : 'With Nexata'}
+                    {solutionShort}
                   </span>
                 </div>
                 <p className="text-sm text-foreground leading-relaxed">{items[active].solution}</p>
@@ -1463,7 +1434,7 @@ function UseCasesInteractive({
             className="gap-1.5 text-xs"
           >
             <ArrowRight className="w-3.5 h-3.5 rotate-180" />
-            {language === 'es' ? 'Anterior' : 'Prev'}
+            {prevLabel}
           </Button>
           <span className="text-xs text-muted-foreground font-mono tabular-nums">
             {active + 1} / {items.length}
@@ -1475,7 +1446,7 @@ function UseCasesInteractive({
             onClick={() => setActive((p) => Math.min(items.length - 1, p + 1))}
             className="gap-1.5 text-xs"
           >
-            {language === 'es' ? 'Siguiente' : 'Next'}
+            {nextLabel}
             <ArrowRight className="w-3.5 h-3.5" />
           </Button>
         </div>

@@ -1203,5 +1203,112 @@
 			"email_label": "Legal Email",
 			"footer": "Effective date: March 16, 2026. This document is provided in Spanish and English. In case of discrepancy, the English version shall prevail."
 		}
+	},
+
+	"home": {
+		"hero": {
+			"title": "Your enterprise knowledge, one question away",
+			"tagline": "Powered by Nexy, your knowledge assistant",
+			"subtitle": "Connect. Search. Find. A single access point for all your company's knowledge, powered by artificial intelligence.",
+			"cta": "Start Free",
+			"login": "Log In",
+			"trust_no_card": "No credit card required",
+			"trust_setup": "Setup in minutes",
+			"trust_permissions": "Per-user permissions",
+			"works_with": "Works with:",
+			"scroll_label": "Scroll to content"
+		},
+		"intro": {
+			"title": "The nexus of your enterprise knowledge",
+			"body": "Nexata is an enterprise knowledge platform designed to solve the information fragmentation that modern businesses suffer from.",
+			"body2": "Instead of jumping between Google Drive, Gmail, Dropbox, calendars, and other systems, Nexata unifies all these services into a single intelligent search engine that understands context and delivers precise answers — not just results.",
+			"stat_faster": "faster than manual search",
+			"stat_integrations": "available integrations",
+			"stat_connect": "to connect your first source",
+			"stat_permissions": "per-user permission control",
+			"step_1_title": "Connect",
+			"step_1_desc": "Link your work sources (Google Workspace, Microsoft 365, Dropbox) in minutes.",
+			"step_2_title": "Index",
+			"step_2_desc": "AI automatically processes and organizes your documents, emails, and events.",
+			"step_3_title": "Search intelligently",
+			"step_3_desc": "Ask natural questions like 'When did we send the budget to client X?'",
+			"step_4_title": "Get answers",
+			"step_4_desc": "Instant results with full context, exact citations, and direct links."
+		},
+		"sources": {
+			"title": "Connectable data sources",
+			"subtitle": "Connect your favorite tools and start unifying your enterprise knowledge in seconds."
+		},
+		"nexy": {
+			"title": "Meet Nexy",
+			"subtitle": "The intelligent assistant that speaks the language of your data. While other tools only index files, Nexy understands context, relationships, and meaning.",
+			"online": "Online",
+			"ask_placeholder": "Ask Nexy something...",
+			"feature_1_title": "Semantic Search",
+			"feature_1_desc": "Find documents by concept, not just exact keywords.",
+			"feature_2_title": "Multi-source Synthesis",
+			"feature_2_desc": "Connect information from emails, files, and events into a unified answer.",
+			"feature_3_title": "Temporal Context",
+			"feature_3_desc": "Query events, deadlines, and timelines linked to your documentation.",
+			"feature_4_title": "Natural Conversation",
+			"feature_4_desc": "Ask questions in everyday language. Nexy interprets intent, not just commands.",
+			"feature_5_title": "Assisted Reading",
+			"feature_5_desc": "Request summaries, specific data extraction, or version comparisons."
+		},
+		"usecases": {
+			"title": "Use cases",
+			"challenge_label": "The challenge",
+			"solution_label": "With Nexata",
+			"case_prefix": "Case",
+			"challenge_short": "Challenge",
+			"solution_short": "With Nexata",
+			"prev": "Prev",
+			"next": "Next",
+			"item_1_title": "Intelligent Document Search",
+			"item_1_problem": "A sales team needs to quickly find the latest contract modified with a specific client among thousands of files.",
+			"item_1_solution": "Search: 'client XYZ contract modified in January'. Get: The exact document with version history. From 20 minutes to 10 seconds.",
+			"item_2_title": "Email Context Recovery",
+			"item_2_problem": "A manager needs to recall what was agreed in an email 3 months ago about a scope change.",
+			"item_2_solution": "Search: 'scope change dashboard project February'. Get: The specific email with the complete thread and attachments.",
+			"item_3_title": "Onboarding Knowledge Management",
+			"item_3_problem": "A new employee needs to learn processes and documentation without bothering the team.",
+			"item_3_solution": "Ask: 'How do I process vendor invoices?' Get: Guides, procedures, and references. Autonomy from day 1.",
+			"item_4_title": "Calendar & Document Integration",
+			"item_4_problem": "Preparing for a meeting requires manually searching emails, documents, and notes.",
+			"item_4_solution": "Search: 'preparation for ABC client meeting tomorrow'. Get: Relevant documents, emails, and previous notes.",
+			"item_5_title": "Compliance & Audit",
+			"item_5_problem": "Audit or compliance documentation needs to be found quickly.",
+			"item_5_solution": "Search: 'fiscal documents 2024 or contracts with NDA clause'. Get: Complete listing with advanced filters."
+		},
+		"features": {
+			"title": "Key features",
+			"item_1_title": "Semantic Search",
+			"item_1_desc": "Understands natural language queries, not just exact keywords.",
+			"item_2_title": "Multiple Connectors",
+			"item_2_desc": "Google Drive, Gmail, Google Calendar, Dropbox, Microsoft 365.",
+			"item_3_title": "Instant Answers",
+			"item_3_desc": "Results in seconds, not minutes of browsing through folders.",
+			"item_4_title": "Full Context",
+			"item_4_desc": "Every result includes metadata, dates, participants, and direct links.",
+			"item_5_title": "Enterprise Security",
+			"item_5_desc": "Access controlled by user-specific permissions and scopes.",
+			"item_6_title": "Integrated AI Assistant",
+			"item_6_desc": "Nexy, your assistant that converses with your enterprise knowledge."
+		},
+		"why": {
+			"title": "Why choose Nexata?",
+			"testimonial_1_role": "Operations Director",
+			"testimonial_1_quote": "Before Nexy, searching for information was an expedition. Now it's a conversation.",
+			"testimonial_2_role": "Corporate Legal",
+			"testimonial_2_quote": "Nexy connected an 8-month-old email with a current presentation that resolved a contractual conflict. A normal search doesn't do that.",
+			"testimonial_3_role": "IT Manager",
+			"testimonial_3_quote": "Implementation in minutes, not months. Native connectors without complex configuration. Total permission control."
+		},
+		"cta": {
+			"title": "It's not search. It's intelligence.",
+			"subtitle": "Discover what your company already knows. Connect your first source for free and start finding the information that matters.",
+			"start": "Start Free",
+			"demo": "Request Demo"
+		}
 	}
 }
