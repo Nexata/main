@@ -334,7 +334,11 @@
 			"welcome_12": "¿Qué tarea o consulta querés resolver hoy, {name}?",
 			"welcome_13": "Hola {name}. Estoy disponible para ayudarte.",
 			"welcome_14": "¿Cómo puedo colaborar hoy, {name}?",
-			"welcome_15": "Cuando quieras, {name}. ¿Por dónde empezamos?"
+			"welcome_15": "Cuando quieras, {name}. ¿Por dónde empezamos?",
+			"prompt_1": "Buscar mis correos recientes",
+			"prompt_2": "Resumir archivos de la semana pasada",
+			"prompt_3": "¿Qué reuniones tengo esta semana?",
+			"prompt_4": "Buscar documentos actualizados este mes"
 		}
 	},
 	"settings": {

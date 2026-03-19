@@ -334,7 +334,11 @@
 			"welcome_12": "What task or question would you like to address today, {name}?",
 			"welcome_13": "Hello {name}. I'm available to assist you.",
 			"welcome_14": "How can I support you today, {name}?",
-			"welcome_15": "Whenever you're ready, {name}. Where should we start?"
+			"welcome_15": "Whenever you're ready, {name}. Where should we start?",
+			"prompt_1": "Search my recent emails",
+			"prompt_2": "Summarize files from last week",
+			"prompt_3": "What meetings do I have this week?",
+			"prompt_4": "Find documents updated this month"
 		}
 	},
 	"settings": {
