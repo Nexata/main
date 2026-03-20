@@ -3,7 +3,6 @@
 import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import EditConfirmModal from '@/components/chat-edit/edit-confirm.modal';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
@@ -428,50 +427,26 @@ export function NexataChat() {
 	}, []);
 
 	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
-	const [editPending, setEditPending] = useState<{
-		messageId: string;
-		newText: string;
-	} | null>(null);
 
 	const handleEditMessage = useCallback(
-		(messageId: string, newText: string) => {
-			setEditPending({ messageId, newText });
-		},
-		[],
-	);
+		async (messageId: string, newText: string) => {
+			cancelEditing();
+			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
-	const handleEditConfirm = useCallback(async () => {
-		if (!editPending) return;
-		const { messageId, newText } = editPending;
-		setEditPending(null);
-		cancelEditing();
-
-		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
-
-		await sendMessage(
-			{ text: newText, files: undefined, messageId },
-			{
-				body: {
-					threadId: activeThreadId ?? null,
-					editedMessageId: messageId,
-					languagePreference: me?.language ?? null,
-					extraReason: false,
+			await sendMessage(
+				{ text: newText, files: undefined, messageId },
+				{
+					body: {
+						threadId: activeThreadId ?? null,
+						editedMessageId: messageId,
+						languagePreference: me?.language ?? null,
+						extraReason: false,
+					},
 				},
-			},
-		);
-	}, [
-		editPending,
-		cancelEditing,
-		addStreamingThread,
-		activeThreadId,
-		sendMessage,
-		me?.language,
-	]);
-
-	const handleEditCancel = useCallback(() => {
-		setEditPending(null);
-		cancelEditing();
-	}, [cancelEditing]);
+			);
+		},
+		[cancelEditing, addStreamingThread, activeThreadId, sendMessage, me?.language],
+	);
 
 	// ----------------------------
 	// Retry message
@@ -556,12 +531,6 @@ export function NexataChat() {
 					onEditMessage={handleEditMessage}
 					onBranchOff={handleBranchOff}				onRetry={handleRetry}				/>
 			</div>
-
-			<EditConfirmModal
-				open={!!editPending}
-				onCancel={handleEditCancel}
-				onConfirm={handleEditConfirm}
-			/>
 		</div>
 	);
 }

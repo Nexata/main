@@ -126,6 +126,9 @@ import {
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
+  'chat.edit.confirm_description' as chat_edit_confirm_description,
+  'chat.edit.confirm_action' as chat_edit_confirm_action,
+  'chat.edit.dont_show_again' as chat_edit_dont_show_again,
   'chat.branch_off.button' as chat_branch_off_button,
   'chat.retry.button' as chat_retry_button,
   'chat.tool_detail.view_details' as td_view_details,
@@ -137,6 +140,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarPicker } from "@/components/ui/calendar"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
+import { Switch } from "@/components/ui/switch"
 
 /* -------------------------------------------------------------------------- */
 /*                                   Styles                                    */
@@ -198,6 +202,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const openTool = useToolDetailStore((s) => s.openTool)
   const isEditing = editingMessageId === message.id
   const [editText, setEditText] = useState("")
+  const [confirmVisible, setConfirmVisible] = useState(false)
+  const [dontShowAgain, setDontShowAgain] = useState(false)
 
   const handleStartEdit = useCallback(() => {
     const text = message.parts
@@ -211,12 +217,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const handleCancelEdit = useCallback(() => {
     cancelEditing()
     setEditText("")
+    setConfirmVisible(false)
+    setDontShowAgain(false)
   }, [cancelEditing])
 
   const handleSaveEdit = useCallback(() => {
     if (!editText.trim()) return
-    onEdit?.(message.id, editText.trim())
+    if (localStorage.getItem('chat.edit.skip_confirm') === 'true') {
+      onEdit?.(message.id, editText.trim())
+      return
+    }
+    setConfirmVisible(true)
   }, [message.id, editText, onEdit])
+
+  const handleConfirmEdit = useCallback(() => {
+    if (dontShowAgain) {
+      localStorage.setItem('chat.edit.skip_confirm', 'true')
+    }
+    setConfirmVisible(false)
+    setDontShowAgain(false)
+    onEdit?.(message.id, editText.trim())
+  }, [dontShowAgain, message.id, editText, onEdit])
 
   const createdAt =
     typeof message.metadata === "object" &&
@@ -267,12 +288,12 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     >
       {/* Inline Edit Mode */}
       {isUser && isEditing ? (
-        <div className="w-full sm:max-w-[85%] flex flex-col gap-2">
+        <div className="w-full sm:max-w-[85%] flex flex-col gap-2.5">
           <textarea
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             rows={Math.min(Math.max(editText.split("\n").length, 2), 10)}
-            className="w-full rounded-xl border border-border/60 bg-card p-3 text-md text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring chat-float"
+            className="w-full rounded-xl border border-primary/30 bg-card p-3 text-md text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-primary/40 chat-float transition-all duration-200"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Escape") handleCancelEdit()
@@ -282,25 +303,110 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               }
             }}
           />
-          <div className="flex justify-end gap-2">
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={handleCancelEdit}
-              className="h-7 text-xs"
-            >
-              {chat_edit_cancel()}
-            </Button>
-            <Button
-              size="sm"
-              variant="default"
-              onClick={handleSaveEdit}
-              disabled={!editText.trim() || editText.trim() === editingMessageText}
-              className="h-7 text-xs"
-            >
-              {chat_edit_save()}
-            </Button>
-          </div>
+
+          <AnimatePresence mode="wait">
+            {confirmVisible ? (
+              <motion.div
+                key="confirm-panel"
+                initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                transition={{ duration: 0.22, ease: [0.25, 0.46, 0.45, 0.94] }}
+                className="rounded-xl border border-primary/20 bg-primary/[0.04] dark:bg-primary/[0.06] overflow-hidden"
+              >
+                {/* Warning row */}
+                <div className="px-3.5 pt-3 pb-2.5 flex items-start gap-3">
+                  <div className="mt-0.5 shrink-0 flex items-center justify-center h-6 w-6 rounded-full bg-primary/15">
+                    <RotateCcw className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <p className="text-[13px] leading-relaxed text-foreground/75">
+                    {chat_edit_confirm_description()}
+                  </p>
+                </div>
+
+                {/* Divider */}
+                <div className="mx-3.5 h-px bg-border/50" />
+
+                {/* Footer */}
+                <div className="px-3.5 py-2.5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  {/* Toggle */}
+                  <label className="flex items-center gap-2.5 cursor-pointer group/toggle select-none">
+                    <Switch
+                      size="sm"
+                      checked={dontShowAgain}
+                      onCheckedChange={setDontShowAgain}
+                    />
+                    <span className="text-xs text-muted-foreground group-hover/toggle:text-foreground transition-colors duration-150">
+                      {chat_edit_dont_show_again()}
+                    </span>
+                  </label>
+
+                  {/* Buttons */}
+                  <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setConfirmVisible(false)}
+                      className="h-7 px-3 text-xs"
+                    >
+                      {chat_edit_cancel()}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="default"
+                      onClick={handleConfirmEdit}
+                      className="h-7 px-3 text-xs gap-1.5"
+                    >
+                      <Send className="h-3 w-3" />
+                      {chat_edit_confirm_action()}
+                    </Button>
+                  </div>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="actions-row"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.12 }}
+                className="flex items-center justify-between"
+              >
+                {/* Keyboard hints — desktop only */}
+                <div className="hidden sm:flex items-center gap-3 text-[11px] text-muted-foreground/50 select-none">
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded border border-border/60 bg-muted px-1 py-0.5 font-mono text-[10px] leading-none">Esc</kbd>
+                    {chat_edit_cancel()}
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <kbd className="rounded border border-border/60 bg-muted px-1 py-0.5 font-mono text-[10px] leading-none">↵</kbd>
+                    {chat_edit_save()}
+                  </span>
+                </div>
+
+                <div className="flex gap-2 ml-auto">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    className="h-7 px-3 text-xs"
+                  >
+                    {chat_edit_cancel()}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="default"
+                    onClick={handleSaveEdit}
+                    disabled={!editText.trim()}
+                    className="h-7 px-3 text-xs gap-1.5"
+                  >
+                    <Send className="h-3 w-3" />
+                    {chat_edit_save()}
+                  </Button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       ) : (
         <>
