@@ -1,3 +1,4 @@
+import React from "react";
 import { X, Loader2, Check, Ban } from "lucide-react";
 import { AnimatePresence, motion } from "framer-motion";
 import { useToolDetailStore, type ToolDetailData } from "@/lib/tool-detail.store";
@@ -19,33 +20,58 @@ import {
 /*                             Status helpers                                  */
 /* -------------------------------------------------------------------------- */
 
-function getStatusInfo(state: string) {
+const PANEL_WIDTH = 380;
+
+type StatusConfig = {
+  label: () => string;
+  Icon: React.ElementType;
+  pill: string;
+  accent: string;
+};
+
+function getStatusConfig(state: string): StatusConfig {
   switch (state) {
     case "output-available":
       return {
-        label: td_success(),
-        icon: <Check className="h-3.5 w-3.5" />,
-        className: "bg-green-500/10 text-green-600 border-green-500/20",
+        label: td_success,
+        Icon: Check,
+        pill: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+        accent: "bg-emerald-500",
       };
     case "output-error":
       return {
-        label: td_error(),
-        icon: <X className="h-3.5 w-3.5" />,
-        className: "bg-red-500/10 text-red-600 border-red-500/20",
+        label: td_error,
+        Icon: X,
+        pill: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20",
+        accent: "bg-red-500",
       };
     case "output-denied":
       return {
-        label: td_denied(),
-        icon: <Ban className="h-3.5 w-3.5" />,
-        className: "bg-yellow-500/10 text-yellow-600 border-yellow-500/20",
+        label: td_denied,
+        Icon: Ban,
+        pill: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+        accent: "bg-amber-500",
       };
     default:
       return {
-        label: td_running(),
-        icon: <Loader2 className="h-3.5 w-3.5 animate-spin" />,
-        className: "bg-blue-500/10 text-blue-600 border-blue-500/20",
+        label: td_running,
+        Icon: Loader2,
+        pill: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+        accent: "bg-blue-500",
       };
   }
+}
+
+function SectionDivider({ title }: { title: string }) {
+  return (
+    <div className="flex items-center gap-3">
+      <div className="h-px flex-1 bg-border/60" />
+      <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-[0.15em]">
+        {title}
+      </span>
+      <div className="h-px flex-1 bg-border/60" />
+    </div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -58,24 +84,24 @@ function InputSection({ input }: { input: unknown }) {
   }
 
   return (
-    <div className="flex flex-col gap-2">
-      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-        {td_input()}
-      </h3>
-      <div className="rounded-lg border bg-muted/30 p-3">
+    <div className="flex flex-col gap-3">
+      <SectionDivider title={td_input()} />
+      <div className="rounded-lg border bg-muted/20 divide-y divide-border/50 overflow-hidden">
         {typeof input === "object" ? (
-          <div className="flex flex-col gap-1.5">
-            {Object.entries(input as Record<string, unknown>).map(([key, value]) => (
-              <div key={key} className="flex flex-col gap-0.5">
-                <span className="text-xs font-medium text-muted-foreground">{key}</span>
-                <span className="text-sm text-foreground break-words">
-                  {typeof value === "string" ? value : JSON.stringify(value)}
-                </span>
-              </div>
-            ))}
-          </div>
+          Object.entries(input as Record<string, unknown>).map(([key, value]) => (
+            <div key={key} className="flex flex-col gap-0.5 px-3 py-2.5">
+              <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">
+                {key}
+              </span>
+              <span className="text-sm text-foreground break-words font-mono leading-relaxed">
+                {typeof value === "string" ? value : JSON.stringify(value)}
+              </span>
+            </div>
+          ))
         ) : (
-          <pre className="text-xs whitespace-pre-wrap break-words">{JSON.stringify(input, null, 2)}</pre>
+          <pre className="text-xs p-3 whitespace-pre-wrap break-words font-mono">
+            {JSON.stringify(input, null, 2)}
+          </pre>
         )}
       </div>
     </div>
@@ -88,60 +114,66 @@ function InputSection({ input }: { input: unknown }) {
 
 function ToolDetailContent({ tool }: { tool: ToolDetailData }) {
   const close = useToolDetailStore((s) => s.close);
-  const status = getStatusInfo(tool.state);
+  const cfg = getStatusConfig(tool.state);
+  const StatusIcon = cfg.Icon;
+  const isRunning = tool.state !== "output-available" && tool.state !== "output-error" && tool.state !== "output-denied";
 
   return (
     <motion.div
-      initial={{ x: "100%" }}
-      animate={{ x: 0 }}
-      exit={{ x: "100%" }}
-      transition={{ type: "spring", stiffness: 300, damping: 30 }}
-      className="flex h-full w-[380px] flex-col border-l bg-background"
+      initial={{ x: "100%", opacity: 0.6 }}
+      animate={{ x: 0, opacity: 1 }}
+      exit={{ x: "100%", opacity: 0 }}
+      transition={{ type: "spring", stiffness: 380, damping: 38 }}
+      style={{ width: PANEL_WIDTH }}
+      className="flex h-full flex-col bg-background border-l"
     >
+      {/* Status accent bar */}
+      <div className={cn("h-[3px] w-full shrink-0", cfg.accent)} />
+
       {/* Header */}
-      <div className="flex items-center justify-between border-b px-4 py-3">
-        <div className="flex flex-col gap-0.5 min-w-0">
-          <span className="text-sm font-semibold truncate">{td_title()}</span>
-          <span className="text-xs text-muted-foreground truncate">{tool.toolName}</span>
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b bg-muted/15">
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            {td_title()}
+          </span>
+          <span className="text-sm font-semibold text-foreground truncate">
+            {tool.toolName}
+          </span>
         </div>
+
+        {/* Status pill */}
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shrink-0",
+            cfg.pill,
+          )}
+        >
+          <StatusIcon className={cn("h-3 w-3", isRunning && "animate-spin")} />
+          {cfg.label()}
+        </div>
+
+        {/* Close */}
         <button
           onClick={close}
-          className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors shrink-0"
+          className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+          aria-label="Close"
         >
           <X className="h-4 w-4" />
         </button>
       </div>
 
       {/* Scrollable body */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-4 flex flex-col gap-5">
-        {/* Status badge */}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {td_status()}
-          </h3>
-          <div
-            className={cn(
-              "inline-flex items-center gap-1.5 self-start rounded-md border px-2.5 py-1 text-xs font-medium",
-              status.className,
-            )}
-          >
-            {status.icon}
-            {status.label}
-          </div>
-        </div>
-
+      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-5 flex flex-col gap-6">
         {/* Input parameters */}
         <InputSection input={tool.input} />
 
         {/* Output */}
-        <div className="flex flex-col gap-2">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
-            {td_output()}
-          </h3>
+        <div className="flex flex-col gap-3">
+          <SectionDivider title={td_output()} />
           {tool.output ? (
             <ToolOutputRenderer toolName={tool.toolName} output={tool.output} />
           ) : (
-            <p className="text-sm text-muted-foreground italic">{td_no_output()}</p>
+            <p className="text-sm text-muted-foreground italic px-1">{td_no_output()}</p>
           )}
         </div>
       </div>
@@ -158,9 +190,20 @@ export default function ToolDetailPanel() {
   const isOpen = useToolDetailStore((s) => s.isOpen);
 
   return (
-    <AnimatePresence mode="wait">
+    <AnimatePresence>
       {isOpen && selectedTool && (
-        <ToolDetailContent key={selectedTool.toolCallId} tool={selectedTool} />
+        <motion.div
+          key="panel-outer"
+          initial={{ width: 0 }}
+          animate={{ width: PANEL_WIDTH }}
+          exit={{ width: 0 }}
+          transition={{ type: "tween", duration: 0.28, ease: [0.25, 0.46, 0.45, 0.94] }}
+          className="overflow-hidden shrink-0 h-full"
+        >
+          <AnimatePresence mode="wait">
+            <ToolDetailContent key={selectedTool.toolCallId} tool={selectedTool} />
+          </AnimatePresence>
+        </motion.div>
       )}
     </AnimatePresence>
   );

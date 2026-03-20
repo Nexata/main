@@ -317,7 +317,9 @@
 			"owner": "Propietario",
 			"email": "Email",
 			"role": "Rol",
-			"admin": "Admin"
+			"admin": "Admin",
+			"view_details": "Ver detalles",
+			"hide_details": "Ocultar detalles"
 		},
 		"suggestions": {
 			"welcome_1": "Hola {name}, ¿en qué puedo ayudarte hoy?",
