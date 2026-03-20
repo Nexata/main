@@ -7,7 +7,8 @@ import {
   Trash2,
   Settings,
   MessageSquareText,
-  Loader2
+  Loader2,
+  Search,
 } from "lucide-react";
 import {
   IoSunny,
@@ -257,9 +258,9 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
               : { width: { type: "spring", stiffness: 300, damping: 30 } }
         }
       >
-      <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-md rounded-r-2xl pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-lg rounded-r-2xl pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
           {/* Header */}
-          <div className="mb-4 min-h-12 flex items-center w-full justify-between">
+          <div className="mb-3 pb-3 min-h-12 flex items-center w-full justify-between border-b border-sidebar-border">
             {!effectiveCollapsed && (
               <div className="flex items-center gap-4">
                 <motion.img
@@ -324,7 +325,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
           {!effectiveCollapsed && (
             <Button
               variant="outline"
-              className="w-full mb-4 flex items-center gap-2 cursor-pointer"
+              className="w-full mb-4 flex items-center gap-2 cursor-pointer border-dashed border-sidebar-primary/50 hover:border-sidebar-primary hover:bg-sidebar-primary/5 transition-all duration-200"
               onClick={() => handleSelectChat(null)}
             >
               <IoAdd className="w-5 h-5" />
@@ -335,11 +336,12 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
           {/* Search chats */}
           {!effectiveCollapsed && (
             <div className="mb-3 relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none z-10" />
               <Input
                 placeholder={sidebar_search()}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="h-9 text-sm bg-transparent pr-8"
+                className="h-9 text-sm bg-transparent pl-8 pr-8"
               />
 
               {search && (
@@ -368,10 +370,10 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                     {Array.from({ length: 5 }).map((_, i) => (
                       <div
                         key={i}
-                        className="px-2 py-2 rounded-md flex items-center"
+                        className="px-3 py-2 rounded-lg flex items-center"
                       >
                         <div className="flex-1 space-y-2">
-                          <div className="h-8 w-full bg-muted rounded animate-pulse" />
+                          <div className="h-8 w-full bg-muted/70 rounded-lg animate-pulse" />
                         </div>
                       </div>
                     ))}
@@ -386,8 +388,10 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                       handleSelectChat(chat.id);
                     }}
                     className={cn(
-                      "px-2 py-2 rounded-md flex justify-between items-center cursor-pointer group transition-colors",
-                      chat.id === activeThreadId ? "bg-muted text-foreground" : "hover:bg-muted/50"
+                      "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
+                      chat.id === activeThreadId
+                        ? "bg-sidebar-primary/10 text-foreground font-medium border-sidebar-primary"
+                        : "hover:bg-muted/50 border-transparent"
                     )}
                   >
                     {editingChatId !== null && editingChatId === chat.id ? (
@@ -417,10 +421,10 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                       <>
                         <div className="flex items-center gap-1.5 min-w-0 flex-1">
                           {chat.id !== null && streamingThreadIds.has(chat.id) && (
-                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin opacity-70" />
+                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-primary" />
                           )}
                           {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
-                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary" />
+                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
                           )}
                           <ThreadTitle
                             title={chat.title ?? "New Chat"}
@@ -432,16 +436,16 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                         </div>
 
                         {chat.id !== null && (
-                          <div className="flex gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                          <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                             <Pencil
-                              className="text-secondary-500 w-4 h-4 cursor-pointer"
+                              className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleEditClick(chat.id, chat.title ?? "New Chat");
                               }}
                             />
                             <Trash2
-                              className="text-error-500 w-4 h-4 cursor-pointer"
+                              className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
                                 handleDeleteClick(chat);
@@ -459,7 +463,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
           {/* Menú inferior */}
           <TooltipProvider>
-            <div className="mt-auto flex flex-col w-full">
+            <div className="mt-auto flex flex-col w-full pt-3 border-t border-sidebar-border">
 
               <motion.div
                 key={effectiveCollapsed ? "collapsed" : "expanded"}
@@ -467,10 +471,10 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.2, ease: "easeOut" }}
                 className={cn(
-                  "flex w-full",
+                  "flex w-full p-1 rounded-xl bg-muted/30",
                   effectiveCollapsed
-                    ? "flex-col items-center gap-2"
-                    : "flex-row items-center gap-2"
+                    ? "flex-col items-center gap-1.5"
+                    : "flex-row items-center gap-1.5"
                 )}
               >
 
