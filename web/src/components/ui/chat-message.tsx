@@ -143,11 +143,11 @@ import { Button } from "@/components/ui/button"
 /* -------------------------------------------------------------------------- */
 
 const chatBubbleVariants = cva(
-  "relative break-words rounded-lg p-3 text-md max-w-[85%]",
+  "relative break-words rounded-xl p-3 text-md max-w-[85%]",
   {
     variants: {
       isUser: {
-        true: "bg-muted text-foreground",
+        true: "bg-card text-foreground border border-border/60 chat-float",
         false: "bg-transparent text-foreground",
       },
       animation: {
@@ -272,7 +272,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
             value={editText}
             onChange={(e) => setEditText(e.target.value)}
             rows={Math.min(Math.max(editText.split("\n").length, 2), 10)}
-            className="w-full rounded-lg border bg-muted p-3 text-md text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring"
+            className="w-full rounded-xl border border-border/60 bg-card p-3 text-md text-foreground resize-none focus:outline-none focus:ring-2 focus:ring-ring chat-float"
             autoFocus
             onKeyDown={(e) => {
               if (e.key === "Escape") handleCancelEdit()
@@ -322,9 +322,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               blocks.push(
                 <motion.div
                   key={bubbleKey}
-                  initial={{ opacity: 0, y: 6 }}
+                  initial={{ opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, ease: "easeOut" }}
+                  transition={{ duration: 0.28, ease: "easeOut" }}
                   className={cn(chatBubbleVariants({ isUser, animation: "none" }))}
                 >
                   {/* TEXT */}
@@ -506,11 +506,11 @@ const ReasoningBlock = ({
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.98, y: 6 }}
+      initial={{ opacity: 0, scale: 0.98, y: 8 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.98, y: -4 }}
       transition={{ duration: 0.4, ease: "easeOut" }}
-      className="relative flex items-center gap-3 w-full sm:max-w-[85%] rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 overflow-hidden"
+      className="relative flex items-center gap-3 w-full sm:max-w-[85%] rounded-xl border border-violet-500/30 bg-violet-500/5 px-4 py-3 overflow-hidden chat-float"
     >
       <motion.div
         className="absolute inset-0 bg-linear-to-r from-transparent via-violet-400/10 to-transparent"
@@ -658,27 +658,31 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
   const toolCallId = (part as { toolCallId?: string }).toolCallId ?? ""
   const isThisToolOpen = isOpen && selectedTool?.toolCallId === toolCallId
 
-  const label = getToolLabel(rawToolName, part.state)
-  const isNexata = NEXATA_TOOLS.has(rawToolName)
-  const icon = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
-  const StatusIcon = getStatusIcon(part.state)
+  const isSuccess = part.state === "output-available"
+  const isError   = part.state === "output-error"
+  const isDenied  = part.state === "output-denied"
+  const isPending = !isSuccess && !isError && !isDenied
 
-  const emails = getCredentialEmails(part)
+  const label    = getToolLabel(rawToolName, part.state)
+  const isNexata = NEXATA_TOOLS.has(rawToolName)
+  const icon     = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
+
+  const emails       = getCredentialEmails(part)
   const visibleEmails = emails.slice(0, 2)
-  const extraCount = emails.length - visibleEmails.length
+  const extraCount   = emails.length - visibleEmails.length
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, ease: "easeOut" }}
+      transition={{ duration: 0.28, ease: "easeOut" }}
       onHoverStart={() => setHovered(true)}
       onHoverEnd={() => setHovered(false)}
       className={cn(
-        "w-full sm:max-w-[85%] rounded-lg border px-4 py-3 cursor-pointer transition-colors",
+        "relative w-full sm:max-w-[85%] rounded-xl border cursor-pointer transition-all duration-200 chat-float overflow-hidden",
         isThisToolOpen
-          ? "bg-muted/70 border-border/80 ring-1 ring-inset ring-border/40"
-          : "bg-muted/40 hover:bg-muted/60"
+          ? "bg-card border-border/60 ring-1 ring-inset ring-primary/20"
+          : "bg-card/80 border-border/50 hover:bg-card hover:border-border/70"
       )}
       onClick={() =>
         toggleTool({
@@ -690,39 +694,54 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
         })
       }
     >
-      <div className="flex items-center justify-between gap-4">
+      {/* Top state bar */}
+      <div className={cn(
+        "absolute top-0 left-0 right-0 h-[2px]",
+        isSuccess && "bg-green-500/70",
+        isError   && "bg-red-500/70",
+        isDenied  && "bg-yellow-500/70",
+        isPending && "bg-blue-400/60",
+      )} />
+
+      <div className="flex items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
 
           {/* Icon: Nexata > tool icon map > fallback */}
           {isNexata ? (
-            <img
-              src="/nexata_logo.png"
-              alt="Nexata"
-              className="h-5 w-auto max-w-15 shrink-0 object-contain"
-            />
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/50 border border-border/40 shrink-0">
+              <img
+                src="/nexata_logo.png"
+                alt="Nexata"
+                className="h-4 w-auto max-w-[28px] object-contain opacity-80"
+              />
+            </div>
           ) : icon ? (
-            <img src={icon} alt={rawToolName} className="h-5 w-5 shrink-0 object-contain" />
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/60 border border-border/40 shrink-0">
+              <img src={icon} alt={rawToolName} className="h-4 w-4 object-contain" />
+            </div>
           ) : (
-            <Globe className="h-5 w-5 shrink-0 text-muted-foreground" />
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/60 border border-border/40 shrink-0">
+              <Globe className="h-4 w-4 text-muted-foreground" />
+            </div>
           )}
 
           <div className="flex flex-col min-w-0">
-            <span className="text-md font-medium truncate">{label}</span>
+            <span className="text-sm font-semibold truncate">{label}</span>
 
             {visibleEmails.length > 0 && (
-              <div className="flex items-center gap-1 flex-wrap">
+              <div className="flex items-center gap-1 flex-wrap mt-0.5">
                 {visibleEmails.map((email, i) => (
                   <React.Fragment key={email}>
-                    <span className="text-xs opacity-60 truncate">{email}</span>
+                    <span className="text-xs text-muted-foreground truncate">{email}</span>
                     {i < visibleEmails.length - 1 && (
-                      <span className="text-xs opacity-30">|</span>
+                      <span className="text-xs text-border">·</span>
                     )}
                   </React.Fragment>
                 ))}
                 {extraCount > 0 && (
                   <>
-                    <span className="text-xs opacity-30">|</span>
-                    <span className="text-xs opacity-40">+{extraCount}</span>
+                    <span className="text-xs text-border">·</span>
+                    <span className="text-xs text-muted-foreground">+{extraCount}</span>
                   </>
                 )}
               </div>
@@ -738,13 +757,26 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: 6 }}
                 transition={{ duration: 0.15 }}
-                className="text-xs text-muted-foreground whitespace-nowrap"
+                className="text-xs text-muted-foreground/70 whitespace-nowrap"
               >
                 {isThisToolOpen ? td_hide_details() : td_view_details()}
               </motion.span>
             )}
           </AnimatePresence>
-          <StatusIcon />
+
+          {/* Circular status badge */}
+          <div className={cn(
+            "flex items-center justify-center h-6 w-6 rounded-full border transition-all duration-200",
+            isSuccess && "bg-green-500/10 border-green-500/25",
+            isError   && "bg-red-500/10   border-red-500/25",
+            isDenied  && "bg-yellow-500/10 border-yellow-500/25",
+            isPending && "bg-blue-500/10  border-blue-500/20",
+          )}>
+            {isSuccess && <Check    className="h-3 w-3 text-green-600 dark:text-green-400" />}
+            {isError   && <X        className="h-3 w-3 text-red-600   dark:text-red-400" />}
+            {isDenied  && <Ban      className="h-3 w-3 text-yellow-600 dark:text-yellow-400" />}
+            {isPending && <Loader2  className="h-3 w-3 animate-spin text-blue-500" />}
+          </div>
         </div>
       </div>
     </motion.div>
@@ -789,29 +821,41 @@ type AnswerValue = string | boolean | string[] | number
 function AskQuestionsSkeleton() {
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full sm:max-w-[85%] rounded-xl border bg-muted/40 overflow-hidden"
+      className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
     >
-      <div className="px-5 pt-4 pb-3 border-b border-border/50 flex items-center gap-2.5">
-        <div className="h-4 w-[48px] rounded bg-muted-foreground/20 animate-pulse" />
-        <div className="h-3 w-36 rounded bg-muted-foreground/15 animate-pulse" />
+      {/* Header skeleton */}
+      <div className="px-4 sm:px-5 pt-4 pb-3 flex items-center gap-3 border-b border-border/40 bg-muted/30">
+        <div className="h-9 w-9 rounded-lg bg-muted animate-pulse" />
+        <div className="flex flex-col gap-1.5 flex-1">
+          <div className="h-3.5 w-32 rounded bg-muted animate-pulse" />
+          <div className="h-2.5 w-20 rounded bg-muted animate-pulse" />
+        </div>
       </div>
-      <div className="px-5 py-4 flex flex-col gap-5">
+
+      {/* Progress bar skeleton */}
+      <div className="px-4 sm:px-5 pb-3">
+        <div className="h-1 w-full rounded-full bg-muted animate-pulse" />
+      </div>
+
+      {/* Questions skeleton */}
+      <div className="px-4 sm:px-5 py-3 flex flex-col gap-4">
         {[
           { labelW: "w-3/4", inputH: "h-9" },
           { labelW: "w-1/2", inputH: "h-9" },
-          { labelW: "w-2/3", inputH: "h-9" },
         ].map((item, i) => (
-          <div key={i} className="flex flex-col gap-2">
-            <div className={cn("h-3.5 rounded bg-muted-foreground/15 animate-pulse", item.labelW)} />
-            <div className={cn("w-full rounded-md bg-muted-foreground/10 animate-pulse", item.inputH)} />
+          <div key={i} className="flex flex-col gap-2.5 rounded-lg bg-muted/40 p-3">
+            <div className={cn("h-3.5 rounded bg-muted-foreground/10 animate-pulse", item.labelW)} />
+            <div className={cn("w-full rounded-md bg-muted-foreground/8 animate-pulse", item.inputH)} />
           </div>
         ))}
       </div>
-      <div className="px-5 pb-4 flex justify-end">
-        <div className="h-8 w-24 rounded-md bg-muted-foreground/10 animate-pulse" />
+
+      {/* Footer skeleton */}
+      <div className="px-4 sm:px-5 py-3 border-t border-border/40 flex justify-end">
+        <div className="h-8 w-24 rounded-lg bg-muted animate-pulse" />
       </div>
     </motion.div>
   )
@@ -832,10 +876,9 @@ function QuestionField({
   disabled: boolean
   onChange: (i: number, value: AnswerValue) => void
 }) {
-  // Local state for custom-answer mode (boolean, multiple_choice, multi_select)
   const [showCustomInput, setShowCustomInput] = useState(false)
-  const [customValue, setCustomValue] = useState("") // for boolean & multiple_choice
-  const [multiCustomInput, setMultiCustomInput] = useState("") // for multi_select add-field
+  const [customValue, setCustomValue] = useState("")
+  const [multiCustomInput, setMultiCustomInput] = useState("")
 
   if (q.type === "text") {
     return (
@@ -844,15 +887,14 @@ function QuestionField({
         placeholder={q.data?.placeholder ?? ""}
         value={(answer as string) ?? ""}
         onChange={(e) => {
-          // auto-resize: reset to 0 first to force correct scrollHeight
           const el = e.target
           el.style.height = "0px"
           el.style.height = `${el.scrollHeight}px`
           onChange(index, e.target.value)
         }}
-        rows={3}
-        className="text-sm bg-background resize-none overflow-y-hidden"
-        style={{ minHeight: "4.5rem" }}
+        rows={2}
+        className="text-sm bg-background/60 resize-none overflow-y-hidden rounded-lg"
+        style={{ minHeight: "3.5rem" }}
       />
     )
   }
@@ -861,7 +903,7 @@ function QuestionField({
     const isCustomMode = showCustomInput || typeof answer === "string"
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex gap-2 flex-wrap">
+        <div className="flex gap-1.5 flex-wrap">
           {([
             { label: components_ask_questions_label_yes(), value: true },
             { label: components_ask_questions_label_no(), value: false },
@@ -877,10 +919,10 @@ function QuestionField({
                   onChange(index, value)
                 }}
                 className={cn(
-                  "px-5 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
+                  "px-4 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
                   isSelected
-                    ? "bg-foreground text-background border-foreground shadow-sm"
-                    : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
                   disabled && "opacity-50 cursor-not-allowed"
                 )}
               >
@@ -896,10 +938,10 @@ function QuestionField({
               if (customValue) onChange(index, customValue)
             }}
             className={cn(
-              "px-5 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
+              "px-4 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
               isCustomMode
-                ? "bg-foreground text-background border-foreground shadow-sm"
-                : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
               disabled && "opacity-50 cursor-not-allowed"
             )}
           >
@@ -910,10 +952,11 @@ function QuestionField({
           {isCustomMode && (
             <motion.div
               key="custom-textarea"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
+              className="overflow-hidden"
             >
               <Textarea
                 disabled={disabled}
@@ -927,9 +970,9 @@ function QuestionField({
                   onChange(index, e.target.value)
                 }}
                 placeholder={components_ask_questions_placeholder_custom()}
-                rows={3}
-                className="text-sm bg-background resize-none overflow-y-hidden"
-                style={{ minHeight: "4.5rem" }}
+                rows={2}
+                className="text-sm bg-background/60 resize-none overflow-y-hidden rounded-lg"
+                style={{ minHeight: "3.5rem" }}
               />
             </motion.div>
           )}
@@ -944,7 +987,7 @@ function QuestionField({
     const customSelectedValues = selected.filter((v) => !predefinedValues.has(v))
     return (
       <div className="flex flex-col gap-2">
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-1.5">
           {q.data.map((opt) => {
             const isSelected = selected.includes(opt.value)
             return (
@@ -961,20 +1004,19 @@ function QuestionField({
                 className={cn(
                   "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer",
                   isSelected
-                    ? "bg-foreground text-background border-foreground shadow-sm"
-                    : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
                   disabled && "opacity-50 cursor-not-allowed"
                 )}
               >
                 {opt.recommended && !isSelected && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                  <span className="w-1.5 h-1.5 rounded-full bg-primary/70 shrink-0" />
                 )}
                 {opt.value}
               </button>
             )
           })}
 
-          {/* Custom values already added */}
           {customSelectedValues.map((v) => (
             <button
               key={v}
@@ -982,7 +1024,7 @@ function QuestionField({
               disabled={disabled}
               onClick={() => onChange(index, selected.filter((s) => s !== v))}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer bg-foreground text-background border-foreground shadow-sm",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer bg-primary text-primary-foreground border-primary shadow-sm",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             >
@@ -991,7 +1033,6 @@ function QuestionField({
             </button>
           ))}
 
-          {/* Toggle add-custom input */}
           {!disabled && (
             <button
               type="button"
@@ -999,8 +1040,8 @@ function QuestionField({
               className={cn(
                 "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer",
                 showCustomInput
-                  ? "bg-foreground text-background border-foreground shadow-sm"
-                  : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30"
+                  ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                  : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30"
               )}
             >
               + {components_ask_questions_label_custom()}
@@ -1009,54 +1050,65 @@ function QuestionField({
         </div>
 
         {q.data.some((o) => o.recommended) && (
-          <p className="w-full text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
+          <p className="w-full text-xs text-muted-foreground flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-primary/70 inline-block" />
             {components_ask_questions_label_recommended()}
           </p>
         )}
 
-        {showCustomInput && (
-          <div className="flex gap-2">
-            <Input
-              autoFocus
-              value={multiCustomInput}
-              onChange={(e) => setMultiCustomInput(e.target.value)}
-              placeholder={components_ask_questions_placeholder_custom()}
-              className="text-sm bg-background"
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && multiCustomInput.trim()) {
-                  e.preventDefault()
-                  onChange(index, [...selected, multiCustomInput.trim()])
-                  setMultiCustomInput("")
-                  setShowCustomInput(false)
-                }
-                if (e.key === "Escape") {
-                  setShowCustomInput(false)
-                  setMultiCustomInput("")
-                }
-              }}
-            />
-            <button
-              type="button"
-              disabled={!multiCustomInput.trim()}
-              onClick={() => {
-                if (multiCustomInput.trim()) {
-                  onChange(index, [...selected, multiCustomInput.trim()])
-                  setMultiCustomInput("")
-                  setShowCustomInput(false)
-                }
-              }}
-              className={cn(
-                "inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors shrink-0",
-                multiCustomInput.trim()
-                  ? "bg-foreground text-background border-foreground cursor-pointer hover:bg-foreground/90"
-                  : "bg-muted text-muted-foreground border-border cursor-not-allowed"
-              )}
+        <AnimatePresence>
+          {showCustomInput && (
+            <motion.div
+              key="custom-input"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+              className="overflow-hidden"
             >
-              <Check className="h-4 w-4" />
-            </button>
-          </div>
-        )}
+              <div className="flex gap-2">
+                <Input
+                  autoFocus
+                  value={multiCustomInput}
+                  onChange={(e) => setMultiCustomInput(e.target.value)}
+                  placeholder={components_ask_questions_placeholder_custom()}
+                  className="text-sm bg-background/60"
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && multiCustomInput.trim()) {
+                      e.preventDefault()
+                      onChange(index, [...selected, multiCustomInput.trim()])
+                      setMultiCustomInput("")
+                      setShowCustomInput(false)
+                    }
+                    if (e.key === "Escape") {
+                      setShowCustomInput(false)
+                      setMultiCustomInput("")
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  disabled={!multiCustomInput.trim()}
+                  onClick={() => {
+                    if (multiCustomInput.trim()) {
+                      onChange(index, [...selected, multiCustomInput.trim()])
+                      setMultiCustomInput("")
+                      setShowCustomInput(false)
+                    }
+                  }}
+                  className={cn(
+                    "inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors shrink-0",
+                    multiCustomInput.trim()
+                      ? "bg-primary text-primary-foreground border-primary cursor-pointer hover:bg-primary/90"
+                      : "bg-muted text-muted-foreground border-border cursor-not-allowed"
+                  )}
+                >
+                  <Check className="h-4 w-4" />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
@@ -1079,23 +1131,24 @@ function QuestionField({
                 onChange(index, opt.value)
               }}
               className={cn(
-                "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
+                "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
                 isSelected
-                  ? "bg-foreground text-background border-foreground shadow-sm"
-                  : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                  ? "bg-primary/10 text-foreground border-primary/50 ring-1 ring-primary/20"
+                  : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             >
-              {/* Radio button — filled solid circle when selected */}
               <span className={cn(
                 "w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
-                isSelected ? "border-background bg-background" : "border-muted-foreground/40 bg-transparent"
-              )} />
+                isSelected ? "border-primary" : "border-muted-foreground/40"
+              )}>
+                {isSelected && <span className="w-2 h-2 rounded-full bg-primary" />}
+              </span>
 
               <span className="flex-1">{opt.value}</span>
 
               {opt.recommended && !isSelected && (
-                <span className="text-xs text-blue-400 font-medium shrink-0">
+                <span className="text-xs text-primary font-medium shrink-0">
                   {components_ask_questions_label_recommended()}
                 </span>
               )}
@@ -1103,7 +1156,6 @@ function QuestionField({
           )
         })}
 
-        {/* Custom "Other" option */}
         <button
           type="button"
           disabled={disabled}
@@ -1112,17 +1164,19 @@ function QuestionField({
             onChange(index, customValue)
           }}
           className={cn(
-            "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
+            "flex items-center gap-3 w-full px-3 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
             isOtherActive
-              ? "bg-foreground text-background border-foreground shadow-sm"
-              : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+              ? "bg-primary/10 text-foreground border-primary/50 ring-1 ring-primary/20"
+              : "bg-background/60 text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
             disabled && "opacity-50 cursor-not-allowed"
           )}
         >
           <span className={cn(
             "w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
-            isOtherActive ? "border-background bg-background" : "border-muted-foreground/40 bg-transparent"
-          )} />
+            isOtherActive ? "border-primary" : "border-muted-foreground/40"
+          )}>
+            {isOtherActive && <span className="w-2 h-2 rounded-full bg-primary" />}
+          </span>
           <span className="flex-1">{components_ask_questions_label_custom()}</span>
         </button>
 
@@ -1130,10 +1184,11 @@ function QuestionField({
           {isOtherActive && (
             <motion.div
               key="custom-textarea"
-              initial={{ opacity: 0, y: -6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: "auto" }}
+              exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.15, ease: "easeOut" }}
+              className="overflow-hidden"
             >
               <Textarea
                 disabled={disabled}
@@ -1147,9 +1202,9 @@ function QuestionField({
                   onChange(index, e.target.value)
                 }}
                 placeholder={components_ask_questions_placeholder_custom()}
-                rows={3}
-                className="text-sm bg-background resize-none overflow-y-hidden"
-                style={{ minHeight: "4.5rem" }}
+                rows={2}
+                className="text-sm bg-background/60 resize-none overflow-y-hidden rounded-lg"
+                style={{ minHeight: "3.5rem" }}
               />
             </motion.div>
           )}
@@ -1160,8 +1215,7 @@ function QuestionField({
 
   if (q.type === "number") {
     return (
-      <div className="relative">
-        {/* Fix: flex centering instead of absolute positioning */}
+      <div className="flex flex-col gap-1">
         <div className="relative flex items-center">
           <Hash className="absolute left-3 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
           <Input
@@ -1171,7 +1225,7 @@ function QuestionField({
             max={q.data?.max}
             value={(answer as number) ?? ""}
             onChange={(e) => onChange(index, Number(e.target.value))}
-            className="pl-8 text-sm bg-background"
+            className="pl-8 text-sm bg-background/60"
             placeholder={
               q.data?.min !== undefined && q.data?.max !== undefined
                 ? `${q.data.min} – ${q.data.max}`
@@ -1180,7 +1234,7 @@ function QuestionField({
           />
         </div>
         {(q.data?.min !== undefined || q.data?.max !== undefined) && (
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-xs text-muted-foreground mt-0.5">
             {q.data?.min !== undefined && q.data?.max !== undefined
               ? `Entre ${q.data.min} y ${q.data.max}`
               : q.data?.min !== undefined
@@ -1193,9 +1247,6 @@ function QuestionField({
   }
 
   if (q.type === "date") {
-    // FIX: new Date("2025-03-08") se interpreta como UTC midnight,
-    // lo que en UTC-3 (Argentina) cae en el día anterior.
-    // Parseamos manualmente para forzar interpretación local.
     const toLocalDate = (iso: string): Date => {
       const [y, m, d] = iso.split("-").map(Number)
       return new Date(y, m - 1, d)
@@ -1211,7 +1262,7 @@ function QuestionField({
             variant="outline"
             disabled={disabled}
             className={cn(
-              "w-full justify-start text-left font-normal bg-background",
+              "w-full justify-start text-left font-normal bg-background/60",
               !answer && "text-muted-foreground"
             )}
           >
@@ -1228,7 +1279,6 @@ function QuestionField({
             selected={dateValue}
             onSelect={(date) => {
               if (date) {
-                // Construimos el string manualmente para evitar reinterpretación UTC
                 const iso = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
                 onChange(index, iso)
               }
@@ -1263,18 +1313,22 @@ export function AskQuestionsRenderer({
 
   const [answers, setAnswers] = useState<Record<number, AnswerValue>>(() => {
     if (isDone && part.output && typeof part.output === "object" && !Array.isArray(part.output)) {
+      // Skip toon-encoded wrapper objects from old persisted messages
+      if ("type" in part.output && "value" in part.output) return {}
       return part.output as Record<number, AnswerValue>
     }
     return {}
   })
   const [submitted, setSubmitted] = useState(isDone)
 
-  const allAnswered = questions.length > 0 && questions.every((q, i) => {
+  const answeredCount = questions.filter((_: AskQuestion, i: number) => {
     const a = answers[i]
     if (a === undefined || a === "") return false
     if (Array.isArray(a)) return a.length > 0
     return true
-  })
+  }).length
+
+  const allAnswered = questions.length > 0 && answeredCount === questions.length
 
   function handleChange(i: number, value: AnswerValue) {
     setAnswers((prev) => ({ ...prev, [i]: value }))
@@ -1294,8 +1348,8 @@ export function AskQuestionsRenderer({
   if (questions.length === 0) return null
 
   const isDisabled = submitted || isDone
+  const progressPercent = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0
 
-  // Header dinámico según estado
   const headerTitle = isDisabled
     ? components_ask_questions_status_submitted()
     : components_ask_questions_status_answering()
@@ -1306,71 +1360,129 @@ export function AskQuestionsRenderer({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 6 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
-      className="w-full sm:max-w-[85%] rounded-xl border bg-muted/40 overflow-hidden"
+      className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
     >
       {/* Header */}
-      <div className="px-5 pt-4 pb-3 border-b border-border/50 flex items-center justify-between">
-        <div className="flex items-center gap-2.5">
+      <div className="relative px-4 sm:px-5 pt-4 pb-3 flex items-center gap-3 border-b border-border/40 bg-muted/30">
+        {/* top state bar */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-[2px]",
+          isDisabled ? "bg-green-500/70" : "bg-blue-400/60"
+        )} />
+        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted/50 border border-border/40 shrink-0">
           <img
             src="/nexata_logo.png"
             alt="Nexata"
-            className="h-4 w-auto max-w-[48px] object-contain"
+            className="h-4.5 w-auto max-w-[30px] object-contain opacity-80"
           />
-          <span className="text-sm font-semibold text-foreground">
+        </div>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-sm font-semibold text-foreground leading-tight">
             {headerTitle}
           </span>
+          <span className="text-xs text-muted-foreground leading-tight mt-0.5">
+            {questionCountLabel}
+          </span>
         </div>
-        <span className="text-xs text-muted-foreground">
-          {questionCountLabel}
-        </span>
-      </div>
-
-      {/* Questions */}
-      <div className="px-5 py-4 flex flex-col gap-5">
-        {questions.map((q, i) => (
-          <div key={i} className="flex flex-col gap-2">
-            <div className="flex items-start gap-2">
-              <span className="text-xs font-semibold text-muted-foreground mt-0.5 shrink-0 tabular-nums">
-                {String(i + 1).padStart(2, "0")}
-              </span>
-              <div className="flex flex-col gap-0.5 min-w-0">
-                <span className="text-sm font-medium text-foreground leading-snug">
-                  {q.question}
-                </span>
-                {q.recommendation && (
-                  <span className="text-xs text-muted-foreground leading-snug">
-                    {q.recommendation}
-                  </span>
-                )}
-              </div>
-            </div>
-            <div className="pl-6">
-              <QuestionField
-                q={q}
-                index={i}
-                answer={answers[i]}
-                disabled={isDisabled}
-                onChange={handleChange}
-              />
+        {isDisabled && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className="flex items-center justify-center h-6 w-6 rounded-full bg-green-500/15 border border-green-500/25">
+              <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
             </div>
           </div>
-        ))}
+        )}
+      </div>
+
+      {/* Progress bar */}
+      {!isDisabled && (
+        <div className="px-4 sm:px-5 pt-3 pb-1">
+          <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
+            <motion.div
+              className="h-full rounded-full bg-primary"
+              initial={{ width: 0 }}
+              animate={{ width: `${progressPercent}%` }}
+              transition={{ duration: 0.3, ease: "easeOut" }}
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Questions */}
+      <div className="px-4 sm:px-5 py-3 flex flex-col gap-2">
+        {questions.map((q: AskQuestion, i: number) => {
+          const isAnswered = (() => {
+            const a = answers[i]
+            if (a === undefined || a === "") return false
+            if (Array.isArray(a)) return a.length > 0
+            return true
+          })()
+
+          return (
+            <div
+              key={i}
+              className={cn(
+                "flex flex-col gap-2.5 rounded-lg border p-3 transition-all duration-200",
+                isDisabled
+                  ? "border-border/30 bg-muted/20"
+                  : isAnswered
+                  ? "border-primary/20 bg-primary/[0.03]"
+                  : "border-border/40 bg-background/40"
+              )}
+            >
+              {/* Question header */}
+              <div className="flex items-start gap-2.5">
+                <div className={cn(
+                  "flex items-center justify-center h-5 w-5 rounded-full text-[10px] font-bold shrink-0 mt-0.5 transition-colors",
+                  isAnswered
+                    ? "bg-primary/15 text-primary"
+                    : "bg-muted text-muted-foreground"
+                )}>
+                  {isDisabled && isAnswered ? (
+                    <Check className="h-3 w-3" />
+                  ) : (
+                    <span>{i + 1}</span>
+                  )}
+                </div>
+                <div className="flex flex-col gap-0.5 min-w-0">
+                  <span className="text-sm font-medium text-foreground leading-snug">
+                    {q.question}
+                  </span>
+                  {q.recommendation && (
+                    <span className="text-xs text-muted-foreground leading-snug">
+                      {q.recommendation}
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Question field */}
+              <div className="pl-[30px]">
+                <QuestionField
+                  q={q}
+                  index={i}
+                  answer={answers[i]}
+                  disabled={isDisabled}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+          )
+        })}
       </div>
 
       {/* Footer */}
-      <div className="px-5 pb-4 flex items-center justify-between">
+      <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
         {isDisabled ? (
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <Check className="h-3.5 w-3.5 text-green-500" />
-            <span>{components_ask_questions_label_answers_sent()}</span>
-          </div>
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {components_ask_questions_label_answers_sent()}
+          </span>
         ) : (
-          <span className="text-xs text-muted-foreground">
+          <span className="text-xs text-muted-foreground tabular-nums">
             {components_ask_questions_label_answered_count({
-              answered: Object.keys(answers).length,
+              answered: answeredCount,
               total: questions.length,
             })}
           </span>
@@ -1381,8 +1493,7 @@ export function AskQuestionsRenderer({
             size="sm"
             disabled={!allAnswered}
             onClick={handleSubmit}
-            variant="secondary"
-            className="gap-2 transition-all cursor-pointer"
+            className="gap-1.5 cursor-pointer"
           >
             <Send className="h-3.5 w-3.5" />
             {components_ask_questions_button_submit()}

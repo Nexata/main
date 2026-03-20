@@ -1,5 +1,4 @@
 import { Chat as AIChat, type UIMessage } from '@ai-sdk/react';
-import { lastAssistantMessageIsCompleteWithToolCalls } from 'ai';
 import { createAuthenticatedChatTransport } from './chat-transport';
 
 /**
@@ -10,6 +9,35 @@ const chatPool = new Map<string, AIChat<UIMessage>>();
 
 export const NEW_CHAT_KEY = '__new__';
 
+/**
+ * Only auto-continue when the LAST part of the last assistant message is a
+ * tool call that has just been fully resolved (state === 'output-available').
+ *
+ * Why this predicate instead of `lastAssistantMessageIsCompleteWithToolCalls`:
+ * - Server-executed tools (Gmail, Drive, …) are already resolved inline by
+ *   the server's streamText — the model continues in the same stream and ends
+ *   with a text part, so this predicate returns false (no extra round-trip).
+ * - NexataAskQuestions has no server-side execute fn → the stream ends on the
+ *   tool-call part (state: 'input-available').  This predicate stays false
+ *   until the user submits answers and addToolOutput flips it to
+ *   'output-available', at which point we send to /chat/answer.
+ *
+ * The old predicate fired as soon as any tool call appeared (regardless of
+ * output state), triggering an unwanted /chat request that made the model
+ * repeat the same tool call → visible duplication in the UI.
+ */
+function shouldSendAutomatically({ messages }: { messages: UIMessage[] }): boolean {
+	const last = messages.at(-1);
+	if (last?.role !== 'assistant') return false;
+	const parts = last.parts ?? [];
+	if (parts.length === 0) return false;
+	const lastPart = parts.at(-1) as any;
+	const isToolPart =
+		typeof lastPart?.type === 'string' &&
+		(lastPart.type.startsWith('tool-') || lastPart.type === 'dynamic-tool');
+	return isToolPart && lastPart?.state === 'output-available';
+}
+
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 	const key = threadId ?? NEW_CHAT_KEY;
 	if (!chatPool.has(key)) {
@@ -17,7 +45,7 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 			key,
 			new AIChat({
 				transport: createAuthenticatedChatTransport(),
-				sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+				sendAutomaticallyWhen: shouldSendAutomatically,
 			}),
 		);
 	}

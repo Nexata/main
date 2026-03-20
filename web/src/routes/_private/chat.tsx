@@ -41,28 +41,42 @@ function normalizeParts(
 	if (typeof content === 'string') return [{ type: 'text', text: content }];
 	if (!Array.isArray(content)) return [];
 
-	return content.map((part: any) => {
-		if (part.type === 'tool-call' && part.toolName) {
-			const output = part.output ?? toolOutputMap?.get(part.toolCallId) ?? null;
-			return {
-				type: `tool-${part.toolName}`,
-				toolCallId: part.toolCallId,
-				state: output != null ? 'output-available' : 'input-available',
-				input: part.input ?? {},
-				output,
-			};
-		}
-		if (part.type === 'file') {
-			return {
-				type: 'file',
-				filename: part.filename ?? part.name ?? 'Unknown',
-				mediaType:
-					part.mediaType ?? part.mimeType ?? 'application/octet-stream',
-				url: part.url ?? '',
-			};
-		}
-		return part;
-	}) as UIParts;
+	const convertedToolCallIds = new Set<string>();
+
+	return content
+		.map((part: any) => {
+			if (part.type === 'tool-call' && part.toolName) {
+				convertedToolCallIds.add(part.toolCallId);
+				const output =
+					part.output ?? toolOutputMap?.get(part.toolCallId) ?? null;
+				return {
+					type: `tool-${part.toolName}`,
+					toolCallId: part.toolCallId,
+					state: output != null ? 'output-available' : 'input-available',
+					input: part.input ?? {},
+					output,
+				};
+			}
+			// Skip dynamic-tool parts that were already converted from tool-call
+			if (
+				part.type === 'dynamic-tool' &&
+				part.toolCallId &&
+				convertedToolCallIds.has(part.toolCallId)
+			) {
+				return null;
+			}
+			if (part.type === 'file') {
+				return {
+					type: 'file',
+					filename: part.filename ?? part.name ?? 'Unknown',
+					mediaType:
+						part.mediaType ?? part.mimeType ?? 'application/octet-stream',
+					url: part.url ?? '',
+				};
+			}
+			return part;
+		})
+		.filter(Boolean) as UIParts;
 }
 
 export function NexataChat() {

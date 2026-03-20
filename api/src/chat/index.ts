@@ -305,7 +305,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				);
 
 			// Append the tool result to the message history
-			const toolResultMessage: PartialMessage = {
+			// Extra `result` field stores raw answers for frontend hydration
+			const toolResultMessage = {
 				id: crypto.randomUUID(),
 				role: 'tool',
 				content: [
@@ -313,13 +314,14 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						type: 'tool-result',
 						toolCallId: toolCallPart.toolCallId,
 						toolName: 'NexataAskQuestions',
+						result: body.result,
 						output: {
 							type: 'text',
 							value: encode(body.result),
 						},
 					},
 				],
-			};
+			} as unknown as PartialMessage;
 
 			threadMessages.push(toolResultMessage);
 
