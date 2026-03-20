@@ -121,6 +121,8 @@ import {
   'components.ask_questions.label.answers_sent' as components_ask_questions_label_answers_sent,
   'components.ask_questions.label.answered_count' as components_ask_questions_label_answered_count,
   'components.ask_questions.button.submit' as components_ask_questions_button_submit,
+  'components.ask_questions.label.custom' as components_ask_questions_label_custom,
+  'components.ask_questions.placeholder.custom' as components_ask_questions_placeholder_custom,
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
@@ -830,86 +832,230 @@ function QuestionField({
   disabled: boolean
   onChange: (i: number, value: AnswerValue) => void
 }) {
+  // Local state for custom-answer mode (boolean, multiple_choice, multi_select)
+  const [showCustomInput, setShowCustomInput] = useState(false)
+  const [customValue, setCustomValue] = useState("") // for boolean & multiple_choice
+  const [multiCustomInput, setMultiCustomInput] = useState("") // for multi_select add-field
+
   if (q.type === "text") {
     return (
       <Textarea
         disabled={disabled}
         placeholder={q.data?.placeholder ?? ""}
         value={(answer as string) ?? ""}
-        onChange={(e) => onChange(index, e.target.value)}
-        rows={2}
-        className="text-sm bg-background resize-none"
+        onChange={(e) => {
+          // auto-resize: reset to 0 first to force correct scrollHeight
+          const el = e.target
+          el.style.height = "0px"
+          el.style.height = `${el.scrollHeight}px`
+          onChange(index, e.target.value)
+        }}
+        rows={3}
+        className="text-sm bg-background resize-none overflow-y-hidden"
+        style={{ minHeight: "4.5rem" }}
       />
     )
   }
 
   if (q.type === "boolean") {
+    const isCustomMode = showCustomInput || typeof answer === "string"
     return (
-      <div className="flex gap-2">
-        {([
-          { label: components_ask_questions_label_yes(), value: true },
-          { label: components_ask_questions_label_no(), value: false },
-        ] as const).map(({ label, value }) => {
-          const isSelected = answer === value
-          return (
-            <button
-              key={label}
-              type="button"
-              disabled={disabled}
-              onClick={() => onChange(index, value)}
-              className={cn(
-                "px-5 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
-                isSelected
-                  ? "bg-foreground text-background border-foreground shadow-sm"
-                  : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
-                disabled && "opacity-50 cursor-not-allowed"
-              )}
+      <div className="flex flex-col gap-2">
+        <div className="flex gap-2 flex-wrap">
+          {([
+            { label: components_ask_questions_label_yes(), value: true },
+            { label: components_ask_questions_label_no(), value: false },
+          ] as const).map(({ label, value }) => {
+            const isSelected = !isCustomMode && answer === value
+            return (
+              <button
+                key={label}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  setShowCustomInput(false)
+                  onChange(index, value)
+                }}
+                className={cn(
+                  "px-5 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
+                  isSelected
+                    ? "bg-foreground text-background border-foreground shadow-sm"
+                    : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                  disabled && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {label}
+              </button>
+            )
+          })}
+          <button
+            type="button"
+            disabled={disabled}
+            onClick={() => {
+              setShowCustomInput(true)
+              if (customValue) onChange(index, customValue)
+            }}
+            className={cn(
+              "px-5 py-1.5 rounded-lg text-sm font-medium border transition-all duration-150 cursor-pointer",
+              isCustomMode
+                ? "bg-foreground text-background border-foreground shadow-sm"
+                : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+              disabled && "opacity-50 cursor-not-allowed"
+            )}
+          >
+            {components_ask_questions_label_custom()}
+          </button>
+        </div>
+        <AnimatePresence>
+          {isCustomMode && (
+            <motion.div
+              key="custom-textarea"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
             >
-              {label}
-            </button>
-          )
-        })}
+              <Textarea
+                disabled={disabled}
+                autoFocus={!disabled}
+                value={typeof answer === "string" ? (answer as string) : customValue}
+                onChange={(e) => {
+                  const el = e.target
+                  el.style.height = "0px"
+                  el.style.height = `${el.scrollHeight}px`
+                  setCustomValue(e.target.value)
+                  onChange(index, e.target.value)
+                }}
+                placeholder={components_ask_questions_placeholder_custom()}
+                rows={3}
+                className="text-sm bg-background resize-none overflow-y-hidden"
+                style={{ minHeight: "4.5rem" }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
 
   if (q.type === "multi_select") {
     const selected = (answer as string[]) ?? []
+    const predefinedValues = new Set(q.data.map((d) => d.value))
+    const customSelectedValues = selected.filter((v) => !predefinedValues.has(v))
     return (
-      <div className="flex flex-wrap gap-2">
-        {q.data.map((opt) => {
-          const isSelected = selected.includes(opt.value)
-          return (
+      <div className="flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2">
+          {q.data.map((opt) => {
+            const isSelected = selected.includes(opt.value)
+            return (
+              <button
+                key={opt.value}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  const next = isSelected
+                    ? selected.filter((v) => v !== opt.value)
+                    : [...selected, opt.value]
+                  onChange(index, next)
+                }}
+                className={cn(
+                  "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer",
+                  isSelected
+                    ? "bg-foreground text-background border-foreground shadow-sm"
+                    : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                  disabled && "opacity-50 cursor-not-allowed"
+                )}
+              >
+                {opt.recommended && !isSelected && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
+                )}
+                {opt.value}
+              </button>
+            )
+          })}
+
+          {/* Custom values already added */}
+          {customSelectedValues.map((v) => (
             <button
-              key={opt.value}
+              key={v}
               type="button"
               disabled={disabled}
-              onClick={() => {
-                const next = isSelected
-                  ? selected.filter((v) => v !== opt.value)
-                  : [...selected, opt.value]
-                onChange(index, next)
-              }}
+              onClick={() => onChange(index, selected.filter((s) => s !== v))}
               className={cn(
-                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer",
-                isSelected
-                  ? "bg-foreground text-background border-foreground shadow-sm"
-                  : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer bg-foreground text-background border-foreground shadow-sm",
                 disabled && "opacity-50 cursor-not-allowed"
               )}
             >
-              {opt.recommended && !isSelected && (
-                <span className="w-1.5 h-1.5 rounded-full bg-blue-400 shrink-0" />
-              )}
-              {opt.value}
+              {v}
+              {!disabled && <X className="h-3 w-3 ml-0.5 shrink-0" />}
             </button>
-          )
-        })}
+          ))}
+
+          {/* Toggle add-custom input */}
+          {!disabled && (
+            <button
+              type="button"
+              onClick={() => setShowCustomInput(!showCustomInput)}
+              className={cn(
+                "inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm border transition-all duration-150 cursor-pointer",
+                showCustomInput
+                  ? "bg-foreground text-background border-foreground shadow-sm"
+                  : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30"
+              )}
+            >
+              + {components_ask_questions_label_custom()}
+            </button>
+          )}
+        </div>
+
         {q.data.some((o) => o.recommended) && (
           <p className="w-full text-xs text-muted-foreground flex items-center gap-1 mt-0.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-400 inline-block" />
             {components_ask_questions_label_recommended()}
           </p>
+        )}
+
+        {showCustomInput && (
+          <div className="flex gap-2">
+            <Input
+              autoFocus
+              value={multiCustomInput}
+              onChange={(e) => setMultiCustomInput(e.target.value)}
+              placeholder={components_ask_questions_placeholder_custom()}
+              className="text-sm bg-background"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && multiCustomInput.trim()) {
+                  e.preventDefault()
+                  onChange(index, [...selected, multiCustomInput.trim()])
+                  setMultiCustomInput("")
+                  setShowCustomInput(false)
+                }
+                if (e.key === "Escape") {
+                  setShowCustomInput(false)
+                  setMultiCustomInput("")
+                }
+              }}
+            />
+            <button
+              type="button"
+              disabled={!multiCustomInput.trim()}
+              onClick={() => {
+                if (multiCustomInput.trim()) {
+                  onChange(index, [...selected, multiCustomInput.trim()])
+                  setMultiCustomInput("")
+                  setShowCustomInput(false)
+                }
+              }}
+              className={cn(
+                "inline-flex items-center justify-center h-9 w-9 rounded-lg border transition-colors shrink-0",
+                multiCustomInput.trim()
+                  ? "bg-foreground text-background border-foreground cursor-pointer hover:bg-foreground/90"
+                  : "bg-muted text-muted-foreground border-border cursor-not-allowed"
+              )}
+            >
+              <Check className="h-4 w-4" />
+            </button>
+          </div>
         )}
       </div>
     )
@@ -917,6 +1063,8 @@ function QuestionField({
 
   if (q.type === "multiple_choice") {
     const selected = (answer as string) ?? ""
+    const isCustomSelected = selected !== "" && !q.data.some((opt) => opt.value === selected)
+    const isOtherActive = showCustomInput || isCustomSelected
     return (
       <div className="flex flex-col gap-1.5">
         {q.data.map((opt) => {
@@ -926,7 +1074,10 @@ function QuestionField({
               key={opt.value}
               type="button"
               disabled={disabled}
-              onClick={() => onChange(index, opt.value)}
+              onClick={() => {
+                setShowCustomInput(false)
+                onChange(index, opt.value)
+              }}
               className={cn(
                 "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
                 isSelected
@@ -951,6 +1102,58 @@ function QuestionField({
             </button>
           )
         })}
+
+        {/* Custom "Other" option */}
+        <button
+          type="button"
+          disabled={disabled}
+          onClick={() => {
+            setShowCustomInput(true)
+            onChange(index, customValue)
+          }}
+          className={cn(
+            "flex items-center gap-3 w-full px-3.5 py-2.5 rounded-lg text-sm border text-left transition-all duration-150 cursor-pointer",
+            isOtherActive
+              ? "bg-foreground text-background border-foreground shadow-sm"
+              : "bg-background text-foreground border-border hover:bg-muted hover:border-muted-foreground/30",
+            disabled && "opacity-50 cursor-not-allowed"
+          )}
+        >
+          <span className={cn(
+            "w-4 h-4 rounded-full border-2 shrink-0 flex items-center justify-center transition-colors",
+            isOtherActive ? "border-background bg-background" : "border-muted-foreground/40 bg-transparent"
+          )} />
+          <span className="flex-1">{components_ask_questions_label_custom()}</span>
+        </button>
+
+        <AnimatePresence>
+          {isOtherActive && (
+            <motion.div
+              key="custom-textarea"
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.15, ease: "easeOut" }}
+            >
+              <Textarea
+                disabled={disabled}
+                autoFocus={!disabled && showCustomInput}
+                value={isCustomSelected ? selected : customValue}
+                onChange={(e) => {
+                  const el = e.target
+                  el.style.height = "0px"
+                  el.style.height = `${el.scrollHeight}px`
+                  setCustomValue(e.target.value)
+                  onChange(index, e.target.value)
+                }}
+                placeholder={components_ask_questions_placeholder_custom()}
+                rows={3}
+                className="text-sm bg-background resize-none overflow-y-hidden"
+                style={{ minHeight: "4.5rem" }}
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
     )
   }
@@ -1040,6 +1243,9 @@ function QuestionField({
   return null
 }
 
+// Module-level set to track submitted tool calls across re-renders / duplicate parts
+const submittedToolCalls = new Set<string>()
+
 // ── Main component ──────────────────────────────────────────────────────────
 
 export function AskQuestionsRenderer({
@@ -1051,12 +1257,17 @@ export function AskQuestionsRenderer({
 }) {
   const input = part.input as AskQuestionsInput | undefined
   const isStreaming = part.state === "input-streaming"
-  const isDone = part.state === "output-available"
+  const isDone = part.state === "output-available" || submittedToolCalls.has(part.toolCallId ?? "")
 
   const questions = input?.questions ?? []
 
-  const [answers, setAnswers] = useState<Record<number, AnswerValue>>({})
-  const [submitted, setSubmitted] = useState(false)
+  const [answers, setAnswers] = useState<Record<number, AnswerValue>>(() => {
+    if (isDone && part.output && typeof part.output === "object" && !Array.isArray(part.output)) {
+      return part.output as Record<number, AnswerValue>
+    }
+    return {}
+  })
+  const [submitted, setSubmitted] = useState(isDone)
 
   const allAnswered = questions.length > 0 && questions.every((q, i) => {
     const a = answers[i]
@@ -1071,6 +1282,7 @@ export function AskQuestionsRenderer({
 
   function handleSubmit() {
     if (!allAnswered) return
+    submittedToolCalls.add(part.toolCallId ?? "")
     setSubmitted(true)
     onSubmit?.(part.toolCallId, answers)
   }
@@ -1198,6 +1410,6 @@ function isToolPart(
 ): part is Extract<UIMessage["parts"][number], { state: string }> {
   return (
     part.type === "dynamic-tool" ||
-    part.type.startsWith("tool-")
+    (part.type.startsWith("tool-") && part.type !== "tool-result")
   )
 }

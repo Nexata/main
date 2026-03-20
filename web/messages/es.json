@@ -56,7 +56,11 @@
 				"question_singular": "pregunta",
 				"question_plural": "preguntas",
 				"answers_sent": "Respuestas enviadas",
-				"answered_count": "{answered}/{total} respondidas"
+				"answered_count": "{answered}/{total} respondidas",
+				"custom": "Otro..."
+			},
+			"placeholder": {
+				"custom": "Escribí tu respuesta..."
 			},
 			"button": {
 				"submit": "Enviar respuestas"

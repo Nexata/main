@@ -56,7 +56,11 @@
 				"question_singular": "question",
 				"question_plural": "questions",
 				"answers_sent": "Answers sent",
-				"answered_count": "{answered}/{total} answered"
+				"answered_count": "{answered}/{total} answered",
+				"custom": "Other..."
+			},
+			"placeholder": {
+				"custom": "Type a custom answer..."
 			},
 			"button": {
 				"submit": "Send answers"
