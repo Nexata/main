@@ -61,7 +61,9 @@ export function MessageInput({
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
   const resolvedPlaceholder = placeholder ?? common_ask_nexy()
   const [brainMode, setBrainMode] = useState(false)
-  const [dismissedWarning, setDismissedWarning] = useState(false)
+  const [dismissedWarning, setDismissedWarning] = useState<boolean>(() => {
+    try { return localStorage.getItem('nexata-brain-warning-dismissed') === 'true' } catch { return false }
+  })
 
   const {
     isListening,
@@ -83,10 +85,6 @@ export function MessageInput({
       setShowInterruptPrompt(false)
     }
   }, [isGenerating])
-
-  useEffect(() => {
-    if (brainMode) setDismissedWarning(false)
-  }, [brainMode])
 
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
@@ -274,9 +272,12 @@ export function MessageInput({
                   size="icon"
                   variant="ghost"
                   className={cn(
-                    "h-8 w-8 rounded-full cursor-pointer",
-                    brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
+                    "h-8 w-8 rounded-full cursor-pointer transition-colors",
+                    brainMode
+                      ? "text-pink-400 bg-pink-100 dark:bg-pink-950/60 ring-1 ring-pink-400/40"
+                      : "text-muted-foreground hover:text-foreground"
                   )}
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
                     setBrainMode(v => {
                       const next = !v
@@ -285,7 +286,7 @@ export function MessageInput({
                     })
                   }}
                 >
-                  <Brain className="h-5 w-5" />
+                  <Brain className={cn("h-5 w-5", brainMode && "drop-shadow-[0_0_4px_theme(colors.pink.400)]")} />
                 </Button>
               </TooltipTrigger>
               <TooltipContent>{common_brain()}</TooltipContent>
@@ -320,6 +321,7 @@ export function MessageInput({
                       size="icon"
                       variant="ghost"
                       className="h-8 w-8 rounded-full cursor-pointer"
+                      onMouseDown={(e) => e.preventDefault()}
                       onClick={async () => {
                         const files = await showFileUploadDialog()
                         addFiles(files)
@@ -337,6 +339,7 @@ export function MessageInput({
                   type="button"
                   size="icon"
                   className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                  onMouseDown={(e) => e.preventDefault()}
                   onClick={stop}
                 >
                   <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
@@ -386,9 +389,12 @@ export function MessageInput({
                     size="icon"
                     variant="ghost"
                     className={cn(
-                      "h-8 w-8 rounded-full cursor-pointer",
-                      brainMode ? "text-pink-300" : "text-muted-foreground hover:text-foreground"
+                      "h-8 w-8 rounded-full cursor-pointer transition-colors",
+                      brainMode
+                        ? "text-pink-400 bg-pink-100 dark:bg-pink-950/60 ring-1 ring-pink-400/40"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={() => {
                       setBrainMode(v => {
                         const next = !v
@@ -397,7 +403,7 @@ export function MessageInput({
                       })
                     }}
                   >
-                    <Brain className="h-5 w-5" />
+                    <Brain className={cn("h-5 w-5", brainMode && "drop-shadow-[0_0_4px_theme(colors.pink.400)]")} />
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>{common_brain()}</TooltipContent>
@@ -428,6 +434,7 @@ export function MessageInput({
                         size="icon"
                         variant="ghost"
                         className="h-8 w-8 rounded-full cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
                         onClick={async () => {
                           const files = await showFileUploadDialog()
                           addFiles(files)
@@ -445,6 +452,7 @@ export function MessageInput({
                     type="button"
                     size="icon"
                     className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
+                    onMouseDown={(e) => e.preventDefault()}
                     onClick={stop}
                   >
                     <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
@@ -500,7 +508,10 @@ export function MessageInput({
 
               <button
                 type="button"
-                onClick={() => setDismissedWarning(true)}
+                onClick={() => {
+                  try { localStorage.setItem('nexata-brain-warning-dismissed', 'true') } catch {}
+                  setDismissedWarning(true)
+                }}
                 className="ml-1 shrink-0 rounded-md p-0.5 opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
                 aria-label="Dismiss"
               >

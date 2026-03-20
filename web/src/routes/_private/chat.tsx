@@ -351,6 +351,29 @@ export function NexataChat() {
 	// Edit message
 	// ----------------------------
 
+	// ----------------------------
+	// Global Enter key → send message
+	// ----------------------------
+
+	const handleSubmitRef = useRef(handleSubmit);
+	handleSubmitRef.current = handleSubmit;
+	const inputRef = useRef(input);
+	inputRef.current = input;
+
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+			const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+			if (['textarea', 'input', 'select', 'button', 'a'].includes(tag)) return;
+			if ((document.activeElement as HTMLElement)?.isContentEditable) return;
+			if (inputRef.current.trim().length === 0) return;
+			e.preventDefault();
+			handleSubmitRef.current();
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, []);
+
 	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
 	const [editPending, setEditPending] = useState<{
 		messageId: string;
