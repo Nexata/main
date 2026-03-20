@@ -212,6 +212,45 @@ export function NexataChat() {
 	}, [isNewChat, setMessages]);
 
 	// ----------------------------
+	// After a NexataAskQuestions answer stream the SDK replaces the QA assistant
+	// message in-place with a combined [text + QA(output-available) + answer] message.
+	// Once the stream is done we reset the hydration guard so the next React Query
+	// refetch can split it back into the two separate DB messages.
+	// ----------------------------
+
+	useEffect(() => {
+		if (chatStatus !== 'ready' || !activeThreadId) return;
+
+		const lastMsg = messages.at(-1);
+		if (lastMsg?.role !== 'assistant') return;
+
+		// Detect the combined QA+answer pattern: QA tool part followed by a text part
+		let foundQA = false;
+		let hasTextAfterQA = false;
+		for (const p of lastMsg.parts ?? []) {
+			const typedPart = p as { type: string; toolName?: string; state?: string };
+			if (
+				!foundQA &&
+				(typedPart.type === 'tool-NexataAskQuestions' ||
+					(typedPart.type === 'dynamic-tool' &&
+						typedPart.toolName === 'NexataAskQuestions')) &&
+				typedPart.state === 'output-available'
+			) {
+				foundQA = true;
+			} else if (foundQA && typedPart.type === 'text') {
+				hasTextAfterQA = true;
+				break;
+			}
+		}
+
+		if (hasTextAfterQA) {
+			// Allow the hydration effect to re-run and load the proper two-message
+			// state from the DB (QA message + separate answer message).
+			appliedThreadRef.current = null;
+		}
+	}, [chatStatus, activeThreadId, messages]);
+
+	// ----------------------------
 	// Sync active thread's SDK status → store
 	// ----------------------------
 

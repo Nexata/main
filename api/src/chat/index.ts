@@ -392,10 +392,17 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				},
 			});
 
+			// Do NOT pass generateMessageId here.
+			// If we send a new messageId in the SSE "start" event, the AI SDK client
+			// detects that the new ID differs from the existing QA assistant message ID
+			// and calls pushMessage() on a deep-clone of that message (which still
+			// contains the original text + QA parts), making the entire QA block appear
+			// twice in the UI.  Without a messageId in "start", the SDK keeps the clone's
+			// original ID → replaceMessage() is used instead of pushMessage() → no duplication.
+			// The assistantMessageId UUID is still used exclusively for DB persistence below.
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
-				generateMessageId: () => assistantMessageId,
 			});
 		},
 		{
