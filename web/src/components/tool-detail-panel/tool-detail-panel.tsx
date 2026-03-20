@@ -171,7 +171,7 @@ function ToolDetailContent({ tool }: { tool: ToolDetailData }) {
         <div className="flex flex-col gap-3">
           <SectionDivider title={td_output()} />
           {tool.output ? (
-            <ToolOutputRenderer toolName={tool.toolName} output={tool.output} />
+            <ToolOutputRenderer toolName={tool.toolName} output={tool.output} isError={tool.state === 'output-error'} />
           ) : (
             <p className="text-sm text-muted-foreground italic px-1">{td_no_output()}</p>
           )}

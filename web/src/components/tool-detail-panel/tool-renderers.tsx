@@ -580,7 +580,12 @@ const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
  * Renders tool output in a structured, human-readable format.
  * Falls back to JSON for unknown tools.
  */
-export function ToolOutputRenderer({ toolName, output }: { toolName: string; output: unknown }) {
+export function ToolOutputRenderer({ toolName, output, isError }: { toolName: string; output: unknown; isError?: boolean }) {
+  // When the tool errored, always show raw output with the JSON fallback
+  if (isError) {
+    return <JsonFallbackRenderer output={output} />;
+  }
+
   // Handle multi-credential wrapped output (array of results with credentialEmail)
   const unwrapped = unwrapMultiCredentialOutput(output);
 

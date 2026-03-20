@@ -34,7 +34,7 @@ type UIParts = UIMessage['parts'];
 
 function normalizeParts(
 	content: unknown,
-	toolOutputMap?: Map<string, unknown>,
+	toolOutputMap?: Map<string, { output: unknown; isError: boolean }>,
 ): UIParts {
 	if (!content) return [];
 	if (typeof content === 'string') return [{ type: 'text', text: content }];
@@ -46,12 +46,13 @@ function normalizeParts(
 		.map((part: any) => {
 			if (part.type === 'tool-call' && part.toolName) {
 				convertedToolCallIds.add(part.toolCallId);
-				const output =
-					part.output ?? toolOutputMap?.get(part.toolCallId) ?? null;
+				const mapped = toolOutputMap?.get(part.toolCallId);
+				const output = part.output ?? mapped?.output ?? null;
+				const isError = mapped?.isError ?? false;
 				return {
 					type: `tool-${part.toolName}`,
 					toolCallId: part.toolCallId,
-					state: output != null ? 'output-available' : 'input-available',
+					state: isError ? 'output-error' : (output != null ? 'output-available' : 'input-available'),
 					input: part.input ?? {},
 					output,
 				};
@@ -134,16 +135,16 @@ export function NexataChat() {
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
 		if (!threadMessages) return [];
 
-		// Build a map of toolCallId → output from "tool" role messages
-		const toolOutputMap = new Map<string, unknown>();
+		// Build a map of toolCallId → { output, isError } from "tool" role messages
+		const toolOutputMap = new Map<string, { output: unknown; isError: boolean }>();
 		for (const m of threadMessages) {
 			if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
 			for (const part of m.content as any[]) {
 				if (part.type === 'tool-result' && part.toolCallId) {
-					toolOutputMap.set(
-						part.toolCallId,
-						part.result ?? part.output ?? null,
-					);
+					toolOutputMap.set(part.toolCallId, {
+						output: part.result ?? part.output ?? null,
+						isError: !!part.isError,
+					});
 				}
 			}
 		}
