@@ -1,6 +1,9 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
+import { isLocale, setLocale } from '@/paraglide/runtime';
+import { getStoredLanguage } from '@/hooks/use-sync-language';
+import type { Language } from '@/lib/user';
 import { FcGoogle } from 'react-icons/fc';
 import { IoLogoMicrosoft } from 'react-icons/io5';
 import { SiDropbox } from 'react-icons/si';
@@ -31,8 +34,13 @@ export const Route = createFileRoute('/_public/login')({
 });
 
 function LoginPage() {
+	const language = getStoredLanguage();
+	const lc = { locale: language };
+
 	useEffect(() => {
-		document.title = login_meta_title();
+		const locale = language as unknown as string;
+		if (isLocale(locale)) setLocale(locale, { reload: false });
+		document.title = login_meta_title({}, lc);
 	}, []);
 
 	return (
@@ -45,14 +53,14 @@ function LoginPage() {
 			>
 				{/* Mobile: sin Card, solo contenido directo */}
 				<div className="block sm:hidden">
-					<LoginContent />
+					<LoginContent lc={lc} />
 				</div>
 
 				{/* Desktop: Card con bordes redondeados y más ancha */}
 				<div className="hidden sm:block">
 					<Card className="rounded-2xl border shadow-2xl shadow-black/10">
 						<CardContent className="p-10">
-							<LoginContent />
+							<LoginContent lc={lc} />
 						</CardContent>
 					</Card>
 				</div>
@@ -61,7 +69,7 @@ function LoginPage() {
 	);
 }
 
-function LoginContent() {
+function LoginContent({ lc }: { lc: { locale: Language } }) {
 	return (
 		<>
 			{/* Logo */}
@@ -75,10 +83,10 @@ function LoginContent() {
 
 			{/* Title */}
 			<h1 className="text-3xl sm:text-2xl font-semibold text-center mb-3 sm:mb-2">
-				{login_title()}
+				{login_title({}, lc)}
 			</h1>
 			<p className="text-base sm:text-sm text-muted-foreground text-center mb-10 sm:mb-6">
-				{login_subtitle()}
+				{login_subtitle({}, lc)}
 			</p>
 
 			{/* OAuth Buttons */}
@@ -92,7 +100,7 @@ function LoginContent() {
 					}}
 				>
 					<IoLogoMicrosoft className="h-6 w-6 sm:h-5 sm:w-5 text-blue-500" />
-					{login_oauth_microsoft()}
+					{login_oauth_microsoft({}, lc)}
 				</Button>
 				<Button
 					variant="outline"
@@ -103,7 +111,7 @@ function LoginContent() {
 					}}
 				>
 					<FcGoogle className="h-6 w-6 sm:h-5 sm:w-5" />
-					{login_oauth_google()}
+					{login_oauth_google({}, lc)}
 				</Button>
 				<Button
 					variant="outline"
@@ -114,7 +122,7 @@ function LoginContent() {
 					}}
 				>
 					<SiDropbox className="h-6 w-6 sm:h-5 sm:w-5 text-[#0061FF]" />
-					{login_oauth_dropbox()}
+					{login_oauth_dropbox({}, lc)}
 				</Button>
 			</div>
 		</>

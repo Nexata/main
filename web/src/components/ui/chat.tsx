@@ -7,7 +7,8 @@ import {
   useState,
   type ReactElement,
 } from "react"
-import { ArrowDown } from "lucide-react"
+import { motion, AnimatePresence } from "framer-motion"
+import { ArrowDown, Calendar, FileText, Mail, Search } from "lucide-react"
 import type { UIMessage } from "@ai-sdk/react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
@@ -15,6 +16,12 @@ import { Button } from "@/components/ui/button"
 import { MessageInput } from "@/components/ui/message-input"
 import { MessageList } from "@/components/ui/message-list"
 import { ChatThinkingIndicator } from "../chat-thinking/chat-thinking"
+import {
+  'chat.suggestions.prompt_1' as chat_suggestions_prompt_1,
+  'chat.suggestions.prompt_2' as chat_suggestions_prompt_2,
+  'chat.suggestions.prompt_3' as chat_suggestions_prompt_3,
+  'chat.suggestions.prompt_4' as chat_suggestions_prompt_4,
+} from '@/paraglide/messages.js'
 
 interface ChatPropsBase {
   handleSubmit: (
@@ -36,6 +43,7 @@ interface ChatPropsBase {
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
   onEditMessage?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
 }
 
 export function Chat({
@@ -55,6 +63,7 @@ export function Chat({
   addToolOutput,
   onEditMessage,
   onBranchOff,
+  onRetry,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -85,66 +94,121 @@ export function Chat({
         addToolOutput,
         onEdit: onEditMessage,
         onBranchOff,
+        onRetry,
         isStreaming,
       }
     },
-    [addToolOutput, onEditMessage, onBranchOff, isStreaming]
+    [addToolOutput, onEditMessage, onBranchOff, onRetry, isStreaming]
   )
 
   return (
     <ChatContainer className={className}>
-      {showWelcome && (
-        <ChatWelcome
-          label={welcomeLabel}
-          isLoading={isUserLoading}
-        />
-      )}
-
-      {showWelcomeSkeleton && <ChatWelcome isLoading />}
-
-      {isHydrating && (
-        <ChatMessages messages={[]}>
-          <ChatMessagesSkeleton />
-        </ChatMessages>
-      )}
-
-      {!isHydrating && messages.length > 0 && (
-        <ChatMessages messages={messages}>
-          <MessageList
-            messages={messages}
-            disableTypingAnimation={
-              !isStreaming && lastMessage?.role !== "user"
-            }
-            messageOptions={messageOptions}
-          />
-
-          {showThinking && (
-            <div className="px-2 py-1">
-              <ChatThinkingIndicator />
-            </div>
+      {/* Row 1 — relative wrapper so exiting/entering panels can overlap via
+          absolute positioning without disturbing the grid during transitions */}
+      <div className="relative min-h-0 overflow-hidden">
+        <AnimatePresence initial={false}>
+          {(showWelcome || showWelcomeSkeleton) && (
+            <motion.div
+              key="welcome"
+              className="absolute inset-0 flex flex-col"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -10, filter: "blur(4px)" }}
+              transition={{ duration: 0.25, ease: "easeInOut" }}
+            >
+              {showWelcomeSkeleton ? (
+                <ChatWelcome isLoading />
+              ) : (
+                <ChatWelcome
+                  label={welcomeLabel}
+                  isLoading={isUserLoading}
+                  handleSubmit={handleSubmit}
+                  input={input}
+                  handleInputChange={handleInputChange}
+                  isGenerating={isGenerating}
+                  stop={stop}
+                  transcribeAudio={transcribeAudio}
+                  setExtraReason={setExtraReason}
+                />
+              )}
+            </motion.div>
           )}
-        </ChatMessages>
-      )}
 
-      <ChatForm
-        className="mt-auto"
-        isPending={isHydrating || isStreaming}
-        handleSubmit={handleSubmit}
-      >
-        {({ files, setFiles }) => (
-          <MessageInput
-            value={input}
-            onChange={handleInputChange}
-            allowAttachments
-            files={files}
-            setFiles={setFiles}
-            stop={handleStop}
-            isGenerating={isGenerating}
-            transcribeAudio={transcribeAudio}
-            setExtraReason={setExtraReason}
-          />
+          {isHydrating && (
+            <motion.div
+              key="hydrating"
+              className="absolute inset-0"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChatMessages messages={[]}>
+                <ChatMessagesSkeleton />
+              </ChatMessages>
+            </motion.div>
+          )}
+
+          {!showWelcome && !showWelcomeSkeleton && !isHydrating && (
+            <motion.div
+              key="messages"
+              className="absolute inset-0"
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
+            >
+              <ChatMessages messages={messages}>
+                <MessageList
+                  messages={messages}
+                  disableTypingAnimation={
+                    !isStreaming && lastMessage?.role !== "user"
+                  }
+                  messageOptions={messageOptions}
+                />
+
+                {showThinking && (
+                  <div className="px-2 py-1">
+                    <ChatThinkingIndicator />
+                  </div>
+                )}
+              </ChatMessages>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Row 2 — form slides up when leaving the welcome state */}
+      <AnimatePresence>
+        {!showWelcome && !showWelcomeSkeleton && (
+          <motion.div
+            key="chat-form"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
+          >
+            <ChatForm
+              isPending={isHydrating || isStreaming}
+              handleSubmit={handleSubmit}
+            >
+              {({ files, setFiles }) => (
+                <MessageInput
+                  value={input}
+                  onChange={handleInputChange}
+                  allowAttachments
+                  files={files}
+                  setFiles={setFiles}
+                  stop={handleStop}
+                  isGenerating={isGenerating}
+                  transcribeAudio={transcribeAudio}
+                  setExtraReason={setExtraReason}
+                />
+              )}
+            </ChatForm>
+          </motion.div>
         )}
-      </ChatForm>
+      </AnimatePresence>
     </ChatContainer>
   )
 }
@@ -167,7 +231,7 @@ export function ChatMessages({
 
   return (
     <div
-      className="grid grid-cols-1 overflow-y-auto scrollbar-thin pb-16 min-h-0"
+      className="grid grid-cols-1 h-full overflow-y-auto scrollbar-thin pb-16 min-h-0"
       ref={containerRef}
       onScroll={handleScroll}
       onTouchStart={handleTouchStart}
@@ -341,30 +405,141 @@ export function ChatMessagesSkeleton() {
 interface ChatWelcomeProps {
   label?: string
   isLoading?: boolean
+  handleSubmit?: (
+    event?: { preventDefault?: () => void },
+    options?: { attachments?: FileList }
+  ) => void
+  input?: string
+  handleInputChange?: React.ChangeEventHandler<HTMLTextAreaElement>
+  isGenerating?: boolean
+  stop?: () => void
+  transcribeAudio?: (blob: Blob) => Promise<string>
+  setExtraReason?: (value: boolean) => void
 }
 
-export function ChatWelcome({ label, isLoading }: ChatWelcomeProps) {
+export function ChatWelcome({
+  label,
+  isLoading,
+  handleSubmit,
+  input,
+  handleInputChange,
+  isGenerating,
+  stop,
+  transcribeAudio,
+  setExtraReason,
+}: ChatWelcomeProps) {
+  const [files, setFiles] = useState<File[] | null>(null)
+
   if (!label && !isLoading) return null
 
+  const suggestions = [
+    { Icon: Mail,     text: chat_suggestions_prompt_1() },
+    { Icon: FileText, text: chat_suggestions_prompt_2() },
+    { Icon: Calendar, text: chat_suggestions_prompt_3() },
+    { Icon: Search,   text: chat_suggestions_prompt_4() },
+  ] as const
+
+  const triggerSuggestion = (text: string) => {
+    handleInputChange?.({ target: { value: text } } as React.ChangeEvent<HTMLTextAreaElement>)
+  }
+
+  const onSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!handleSubmit) return
+    if (!files) {
+      handleSubmit(e)
+      return
+    }
+    const fileList = createFileList(files)
+    handleSubmit(e, { attachments: fileList })
+    setFiles(null)
+  }
+
   return (
-    <div className="flex flex-1 items-center justify-center px-4">
+    <div className="flex flex-1 flex-col items-center justify-center px-4 gap-8 pb-6">
       {isLoading ? (
-        <div className="animate-pulse">
-          <div className="h-10 w-130 rounded-md bg-muted" />
+        <div className="flex flex-col items-center gap-8 w-full max-w-2xl animate-pulse">
+          {/* Heading */}
+          <div className="flex flex-col items-center gap-3 w-full px-4">
+            <div className="h-9 md:h-11 lg:h-14 w-[85%] md:w-[70%] rounded-xl bg-muted" />
+            <div className="h-9 md:h-11 lg:h-14 w-[55%] md:w-[45%] rounded-xl bg-muted" />
+          </div>
+
+          {/* Input box */}
+          <div className="w-full px-4 md:px-0">
+            <div className="h-[56px] w-full rounded-2xl bg-muted" />
+          </div>
+
+          {/* Suggestion chips */}
+          <div className="flex flex-wrap gap-2 justify-center w-full px-4">
+            {[110, 155, 135, 165].map((w, i) => (
+              <div
+                key={i}
+                className="h-9 rounded-full bg-muted"
+                style={{ width: `${w}px` }}
+              />
+            ))}
+          </div>
         </div>
       ) : (
-        <h2
-          className="
-            text-2xl md:text-3xl
-            font-semibold
-            tracking-tight
-            text-center
-            text-black dark:text-white
-            transition-colors
-          "
-        >
-          {label}
-        </h2>
+        <>
+          <motion.h1
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, ease: [0.25, 0.46, 0.45, 0.94] }}
+            className="text-3xl md:text-4xl lg:text-5xl font-semibold tracking-tight text-center text-foreground max-w-2xl"
+          >
+            {label}
+          </motion.h1>
+
+          {handleSubmit && (
+            <>
+              <motion.form
+                initial={{ opacity: 0, y: 14 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.45, delay: 0.1, ease: [0.25, 0.46, 0.45, 0.94] }}
+                onSubmit={onSubmit}
+                className="w-full max-w-2xl"
+              >
+                <MessageInput
+                  value={input ?? ""}
+                  onChange={handleInputChange!}
+                  allowAttachments
+                  files={files}
+                  setFiles={setFiles}
+                  stop={stop}
+                  isGenerating={isGenerating ?? false}
+                  transcribeAudio={transcribeAudio}
+                  setExtraReason={setExtraReason}
+                />
+              </motion.form>
+
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ duration: 0.3, delay: 0.18 }}
+                className="flex flex-wrap gap-2 justify-center max-w-2xl w-full"
+              >
+                {suggestions.map((s, i) => (
+                  <motion.button
+                    key={i}
+                    type="button"
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.35, delay: 0.2 + i * 0.07, ease: "easeOut" }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => triggerSuggestion(s.text)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-full border border-border bg-background hover:bg-muted text-sm text-muted-foreground hover:text-foreground transition-colors duration-200 cursor-pointer"
+                  >
+                    <s.Icon className="w-3.5 h-3.5 shrink-0" />
+                    <span>{s.text}</span>
+                  </motion.button>
+                ))}
+              </motion.div>
+            </>
+          )}
+        </>
       )}
     </div>
   )

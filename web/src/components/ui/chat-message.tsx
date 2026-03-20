@@ -2,7 +2,7 @@ import React from "react"
 import { useState, useCallback } from "react"
 import type { UIMessage, useChat } from "@ai-sdk/react"
 import { cva, type VariantProps } from "class-variance-authority"
-import { motion } from "framer-motion"
+import { motion, AnimatePresence } from "framer-motion"
 import {
   Loader2,
   X,
@@ -15,6 +15,7 @@ import {
   Calendar,
   Pencil,
   GitBranch,
+  RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview } from "@/components/ui/file-preview"
@@ -123,7 +124,10 @@ import {
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
-  'chat.branch_off.button' as chat_branch_off_button
+  'chat.branch_off.button' as chat_branch_off_button,
+  'chat.retry.button' as chat_retry_button,
+  'chat.tool_detail.view_details' as td_view_details,
+  'chat.tool_detail.hide_details' as td_hide_details,
 } from '@/paraglide/messages.js';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -169,6 +173,7 @@ export interface ChatMessageProps {
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
   onEdit?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
   isStreaming?: boolean
   isLastInGroup?: boolean
 }
@@ -179,6 +184,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   addToolOutput,
   onEdit,
   onBranchOff,
+  onRetry,
   isStreaming = false,
   isLastInGroup = true,
 }) => {
@@ -188,7 +194,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   const startEditing = useChatUIStore((s) => s.startEditing)
   const cancelEditing = useChatUIStore((s) => s.cancelEditing)
   const openTool = useToolDetailStore((s) => s.openTool)
-
   const isEditing = editingMessageId === message.id
   const [editText, setEditText] = useState("")
 
@@ -394,15 +399,6 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   <ToolRenderer
                     key={`tool-${index}`}
                     part={part}
-                    onClick={() => {
-                      openTool({
-                        toolName: rawName,
-                        toolCallId: (part as { toolCallId?: string }).toolCallId ?? "",
-                        state: part.state,
-                        input: (part as { input?: unknown }).input,
-                        output: (part as { output?: unknown }).output,
-                      })
-                    }}
                   />
                 )
               }
@@ -430,7 +426,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               {/* Edit button (for user messages) */}
               {isUser && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
+                  <TooltipTrigger>
                     <button
                       onClick={handleStartEdit}
                       className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
@@ -445,10 +441,28 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                 </Tooltip>
               )}
 
+              {/* Retry button (for user messages) */}
+              {isUser && onRetry && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <button
+                      onClick={() => onRetry(message.id)}
+                      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+
+                  <TooltipContent side="bottom">
+                    {chat_retry_button()}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
               {!isUser && onBranchOff && (
                 <TooltipProvider>
                   <Tooltip>
-                    <TooltipTrigger asChild>
+                    <TooltipTrigger>
                       <button
                         onClick={() => onBranchOff(message.id)}
                         className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
@@ -626,13 +640,21 @@ function getCredentialEmails(part: any): string[] {
   return output?.credentialEmail ? [output.credentialEmail] : []
 }
 
-function ToolRenderer({ part, onClick }: { part: UIMessage["parts"][number]; onClick?: () => void }) {
+function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
+  const [hovered, setHovered] = useState(false)
+  const selectedTool = useToolDetailStore((s) => s.selectedTool)
+  const isOpen = useToolDetailStore((s) => s.isOpen)
+  const toggleTool = useToolDetailStore((s) => s.toggleTool)
+
   if (!isToolPart(part)) return null
 
   const rawToolName =
     part.type === "dynamic-tool"
       ? part.toolName
       : part.type.replace("tool-", "")
+
+  const toolCallId = (part as { toolCallId?: string }).toolCallId ?? ""
+  const isThisToolOpen = isOpen && selectedTool?.toolCallId === toolCallId
 
   const label = getToolLabel(rawToolName, part.state)
   const isNexata = NEXATA_TOOLS.has(rawToolName)
@@ -648,11 +670,23 @@ function ToolRenderer({ part, onClick }: { part: UIMessage["parts"][number]; onC
       initial={{ opacity: 0, y: 6 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.25, ease: "easeOut" }}
+      onHoverStart={() => setHovered(true)}
+      onHoverEnd={() => setHovered(false)}
       className={cn(
-        "w-full sm:max-w-[85%] rounded-lg border bg-muted/40 px-4 py-3",
-        onClick && "cursor-pointer hover:bg-muted/60 transition-colors"
+        "w-full sm:max-w-[85%] rounded-lg border px-4 py-3 cursor-pointer transition-colors",
+        isThisToolOpen
+          ? "bg-muted/70 border-border/80 ring-1 ring-inset ring-border/40"
+          : "bg-muted/40 hover:bg-muted/60"
       )}
-      onClick={onClick}
+      onClick={() =>
+        toggleTool({
+          toolName: rawToolName,
+          toolCallId,
+          state: part.state,
+          input: (part as { input?: unknown }).input,
+          output: (part as { output?: unknown }).output,
+        })
+      }
     >
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-3 min-w-0">
@@ -694,7 +728,22 @@ function ToolRenderer({ part, onClick }: { part: UIMessage["parts"][number]; onC
           </div>
         </div>
 
-        <StatusIcon />
+        <div className="flex items-center gap-2 shrink-0">
+          <AnimatePresence>
+            {hovered && (
+              <motion.span
+                initial={{ opacity: 0, x: 6 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 6 }}
+                transition={{ duration: 0.15 }}
+                className="text-xs text-muted-foreground whitespace-nowrap"
+              >
+                {isThisToolOpen ? td_hide_details() : td_view_details()}
+              </motion.span>
+            )}
+          </AnimatePresence>
+          <StatusIcon />
+        </div>
       </div>
     </motion.div>
   )

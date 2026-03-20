@@ -83,7 +83,7 @@ export function NexataChat() {
 		addUnreadThread,
 	} = useChatUIStore();
 
-	const isNewChat = viewStatus === 'new';
+	const isNewChat = viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle');
 	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
 
 	// ----------------------------
@@ -351,6 +351,29 @@ export function NexataChat() {
 	// Edit message
 	// ----------------------------
 
+	// ----------------------------
+	// Global Enter key → send message
+	// ----------------------------
+
+	const handleSubmitRef = useRef(handleSubmit);
+	handleSubmitRef.current = handleSubmit;
+	const inputRef = useRef(input);
+	inputRef.current = input;
+
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
+			const tag = (document.activeElement?.tagName ?? '').toLowerCase();
+			if (['textarea', 'input', 'select', 'button', 'a'].includes(tag)) return;
+			if ((document.activeElement as HTMLElement)?.isContentEditable) return;
+			if (inputRef.current.trim().length === 0) return;
+			e.preventDefault();
+			handleSubmitRef.current();
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, []);
+
 	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
 	const [editPending, setEditPending] = useState<{
 		messageId: string;
@@ -396,6 +419,37 @@ export function NexataChat() {
 		setEditPending(null);
 		cancelEditing();
 	}, [cancelEditing]);
+
+	// ----------------------------
+	// Retry message
+	// ----------------------------
+
+	const handleRetry = useCallback(
+		async (messageId: string) => {
+			const msg = messages.find((m) => m.id === messageId);
+			if (!msg) return;
+			const text = msg.parts
+				.filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+				.map((p) => p.text)
+				.join('');
+			if (!text.trim()) return;
+
+			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
+
+			await sendMessage(
+				{ text, files: undefined, messageId },
+				{
+					body: {
+						threadId: activeThreadId ?? null,
+						editedMessageId: messageId,
+						languagePreference: me?.language ?? null,
+						extraReason: false,
+					},
+				},
+			);
+		},
+		[messages, addStreamingThread, activeThreadId, sendMessage, me?.language],
+	);
 
 	// ----------------------------
 	// Branch off
@@ -447,8 +501,7 @@ export function NexataChat() {
 					setExtraReason={setExtraReason}
 					addToolOutput={addToolOutput}
 					onEditMessage={handleEditMessage}
-					onBranchOff={handleBranchOff}
-				/>
+					onBranchOff={handleBranchOff}				onRetry={handleRetry}				/>
 			</div>
 
 			<EditConfirmModal

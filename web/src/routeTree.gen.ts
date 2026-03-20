@@ -12,7 +12,9 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as PublicRouteRouteImport } from './routes/_public/route'
 import { Route as PrivateRouteRouteImport } from './routes/_private/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PublicTycRouteImport } from './routes/_public/tyc'
 import { Route as PublicTenantSelectionRouteImport } from './routes/_public/tenant-selection'
+import { Route as PublicPrivacyPolicyRouteImport } from './routes/_public/privacy-policy'
 import { Route as PublicLoginRouteImport } from './routes/_public/login'
 import { Route as PublicHomeRouteImport } from './routes/_public/home'
 import { Route as PublicCallbackRouteImport } from './routes/_public/callback'
@@ -37,9 +39,19 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PublicTycRoute = PublicTycRouteImport.update({
+  id: '/tyc',
+  path: '/tyc',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
 const PublicTenantSelectionRoute = PublicTenantSelectionRouteImport.update({
   id: '/tenant-selection',
   path: '/tenant-selection',
+  getParentRoute: () => PublicRouteRoute,
+} as any)
+const PublicPrivacyPolicyRoute = PublicPrivacyPolicyRouteImport.update({
+  id: '/privacy-policy',
+  path: '/privacy-policy',
   getParentRoute: () => PublicRouteRoute,
 } as any)
 const PublicLoginRoute = PublicLoginRouteImport.update({
@@ -106,7 +118,9 @@ export interface FileRoutesByFullPath {
   '/callback': typeof PublicCallbackRoute
   '/home': typeof PublicHomeRoute
   '/login': typeof PublicLoginRoute
+  '/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
+  '/tyc': typeof PublicTycRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -120,7 +134,9 @@ export interface FileRoutesByTo {
   '/callback': typeof PublicCallbackRoute
   '/home': typeof PublicHomeRoute
   '/login': typeof PublicLoginRoute
+  '/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/tenant-selection': typeof PublicTenantSelectionRoute
+  '/tyc': typeof PublicTycRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -137,7 +153,9 @@ export interface FileRoutesById {
   '/_public/callback': typeof PublicCallbackRoute
   '/_public/home': typeof PublicHomeRoute
   '/_public/login': typeof PublicLoginRoute
+  '/_public/privacy-policy': typeof PublicPrivacyPolicyRoute
   '/_public/tenant-selection': typeof PublicTenantSelectionRoute
+  '/_public/tyc': typeof PublicTycRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -153,7 +171,9 @@ export interface FileRouteTypes {
     | '/callback'
     | '/home'
     | '/login'
+    | '/privacy-policy'
     | '/tenant-selection'
+    | '/tyc'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -167,7 +187,9 @@ export interface FileRouteTypes {
     | '/callback'
     | '/home'
     | '/login'
+    | '/privacy-policy'
     | '/tenant-selection'
+    | '/tyc'
   id:
     | '__root__'
     | '/'
@@ -183,7 +205,9 @@ export interface FileRouteTypes {
     | '/_public/callback'
     | '/_public/home'
     | '/_public/login'
+    | '/_public/privacy-policy'
     | '/_public/tenant-selection'
+    | '/_public/tyc'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -215,11 +239,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_public/tyc': {
+      id: '/_public/tyc'
+      path: '/tyc'
+      fullPath: '/tyc'
+      preLoaderRoute: typeof PublicTycRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
     '/_public/tenant-selection': {
       id: '/_public/tenant-selection'
       path: '/tenant-selection'
       fullPath: '/tenant-selection'
       preLoaderRoute: typeof PublicTenantSelectionRouteImport
+      parentRoute: typeof PublicRouteRoute
+    }
+    '/_public/privacy-policy': {
+      id: '/_public/privacy-policy'
+      path: '/privacy-policy'
+      fullPath: '/privacy-policy'
+      preLoaderRoute: typeof PublicPrivacyPolicyRouteImport
       parentRoute: typeof PublicRouteRoute
     }
     '/_public/login': {
@@ -323,14 +361,18 @@ interface PublicRouteRouteChildren {
   PublicCallbackRoute: typeof PublicCallbackRoute
   PublicHomeRoute: typeof PublicHomeRoute
   PublicLoginRoute: typeof PublicLoginRoute
+  PublicPrivacyPolicyRoute: typeof PublicPrivacyPolicyRoute
   PublicTenantSelectionRoute: typeof PublicTenantSelectionRoute
+  PublicTycRoute: typeof PublicTycRoute
 }
 
 const PublicRouteRouteChildren: PublicRouteRouteChildren = {
   PublicCallbackRoute: PublicCallbackRoute,
   PublicHomeRoute: PublicHomeRoute,
   PublicLoginRoute: PublicLoginRoute,
+  PublicPrivacyPolicyRoute: PublicPrivacyPolicyRoute,
   PublicTenantSelectionRoute: PublicTenantSelectionRoute,
+  PublicTycRoute: PublicTycRoute,
 }
 
 const PublicRouteRouteWithChildren = PublicRouteRoute._addFileChildren(
