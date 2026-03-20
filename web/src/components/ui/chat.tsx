@@ -43,6 +43,7 @@ interface ChatPropsBase {
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
   onEditMessage?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
 }
 
 export function Chat({
@@ -62,6 +63,7 @@ export function Chat({
   addToolOutput,
   onEditMessage,
   onBranchOff,
+  onRetry,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -92,10 +94,11 @@ export function Chat({
         addToolOutput,
         onEdit: onEditMessage,
         onBranchOff,
+        onRetry,
         isStreaming,
       }
     },
-    [addToolOutput, onEditMessage, onBranchOff, isStreaming]
+    [addToolOutput, onEditMessage, onBranchOff, onRetry, isStreaming]
   )
 
   return (

@@ -283,6 +283,9 @@
 			"success": "Bifurcación creada",
 			"error": "Error al crear bifurcación"
 		},
+		"retry": {
+			"button": "Reintentar"
+		},
 		"tool_detail": {
 			"title": "Detalle de herramienta",
 			"input": "Parámetros",

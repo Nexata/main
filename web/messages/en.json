@@ -283,6 +283,9 @@
 			"success": "Branch created",
 			"error": "Failed to create branch"
 		},
+		"retry": {
+			"button": "Retry"
+		},
 		"tool_detail": {
 			"title": "Tool detail",
 			"input": "Parameters",

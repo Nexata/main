@@ -421,6 +421,37 @@ export function NexataChat() {
 	}, [cancelEditing]);
 
 	// ----------------------------
+	// Retry message
+	// ----------------------------
+
+	const handleRetry = useCallback(
+		async (messageId: string) => {
+			const msg = messages.find((m) => m.id === messageId);
+			if (!msg) return;
+			const text = msg.parts
+				.filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+				.map((p) => p.text)
+				.join('');
+			if (!text.trim()) return;
+
+			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
+
+			await sendMessage(
+				{ text, files: undefined, messageId },
+				{
+					body: {
+						threadId: activeThreadId ?? null,
+						editedMessageId: messageId,
+						languagePreference: me?.language ?? null,
+						extraReason: false,
+					},
+				},
+			);
+		},
+		[messages, addStreamingThread, activeThreadId, sendMessage, me?.language],
+	);
+
+	// ----------------------------
 	// Branch off
 	// ----------------------------
 
@@ -470,8 +501,7 @@ export function NexataChat() {
 					setExtraReason={setExtraReason}
 					addToolOutput={addToolOutput}
 					onEditMessage={handleEditMessage}
-					onBranchOff={handleBranchOff}
-				/>
+					onBranchOff={handleBranchOff}				onRetry={handleRetry}				/>
 			</div>
 
 			<EditConfirmModal

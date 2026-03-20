@@ -15,6 +15,7 @@ import {
   Calendar,
   Pencil,
   GitBranch,
+  RotateCcw,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview } from "@/components/ui/file-preview"
@@ -124,6 +125,7 @@ import {
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
   'chat.branch_off.button' as chat_branch_off_button,
+  'chat.retry.button' as chat_retry_button,
   'chat.tool_detail.view_details' as td_view_details,
   'chat.tool_detail.hide_details' as td_hide_details,
 } from '@/paraglide/messages.js';
@@ -171,6 +173,7 @@ export interface ChatMessageProps {
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
   onEdit?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
+  onRetry?: (messageId: string) => void
   isStreaming?: boolean
   isLastInGroup?: boolean
 }
@@ -181,6 +184,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   addToolOutput,
   onEdit,
   onBranchOff,
+  onRetry,
   isStreaming = false,
   isLastInGroup = true,
 }) => {
@@ -433,6 +437,24 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                   <TooltipContent side="bottom">
                     {chat_edit_button()}
+                  </TooltipContent>
+                </Tooltip>
+              )}
+
+              {/* Retry button (for user messages) */}
+              {isUser && onRetry && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <button
+                      onClick={() => onRetry(message.id)}
+                      className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-muted transition-colors"
+                    >
+                      <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
+                    </button>
+                  </TooltipTrigger>
+
+                  <TooltipContent side="bottom">
+                    {chat_retry_button()}
                   </TooltipContent>
                 </Tooltip>
               )}
