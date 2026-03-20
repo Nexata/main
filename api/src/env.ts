@@ -51,7 +51,7 @@ export const FALLBACK_BEHAVIOR: {
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
 	models: [
-		deepinfra('nvidia/NVIDIA-Nemotron-3-Super-120B-A12B'),
+		deepinfra('zai-org/GLM-5'),
 		groq('openai/gpt-oss-120b'),
 	],
 });
