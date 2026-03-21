@@ -52,7 +52,11 @@ function normalizeParts(
 				return {
 					type: `tool-${part.toolName}`,
 					toolCallId: part.toolCallId,
-					state: isError ? 'output-error' : (output != null ? 'output-available' : 'input-available'),
+					state: isError
+						? 'output-error'
+						: output != null
+							? 'output-available'
+							: 'input-available',
 					input: part.input ?? {},
 					output,
 				};
@@ -97,7 +101,8 @@ export function NexataChat() {
 		addUnreadThread,
 	} = useChatUIStore();
 
-	const isNewChat = viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle');
+	const isNewChat =
+		viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle');
 	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
 
 	// ----------------------------
@@ -136,15 +141,25 @@ export function NexataChat() {
 		if (!threadMessages) return [];
 
 		// Build a map of toolCallId → { output, isError } from "tool" role messages
-		const toolOutputMap = new Map<string, { output: unknown; isError: boolean }>();
+		const toolOutputMap = new Map<
+			string,
+			{ output: unknown; isError: boolean }
+		>();
 		for (const m of threadMessages) {
 			if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
 			for (const part of m.content as any[]) {
 				if (part.type === 'tool-result' && part.toolCallId) {
-					toolOutputMap.set(part.toolCallId, {
-						output: part.result ?? part.output ?? null,
-						isError: !!part.isError,
-					});
+					const rawOutput = part.result ?? part.output ?? null;
+					// Unwrap { type: "text"|"error-text", value: "..." } envelope from persisted model messages
+					const isWrapped =
+						rawOutput &&
+						typeof rawOutput === 'object' &&
+						'type' in rawOutput &&
+						'value' in rawOutput;
+					const isError =
+						!!part.isError || (isWrapped && rawOutput.type === 'error-text');
+					const output = isWrapped ? rawOutput.value : rawOutput;
+					toolOutputMap.set(part.toolCallId, { output, isError });
 				}
 			}
 		}
@@ -228,7 +243,11 @@ export function NexataChat() {
 		let foundQA = false;
 		let hasTextAfterQA = false;
 		for (const p of lastMsg.parts ?? []) {
-			const typedPart = p as { type: string; toolName?: string; state?: string };
+			const typedPart = p as {
+				type: string;
+				toolName?: string;
+				state?: string;
+			};
 			if (
 				!foundQA &&
 				(typedPart.type === 'tool-NexataAskQuestions' ||
@@ -446,7 +465,13 @@ export function NexataChat() {
 				},
 			);
 		},
-		[cancelEditing, addStreamingThread, activeThreadId, sendMessage, me?.language],
+		[
+			cancelEditing,
+			addStreamingThread,
+			activeThreadId,
+			sendMessage,
+			me?.language,
+		],
 	);
 
 	// ----------------------------
@@ -458,7 +483,9 @@ export function NexataChat() {
 			const msg = messages.find((m) => m.id === messageId);
 			if (!msg) return;
 			const text = msg.parts
-				.filter((p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text')
+				.filter(
+					(p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text',
+				)
 				.map((p) => p.text)
 				.join('');
 			if (!text.trim()) return;
@@ -530,7 +557,9 @@ export function NexataChat() {
 					setExtraReason={setExtraReason}
 					addToolOutput={addToolOutput}
 					onEditMessage={handleEditMessage}
-					onBranchOff={handleBranchOff}				onRetry={handleRetry}				/>
+					onBranchOff={handleBranchOff}
+					onRetry={handleRetry}
+				/>
 			</div>
 		</div>
 	);
