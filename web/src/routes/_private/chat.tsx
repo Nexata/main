@@ -2,6 +2,7 @@
 
 import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
+import { decode } from '@toon-format/toon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
@@ -158,7 +159,18 @@ export function NexataChat() {
 						'value' in rawOutput;
 					const isError =
 						!!part.isError || (isWrapped && rawOutput.type === 'error-text');
-					const output = isWrapped ? rawOutput.value : rawOutput;
+					const unwrapped = isWrapped ? rawOutput.value : rawOutput;
+					// Decode toon-encoded strings from persisted tool output back to structured objects
+					const output =
+						typeof unwrapped === 'string'
+							? (() => {
+									try {
+										return decode(unwrapped);
+									} catch {
+										return unwrapped;
+									}
+								})()
+							: unwrapped;
 					toolOutputMap.set(part.toolCallId, { output, isError });
 				}
 			}
