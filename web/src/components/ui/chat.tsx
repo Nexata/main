@@ -41,6 +41,7 @@ interface ChatPropsBase {
   isUserLoading?: boolean
   setExtraReason?: (value: boolean) => void
   addToolOutput?: ReturnType<typeof useChat>['addToolOutput']
+  addToolApprovalResponse?: ReturnType<typeof useChat>['addToolApprovalResponse']
   onEditMessage?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
   onRetry?: (messageId: string) => void
@@ -61,6 +62,7 @@ export function Chat({
   isUserLoading,
   setExtraReason,
   addToolOutput,
+  addToolApprovalResponse,
   onEditMessage,
   onBranchOff,
   onRetry,
@@ -92,13 +94,14 @@ export function Chat({
     (_message: UIMessage) => {
       return {
         addToolOutput,
+        addToolApprovalResponse,
         onEdit: onEditMessage,
         onBranchOff,
         onRetry,
         isStreaming,
       }
     },
-    [addToolOutput, onEditMessage, onBranchOff, onRetry, isStreaming]
+    [addToolOutput, addToolApprovalResponse, onEditMessage, onBranchOff, onRetry, isStreaming]
   )
 
   return (

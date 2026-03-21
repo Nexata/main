@@ -332,7 +332,6 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				cache.del(UNPAID_KEY(activeUser.slug)),
 			]);
 
-
 			return {
 				billId: unpaidBill.id,
 				amount: batchAmount,

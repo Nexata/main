@@ -44,6 +44,14 @@
 			"title": "Razonamiento profundo",
 			"description": "Analizando con pensamiento extendido..."
 		},
+		"reingest_approval": {
+			"title": "Confirmar re-ingesta",
+			"description": "El asistente quiere re-ingestar este archivo:",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Re-ingesta aprobada",
+			"denied": "Re-ingesta denegada"
+		},
 		"ask_questions": {
 			"status": {
 				"answering": "Respondé las preguntas",

@@ -201,6 +201,7 @@ export function NexataChat() {
 		setMessages,
 		status: chatStatus,
 		addToolOutput,
+		addToolApprovalResponse,
 	} = useChat({
 		chat,
 	});
@@ -574,6 +575,7 @@ export function NexataChat() {
 					isUserLoading={isMeLoading}
 					setExtraReason={setExtraReason}
 					addToolOutput={addToolOutput}
+					addToolApprovalResponse={addToolApprovalResponse}
 					onEditMessage={handleEditMessage}
 					onBranchOff={handleBranchOff}
 					onRetry={handleRetry}

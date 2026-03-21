@@ -11,7 +11,8 @@ export const NEW_CHAT_KEY = '__new__';
 
 /**
  * Only auto-continue when the LAST part of the last assistant message is a
- * tool call that has just been fully resolved (state === 'output-available').
+ * tool call that has just been fully resolved (state === 'output-available')
+ * or a tool approval that has been responded to (state === 'approval-responded').
  *
  * Why this predicate instead of `lastAssistantMessageIsCompleteWithToolCalls`:
  * - Server-executed tools (Gmail, Drive, …) are already resolved inline by
@@ -21,12 +22,20 @@ export const NEW_CHAT_KEY = '__new__';
  *   tool-call part (state: 'input-available').  This predicate stays false
  *   until the user submits answers and addToolOutput flips it to
  *   'output-available', at which point we send to /chat/answer.
+ * - NexataReingest has needsApproval: true → the stream ends with a
+ *   'tool-approval-request' event (state: 'approval-requested').  This
+ *   predicate stays false until the user approves/denies via
+ *   addToolApprovalResponse, which flips it to 'approval-responded'.
  *
  * The old predicate fired as soon as any tool call appeared (regardless of
  * output state), triggering an unwanted /chat request that made the model
  * repeat the same tool call → visible duplication in the UI.
  */
-function shouldSendAutomatically({ messages }: { messages: UIMessage[] }): boolean {
+function shouldSendAutomatically({
+	messages,
+}: {
+	messages: UIMessage[];
+}): boolean {
 	const last = messages.at(-1);
 	if (last?.role !== 'assistant') return false;
 	const parts = last.parts ?? [];
@@ -35,7 +44,11 @@ function shouldSendAutomatically({ messages }: { messages: UIMessage[] }): boole
 	const isToolPart =
 		typeof lastPart?.type === 'string' &&
 		(lastPart.type.startsWith('tool-') || lastPart.type === 'dynamic-tool');
-	return isToolPart && lastPart?.state === 'output-available';
+	return (
+		isToolPart &&
+		(lastPart?.state === 'output-available' ||
+			lastPart?.state === 'approval-responded')
+	);
 }
 
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {

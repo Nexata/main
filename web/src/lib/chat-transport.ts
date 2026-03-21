@@ -58,6 +58,36 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 							},
 						});
 					}
+
+					// ===== NexataReingest approval → /chat/answer =====
+					const reingestApprovalPart = lastMessage?.parts
+						?.filter(
+							(p: any) =>
+								(p.type === 'tool-NexataReingest' ||
+									(p.type === 'dynamic-tool' &&
+										p.toolName === 'NexataReingest')) &&
+								p.state === 'approval-responded' &&
+								p.approval != null,
+						)
+						.at(-1);
+
+					if (reingestApprovalPart) {
+						const storeThreadId = useChatUIStore.getState().activeThreadId;
+
+						return baseFetch(`${API_BASE_URL}/chat/answer`, {
+							...init,
+							body: JSON.stringify({
+								threadId: storeThreadId,
+								toolCallId: reingestApprovalPart.toolCallId,
+								approved: reingestApprovalPart.approval.approved,
+								languagePreference: originalPayload.languagePreference ?? null,
+							}),
+							headers: {
+								...(init.headers ?? {}),
+								'content-type': 'application/json',
+							},
+						});
+					}
 				}
 
 				const prompt = isAutoSubmit

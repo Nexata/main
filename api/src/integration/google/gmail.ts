@@ -1,7 +1,9 @@
 import { authPlugin } from '@api/auth';
+import { NexataFile } from '@api/file';
 import { Google } from '@api/integration/google/lib';
 import type { Language } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
@@ -229,6 +231,10 @@ export namespace Gmail {
 			messageId: t.String({
 				description: 'The Gmail message ID to retrieve',
 			}),
+			credentialEmail: Nullish(t.String({ format: 'email' }), {
+				description:
+					'The email address of the Gmail account that owns this message. Should match the credentialEmail from search results.',
+			}),
 			format: Nullish(
 				t.Union([
 					t.Literal('full'),
@@ -293,6 +299,121 @@ export namespace Gmail {
 			isUnread: data.labelIds?.includes('UNREAD') ?? false,
 			isStarred: data.labelIds?.includes('STARRED') ?? false,
 			sizeEstimate: data.sizeEstimate ?? 0,
+		};
+	}
+
+	async function downloadAttachment(
+		client: gmail_v1.Gmail,
+		messageId: string,
+		attachmentId: string,
+	): Promise<ArrayBuffer> {
+		const res = await client.users.messages.attachments.get({
+			userId: 'me',
+			id: attachmentId,
+			messageId,
+		});
+
+		if (res.status !== 200 || !res.data.data)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
+
+		return Buffer.from(res.data.data, 'base64url').buffer as ArrayBuffer;
+	}
+
+	export const [ingestAttachmentsDescription, ingestAttachmentsInput] = [
+		'Gmail tool to ingest (download and process) email attachments into Nexata so their content becomes searchable and readable. Use GmailRead first to see available attachments, then call this tool with the message ID and optionally specific attachment IDs. If attachmentIds is omitted, all attachments on the message are ingested.',
+		tObject({
+			messageId: t.String({
+				description: 'The Gmail message ID containing the attachments.',
+			}),
+			credentialEmail: Nullish(t.String({ format: 'email' }), {
+				description:
+					'The email address of the Gmail account that owns this message. Should match the credentialEmail from search or read results.',
+			}),
+			attachmentIds: Nullish(t.Array(t.String()), {
+				description:
+					'Specific attachment IDs to ingest. If omitted, all attachments on the message are ingested.',
+			}),
+		}),
+	];
+
+	export async function ingestAttachments(
+		client: gmail_v1.Gmail,
+		activeUser: ActiveUser,
+		input: Static<typeof ingestAttachmentsInput>,
+	) {
+		const message = await read(client, {
+			messageId: input.messageId,
+			format: 'full',
+		});
+
+		if (!message.attachments?.length)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language as Language,
+			);
+
+		const targets = input.attachmentIds?.length
+			? message.attachments.filter((a) => input.attachmentIds!.includes(a.id))
+			: message.attachments;
+
+		if (!targets.length)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language as Language,
+			);
+
+		const blockReason = await checkTenantCanIngest(activeUser.slug);
+		if (blockReason)
+			throw httpError(
+				blockReason === ErrorCode.PAYMENT_REQUIRED
+					? HttpCode.PAYMENT_REQUIRED
+					: HttpCode.PRECONDITION_FAILED,
+				ErrorCode[blockReason as keyof typeof ErrorCode],
+				activeUser.language as Language,
+			);
+
+		const results: { filename: string; status: string; fileId?: string }[] = [];
+
+		for (const attachment of targets) {
+			const fileId = crypto.randomUUID();
+			try {
+				const content = await downloadAttachment(
+					client,
+					input.messageId,
+					attachment.id,
+				);
+
+				const file = new File([content], attachment.filename, {
+					type: attachment.mimeType,
+				});
+
+				const status = await NexataFile.ingest(
+					{
+						id: fileId,
+						userId: activeUser.id,
+						slug: activeUser.slug,
+						name: attachment.filename,
+						type: attachment.mimeType,
+					},
+					file,
+				);
+
+				results.push({
+					filename: attachment.filename,
+					status,
+					fileId: status === 'OK' ? fileId : undefined,
+				});
+			} catch {
+				results.push({ filename: attachment.filename, status: 'FAILED' });
+			}
+		}
+
+		return {
+			messageId: message.id,
+			subject: message.subject,
+			results,
 		};
 	}
 }

@@ -10,6 +10,7 @@ import {
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
+import { Nexata } from '@api/chat/tools/nexata';
 import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
 import { FinishReason, message, thread } from '@api/schema';
@@ -289,7 +290,6 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				language: activeUser.language,
 			});
 
-			// Find the last assistant message with an unresolved NexataAskQuestions tool call
 			const lastMessage = threadMessages.at(-1);
 			if (!lastMessage || lastMessage.role !== 'assistant')
 				throw httpError(
@@ -298,11 +298,168 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					activeUser.language,
 				);
 
-			const toolCallPart = (
-				(Array.isArray(lastMessage.content)
-					? lastMessage.content
-					: []) as unknown[]
-			).find(
+			const contentParts = (
+				Array.isArray(lastMessage.content) ? lastMessage.content : []
+			) as unknown[];
+
+			// ===== NexataReingest approval =====
+			const isApproval = body.toolCallId != null && body.approved != null;
+
+			if (isApproval) {
+				const reingestPart = contentParts.find(
+					(
+						part,
+					): part is {
+						type: 'tool-call';
+						toolCallId: string;
+						toolName: string;
+						input: { fileId: string };
+					} =>
+						typeof part === 'object' &&
+						part !== null &&
+						'type' in part &&
+						part.type === 'tool-call' &&
+						'toolCallId' in part &&
+						part.toolCallId === body.toolCallId &&
+						'toolName' in part &&
+						part.toolName === 'NexataReingest',
+				);
+
+				if (!reingestPart)
+					throw httpError(
+						HttpCode.BAD_REQUEST,
+						ErrorCode.TOOL_CALL_NOT_FOUND,
+						activeUser.language,
+					);
+
+				let toolOutput: unknown;
+				if (body.approved) {
+					toolOutput = await Nexata.reingest(activeUser, reingestPart.input);
+				} else {
+					toolOutput = { result: 'DENIED', name: null };
+				}
+
+				const toolResultMessage = {
+					id: crypto.randomUUID(),
+					role: 'tool',
+					content: [
+						{
+							type: 'tool-result',
+							toolCallId: reingestPart.toolCallId,
+							toolName: 'NexataReingest',
+							result: toolOutput,
+							output: {
+								type: 'text',
+								value: encode(toolOutput),
+							},
+						},
+					],
+				} as unknown as PartialMessage;
+
+				threadMessages.push(toolResultMessage);
+
+				const languagePreference =
+					body.languagePreference ?? activeUser.language;
+				const assistantMessageId = crypto.randomUUID();
+
+				const doPersist = async (
+					responseMessages: ModelMessage[],
+					reason: FinishReason,
+				) =>
+					persistChat({
+						threadId: body.threadId,
+						activeUser,
+						creditsToUse: 0,
+						threadMessages,
+						responseMessages,
+						reason,
+						messagesToPrepend: [toolResultMessage],
+						assistantMessageId,
+					});
+
+				const stream = streamText({
+					model: MODEL,
+					system: BUILD_SYSTEM_PROMPT({
+						...activeUser,
+						languagePreference,
+					}),
+					abortSignal: request.signal,
+					stopWhen: stepCountIs(50),
+					tools: await getTools(activeUser, body.threadId, [], true),
+					experimental_transform: redactReasoningTransform(),
+					messages: threadMessages.map(
+						(m) =>
+							({
+								role: m.role,
+								content: m.content,
+							}) as ModelMessage,
+					),
+					onFinish: async ({
+						finishReason: aiFinishReason,
+						response: { messages: responseMessages },
+					}) => {
+						await doPersist(
+							responseMessages,
+							mapFinishReason(aiFinishReason),
+						).catch((error) =>
+							captureException(error, {
+								tags: { source: 'chat:answer:approve:onFinish' },
+								extra: {
+									threadId: body.threadId,
+									finishReason: aiFinishReason,
+								},
+							}),
+						);
+					},
+					onAbort: async ({ steps }) => {
+						const responseMessages = steps.flatMap(
+							(step) => step.response.messages,
+						);
+						await doPersist(responseMessages, FinishReason.STOPPED).catch(
+							(error) =>
+								captureException(error, {
+									tags: { source: 'chat:answer:approve:onAbort' },
+									extra: { threadId: body.threadId },
+								}),
+						);
+					},
+					onError: async ({ error }) => {
+						if (error instanceof Error && error.name === 'AbortError') {
+							await doPersist([], FinishReason.STOPPED).catch((err) =>
+								captureException(err, {
+									tags: {
+										source: 'chat:answer:approve:onError:abort',
+									},
+									extra: { threadId: body.threadId },
+								}),
+							);
+						} else {
+							await doPersist([], FinishReason.ERROR).catch((err) =>
+								captureException(err, {
+									tags: {
+										source: 'chat:answer:approve:onError:persist',
+									},
+									extra: { threadId: body.threadId },
+								}),
+							);
+							captureException(error, {
+								tags: {
+									source: 'chat:answer:approve:onError',
+								},
+								extra: { threadId: body.threadId },
+							});
+						}
+					},
+				});
+
+				return stream.toUIMessageStreamResponse({
+					headers: { 'Content-Type': 'text/event-stream' },
+					consumeSseStream: consumeStream,
+				});
+			}
+
+			// ===== NexataAskQuestions answer =====
+			const toolCallPart = contentParts.find(
 				(
 					part,
 				): part is {
@@ -451,15 +608,22 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			detail: {
 				summary: 'Answer tool call',
 				description:
-					'Submits user answers for a NexataAskQuestions tool call and resumes AI generation. Does not consume a message credit.',
+					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for a NexataReingest tool call. Does not consume a message credit.',
 			},
 			body: tObject({
 				threadId: t.String({
 					format: 'uuid',
 					description: 'UUID of the thread containing the tool call.',
 				}),
-				result: t.Unknown({
-					description: 'The user answers for the tool call, as a JSON value.',
+				result: Nullish(t.Unknown(), {
+					description:
+						'The user answers for NexataAskQuestions, as a JSON value.',
+				}),
+				toolCallId: Nullish(t.String(), {
+					description: 'The tool call ID for NexataReingest approval.',
+				}),
+				approved: Nullish(t.Boolean(), {
+					description: 'Whether the NexataReingest tool call was approved.',
 				}),
 				languagePreference: Nullish(t.String(), {
 					description: 'Language preference for the chat response.',

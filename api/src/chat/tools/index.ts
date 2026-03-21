@@ -15,6 +15,7 @@ import {
 	ensureFreshTokens,
 	getCredentialsForUser,
 } from '@api/utils/credential';
+import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { captureException } from '@sentry/bun';
 import { Value } from '@sinclair/typebox/value';
 import { encode } from '@toon-format/toon';
@@ -293,9 +294,40 @@ export const getTools = async (
 				Gmail.readInput,
 				gmailCredentials,
 				(credentials) => credentials,
-				async (c, input) =>
-					Gmail.read(await freshClient(c, Gmail.fromTokens), input),
+				async (c, input) => {
+					if (input.credentialEmail && c.email !== input.credentialEmail)
+						throw httpError(
+							HttpCode.FORBIDDEN,
+							ErrorCode.NO_CREDENTIAL_PERMISSION,
+						);
+					return Gmail.read(await freshClient(c, Gmail.fromTokens), input);
+				},
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	if (gmailCredentials.length && interactive)
+		tools = {
+			...tools,
+			GmailIngestAttachments: toolify(
+				Gmail.ingestAttachmentsDescription,
+				Gmail.ingestAttachmentsInput,
+				gmailCredentials,
+				(credentials) => credentials,
+				async (c, input) => {
+					if (input.credentialEmail && c.email !== input.credentialEmail)
+						throw httpError(
+							HttpCode.FORBIDDEN,
+							ErrorCode.NO_CREDENTIAL_PERMISSION,
+						);
+					return Gmail.ingestAttachments(
+						await freshClient(c, Gmail.fromTokens),
+						activeUser,
+						input,
+					);
+				},
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+				{ needsApproval: true },
 			),
 		};
 
