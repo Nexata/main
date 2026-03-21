@@ -508,11 +508,13 @@
 				"no_data": "Sin datos aún",
 				"plan_label": "Plan",
 				"source_label": "Origen",
+				"months_label": "Meses",
 				"detail_title": "Detalle",
 				"detail_base": "Base",
 				"detail_messages": "Mensajes",
 				"detail_storage": "Storage",
-				"no_data_description": "Aún no se registraron movimientos en esta categoría."
+				"no_data_description": "Aún no se registraron movimientos en esta categoría.",
+				"pay_button": "Pagar"
 			},
 			"last_refill": {
 				"title": "Última recarga",

@@ -117,9 +117,11 @@ import {
 	'admin.billing.last_bill.detail_messages' as admin_billing_last_bill_detail_messages,
 	'admin.billing.last_bill.detail_storage' as admin_billing_last_bill_detail_storage,
 	'admin.billing.last_bill.detail_title' as admin_billing_last_bill_detail_title,
+	'admin.billing.last_bill.months_label' as admin_billing_last_bill_months_label,
 	'admin.billing.last_bill.no_data' as admin_billing_last_bill_no_data,
 	'admin.billing.last_bill.no_data_description' as admin_billing_last_bill_no_data_description,
 	'admin.billing.last_bill.paid' as admin_billing_last_bill_paid,
+	'admin.billing.last_bill.pay_button' as admin_billing_last_bill_pay_button,
 	'admin.billing.last_bill.pending' as admin_billing_last_bill_pending,
 	'admin.billing.last_bill.plan_label' as admin_billing_last_bill_plan_label,
 	'admin.billing.last_bill.source_label' as admin_billing_last_bill_source_label,
@@ -762,6 +764,14 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											{SOURCE_LABEL[lastBill.source] ?? lastBill.source}
 										</span>
 									</div>
+									{lastBill.months > 1 && (
+										<div className="flex justify-between">
+											<span className="text-muted-foreground">
+												{admin_billing_last_bill_months_label()}
+											</span>
+											<span className="font-medium">{lastBill.months}</span>
+										</div>
+									)}
 								</div>
 
 								{lastBill.details ? (
@@ -775,11 +785,35 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 												<div className="flex justify-between">
 													<span>{admin_billing_last_bill_detail_base()}</span>
 													<span className="text-foreground font-medium overflow-hidden">
-														<AnimatedAmount
-															value={formatAmount(
-																lastBill.details.baseBill as number,
-															)}
-														/>
+														{lastBill.months > 1 ? (
+															(lastBill.details as any).discountRate ? (
+																admin_billing_batch_detail_months({
+																	base: formatAmount(
+																		(lastBill.details as any).baseBill,
+																	),
+																	months: String(lastBill.months),
+																	rate: String(
+																		Math.round(
+																			(lastBill.details as any).discountRate *
+																				100,
+																		),
+																	),
+																})
+															) : (
+																admin_billing_batch_detail_months_no_discount({
+																	base: formatAmount(
+																		(lastBill.details as any).baseBill,
+																	),
+																	months: String(lastBill.months),
+																})
+															)
+														) : (
+															<AnimatedAmount
+																value={formatAmount(
+																	lastBill.details.baseBill as number,
+																)}
+															/>
+														)}
 													</span>
 												</div>
 											) : null}
@@ -816,6 +850,52 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 										</div>
 									</>
 								) : null}
+
+								{/* Payment actions — only when unpaid */}
+								{!lastBill.paid && (
+									<>
+										<Separator />
+										<div className="flex items-center gap-2">
+											<Button
+												size="sm"
+												className="cursor-pointer flex-1"
+												disabled={payingBillId === lastBill.id}
+												onClick={async () => {
+													setPayingBillId(lastBill.id);
+													try {
+														const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
+														const checkout = await getCheckout(
+															lastBill.id,
+															redirect,
+														);
+														if (checkout?.init_point)
+															window.open(checkout.init_point, '_self');
+													} finally {
+														setPayingBillId(null);
+													}
+												}}
+											>
+												{payingBillId === lastBill.id ? (
+													<Loader2 className="h-4 w-4 animate-spin mr-2" />
+												) : (
+													<CreditCard className="h-4 w-4 mr-2" />
+												)}
+												{admin_billing_last_bill_pay_button()}
+											</Button>
+											{lastBill.source !== 'refill' && (
+												<Button
+													size="sm"
+													variant="outline"
+													className="cursor-pointer"
+													onClick={() => setBatchModalOpen(true)}
+												>
+													<CalendarRange className="h-4 w-4 mr-2" />
+													{admin_billing_batch_pay_advance_tooltip()}
+												</Button>
+											)}
+										</div>
+									</>
+								)}
 							</div>
 						</div>
 					)}

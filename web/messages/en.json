@@ -508,11 +508,13 @@
 				"no_data": "No data yet",
 				"plan_label": "Plan",
 				"source_label": "Source",
+				"months_label": "Months",
 				"detail_title": "Detail",
 				"detail_base": "Base",
 				"detail_messages": "Messages",
 				"detail_storage": "Storage",
-				"no_data_description": "No activity has been recorded in this category yet."
+				"no_data_description": "No activity has been recorded in this category yet.",
+				"pay_button": "Pay"
 			},
 			"last_refill": {
 				"title": "Last top-up",
