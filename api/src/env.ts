@@ -50,10 +50,7 @@ export const FALLBACK_BEHAVIOR: {
 
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	models: [
-		deepinfra('zai-org/GLM-5'),
-		groq('openai/gpt-oss-120b'),
-	],
+	models: [deepinfra('zai-org/GLM-5'), groq('openai/gpt-oss-120b')],
 });
 
 export const LIGHT_MODEL = createFallback({

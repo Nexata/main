@@ -58,14 +58,39 @@ const toolify = <
 								? mold(await execute(ctxs, input), context, 0)
 								: await execute(ctxs, input);
 
-						const res = await Promise.all(
+						const settled = await Promise.allSettled(
 							ctxs.map((ctx) => execute(ctx, input)),
 						);
+
+						const fulfilled = settled.flatMap((r, i) =>
+							r.status === 'fulfilled' ? [{ output: r.value, index: i }] : [],
+						);
+
+						if (!fulfilled.length) {
+							const errors = settled
+								.filter(
+									(r): r is PromiseRejectedResult => r.status === 'rejected',
+								)
+								.map((r) => r.reason);
+
+							const message = errors
+								.map(
+									(e, i) =>
+										`[${i}] ${e instanceof Error ? e.message : String(e)}`,
+								)
+								.join('\n');
+
+							const aggregated = new AggregateError(errors, message);
+							throw aggregated;
+						}
+
 						return mold
-							? res.length === 1
-								? mold(res[0]!, context, 0)
-								: res.map((output, i) => mold(output, context, i))
-							: res;
+							? fulfilled.length === 1
+								? mold(fulfilled[0]!.output, context, fulfilled[0]!.index)
+								: fulfilled.map((f) => mold(f.output, context, f.index))
+							: fulfilled.length === 1
+								? fulfilled[0]!.output
+								: fulfilled.map((f) => f.output);
 					} catch (error) {
 						captureException(error, {
 							tags: { source: 'tool' },
