@@ -53,7 +53,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 			const description =
 				b.source === BillSource.REFILL
 					? `Nexata refill (x${(b.details as { messages: number }).messages})`
-					: `Nexata ${formatPlan(b.plan)}`;
+					: `Nexata ${formatPlan(b.plan)}${b.months > 1 ? ` (${b.months} months)` : ''}`;
 
 			const preferenceService = new Preference(MP_CLIENT(billId));
 			const preference = await preferenceService.create({
@@ -140,6 +140,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 						slug: bill.slug,
 						createdAt: bill.createdAt,
 						source: bill.source,
+						months: bill.months,
 						details: bill.details,
 					})
 			).at(0);
@@ -161,7 +162,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 				const billDate = dayjs(updated.createdAt);
 				const isLatePayment = dayjs().diff(billDate, 'day') > 4;
 				const newBillingAt = (isLatePayment ? dayjs() : billDate).add(
-					1,
+					updated.months,
 					'month',
 				);
 

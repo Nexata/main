@@ -2,6 +2,7 @@ import { cache, db } from '@api/env';
 import { locales } from '@api/locales';
 import {
 	BillableEventType,
+	type BillDetails,
 	BillSource,
 	bill,
 	billableEvent,
@@ -434,14 +435,6 @@ export async function checkTenantCanChat(
 	return null;
 }
 
-type BillDetails = {
-	baseBill: number;
-	storage?: number;
-	embed?: number;
-	message?: number;
-	refill?: number;
-};
-
 export function calculateBillAmount(plan: Plan, details: BillDetails): number {
 	const limits = PLANS[plan];
 	let amount = limits.baseBill;
@@ -462,6 +455,42 @@ export function calculateRefillAmount(messages: number): number {
 	const discount = REFILL_PRICING.discounts.find((d) => d.value === messages);
 	const rate = discount ? 1 - discount.rate : 1;
 	return messages * REFILL_PRICING.perMessage * rate;
+}
+
+export const BATCH_DISCOUNTS = [
+	{ months: 12, rate: 0.2 },
+	{ months: 9, rate: 0.15 },
+	{ months: 6, rate: 0.1 },
+	{ months: 3, rate: 0.05 },
+] as const;
+
+export function calculateBatchDiscount(months: number): number {
+	for (const tier of BATCH_DISCOUNTS)
+		if (months >= tier.months) return tier.rate;
+
+	return 0;
+}
+
+export function calculateBatchBillAmount(
+	plan: Plan,
+	details: BillDetails,
+	months: number,
+): number {
+	const limits = PLANS[plan];
+	const discountRate = calculateBatchDiscount(months);
+
+	let amount = limits.baseBill * months * (1 - discountRate);
+
+	if (limits.storageLimit === null && details.storage)
+		amount += details.storage * USAGE_BASED_PRICING.storagePerMbPerDay;
+
+	if (limits.embedLimit === null && details.embed)
+		amount += details.embed * USAGE_BASED_PRICING.embedPerToken;
+
+	if (limits.messageLimit === null && details.message)
+		amount += details.message * USAGE_BASED_PRICING.perMessage;
+
+	return Math.round(amount * 100) / 100;
 }
 
 export async function generateBillForTenant(

@@ -4,6 +4,7 @@ import {
 	boolean,
 	date,
 	index,
+	integer,
 	json,
 	numeric,
 	pgEnum,
@@ -35,7 +36,16 @@ export const bill = pgTable(
 		amount: numeric().notNull(),
 		plan: PlanEnum().notNull(),
 		source: BillSourceEnum().notNull().default(BillSource.PERIODIC),
+		months: integer().notNull().default(1),
 		details: json().notNull(),
 	},
 	(table) => [index('bill_created_at_desc').on(desc(table.createdAt))],
 );
+
+export type BillDetails = {
+	baseBill: number;
+	storage?: number;
+	embed?: number;
+	message?: number;
+	refill?: number;
+};

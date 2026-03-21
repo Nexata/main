@@ -1,8 +1,10 @@
 import { authPlugin } from '@api/auth';
 import { cache, db } from '@api/env';
 import {
+	type BillDetails,
 	BillSource,
 	bill,
+	type Language,
 	PLANS,
 	Plan,
 	REFILL_PRICING,
@@ -10,6 +12,9 @@ import {
 	user,
 } from '@api/schema';
 import {
+	BATCH_DISCOUNTS,
+	calculateBatchBillAmount,
+	calculateBatchDiscount,
 	calculateRefillAmount,
 	generateBillForTenant,
 	getEmbedUsage,
@@ -17,6 +22,7 @@ import {
 	getRefillMessages,
 	getStorageUsage,
 	getTenantPlan,
+	UNPAID_KEY,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
@@ -214,5 +220,138 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			detail: { summary: 'Change tenant plan' },
 			body: tObject({ plan: t.Enum(Plan) }),
+		},
+	)
+	.get(
+		'/batch-preview',
+		async ({ activeUser, query }) => {
+			const unpaidBill = (
+				await db
+					.select()
+					.from(bill)
+					.where(
+						and(
+							eq(bill.slug, activeUser.slug),
+							eq(bill.paid, false),
+							ne(bill.source, BillSource.REFILL),
+						),
+					)
+					.orderBy(desc(bill.createdAt))
+					.limit(1)
+			).at(0);
+
+			if (!unpaidBill)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.BILL_NOT_FOUND,
+					activeUser.language as Language,
+				);
+
+			const details = unpaidBill.details as BillDetails;
+			const discountRate = calculateBatchDiscount(query.months);
+			const batchAmount = calculateBatchBillAmount(
+				unpaidBill.plan,
+				details,
+				query.months,
+			);
+			const originalAmount = Number(unpaidBill.amount);
+
+			return {
+				billId: unpaidBill.id,
+				originalAmount,
+				batchAmount,
+				months: query.months,
+				discountRate,
+				savings:
+					Math.round((originalAmount * query.months - batchAmount) * 100) / 100,
+				tiers: BATCH_DISCOUNTS,
+			};
+		},
+		{
+			detail: {
+				summary: 'Preview batch billing',
+				description:
+					'Preview the cost of paying multiple months in advance for the current unpaid bill.',
+			},
+			query: tObject({
+				months: t.Integer({
+					minimum: 1,
+					maximum: 24,
+					description: 'Number of months to pay in advance.',
+				}),
+			}),
+		},
+	)
+	.put(
+		'/batch',
+		async ({ activeUser, body }) => {
+			const unpaidBill = (
+				await db
+					.select()
+					.from(bill)
+					.where(
+						and(
+							eq(bill.slug, activeUser.slug),
+							eq(bill.paid, false),
+							ne(bill.source, BillSource.REFILL),
+						),
+					)
+					.orderBy(desc(bill.createdAt))
+					.limit(1)
+			).at(0);
+
+			if (!unpaidBill)
+				throw httpError(
+					HttpCode.NOT_FOUND,
+					ErrorCode.BILL_NOT_FOUND,
+					activeUser.language as Language,
+				);
+
+			const details = unpaidBill.details as BillDetails;
+			const discountRate = calculateBatchDiscount(body.months);
+			const batchAmount = calculateBatchBillAmount(
+				unpaidBill.plan,
+				details,
+				body.months,
+			);
+
+			await Promise.allSettled([
+				db
+					.update(bill)
+					.set({
+						amount: batchAmount.toString(),
+						months: body.months,
+						details: {
+							...details,
+							discountRate,
+							originalAmount: Number(unpaidBill.amount),
+							months: body.months,
+						},
+					})
+					.where(eq(bill.id, unpaidBill.id)),
+				cache.del(UNPAID_KEY(activeUser.slug)),
+			]);
+
+
+			return {
+				billId: unpaidBill.id,
+				amount: batchAmount,
+				months: body.months,
+				discountRate,
+			};
+		},
+		{
+			detail: {
+				summary: 'Batch billing',
+				description:
+					'Modify the current unpaid bill to cover multiple months in advance with a discount.',
+			},
+			body: tObject({
+				months: t.Integer({
+					minimum: 1,
+					maximum: 24,
+					description: 'Number of months to pay in advance.',
+				}),
+			}),
 		},
 	);
