@@ -32,8 +32,6 @@ import {
   "components.upgrade_plan_modal.upgrade_button" as components_upgrade_plan_modal_upgrade_button,
   "components.upgrade_plan_modal.warnings.downgrade_not_allowed.title" as components_upgrade_plan_modal_warn_dn_title,
   "components.upgrade_plan_modal.warnings.downgrade_not_allowed.description" as components_upgrade_plan_modal_warn_dn_desc,
-  "components.upgrade_plan_modal.warnings.downgrade_not_available.title" as components_upgrade_plan_modal_warn_na_title,
-  "components.upgrade_plan_modal.warnings.downgrade_not_available.description" as components_upgrade_plan_modal_warn_na_desc,
   "components.upgrade_plan_modal.warnings.confirm_downgrade.title" as components_upgrade_plan_modal_confirm_dn_title,
   "components.upgrade_plan_modal.warnings.confirm_downgrade.description" as components_upgrade_plan_modal_confirm_dn_desc,
   "components.upgrade_plan_modal.warnings.confirm_upgrade.title" as components_upgrade_plan_modal_confirm_up_title,
@@ -42,7 +40,7 @@ import {
   "components.upgrade_plan_modal.actions.confirm" as components_upgrade_plan_modal_confirm,
   "components.upgrade_plan_modal.actions.acknowledge" as components_upgrade_plan_modal_ack,
 } from "@/paraglide/messages.js";
-import { useBillingLastBill, useSetBillingPlan, useUsdArsQuote } from "@/lib/admin";
+import { useBillingUsage, useSetBillingPlan, useUsdArsQuote } from "@/lib/admin";
 import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
 import { CurrencyToggle } from "@/components/currency-toggle/currency-toggle";
 import { useMyTenant, type Plan } from "@/lib/user";
@@ -62,9 +60,17 @@ const ORDER: Plan[] = [
   "pay_as_you_go" as Plan,
 ];
 
+/** Storage limits per plan in MB — mirrors backend PLANS config */
+const PLAN_STORAGE_LIMITS: Record<string, number | null> = {
+  free: 10,
+  personal: 1024,
+  business: 10240,
+  pay_as_you_go: null,
+};
+
 export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) {
-  const { data: lastBill } = useBillingLastBill();
   const { data: tenant } = useMyTenant();
+  const { data: usage } = useBillingUsage();
   const setPlan = useSetBillingPlan();
   const getCheckout = useGetPaymentMpCheckout();
   const { data: usdArsQuote } = useUsdArsQuote();
@@ -153,12 +159,12 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
     );
   };
 
-  const canDowngrade =
-    isDowngrade &&
-    selectedPlan !== "free" &&
-    lastBill &&
-    lastBill.plan === currentPlan &&
-    lastBill.paid === false;
+  const storageExceedsTarget = useMemo(() => {
+    if (!selectedPlan || !isDowngrade || !usage) return false;
+    const targetLimit = PLAN_STORAGE_LIMITS[selectedPlan];
+    if (targetLimit === null || targetLimit === undefined) return false;
+    return usage.storage.used > targetLimit;
+  }, [selectedPlan, isDowngrade, usage]);
 
   const select = (plan: Plan) => {
     if (!currentPlan || plan === currentPlan) return;
@@ -188,24 +194,18 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
     if (!selectedPlan || !currentPlan) return null;
 
     if (isDowngrade) {
-      if (selectedPlan === "free") {
+      if (storageExceedsTarget) {
+        const targetLimit = PLAN_STORAGE_LIMITS[selectedPlan] ?? 0;
+        const storageUsed = Math.round(usage?.storage.used ?? 0);
         return (
           <Warn
             title={components_upgrade_plan_modal_warn_dn_title()}
             onCancel={() => setSelectedPlan(null)}
           >
-            {components_upgrade_plan_modal_warn_dn_desc()}
-          </Warn>
-        );
-      }
-
-      if (!canDowngrade) {
-        return (
-          <Warn
-            title={components_upgrade_plan_modal_warn_na_title()}
-            onCancel={() => setSelectedPlan(null)}
-          >
-            <p>{components_upgrade_plan_modal_warn_na_desc()}</p>
+            {components_upgrade_plan_modal_warn_dn_desc({
+              used: String(storageUsed),
+              limit: String(targetLimit),
+            })}
           </Warn>
         );
       }

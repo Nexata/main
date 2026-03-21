@@ -207,19 +207,15 @@
 			"warnings": {
 				"downgrade_not_allowed": {
 					"title": "Downgrade Not Allowed",
-					"description": "Downgrading to the Free plan is not available from your current membership."
-				},
-				"downgrade_not_available": {
-					"title": "Downgrade Not Available",
-					"description": "You cannot downgrade your plan at this moment because your current monthly membership is still active. When your billing cycle ends, instead of paying the next monthly invoice, you will be able to choose a lower plan. You will be notified when your membership payment is due, and at that time you can proceed with the downgrade."
+					"description": "Your current storage usage ({used} MB) exceeds the selected plan's limit ({limit} MB). To downgrade, please delete ingested files until your usage is within the target plan's limit."
 				},
 				"confirm_downgrade": {
 					"title": "Confirm Plan Downgrade",
-					"description": "You are about to downgrade your current plan. This action will permanently remove your stored data, message balance, embeddings, and storage. You will need to reconnect your integrations and re-upload your information after the downgrade is completed. Please confirm that you understand the consequences before proceeding."
+					"description": "Your current plan will be cancelled immediately and the remaining time from your paid billing cycle will be lost. Your message, embedding, and storage limits will be reduced to those of the new plan. Please confirm that you understand the consequences before proceeding."
 				},
 				"confirm_upgrade": {
 					"title": "Confirm Plan Upgrade",
-					"description": "You are about to upgrade your current membership. Your current plan will be cancelled immediately and a new invoice will be generated for the selected plan. Any remaining messages, embeddings, and storage from your current billing cycle will be lost. Once the new invoice is paid, your plan will be automatically upgraded and your new limits will be applied."
+					"description": "Your current plan will be cancelled immediately and a new invoice will be generated for the selected plan. The remaining time from your paid billing cycle will be lost, along with any remaining messages, embeddings, and storage. Once the new invoice is paid, your plan will be automatically upgraded and your new limits will be applied."
 				}
 			},
 			"actions": {

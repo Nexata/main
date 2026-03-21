@@ -207,19 +207,15 @@
 			"warnings": {
 				"downgrade_not_allowed": {
 					"title": "Degradación no permitida",
-					"description": "No podés degradar al plan Free desde tu membresía actual."
-				},
-				"downgrade_not_available": {
-					"title": "Degradación no disponible",
-					"description": "No podés degradar tu plan en este momento porque tu membresía mensual actual sigue activa. Cuando termine el ciclo de facturación, en lugar de pagar la próxima factura mensual, vas a poder elegir un plan inferior. Se te notificará cuando tu pago esté por vencer y en ese momento podrás proceder con la degradación."
+					"description": "Tu almacenamiento actual ({used} MB) supera el límite del plan seleccionado ({limit} MB). Para degradar, primero eliminá archivos ingeridos hasta quedar dentro del límite."
 				},
 				"confirm_downgrade": {
 					"title": "Confirmar degradación de plan",
-					"description": "Estás a punto de degradar tu plan actual. Esta acción eliminará permanentemente tus datos almacenados, saldo de mensajes, embeddings y almacenamiento. Vas a tener que reconectar tus integraciones y volver a subir tu información una vez que la degradación se complete. Confirmá que entendés las consecuencias antes de continuar."
+					"description": "Tu plan actual será cancelado inmediatamente y el tiempo restante de tu ciclo de facturación pago se perderá. Tus límites de mensajes, embeddings y almacenamiento se reducirán a los del nuevo plan. Confirmá que entendés las consecuencias antes de continuar."
 				},
 				"confirm_upgrade": {
 					"title": "Confirmar actualización de plan",
-					"description": "Estás a punto de actualizar tu membresía actual. Tu plan vigente será cancelado inmediatamente y se generará una nueva factura para el plan seleccionado. Cualquier mensaje restante, embeddings o almacenamiento de tu ciclo actual se perderán. Una vez que la nueva factura sea abonada, tu plan se actualizará automáticamente y se aplicarán los nuevos límites."
+					"description": "Tu plan vigente será cancelado inmediatamente y se generará una nueva factura para el plan seleccionado. El tiempo restante de tu ciclo de facturación pago se perderá, junto con cualquier mensaje restante, embeddings o almacenamiento. Una vez que la nueva factura sea abonada, tu plan se actualizará automáticamente y se aplicarán los nuevos límites."
 				}
 			},
 			"actions": {
