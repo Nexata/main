@@ -6,6 +6,7 @@ import {
 	AlertTriangle,
 	ArrowLeft,
 	Calendar as CalendarIcon,
+	CalendarRange,
 	CheckCircle2,
 	CreditCard,
 	Crown,
@@ -22,6 +23,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
+import { BatchBillingModal } from '@/components/batch-billing/batch-billing-modal';
 import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 import { CurrencyToggle } from '@/components/currency-toggle/currency-toggle';
 import { infoToast } from '@/components/info-toast/info-toast';
@@ -92,6 +94,9 @@ import {
 } from '@/lib/currency.store';
 import { type Language, type Plan, useMyTenant } from '@/lib/user';
 import {
+	'admin.billing.batch.detail_months' as admin_billing_batch_detail_months,
+	'admin.billing.batch.detail_months_no_discount' as admin_billing_batch_detail_months_no_discount,
+	'admin.billing.batch.pay_advance_tooltip' as admin_billing_batch_pay_advance_tooltip,
 	'admin.billing.bills_list.col_amount' as admin_billing_bills_list_col_amount,
 	'admin.billing.bills_list.col_date' as admin_billing_bills_list_col_date,
 	'admin.billing.bills_list.col_detail' as admin_billing_bills_list_col_detail,
@@ -131,19 +136,19 @@ import {
 	'admin.company_overview.description' as admin_company_overview_description,
 	'admin.company_overview.edit' as admin_company_overview_edit,
 	'admin.company_overview.embeddings_balance' as admin_company_overview_embeddings_balance,
+	'admin.company_overview.embeddings_balance_info' as admin_company_overview_embeddings_balance_info,
 	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
+	'admin.company_overview.message_balance_info' as admin_company_overview_message_balance_info,
 	'admin.company_overview.plans.business' as admin_company_overview_plans_business,
 	'admin.company_overview.plans.free' as admin_company_overview_plans_free,
 	'admin.company_overview.plans.pay_as_you_go' as admin_company_overview_plans_pay_as_you_go,
 	'admin.company_overview.plans.personal' as admin_company_overview_plans_personal,
 	'admin.company_overview.storage_balance' as admin_company_overview_storage_balance,
+	'admin.company_overview.storage_balance_info' as admin_company_overview_storage_balance_info,
 	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
 	'admin.company_overview.tenant_name' as admin_company_overview_tenant_name,
 	'admin.company_overview.title' as admin_company_overview_title,
-  'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
-  'admin.company_overview.message_balance_info' as admin_company_overview_message_balance_info,
-  'admin.company_overview.embeddings_balance_info' as admin_company_overview_embeddings_balance_info,
-  'admin.company_overview.storage_balance_info' as admin_company_overview_storage_balance_info,
+	'admin.company_overview.upgrade_plan' as admin_company_overview_upgrade_plan,
 	'admin.header.back_to_chat' as admin_header_back_to_chat,
 	'admin.header.personal_panel' as admin_header_personal_panel,
 	'admin.header.subtitle' as admin_header_subtitle,
@@ -458,8 +463,8 @@ function CompanyOverviewSection() {
 
 				<div className="space-y-4">
 					<UsageBar
-            label={admin_company_overview_message_balance()}
-            info={admin_company_overview_message_balance_info()}
+						label={admin_company_overview_message_balance()}
+						info={admin_company_overview_message_balance_info()}
 						used={messageUsed}
 						total={messageTotal}
 						colorClass="bg-primary"
@@ -467,7 +472,7 @@ function CompanyOverviewSection() {
 					/>
 
 					<UsageBar
-            label={admin_company_overview_embeddings_balance()}
+						label={admin_company_overview_embeddings_balance()}
 						info={admin_company_overview_embeddings_balance_info()}
 						used={embeddingsUsed / 1_000_000}
 						total={embeddingsTotal / 1_000_000}
@@ -477,7 +482,7 @@ function CompanyOverviewSection() {
 					/>
 
 					<UsageBar
-            label={admin_company_overview_storage_balance()}
+						label={admin_company_overview_storage_balance()}
 						info={admin_company_overview_storage_balance_info()}
 						used={storageUsed}
 						total={storageTotal}
@@ -583,6 +588,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 	const [billsPage, setBillsPage] = useState(1);
 	const billsCursor = billsCursorStack[billsPage - 1] ?? null;
 	const [payingBillId, setPayingBillId] = useState<string | null>(null);
+	const [batchModalOpen, setBatchModalOpen] = useState(false);
 
 	const { data: bills, isLoading: billsLoading } = useBillingBills({
 		cursor: billsCursor ?? undefined,
@@ -985,10 +991,25 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											const d = bill.details as any;
 											if ('messages' in d && 'perMessage' in d)
 												return `${d.messages} msg × ${formatAmount(d.perMessage)}`;
-											if ('baseBill' in d)
+											if ('baseBill' in d) {
+												if (d.months && d.months > 1 && d.discountRate) {
+													return admin_billing_batch_detail_months({
+														base: formatAmount(d.baseBill),
+														months: String(d.months),
+														rate: String(Math.round(d.discountRate * 100)),
+													});
+												}
+												if (d.months && d.months > 1) {
+													return admin_billing_batch_detail_months_no_discount({
+														base: formatAmount(d.baseBill),
+														months: String(d.months),
+													});
+												}
 												return `${admin_billing_last_bill_detail_base()}: ${formatAmount(d.baseBill)}`;
+											}
 											return '—';
 										})();
+										const isRefill = bill.source === 'refill';
 
 										return (
 											<TableRow key={bill.id}>
@@ -1028,6 +1049,23 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 															<span className="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium bg-rose-500/10 text-rose-600">
 																{admin_billing_last_bill_pending()}
 															</span>
+															{!isRefill && (
+																<TooltipUi>
+																	<TooltipTrigger>
+																		<Button
+																			size="icon"
+																			variant="ghost"
+																			className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-emerald-600 hover:bg-emerald-500/10"
+																			onClick={() => setBatchModalOpen(true)}
+																		>
+																			<CalendarRange className="h-4 w-4" />
+																		</Button>
+																	</TooltipTrigger>
+																	<TooltipContent>
+																		{admin_billing_batch_pay_advance_tooltip()}
+																	</TooltipContent>
+																</TooltipUi>
+															)}
 															<TooltipUi>
 																<TooltipTrigger>
 																	<Button
@@ -1114,6 +1152,12 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 					</div>
 				</div>
 			</CardContent>
+
+			<BatchBillingModal
+				open={batchModalOpen}
+				onOpenChange={setBatchModalOpen}
+				usdArsQuote={usdArsQuote}
+			/>
 		</Card>
 	);
 }

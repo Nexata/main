@@ -545,6 +545,25 @@
 				"page_label": "Page {page}",
 				"prev": "Previous",
 				"next": "Next"
+			},
+			"batch": {
+				"title": "Pay in advance",
+				"subtitle": "Pay several months at once and get a discount on the base rate.",
+				"months_label": "Months to pay",
+				"month_singular": "{months} month",
+				"month_plural": "{months} months",
+				"discount_label": "Discount",
+				"original_price": "Original price",
+				"final_price": "Final price",
+				"savings": "Savings",
+				"no_discount": "No discount",
+				"tier_label": "{months}+ months: {rate}% off",
+				"confirm_button": "Confirm and pay",
+				"success_toast": "Invoice updated successfully",
+				"error_toast": "Failed to update invoice",
+				"pay_advance_tooltip": "Pay in advance",
+				"detail_months": "Base: {base} × {months} months (-{rate}%)",
+				"detail_months_no_discount": "Base: {base} × {months} months"
 			}
 		},
 		"traces": {

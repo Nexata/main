@@ -545,6 +545,25 @@
 				"page_label": "Página {page}",
 				"prev": "Anterior",
 				"next": "Siguiente"
+			},
+			"batch": {
+				"title": "Pagar por adelantado",
+				"subtitle": "Pagá varios meses de una vez y obtené un descuento sobre la tarifa base.",
+				"months_label": "Meses a pagar",
+				"month_singular": "{months} mes",
+				"month_plural": "{months} meses",
+				"discount_label": "Descuento",
+				"original_price": "Precio original",
+				"final_price": "Precio final",
+				"savings": "Ahorro",
+				"no_discount": "Sin descuento",
+				"tier_label": "{months}+ meses: {rate}% off",
+				"confirm_button": "Confirmar y pagar",
+				"success_toast": "Factura actualizada correctamente",
+				"error_toast": "Error al actualizar la factura",
+				"pay_advance_tooltip": "Pagar por adelantado",
+				"detail_months": "Base: {base} × {months} meses (-{rate}%)",
+				"detail_months_no_discount": "Base: {base} × {months} meses"
 			}
 		},
 		"traces": {

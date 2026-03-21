@@ -46,8 +46,8 @@ export type CreateUserInput = {
 	displayName?: string;
 	apiKey?: string;
 	pfp?: File;
-  isAdmin?: boolean;
-  sendMail: boolean;
+	isAdmin?: boolean;
+	sendMail: boolean;
 };
 
 export async function createUser(data: CreateUserInput) {
@@ -142,237 +142,284 @@ export function useEditTenant() {
 
 // ---------- Admin Trace ----------
 
-export type TraceType =
-  Parameters<
-    typeof apiClient.admin.trace.get
-  >[0]['$query']['type'] extends
-    | (infer T)[]
-    | null
-    | undefined
-    ? T
-    : never;
+export type TraceType = Parameters<
+	typeof apiClient.admin.trace.get
+>[0]['$query']['type'] extends (infer T)[] | null | undefined
+	? T
+	: never;
 
 export type AdminTraceParams = {
-  type?: TraceType[] | null;
-  userId?: string[] | null;
-  from?: Date | null;
-  to?: Date | null;
-  cursor?: Date | null;
-  limit?: number;
+	type?: TraceType[] | null;
+	userId?: string[] | null;
+	from?: Date | null;
+	to?: Date | null;
+	cursor?: Date | null;
+	limit?: number;
 };
 
-export async function getAdminTrace(
-  params: AdminTraceParams = {}
-) {
-  return await withAuthRetry(headers => {
-    const query: Parameters<typeof apiClient.admin.trace.get>[0]['$query'] = {limit: params.limit ?? 100,};
+export async function getAdminTrace(params: AdminTraceParams = {}) {
+	return await withAuthRetry((headers) => {
+		const query: Parameters<typeof apiClient.admin.trace.get>[0]['$query'] = {
+			limit: params.limit ?? 100,
+		};
 
-    if (params.type?.length) query.type = params.type;
-    if (params.userId?.length) query.userId = params.userId;
-    if (params.from) query.from = params.from;
-    if (params.to) query.to = params.to;
-    if (params.cursor) query.cursor = params.cursor;
+		if (params.type?.length) query.type = params.type;
+		if (params.userId?.length) query.userId = params.userId;
+		if (params.from) query.from = params.from;
+		if (params.to) query.to = params.to;
+		if (params.cursor) query.cursor = params.cursor;
 
-    return apiClient.admin.trace.get({
-      $headers: headers,
-      $query: query,
-    });
-  });
+		return apiClient.admin.trace.get({
+			$headers: headers,
+			$query: query,
+		});
+	});
 }
 
 export type AdminTrace = Awaited<ReturnType<typeof getAdminTrace>>;
 
-export function useAdminTrace(
-  params: AdminTraceParams = {}
-) {
-  return useQuery<AdminTrace>({
-    queryKey: ['admin', 'trace', params],
-    queryFn: () => getAdminTrace(params),
-    staleTime: 60_000,
-  });
+export function useAdminTrace(params: AdminTraceParams = {}) {
+	return useQuery<AdminTrace>({
+		queryKey: ['admin', 'trace', params],
+		queryFn: () => getAdminTrace(params),
+		staleTime: 60_000,
+	});
 }
 
 // ---------- Admin Trace Count ----------
 
 export type AdminTraceCountParams = AdminTraceParams;
 
-export async function getAdminTraceCount(
-  params: AdminTraceCountParams = {}
-) {
-  return await withAuthRetry(headers => {
-    const query: Parameters<typeof apiClient.admin.trace.count.get>[0]['$query'] = {limit: params.limit ?? 100};
+export async function getAdminTraceCount(params: AdminTraceCountParams = {}) {
+	return await withAuthRetry((headers) => {
+		const query: Parameters<
+			typeof apiClient.admin.trace.count.get
+		>[0]['$query'] = { limit: params.limit ?? 100 };
 
-    if (params.type?.length) query.type = params.type;
-    if (params.userId?.length) query.userId = params.userId;
-    if (params.from) query.from = params.from;
-    if (params.to) query.to = params.to;
-    if (params.cursor) query.cursor = params.cursor;
+		if (params.type?.length) query.type = params.type;
+		if (params.userId?.length) query.userId = params.userId;
+		if (params.from) query.from = params.from;
+		if (params.to) query.to = params.to;
+		if (params.cursor) query.cursor = params.cursor;
 
-    return apiClient.admin.trace.count.get({
-      $headers: headers,
-      $query: query,
-    });
-  });
+		return apiClient.admin.trace.count.get({
+			$headers: headers,
+			$query: query,
+		});
+	});
 }
 
 export type AdminTraceCount = Awaited<ReturnType<typeof getAdminTraceCount>>;
 
-export function useAdminTraceCount(
-  params: AdminTraceCountParams = {}
-) {
-  return useQuery<AdminTraceCount>({
-    queryKey: ['admin', 'trace', 'count', params],
-    queryFn: () => getAdminTraceCount(params),
-    staleTime: 60_000,
-  });
+export function useAdminTraceCount(params: AdminTraceCountParams = {}) {
+	return useQuery<AdminTraceCount>({
+		queryKey: ['admin', 'trace', 'count', params],
+		queryFn: () => getAdminTraceCount(params),
+		staleTime: 60_000,
+	});
 }
 
-export type BillingPlan = Parameters<typeof apiClient.admin.billing.plan.put>[0]['plan'];
+export type BillingPlan = Parameters<
+	typeof apiClient.admin.billing.plan.put
+>[0]['plan'];
 
 export async function setBillingPlan(plan: BillingPlan) {
-  return await withAuthRetry(headers =>
-    apiClient.admin.billing.plan.put({
-      $headers: headers,
-      plan,
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing.plan.put({
+			$headers: headers,
+			plan,
+		}),
+	);
 }
 
 export function useSetBillingPlan() {
-  const queryClient = useQueryClient();
+	const queryClient = useQueryClient();
 
-  return async (plan: BillingPlan) => {
-    const res = await setBillingPlan(plan);
+	return async (plan: BillingPlan) => {
+		const res = await setBillingPlan(plan);
 
-    await queryClient.invalidateQueries({
-      queryKey: ['admin', 'billing'],
-    });
+		await queryClient.invalidateQueries({
+			queryKey: ['admin', 'billing'],
+		});
 
-    return res;
-  };
+		return res;
+	};
 }
 
 // ---------- Billing Last Bill ----------
 
 export async function getBillingLastBill() {
-  return await withAuthRetry(headers =>
-    apiClient.admin.billing["last-bill"].get({
-      $headers: headers,
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing['last-bill'].get({
+			$headers: headers,
+		}),
+	);
 }
 
 export type BillingLastBill = Awaited<ReturnType<typeof getBillingLastBill>>;
 
 export function useBillingLastBill() {
-  return useQuery<BillingLastBill>({
-    queryKey: ['admin', 'billing', 'last-bill'],
-    queryFn: getBillingLastBill,
-    staleTime: 60_000,
-  });
+	return useQuery<BillingLastBill>({
+		queryKey: ['admin', 'billing', 'last-bill'],
+		queryFn: getBillingLastBill,
+		staleTime: 60_000,
+	});
 }
 
 // ---------- Billing Refill ----------
 
 export async function createBillingRefill(messages: number) {
-  return await withAuthRetry(headers =>
-    apiClient.admin.billing.refill.put({
-      $headers: headers,
-      messages,
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing.refill.put({
+			$headers: headers,
+			messages,
+		}),
+	);
 }
 
 export type BillingRefill = Awaited<ReturnType<typeof createBillingRefill>>;
 
 export function useCreateBillingRefill() {
-  return async (messages: number) => {
-    return await createBillingRefill(messages);
-  };
+	return async (messages: number) => {
+		return await createBillingRefill(messages);
+	};
 }
 
 // ---------- Payment MP Checkout ----------
 
-export async function getPaymentMpCheckout(billId: string, redirect?: string, language?: string) {
-  return await withAuthRetry(headers =>
-    apiClient.payment.mp[billId]!.get({
-      $headers: { ...headers, ...(language ? { language } : {}) },
-      $query: redirect ? { redirect } : {},
-    }),
-  );
+export async function getPaymentMpCheckout(
+	billId: string,
+	redirect?: string,
+	language?: string,
+) {
+	return await withAuthRetry((headers) =>
+		apiClient.payment.mp[billId]!.get({
+			$headers: { ...headers, ...(language ? { language } : {}) },
+			$query: redirect ? { redirect } : {},
+		}),
+	);
 }
 
 export function useGetPaymentMpCheckout() {
-  return async (billId: string, redirect?: string, language?: string) => {
-    return await getPaymentMpCheckout(billId, redirect, language);
-  };
+	return async (billId: string, redirect?: string, language?: string) => {
+		return await getPaymentMpCheckout(billId, redirect, language);
+	};
 }
 
 // ---------- Billing Bills ----------
 
 export type BillingBillsParams = {
-  cursor?: string | null;
-  limit?: number;
+	cursor?: string | null;
+	limit?: number;
 };
 
 export async function getBillingBills(params: BillingBillsParams = {}) {
-  return await withAuthRetry(headers =>
-    apiClient.admin.billing.bills.get({
-      $headers: headers,
-      $query: {
-        ...(params.cursor ? { cursor: params.cursor } : {}),
-        ...(params.limit ? { limit: params.limit } : {}),
-      },
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing.bills.get({
+			$headers: headers,
+			$query: {
+				...(params.cursor ? { cursor: params.cursor } : {}),
+				...(params.limit ? { limit: params.limit } : {}),
+			},
+		}),
+	);
 }
 
 export type BillingBills = Awaited<ReturnType<typeof getBillingBills>>;
 
 export function useBillingBills(params: BillingBillsParams = {}) {
-  return useQuery<BillingBills>({
-    queryKey: ['admin', 'billing', 'bills', params],
-    queryFn: () => getBillingBills(params),
-    staleTime: 60_000,
-  });
+	return useQuery<BillingBills>({
+		queryKey: ['admin', 'billing', 'bills', params],
+		queryFn: () => getBillingBills(params),
+		staleTime: 60_000,
+	});
 }
 
 // ---------- Billing Last Refill Bill ----------
 
 export async function getBillingLastRefillBill() {
-  return await withAuthRetry(headers =>
-    apiClient.admin.billing["last-refill-bill"].get({
-      $headers: headers,
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing['last-refill-bill'].get({
+			$headers: headers,
+		}),
+	);
 }
 
-export type BillingLastRefillBill = Awaited<ReturnType<typeof getBillingLastRefillBill>>;
+export type BillingLastRefillBill = Awaited<
+	ReturnType<typeof getBillingLastRefillBill>
+>;
 
 export function useBillingLastRefillBill() {
-  return useQuery<BillingLastRefillBill>({
-    queryKey: ['admin', 'billing', 'last-refill-bill'],
-    queryFn: getBillingLastRefillBill,
-    staleTime: 60_000,
-  });
+	return useQuery<BillingLastRefillBill>({
+		queryKey: ['admin', 'billing', 'last-refill-bill'],
+		queryFn: getBillingLastRefillBill,
+		staleTime: 60_000,
+	});
+}
+
+// ---------- Batch Billing Preview ----------
+
+export async function getBatchBillingPreview(months: number) {
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing['batch-preview'].get({
+			$headers: headers,
+			$query: { months },
+		}),
+	);
+}
+
+export type BatchBillingPreview = Awaited<
+	ReturnType<typeof getBatchBillingPreview>
+>;
+
+export function useBatchBillingPreview(months: number, enabled = true) {
+	return useQuery<BatchBillingPreview>({
+		queryKey: ['admin', 'billing', 'batch-preview', months],
+		queryFn: () => getBatchBillingPreview(months),
+		staleTime: 30_000,
+		enabled,
+	});
+}
+
+// ---------- Batch Billing ----------
+
+export async function setBatchBilling(months: number) {
+	return await withAuthRetry((headers) =>
+		apiClient.admin.billing.batch.put({
+			$headers: headers,
+			months,
+		}),
+	);
+}
+
+export type BatchBillingResult = Awaited<ReturnType<typeof setBatchBilling>>;
+
+export function useSetBatchBilling() {
+	const queryClient = useQueryClient();
+
+	return async (months: number) => {
+		const res = await setBatchBilling(months);
+		await queryClient.invalidateQueries({ queryKey: ['admin', 'billing'] });
+		return res;
+	};
 }
 
 // ---------- USD/ARS Quote ----------
 
 export async function getUsdArsQuote() {
-  return await withAuthRetry(headers =>
-    apiClient.public["usd-ars-quote"].get({
-      $headers: headers,
-    }),
-  );
+	return await withAuthRetry((headers) =>
+		apiClient.public['usd-ars-quote'].get({
+			$headers: headers,
+		}),
+	);
 }
 
 export type UsdArsQuote = Awaited<ReturnType<typeof getUsdArsQuote>>;
 
 export function useUsdArsQuote() {
-  return useQuery<UsdArsQuote>({
-    queryKey: ['public', 'usd-ars-quote'],
-    queryFn: getUsdArsQuote,
-    staleTime: 5 * 60_000,
-  });
+	return useQuery<UsdArsQuote>({
+		queryKey: ['public', 'usd-ars-quote'],
+		queryFn: getUsdArsQuote,
+		staleTime: 5 * 60_000,
+	});
 }
