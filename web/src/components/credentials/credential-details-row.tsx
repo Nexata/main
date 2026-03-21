@@ -22,7 +22,6 @@ import {
   "components.credentials.global.toast.error" as components_credentials_global_toast_error
 } from "@/paraglide/messages.js"
 import { AccessLevelBadge } from "./access-level-badge"
-import { Switch } from "@/components/ui/switch"
 import { Globe } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { infoToast } from "@/components/info-toast/info-toast"
@@ -130,7 +129,7 @@ export function CredentialDetailsRow({
               {credential.isGlobal && credential.accessLevel !== "global" && (
                 <Tooltip>
                   <TooltipTrigger className="shrink-0">
-                    <Globe className="h-3.5 w-3.5 text-blue-600" />
+                    <Globe className="h-3.5 w-3.5 text-blue-500/70" />
                   </TooltipTrigger>
                   <TooltipContent side="top">
                     {components_credentials_global_toggle_label()}
@@ -158,23 +157,20 @@ export function CredentialDetailsRow({
           {canManage && (
             <Tooltip>
               <TooltipTrigger
-                className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted/60 transition-colors cursor-pointer"
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 outline-none cursor-pointer",
+                  credential.isGlobal
+                    ? "bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/40 dark:text-blue-400"
+                    : "bg-muted text-muted-foreground hover:text-foreground",
+                  isTogglingGlobal && "opacity-50 pointer-events-none"
+                )}
                 onClick={handleToggleGlobal}
               >
-                <Globe className={cn(
-                  "h-3.5 w-3.5 transition-colors",
-                  credential.isGlobal ? "text-blue-600" : "text-muted-foreground"
-                )} />
-                <Switch
-                  size="sm"
-                  checked={credential.isGlobal}
-                  disabled={isTogglingGlobal}
-                  className="pointer-events-none"
-                />
+                <Globe className="h-3 w-3" />
+                {components_credentials_global_toggle_label()}
               </TooltipTrigger>
               <TooltipContent side="top">
-                <p className="font-medium">{components_credentials_global_toggle_label()}</p>
-                <p className="text-[10px] opacity-80">{components_credentials_global_toggle_description()}</p>
+                {components_credentials_global_toggle_description()}
               </TooltipContent>
             </Tooltip>
           )}
