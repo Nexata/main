@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
 import { CredentialPermissions } from "@/components/credentials/credential-permissions"
 import type { CredentialItem } from "@/lib/credential"
+import { listCredentials, toggleCredentialGlobal } from "@/lib/credential"
 import type { SourceConfig } from "@/lib/available-sources"
 import { StorageFileTree } from "@/components/sources/file-tree"
 import { useEffect, useState } from "react"
@@ -12,9 +13,19 @@ import {
   "components.sources.view_files" as components_sources_view_files,
   "components.sources.collapse_files" as components_sources_collapse_files,
   "components.credentials.permissions.view_credentials" as components_credentials_permissions_view_credentials,
-  "components.credentials.permissions.hide_credentials" as components_credentials_permissions_hide_credentials
+  "components.credentials.permissions.hide_credentials" as components_credentials_permissions_hide_credentials,
+  "components.credentials.global.toggle_label" as components_credentials_global_toggle_label,
+  "components.credentials.global.toggle_description" as components_credentials_global_toggle_description,
+  "components.credentials.global.toast.loading" as components_credentials_global_toast_loading,
+  "components.credentials.global.toast.success_enabled" as components_credentials_global_toast_success_enabled,
+  "components.credentials.global.toast.success_disabled" as components_credentials_global_toast_success_disabled,
+  "components.credentials.global.toast.error" as components_credentials_global_toast_error
 } from "@/paraglide/messages.js"
 import { AccessLevelBadge } from "./access-level-badge"
+import { Switch } from "@/components/ui/switch"
+import { Globe } from "lucide-react"
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import { infoToast } from "@/components/info-toast/info-toast"
 
 type Props = {
   credential: CredentialItem
@@ -36,11 +47,35 @@ export function CredentialDetailsRow({
   source,
 }: Props) {
   const [mode, setMode] = useState<"details" | "files">("details")
+  const [isTogglingGlobal, setIsTogglingGlobal] = useState(false)
 
   // Reset mode when collapsing
   useEffect(() => {
     if (!expanded) setMode("details")
   }, [expanded])
+
+  async function handleToggleGlobal() {
+    if (isTogglingGlobal) return
+
+    setIsTogglingGlobal(true)
+    const toastId = infoToast.loading({ title: components_credentials_global_toast_loading() })
+
+    try {
+      const result = await toggleCredentialGlobal(credential.id)
+      const fresh = await listCredentials()
+      onCredentialsUpdate(fresh)
+
+      if (result.isGlobal) {
+        infoToast.success(toastId, { title: components_credentials_global_toast_success_enabled() })
+      } else {
+        infoToast.success(toastId, { title: components_credentials_global_toast_success_disabled() })
+      }
+    } catch {
+      infoToast.error(toastId, { title: components_credentials_global_toast_error() })
+    } finally {
+      setIsTogglingGlobal(false)
+    }
+  }
 
   // Utility to generate avatar color
   function stringToColor(str: string) {
@@ -91,6 +126,17 @@ export function CredentialDetailsRow({
               <span className="shrink-0">
                 <AccessLevelBadge level={credential.accessLevel} />
               </span>
+
+              {credential.isGlobal && credential.accessLevel !== "global" && (
+                <Tooltip>
+                  <TooltipTrigger className="shrink-0">
+                    <Globe className="h-3.5 w-3.5 text-blue-600" />
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {components_credentials_global_toggle_label()}
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
 
             {/* Row 2 — email + created */}
@@ -108,6 +154,31 @@ export function CredentialDetailsRow({
 
         {/* Actions */}
         <div className="flex items-center gap-1 self-end sm:self-auto">
+          {/* Global toggle */}
+          {canManage && (
+            <Tooltip>
+              <TooltipTrigger
+                className="flex items-center gap-1.5 px-2 py-1 rounded-md hover:bg-muted/60 transition-colors cursor-pointer"
+                onClick={handleToggleGlobal}
+              >
+                <Globe className={cn(
+                  "h-3.5 w-3.5 transition-colors",
+                  credential.isGlobal ? "text-blue-600" : "text-muted-foreground"
+                )} />
+                <Switch
+                  size="sm"
+                  checked={credential.isGlobal}
+                  disabled={isTogglingGlobal}
+                  className="pointer-events-none"
+                />
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                <p className="font-medium">{components_credentials_global_toggle_label()}</p>
+                <p className="text-[10px] opacity-80">{components_credentials_global_toggle_description()}</p>
+              </TooltipContent>
+            </Tooltip>
+          )}
+
           {/* Details button */}
           <Button
             size="sm"

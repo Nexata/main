@@ -93,6 +93,16 @@
 					}
 				}
 			},
+			"global": {
+				"toggle_label": "Acceso global",
+				"toggle_description": "Todos los usuarios del tenant pueden ver y usar esta credencial.",
+				"toast": {
+					"loading": "Actualizando visibilidad...",
+					"success_enabled": "Credencial visible para todos los usuarios",
+					"success_disabled": "Credencial ya no es global",
+					"error": "No se pudo actualizar la visibilidad"
+				}
+			},
 			"modal": {
 				"delete": {
 					"title": "Eliminar credencial",

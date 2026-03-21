@@ -53,6 +53,15 @@ export async function deleteCredentialById(
 	);
 }
 
+export async function toggleCredentialGlobal(credentialId: string) {
+	return await withAuthRetry((headers) =>
+		apiClient.credential['is-global'].patch({
+			$headers: headers,
+			credentialId,
+		}),
+	);
+}
+
 export function canManageCredential(
 	cred: CredentialItem,
 	me?: { isAdmin?: boolean },

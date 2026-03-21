@@ -93,6 +93,16 @@
 					}
 				}
 			},
+			"global": {
+				"toggle_label": "Global access",
+				"toggle_description": "All users in the tenant can view and use this credential.",
+				"toast": {
+					"loading": "Updating visibility...",
+					"success_enabled": "Credential visible to all users",
+					"success_disabled": "Credential is no longer global",
+					"error": "Failed to update visibility"
+				}
+			},
 			"modal": {
 				"delete": {
 					"title": "Delete Credential",
