@@ -1,9 +1,12 @@
 import {
   "admin.billing.currency_toggle.quote_label" as admin_billing_quote_label,
+  "admin.billing.currency_toggle.ars_surcharge_tooltip" as admin_billing_ars_surcharge_tooltip,
 } from "@/paraglide/messages.js";
 import { useUsdArsQuote } from "@/lib/admin";
 import { useCurrencyStore } from "@/lib/currency.store";
 import { cn } from "@/lib/utils";
+import { Info } from "lucide-react";
+import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 type CurrencyToggleProps = {
   className?: string;
@@ -53,6 +56,17 @@ export function CurrencyToggle({ className }: CurrencyToggleProps) {
             })}
           </strong>
         </span>
+      )}
+
+      {showARS && quote && (
+        <Tooltip>
+          <TooltipTrigger className="text-muted-foreground hover:text-foreground transition-colors cursor-help">
+            <Info className="h-3.5 w-3.5" />
+          </TooltipTrigger>
+          <TooltipContent side="bottom">
+            {admin_billing_ars_surcharge_tooltip()}
+          </TooltipContent>
+        </Tooltip>
       )}
     </div>
   );

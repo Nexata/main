@@ -268,8 +268,8 @@
 			"thinking": "Pensando",
 			"error": "Ocurrió un error al procesar tu mensaje"
 		},
-		"copy":{
-		  "copy": "Copiar",
+		"copy": {
+			"copy": "Copiar",
 			"copied": "Copiado"
 		},
 		"edit": {
@@ -462,33 +462,34 @@
 			"back_to_chat": "Volver al chat"
 		},
 		"company_overview": {
-      "title": "Información general",
-      "description": "Resumen del estado de tu cuenta, plan actual y uso de mensajes.",
-      "message_balance": "Saldo de mensajes",
-      "message_balance_info": "Mensajes que aún podés enviar al chat de Nexy. Un mensaje incluye una pregunta del usuario y la respuesta de Nexy.",
-      "embeddings_balance": "Capacidad de procesamiento",
-      "embeddings_balance_info": "Capacidad utilizada para analizar e indexar los archivos que subís, permitiendo que Nexy entienda su contenido y pueda buscar información dentro de ellos.",
-      "storage_balance": "Almacenamiento usado",
-      "storage_balance_info": "Espacio total utilizado por los archivos y documentos guardados en la base de conocimiento de tu espacio de trabajo.",
-      "current_plan": "Plan actual",
-      "upgrade_plan": "Mejorar plan",
-      "buy_messages": "Comprar mensajes",
-      "billing": "Facturación y uso",
-      "edit": "Editar empresa",
-      "tenant_name": "Nombre de la empresa",
-      "tenant_logo": "Logo de la empresa",
-      "plans": {
-        "free": "Gratis",
-        "personal": "Personal",
-        "business": "Business",
-        "pay_as_you_go": "Pago por uso"
-      }
-    },
+			"title": "Información general",
+			"description": "Resumen del estado de tu cuenta, plan actual y uso de mensajes.",
+			"message_balance": "Saldo de mensajes",
+			"message_balance_info": "Mensajes que aún podés enviar al chat de Nexy. Un mensaje incluye una pregunta del usuario y la respuesta de Nexy.",
+			"embeddings_balance": "Capacidad de procesamiento",
+			"embeddings_balance_info": "Capacidad utilizada para analizar e indexar los archivos que subís, permitiendo que Nexy entienda su contenido y pueda buscar información dentro de ellos.",
+			"storage_balance": "Almacenamiento usado",
+			"storage_balance_info": "Espacio total utilizado por los archivos y documentos guardados en la base de conocimiento de tu espacio de trabajo.",
+			"current_plan": "Plan actual",
+			"upgrade_plan": "Mejorar plan",
+			"buy_messages": "Comprar mensajes",
+			"billing": "Facturación y uso",
+			"edit": "Editar empresa",
+			"tenant_name": "Nombre de la empresa",
+			"tenant_logo": "Logo de la empresa",
+			"plans": {
+				"free": "Gratis",
+				"personal": "Personal",
+				"business": "Business",
+				"pay_as_you_go": "Pago por uso"
+			}
+		},
 		"billing": {
 			"title": "Facturación",
 			"description": "Historial de facturas y recargas de mensajes.",
 			"currency_toggle": {
-				"quote_label": "1 USD = ARS {quote}"
+				"quote_label": "1 USD = ARS {quote}",
+				"ars_surcharge_tooltip": "Los pagos en pesos se procesan a través de Mercado Pago con un recargo del 5%."
 			},
 			"last_bill": {
 				"title": "Última factura",

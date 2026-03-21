@@ -268,8 +268,8 @@
 			"thinking": "Thinking",
 			"error": "An error occurred while processing your message"
 		},
-		"copy":{
-		  "copy": "Copy",
+		"copy": {
+			"copy": "Copy",
 			"copied": "Copied"
 		},
 		"edit": {
@@ -462,33 +462,34 @@
 			"back_to_chat": "Back to chat"
 		},
 		"company_overview": {
-      "title": "General information",
-      "description": "Overview of your account status, current plan, and message usage.",
-      "message_balance": "Message balance",
-      "message_balance_info": "Messages you can still send to Nexy. One message includes a user question and Nexy’s response.",
-      "embeddings_balance": "Embeddings balance",
-      "embeddings_balance_info": "Processing capacity used to analyze and index your uploaded files so Nexy can understand and search their content.",
-      "storage_balance": "Storage balance",
-      "storage_balance_info": "Total space used by the files and documents stored in your workspace knowledge base.",
-      "current_plan": "Current plan",
-      "upgrade_plan": "Upgrade plan",
-      "buy_messages": "Buy messages",
-      "billing": "Billing & usage",
-      "edit": "Edit Company",
-      "tenant_name": "Company Name",
-      "tenant_logo": "Company Logo",
-      "plans": {
-        "free": "Free",
-        "personal": "Personal",
-        "business": "Business",
-        "pay_as_you_go": "Pay as you go"
-      }
-    },
+			"title": "General information",
+			"description": "Overview of your account status, current plan, and message usage.",
+			"message_balance": "Message balance",
+			"message_balance_info": "Messages you can still send to Nexy. One message includes a user question and Nexy’s response.",
+			"embeddings_balance": "Embeddings balance",
+			"embeddings_balance_info": "Processing capacity used to analyze and index your uploaded files so Nexy can understand and search their content.",
+			"storage_balance": "Storage balance",
+			"storage_balance_info": "Total space used by the files and documents stored in your workspace knowledge base.",
+			"current_plan": "Current plan",
+			"upgrade_plan": "Upgrade plan",
+			"buy_messages": "Buy messages",
+			"billing": "Billing & usage",
+			"edit": "Edit Company",
+			"tenant_name": "Company Name",
+			"tenant_logo": "Company Logo",
+			"plans": {
+				"free": "Free",
+				"personal": "Personal",
+				"business": "Business",
+				"pay_as_you_go": "Pay as you go"
+			}
+		},
 		"billing": {
 			"title": "Billing",
 			"description": "Invoice history and message top-ups.",
 			"currency_toggle": {
-				"quote_label": "1 USD = ARS {quote}"
+				"quote_label": "1 USD = ARS {quote}",
+				"ars_surcharge_tooltip": "Payments in Argentine pesos are processed through Mercado Pago with a 5% surcharge."
 			},
 			"last_bill": {
 				"title": "Last invoice",
