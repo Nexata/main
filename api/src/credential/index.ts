@@ -16,7 +16,7 @@ import {
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
 import { NeonDbError } from '@neondatabase/serverless';
-import { and, eq, exists, inArray, or } from 'drizzle-orm';
+import { and, eq, exists, inArray, not, or } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const credentialRouter = new Elysia({
@@ -86,6 +86,59 @@ export const credentialRouter = new Elysia({
 		{
 			detail: { summary: 'Delete credential by ID' },
 			params: tObject({ id: t.String({ format: 'uuid' }) }),
+		},
+	)
+	.patch(
+		'/is-global',
+		async ({ body: { credentialId }, activeUser }) => {
+			const allowed = activeUser.isAdmin
+				? inArray(
+						credential.userId,
+						db
+							.select({ id: user.id })
+							.from(user)
+							.where(eq(user.slug, activeUser.slug)),
+					)
+				: or(
+						eq(credential.userId, activeUser.id),
+						exists(
+							db
+								.select({ id: user.id })
+								.from(credentialPermission)
+								.where(
+									and(
+										eq(credentialPermission.credentialId, credentialId),
+										eq(credentialPermission.userId, activeUser.id),
+										eq(credentialPermission.isAdmin, true),
+									),
+								),
+						),
+					);
+
+			const result = (
+				await db
+					.update(credential)
+					.set({ isGlobal: not(credential.isGlobal) })
+					.where(and(eq(credential.id, credentialId), allowed))
+					.returning({ isGlobal: credential.isGlobal })
+			).at(0);
+
+			if (!result)
+				throw httpError(
+					HttpCode.FORBIDDEN,
+					ErrorCode.NO_CREDENTIAL_PERMISSION,
+					activeUser.language as Language,
+				);
+
+			await invalidateCredentialCache(activeUser.slug, credentialId);
+
+			return result;
+		},
+		{
+			detail: { summary: 'Toggle credential global visibility' },
+			body: tObject({
+				credentialId: t.String({ format: 'uuid' }),
+			}),
 		},
 	)
 	.get(
