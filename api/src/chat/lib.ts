@@ -414,6 +414,16 @@ export async function persistChat(params: {
 		(x) => typeof x !== 'undefined',
 	);
 
+	if (
+		!responseMessages.length &&
+		(reason === FinishReason.STOPPED || reason === FinishReason.ERROR)
+	) {
+		messagesToAppend.push({
+			role: 'assistant',
+			content: [{ type: 'text', text: '' }],
+		} as ModelMessage);
+	}
+
 	const shouldBill = creditsToUse > 0 && reason !== FinishReason.ERROR;
 
 	const baseDate = new Date();

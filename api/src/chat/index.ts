@@ -205,6 +205,27 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							}),
 					);
 				},
+				onError: async ({ error }) => {
+					if (error instanceof Error && error.name === 'AbortError') {
+						await doPersist([], FinishReason.STOPPED).catch((err) =>
+							captureException(err, {
+								tags: { source: 'chat:onError:abort' },
+								extra: { threadId },
+							}),
+						);
+					} else {
+						await doPersist([], FinishReason.ERROR).catch((err) =>
+							captureException(err, {
+								tags: { source: 'chat:onError:persist' },
+								extra: { threadId },
+							}),
+						);
+						captureException(error, {
+							tags: { source: 'chat:onError' },
+							extra: { threadId },
+						});
+					}
+				},
 			});
 
 			return stream.toUIMessageStreamResponse({
@@ -389,6 +410,27 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								extra: { threadId: body.threadId },
 							}),
 					);
+				},
+				onError: async ({ error }) => {
+					if (error instanceof Error && error.name === 'AbortError') {
+						await doPersist([], FinishReason.STOPPED).catch((err) =>
+							captureException(err, {
+								tags: { source: 'chat:answer:onError:abort' },
+								extra: { threadId: body.threadId },
+							}),
+						);
+					} else {
+						await doPersist([], FinishReason.ERROR).catch((err) =>
+							captureException(err, {
+								tags: { source: 'chat:answer:onError:persist' },
+								extra: { threadId: body.threadId },
+							}),
+						);
+						captureException(error, {
+							tags: { source: 'chat:answer:onError' },
+							extra: { threadId: body.threadId },
+						});
+					}
 				},
 			});
 
