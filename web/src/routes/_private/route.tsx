@@ -13,6 +13,7 @@ import ToolDetailPanel from '@/components/tool-detail-panel/tool-detail-panel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
+import { useToolDetailStore } from '@/lib/tool-detail.store';
 import { useMyTenant } from '@/lib/user';
 
 export const Route = createFileRoute('/_private')({
@@ -41,6 +42,15 @@ function PrivateLayout() {
 	useEffect(() => {
 		closeMobileSidebar();
 	}, [location.pathname, closeMobileSidebar]);
+
+	// Close tool detail panel when leaving /chat
+	useEffect(() => {
+		const isOnChat =
+			location.pathname === '/chat' || location.pathname.startsWith('/chat/');
+		if (!isOnChat) {
+			useToolDetailStore.getState().close();
+		}
+	}, [location.pathname]);
 
 	useEffect(() => {
 		controlsRef.current?.animate(

@@ -70,7 +70,7 @@ import {
 	listCredentials,
 } from '@/lib/credential';
 import type { SearchFilesParams, SearchFilesResult } from '@/lib/file';
-import { useDeleteFiles, useIngestFiles, useSearchFiles } from '@/lib/file';
+import { reIngestByProvider, useDeleteFiles, useSearchFiles } from '@/lib/file';
 import { useMe } from '@/lib/user';
 import {
 	'common.cancel' as common_cancel,
@@ -685,7 +685,6 @@ export function FilesManagementSection() {
 	const [datePickerOpen, setDatePickerOpen] = useState(false);
 
 	const { data: files = [], isLoading, refetch } = useSearchFiles(filters);
-	const ingestMutation = useIngestFiles();
 	const deleteMutation = useDeleteFiles();
 
 	const toggleSelect = (id: string) =>
@@ -799,11 +798,17 @@ export function FilesManagementSection() {
 
 	// CAMBIO 2: refresh unitario con infoToast
 	const handleSingleRefresh = async (fileId: string) => {
+		const file = files.find((f) => f.id === fileId);
+		if (!file || file.provider === 'nexata' || !file.credential) return;
+
 		const toastId = infoToast.loading({
 			title: settings_files_toast_reingest_loading(),
 		});
 		try {
-			await ingestMutation.mutateAsync({ files: fileId, metadata: null });
+			await reIngestByProvider(file.provider, {
+				credentialId: file.credential.id,
+				selection: [{ id: file.id, isDir: false }],
+			});
 			refetch();
 			infoToast.success(toastId, {
 				title: common_success(),
@@ -819,13 +824,43 @@ export function FilesManagementSection() {
 
 	// CAMBIO 2: refresh masivo con infoToast
 	const handleMassRefresh = async () => {
+		// Group selected files by provider + credentialId
+		const groups = new Map<
+			string,
+			{ provider: string; credentialId: string; fileIds: string[] }
+		>();
+		for (const id of selected) {
+			const file = files.find((f) => f.id === id);
+			if (!file || file.provider === 'nexata' || !file.credential) continue;
+			const key = `${file.provider}::${file.credential.id}`;
+			const group = groups.get(key);
+			if (group) {
+				group.fileIds.push(file.id);
+			} else {
+				groups.set(key, {
+					provider: file.provider,
+					credentialId: file.credential.id,
+					fileIds: [file.id],
+				});
+			}
+		}
+
+		if (groups.size === 0) return;
+
 		const toastId = infoToast.loading({
 			title: settings_files_toast_reingest_bulk_loading({
 				count: String(selected.size),
 			}),
 		});
 		try {
-			await ingestMutation.mutateAsync({ files: 'mass', metadata: null });
+			await Promise.all(
+				[...groups.values()].map((g) =>
+					reIngestByProvider(g.provider, {
+						credentialId: g.credentialId,
+						selection: g.fileIds.map((id) => ({ id, isDir: false })),
+					}),
+				),
+			);
 			refetch();
 			infoToast.success(toastId, {
 				title: common_success(),
@@ -1215,8 +1250,12 @@ export function FilesManagementSection() {
 											<div className="rounded-full bg-muted p-3">
 												<FileText className="w-5 h-5 text-muted-foreground" />
 											</div>
-											<p className="text-sm font-medium">{settings_files_empty_title()}</p>
-											<p className="text-xs text-muted-foreground max-w-xs">{settings_files_empty_description()}</p>
+											<p className="text-sm font-medium">
+												{settings_files_empty_title()}
+											</p>
+											<p className="text-xs text-muted-foreground max-w-xs">
+												{settings_files_empty_description()}
+											</p>
 										</div>
 									</TableCell>
 								</TableRow>
@@ -1285,15 +1324,18 @@ export function FilesManagementSection() {
 															<Button
 																size="icon"
 																variant="ghost"
-																className="h-8 w-8 cursor-pointer"
+																className="h-8 w-8 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+																disabled={
+																	file.provider === 'nexata' || !file.credential
+																}
 																onClick={() => handleSingleRefresh(file.id)}
 															>
 																<RefreshCcw className="w-3.5 h-3.5" />
 															</Button>
 														</TooltipTrigger>
 														<TooltipContent>
-                              {settings_files_tooltip_reingest()}
-                            </TooltipContent>
+															{settings_files_tooltip_reingest()}
+														</TooltipContent>
 													</Tooltip>
 													<Tooltip>
 														<TooltipTrigger>
@@ -1315,8 +1357,8 @@ export function FilesManagementSection() {
 															</Button>
 														</TooltipTrigger>
 														<TooltipContent>
-                              {settings_files_tooltip_delete()}
-                            </TooltipContent>
+															{settings_files_tooltip_delete()}
+														</TooltipContent>
 													</Tooltip>
 												</TooltipProvider>
 											</div>
@@ -1328,17 +1370,21 @@ export function FilesManagementSection() {
 						<TableFooter className="bg-muted/30">
 							<TableRow>
 								<TableCell colSpan={5}>
-  								<span className="text-xs text-muted-foreground">
-                    {files.length > 0
-                      ? settings_files_pagination_page_count({count: String(files.length)})
-                      : settings_files_pagination_no_results()}
-                  </span>
+									<span className="text-xs text-muted-foreground">
+										{files.length > 0
+											? settings_files_pagination_page_count({
+													count: String(files.length),
+												})
+											: settings_files_pagination_no_results()}
+									</span>
 								</TableCell>
 								<TableCell colSpan={3}>
 									<div className="flex items-center justify-end gap-2">
-									  <span className="text-xs text-muted-foreground">
-                      {settings_files_pagination_page({page: String(currentPage)})}
-                    </span>
+										<span className="text-xs text-muted-foreground">
+											{settings_files_pagination_page({
+												page: String(currentPage),
+											})}
+										</span>
 										<Button
 											size="sm"
 											variant="outline"
@@ -1376,21 +1422,21 @@ export function FilesManagementSection() {
 						<DialogDescription>{dialogDescription}</DialogDescription>
 					</DialogHeader>
 					<DialogFooter className="flex justify-end gap-2">
-  					<Button
-              variant="outline"
-              className="cursor-pointer"
-              onClick={() => setDeleteDialog({ open: false })}
-            >
-              {common_cancel()}
-            </Button>
+						<Button
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => setDeleteDialog({ open: false })}
+						>
+							{common_cancel()}
+						</Button>
 
-            <Button
-              variant="destructive"
-              className="cursor-pointer"
-              onClick={handleConfirmDelete}
-            >
-              {common_delete()}
-            </Button>
+						<Button
+							variant="destructive"
+							className="cursor-pointer"
+							onClick={handleConfirmDelete}
+						>
+							{common_delete()}
+						</Button>
 					</DialogFooter>
 				</DialogContent>
 			</Dialog>

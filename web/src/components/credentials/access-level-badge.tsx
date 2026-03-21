@@ -21,7 +21,7 @@ export function AccessLevelBadge({ level }: Props) {
       return (
         <Badge
           variant="secondary"
-          className="gap-1 text-blue-600/70 bg-blue-50/50 border border-blue-100"
+          className="gap-1 text-blue-600 bg-blue-50 border border-blue-200"
         >
           <Globe className="h-3 w-3" />
           Global
@@ -32,7 +32,7 @@ export function AccessLevelBadge({ level }: Props) {
       return (
         <Badge
           variant="secondary"
-          className="gap-1 text-green-600/70 bg-green-50/50 border border-green-100"
+          className="gap-1 text-green-600 bg-green-50 border border-green-200"
         >
           <ShieldCheck className="h-3 w-3" />
           Admin
@@ -54,7 +54,7 @@ export function AccessLevelBadge({ level }: Props) {
       return (
         <Badge
           variant="secondary"
-          className="gap-1 text-amber-600/70 bg-amber-50/50 border border-amber-100"
+          className="gap-1 text-amber-600 bg-amber-50 border border-amber-200"
         >
           <Crown className="h-3 w-3" />
           {components_credentials_permissions_tenant_admin()}

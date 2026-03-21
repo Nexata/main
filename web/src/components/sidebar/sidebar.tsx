@@ -22,7 +22,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import DeleteChatModal from "./delete-chat.modal";
 import { useTheme } from "../theme-provider";
-import { useNavigate, useRouterState } from "@tanstack/react-router";
+import { useNavigate } from "@tanstack/react-router";
 import { useMe, useMyTenant } from "@/lib/user";
 import UserSection from "../user-section/user-section";
 import {
@@ -51,8 +51,6 @@ type SidebarProps = {
 
 export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarProps) {
   const navigate = useNavigate()
-  const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isOnChat = pathname === '/chat' || pathname.startsWith('/chat/');
   const [isCollapsed, setIsCollapsed] = useState(false);
   useSyncLocale();
   const queryClient = useQueryClient();
@@ -244,8 +242,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
 
   // In mobile overlay mode, always show expanded at full width
-  // Outside /chat, force collapsed so thread list isn't visible
-  const effectiveCollapsed = isMobileOverlay ? false : (!isOnChat || isCollapsed);
+  const effectiveCollapsed = isMobileOverlay ? false : isCollapsed;
 
   return (
     <>
@@ -306,14 +303,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
               </motion.button>
             ) : (
               <motion.button
-                onClick={() => {
-                  if (!isOnChat) {
-                    navigate({ to: '/chat', search: { id: undefined } });
-                    setIsCollapsed(false);
-                  } else {
-                    setIsCollapsed(!isCollapsed);
-                  }
-                }}
+                onClick={() => setIsCollapsed(!isCollapsed)}
                 className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
