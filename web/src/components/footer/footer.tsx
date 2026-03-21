@@ -1,4 +1,4 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router';
+import { Link, useRouterState } from '@tanstack/react-router';
 import type { Language } from '@/lib/user';
 import {
 	'footer.tagline' as footer_tagline,
@@ -15,7 +15,6 @@ type FooterProps = {
 // -------------------------------- COMPONENT --------------------------------
 
 export function Footer({ language }: FooterProps) {
-	const navigate = useNavigate();
 	const location = useRouterState({ select: (s) => s.location.pathname });
 	const lc = { locale: language };
 
@@ -31,9 +30,8 @@ export function Footer({ language }: FooterProps) {
 				</div>
 
 				<div className="flex items-center gap-6">
-					<button
-						type="button"
-						onClick={() => navigate({ to: '/privacy-policy' })}
+					<Link
+						to="/privacy-policy"
 						className={`text-xs transition-colors cursor-pointer ${
 							isPrivacyPolicy
 								? 'text-primary font-semibold'
@@ -41,10 +39,9 @@ export function Footer({ language }: FooterProps) {
 						}`}
 					>
 						{footer_privacy_policy({}, lc)}
-					</button>
-					<button
-						type="button"
-						onClick={() => navigate({ to: '/tyc' })}
+					</Link>
+					<Link
+						to="/tyc"
 						className={`text-xs transition-colors cursor-pointer ${
 							isTerms
 								? 'text-primary font-semibold'
@@ -52,7 +49,7 @@ export function Footer({ language }: FooterProps) {
 						}`}
 					>
 						{footer_terms({}, lc)}
-					</button>
+					</Link>
 					<p className="text-xs text-muted-foreground">
 						&copy; {new Date().getFullYear()} Nexata
 					</p>
