@@ -13,6 +13,7 @@
 		"loading": "Loading…",
 		"success": "Success",
 		"error": "Something went wrong",
+		"no_changes": "No changes",
 		"created_at": "Created at"
 	},
 
@@ -452,9 +453,12 @@
 				"reingest_loading": "Re-ingesting file…",
 				"reingest_success_desc": "File re-ingested successfully.",
 				"reingest_error_desc": "Could not re-ingest the file.",
+				"reingest_unmodified_desc": "File was not modified (already up to date).",
 				"reingest_bulk_loading": "Re-ingesting {count} file(s)…",
 				"reingest_bulk_success_desc": "{count} file(s) re-ingested.",
-				"reingest_bulk_error_desc": "Could not re-ingest the selected files."
+				"reingest_bulk_error_desc": "Could not re-ingest the selected files.",
+				"reingest_result_desc": "{ok} updated, {unmodified} unchanged, {failed} failed.",
+				"reingest_all_unmodified_desc": "All files were already up to date."
 			},
 			"user": {
 				"system": "system"

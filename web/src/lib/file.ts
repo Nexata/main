@@ -229,6 +229,8 @@ export async function reIngestFromOneDrive(payload: IngestPayload) {
    RE-INGEST DISPATCHER
 ====================================================== */
 
+export type ReIngestResult = { ok: number; unmodified: number; failed: number };
+
 /**
  * Routes a re-ingest call to the correct provider endpoint.
  * Only integration providers (drive, one_drive, dropbox) are supported.
@@ -236,14 +238,14 @@ export async function reIngestFromOneDrive(payload: IngestPayload) {
 export async function reIngestByProvider(
 	provider: string,
 	payload: IngestPayload,
-) {
+): Promise<ReIngestResult> {
 	switch (provider) {
 		case 'drive':
-			return reIngestFromDrive(payload);
+			return reIngestFromDrive(payload) as Promise<ReIngestResult>;
 		case 'one_drive':
-			return reIngestFromOneDrive(payload);
+			return reIngestFromOneDrive(payload) as Promise<ReIngestResult>;
 		case 'dropbox':
-			return reIngestFromDropbox(payload);
+			return reIngestFromDropbox(payload) as Promise<ReIngestResult>;
 		default:
 			throw new Error(`Unsupported provider for re-ingest: ${provider}`);
 	}

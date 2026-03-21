@@ -69,13 +69,18 @@ import {
 	deleteCredentialById,
 	listCredentials,
 } from '@/lib/credential';
-import type { SearchFilesParams, SearchFilesResult } from '@/lib/file';
+import type {
+	ReIngestResult,
+	SearchFilesParams,
+	SearchFilesResult,
+} from '@/lib/file';
 import { reIngestByProvider, useDeleteFiles, useSearchFiles } from '@/lib/file';
 import { useMe } from '@/lib/user';
 import {
 	'common.cancel' as common_cancel,
 	'common.delete' as common_delete,
 	'common.error' as common_error,
+	'common.no_changes' as common_no_changes,
 	'common.success' as common_success,
 	'components.credentials.toast.delete.error' as components_credentials_toast_delete_error,
 	'components.credentials.toast.delete.loading' as components_credentials_toast_delete_loading,
@@ -126,12 +131,14 @@ import {
 	'settings.files.toast.delete_loading' as settings_files_toast_delete_loading,
 	'settings.files.toast.delete_success' as settings_files_toast_delete_success,
 	'settings.files.toast.delete_success_desc' as settings_files_toast_delete_success_desc,
+	'settings.files.toast.reingest_all_unmodified_desc' as settings_files_toast_reingest_all_unmodified_desc,
 	'settings.files.toast.reingest_bulk_error_desc' as settings_files_toast_reingest_bulk_error_desc,
 	'settings.files.toast.reingest_bulk_loading' as settings_files_toast_reingest_bulk_loading,
-	'settings.files.toast.reingest_bulk_success_desc' as settings_files_toast_reingest_bulk_success_desc,
 	'settings.files.toast.reingest_error_desc' as settings_files_toast_reingest_error_desc,
 	'settings.files.toast.reingest_loading' as settings_files_toast_reingest_loading,
+	'settings.files.toast.reingest_result_desc' as settings_files_toast_reingest_result_desc,
 	'settings.files.toast.reingest_success_desc' as settings_files_toast_reingest_success_desc,
+	'settings.files.toast.reingest_unmodified_desc' as settings_files_toast_reingest_unmodified_desc,
 	'settings.files.tooltip.delete' as settings_files_tooltip_delete,
 	'settings.files.tooltip.reingest' as settings_files_tooltip_reingest,
 	'settings.files.user.system' as settings_files_user_system,
@@ -805,15 +812,28 @@ export function FilesManagementSection() {
 			title: settings_files_toast_reingest_loading(),
 		});
 		try {
-			await reIngestByProvider(file.provider, {
+			const result: ReIngestResult = await reIngestByProvider(file.provider, {
 				credentialId: file.credential.id,
 				selection: [{ id: file.id, isDir: false }],
 			});
 			refetch();
-			infoToast.success(toastId, {
-				title: common_success(),
-				description: settings_files_toast_reingest_success_desc(),
-			});
+
+			if (result.failed > 0) {
+				infoToast.error(toastId, {
+					title: common_error(),
+					description: settings_files_toast_reingest_error_desc(),
+				});
+			} else if (result.ok > 0) {
+				infoToast.success(toastId, {
+					title: common_success(),
+					description: settings_files_toast_reingest_success_desc(),
+				});
+			} else {
+				infoToast.info(toastId, {
+					title: common_no_changes(),
+					description: settings_files_toast_reingest_unmodified_desc(),
+				});
+			}
 		} catch {
 			infoToast.error(toastId, {
 				title: common_error(),
@@ -853,7 +873,7 @@ export function FilesManagementSection() {
 			}),
 		});
 		try {
-			await Promise.all(
+			const results = await Promise.all(
 				[...groups.values()].map((g) =>
 					reIngestByProvider(g.provider, {
 						credentialId: g.credentialId,
@@ -862,12 +882,39 @@ export function FilesManagementSection() {
 				),
 			);
 			refetch();
-			infoToast.success(toastId, {
-				title: common_success(),
-				description: settings_files_toast_reingest_bulk_success_desc({
-					count: String(selected.size),
+
+			// Aggregate results across all provider groups
+			const totals = results.reduce<ReIngestResult>(
+				(acc, r) => ({
+					ok: acc.ok + r.ok,
+					unmodified: acc.unmodified + r.unmodified,
+					failed: acc.failed + r.failed,
 				}),
+				{ ok: 0, unmodified: 0, failed: 0 },
+			);
+
+			const desc = settings_files_toast_reingest_result_desc({
+				ok: String(totals.ok),
+				unmodified: String(totals.unmodified),
+				failed: String(totals.failed),
 			});
+
+			if (totals.failed > 0) {
+				infoToast.error(toastId, {
+					title: common_error(),
+					description: desc,
+				});
+			} else if (totals.ok > 0) {
+				infoToast.success(toastId, {
+					title: common_success(),
+					description: desc,
+				});
+			} else {
+				infoToast.info(toastId, {
+					title: common_no_changes(),
+					description: settings_files_toast_reingest_all_unmodified_desc(),
+				});
+			}
 		} catch {
 			infoToast.error(toastId, {
 				title: common_error(),

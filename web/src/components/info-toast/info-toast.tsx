@@ -1,5 +1,5 @@
 import { toast } from "@/hooks/use-toast"
-import { Loader2, CheckCircle2, XCircle } from "lucide-react"
+import { Loader2, CheckCircle2, XCircle, Info } from "lucide-react"
 
 type ToastId = string | number
 
@@ -40,6 +40,25 @@ export const infoToast = {
                 ${baseToastClass}
                 border-emerald-500/30
                 shadow-[0_0_0_1px_theme(colors.emerald.500/0.15)]
+            `
+        })
+    },
+
+    info(toastId: ToastId, options: BaseOptions) {
+        toast({
+            id: toastId,
+            title: options.title ?? "Información",
+            description: (
+                <div className="flex items-center gap-2">
+                    <Info className="h-4 w-4 text-blue-600 dark:text-blue-500" />
+                    <span className="text-sm text-foreground">{options.description ?? "No se realizaron cambios"}</span>
+                </div>
+            ),
+            duration: 3000,
+            className: `
+                ${baseToastClass}
+                border-blue-500/30
+                shadow-[0_0_0_1px_theme(colors.blue.500/0.15)]
             `
         })
     },

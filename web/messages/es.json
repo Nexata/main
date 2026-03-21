@@ -13,6 +13,7 @@
 		"save_changes": "Guardar cambios",
 		"success": "Operación exitosa",
 		"error": "Ocurrió un error",
+		"no_changes": "Sin cambios",
 		"created_at": "Fecha de creación"
 	},
 
@@ -452,9 +453,12 @@
 				"reingest_loading": "Re-ingestando archivo…",
 				"reingest_success_desc": "El archivo fue re-ingestado correctamente.",
 				"reingest_error_desc": "No se pudo re-ingestar el archivo.",
+				"reingest_unmodified_desc": "El archivo ya estaba actualizado.",
 				"reingest_bulk_loading": "Re-ingestando {count} archivo(s)…",
 				"reingest_bulk_success_desc": "{count} archivo(s) re-ingestados.",
-				"reingest_bulk_error_desc": "No se pudieron re-ingestar los archivos seleccionados."
+				"reingest_bulk_error_desc": "No se pudieron re-ingestar los archivos seleccionados.",
+				"reingest_result_desc": "{ok} actualizado(s), {unmodified} sin cambios, {failed} fallido(s).",
+				"reingest_all_unmodified_desc": "Todos los archivos ya estaban actualizados."
 			},
 			"user": {
 				"system": "sistema"
