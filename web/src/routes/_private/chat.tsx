@@ -417,7 +417,13 @@ export function NexataChat() {
 
 	useEffect(() => {
 		if (!error) return;
-		const errorText = (error as any)?.message?.text ?? chat_meta_error();
+		let errorText = chat_meta_error();
+		try {
+			const parsed = JSON.parse(error.message);
+			if (parsed?.message?.text) errorText = parsed.message.text;
+		} catch {
+			// Not JSON — use fallback
+		}
 		infoToast.error(Date.now(), { description: errorText });
 	}, [error]);
 
