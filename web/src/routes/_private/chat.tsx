@@ -3,7 +3,6 @@
 import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import EditConfirmModal from '@/components/chat-edit/edit-confirm.modal';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
@@ -35,34 +34,49 @@ type UIParts = UIMessage['parts'];
 
 function normalizeParts(
 	content: unknown,
-	toolOutputMap?: Map<string, unknown>,
+	toolOutputMap?: Map<string, { output: unknown; isError: boolean }>,
 ): UIParts {
 	if (!content) return [];
 	if (typeof content === 'string') return [{ type: 'text', text: content }];
 	if (!Array.isArray(content)) return [];
 
-	return content.map((part: any) => {
-		if (part.type === 'tool-call' && part.toolName) {
-			const output = part.output ?? toolOutputMap?.get(part.toolCallId) ?? null;
-			return {
-				type: `tool-${part.toolName}`,
-				toolCallId: part.toolCallId,
-				state: output != null ? 'output-available' : 'input-available',
-				input: part.input ?? {},
-				output,
-			};
-		}
-		if (part.type === 'file') {
-			return {
-				type: 'file',
-				filename: part.filename ?? part.name ?? 'Unknown',
-				mediaType:
-					part.mediaType ?? part.mimeType ?? 'application/octet-stream',
-				url: part.url ?? '',
-			};
-		}
-		return part;
-	}) as UIParts;
+	const convertedToolCallIds = new Set<string>();
+
+	return content
+		.map((part: any) => {
+			if (part.type === 'tool-call' && part.toolName) {
+				convertedToolCallIds.add(part.toolCallId);
+				const mapped = toolOutputMap?.get(part.toolCallId);
+				const output = part.output ?? mapped?.output ?? null;
+				const isError = mapped?.isError ?? false;
+				return {
+					type: `tool-${part.toolName}`,
+					toolCallId: part.toolCallId,
+					state: isError ? 'output-error' : (output != null ? 'output-available' : 'input-available'),
+					input: part.input ?? {},
+					output,
+				};
+			}
+			// Skip dynamic-tool parts that were already converted from tool-call
+			if (
+				part.type === 'dynamic-tool' &&
+				part.toolCallId &&
+				convertedToolCallIds.has(part.toolCallId)
+			) {
+				return null;
+			}
+			if (part.type === 'file') {
+				return {
+					type: 'file',
+					filename: part.filename ?? part.name ?? 'Unknown',
+					mediaType:
+						part.mediaType ?? part.mimeType ?? 'application/octet-stream',
+					url: part.url ?? '',
+				};
+			}
+			return part;
+		})
+		.filter(Boolean) as UIParts;
 }
 
 export function NexataChat() {
@@ -121,16 +135,16 @@ export function NexataChat() {
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
 		if (!threadMessages) return [];
 
-		// Build a map of toolCallId → output from "tool" role messages
-		const toolOutputMap = new Map<string, unknown>();
+		// Build a map of toolCallId → { output, isError } from "tool" role messages
+		const toolOutputMap = new Map<string, { output: unknown; isError: boolean }>();
 		for (const m of threadMessages) {
 			if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
 			for (const part of m.content as any[]) {
 				if (part.type === 'tool-result' && part.toolCallId) {
-					toolOutputMap.set(
-						part.toolCallId,
-						part.result ?? part.output ?? null,
-					);
+					toolOutputMap.set(part.toolCallId, {
+						output: part.result ?? part.output ?? null,
+						isError: !!part.isError,
+					});
 				}
 			}
 		}
@@ -196,6 +210,45 @@ export function NexataChat() {
 	useEffect(() => {
 		if (isNewChat) setMessages([]);
 	}, [isNewChat, setMessages]);
+
+	// ----------------------------
+	// After a NexataAskQuestions answer stream the SDK replaces the QA assistant
+	// message in-place with a combined [text + QA(output-available) + answer] message.
+	// Once the stream is done we reset the hydration guard so the next React Query
+	// refetch can split it back into the two separate DB messages.
+	// ----------------------------
+
+	useEffect(() => {
+		if (chatStatus !== 'ready' || !activeThreadId) return;
+
+		const lastMsg = messages.at(-1);
+		if (lastMsg?.role !== 'assistant') return;
+
+		// Detect the combined QA+answer pattern: QA tool part followed by a text part
+		let foundQA = false;
+		let hasTextAfterQA = false;
+		for (const p of lastMsg.parts ?? []) {
+			const typedPart = p as { type: string; toolName?: string; state?: string };
+			if (
+				!foundQA &&
+				(typedPart.type === 'tool-NexataAskQuestions' ||
+					(typedPart.type === 'dynamic-tool' &&
+						typedPart.toolName === 'NexataAskQuestions')) &&
+				typedPart.state === 'output-available'
+			) {
+				foundQA = true;
+			} else if (foundQA && typedPart.type === 'text') {
+				hasTextAfterQA = true;
+				break;
+			}
+		}
+
+		if (hasTextAfterQA) {
+			// Allow the hydration effect to re-run and load the proper two-message
+			// state from the DB (QA message + separate answer message).
+			appliedThreadRef.current = null;
+		}
+	}, [chatStatus, activeThreadId, messages]);
 
 	// ----------------------------
 	// Sync active thread's SDK status → store
@@ -375,50 +428,26 @@ export function NexataChat() {
 	}, []);
 
 	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
-	const [editPending, setEditPending] = useState<{
-		messageId: string;
-		newText: string;
-	} | null>(null);
 
 	const handleEditMessage = useCallback(
-		(messageId: string, newText: string) => {
-			setEditPending({ messageId, newText });
-		},
-		[],
-	);
+		async (messageId: string, newText: string) => {
+			cancelEditing();
+			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
-	const handleEditConfirm = useCallback(async () => {
-		if (!editPending) return;
-		const { messageId, newText } = editPending;
-		setEditPending(null);
-		cancelEditing();
-
-		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
-
-		await sendMessage(
-			{ text: newText, files: undefined, messageId },
-			{
-				body: {
-					threadId: activeThreadId ?? null,
-					editedMessageId: messageId,
-					languagePreference: me?.language ?? null,
-					extraReason: false,
+			await sendMessage(
+				{ text: newText, files: undefined, messageId },
+				{
+					body: {
+						threadId: activeThreadId ?? null,
+						editedMessageId: messageId,
+						languagePreference: me?.language ?? null,
+						extraReason: false,
+					},
 				},
-			},
-		);
-	}, [
-		editPending,
-		cancelEditing,
-		addStreamingThread,
-		activeThreadId,
-		sendMessage,
-		me?.language,
-	]);
-
-	const handleEditCancel = useCallback(() => {
-		setEditPending(null);
-		cancelEditing();
-	}, [cancelEditing]);
+			);
+		},
+		[cancelEditing, addStreamingThread, activeThreadId, sendMessage, me?.language],
+	);
 
 	// ----------------------------
 	// Retry message
@@ -503,12 +532,6 @@ export function NexataChat() {
 					onEditMessage={handleEditMessage}
 					onBranchOff={handleBranchOff}				onRetry={handleRetry}				/>
 			</div>
-
-			<EditConfirmModal
-				open={!!editPending}
-				onCancel={handleEditCancel}
-				onConfirm={handleEditConfirm}
-			/>
 		</div>
 	);
 }

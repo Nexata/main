@@ -305,7 +305,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				);
 
 			// Append the tool result to the message history
-			const toolResultMessage: PartialMessage = {
+			// Extra `result` field stores raw answers for frontend hydration
+			const toolResultMessage = {
 				id: crypto.randomUUID(),
 				role: 'tool',
 				content: [
@@ -313,13 +314,14 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						type: 'tool-result',
 						toolCallId: toolCallPart.toolCallId,
 						toolName: 'NexataAskQuestions',
+						result: body.result,
 						output: {
 							type: 'text',
 							value: encode(body.result),
 						},
 					},
 				],
-			};
+			} as unknown as PartialMessage;
 
 			threadMessages.push(toolResultMessage);
 
@@ -390,10 +392,17 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				},
 			});
 
+			// Do NOT pass generateMessageId here.
+			// If we send a new messageId in the SSE "start" event, the AI SDK client
+			// detects that the new ID differs from the existing QA assistant message ID
+			// and calls pushMessage() on a deep-clone of that message (which still
+			// contains the original text + QA parts), making the entire QA block appear
+			// twice in the UI.  Without a messageId in "start", the SDK keeps the clone's
+			// original ID → replaceMessage() is used instead of pushMessage() → no duplication.
+			// The assistantMessageId UUID is still used exclusively for DB persistence below.
 			return stream.toUIMessageStreamResponse({
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
-				generateMessageId: () => assistantMessageId,
 			});
 		},
 		{
