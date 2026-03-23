@@ -78,6 +78,14 @@ function normalizeParts(
 			) {
 				return null;
 			}
+			// Filter out AI SDK internal approval parts — the approval state is
+			// already encoded in the corresponding tool-call part.
+			if (
+				part.type === 'tool-approval-request' ||
+				part.type === 'tool-approval-response'
+			) {
+				return null;
+			}
 			if (part.type === 'file') {
 				return {
 					type: 'file',
