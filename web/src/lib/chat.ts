@@ -28,6 +28,7 @@ export type ThreadById = Awaited<ReturnType<typeof getThreadById>>;
 export function useThreadById(
 	threadId: string | null,
 	params?: { limit?: number },
+	options?: { enabled?: boolean },
 ) {
 	return useQuery<ThreadById>({
 		queryKey: ['chat-thread', threadId, params],
@@ -35,7 +36,7 @@ export function useThreadById(
 			if (!threadId) throw new Error('threadId is required');
 			return getThreadById(threadId, params);
 		},
-		enabled: !!threadId,
+		enabled: !!threadId && (options?.enabled ?? true),
 	});
 }
 

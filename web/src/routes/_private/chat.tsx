@@ -150,8 +150,14 @@ export function NexataChat() {
 	// Thread data (React Query es la fuente de verdad del loading)
 	// ----------------------------
 
+	const isActiveThreadStreaming = activeThreadId
+		? streamingThreadIds.has(activeThreadId)
+		: false;
+
 	const { data: threadMessages, isLoading: isThreadLoading } = useThreadById(
 		activeThreadId ?? null,
+		undefined,
+		{ enabled: !isActiveThreadStreaming },
 	);
 
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
