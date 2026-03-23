@@ -1,5 +1,6 @@
 import { authPlugin } from '@api/auth';
 import { NexataFile } from '@api/file';
+import { getMimeTypeFromExt } from '@api/file/lib/types';
 import { Google } from '@api/integration/google/lib';
 import type { Language } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
@@ -383,8 +384,13 @@ export namespace Gmail {
 					attachment.id,
 				);
 
+				const resolvedMime =
+					attachment.mimeType === 'application/octet-stream'
+						? getMimeTypeFromExt(attachment.filename)
+						: attachment.mimeType;
+
 				const file = new File([content], attachment.filename, {
-					type: attachment.mimeType,
+					type: resolvedMime,
 				});
 
 				const status = await NexataFile.ingest(
@@ -393,7 +399,7 @@ export namespace Gmail {
 						userId: activeUser.id,
 						slug: activeUser.slug,
 						name: attachment.filename,
-						type: attachment.mimeType,
+						type: resolvedMime,
 					},
 					file,
 				);

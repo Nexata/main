@@ -61,7 +61,7 @@ export async function toStringChunks(
 	language?: Language,
 ) {
 	const fixedMimeType = Object.values(SupportedMime).find((mime) =>
-		type.toLowerCase().startsWith(mime.toLowerCase()),
+		type.startsWith(mime.toLowerCase()),
 	);
 
 	if (fixedMimeType) return MIME_HANDLERS[fixedMimeType](f, meta);
