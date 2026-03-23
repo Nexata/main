@@ -21,6 +21,7 @@ async function getCachedUser(
 			.select()
 			.from(user)
 			.where(and(eq(user.id, userId), eq(user.slug, slug)))
+			.$withCache(false)
 	).at(0);
 
 	if (!u) throw httpError(HttpCode.NOT_FOUND, ErrorCode.USER_NOT_FOUND);
@@ -77,6 +78,7 @@ export const authPlugin =
 							.select()
 							.from(user)
 							.where(and(eq(user.id, clientId), isNotNull(user.apiKey)))
+							.$withCache(false)
 					).at(0);
 
 					if (!u) throw httpError(HttpCode.NOT_FOUND, ErrorCode.USER_NOT_FOUND);

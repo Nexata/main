@@ -141,7 +141,8 @@ export async function authorizeOauthCallback(
 					lowerEq(user.email, metadata.email.toLowerCase()),
 					q.tenant ? eq(user.slug, q.tenant.toLowerCase()) : undefined,
 				),
-			);
+			)
+			.$withCache(false);
 
 		if (!users.length)
 			throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
@@ -227,7 +228,9 @@ export async function authorizeOauthCallback(
 		return url ? redirect(url.href) : sessions;
 	}
 
-	const u = (await db.select().from(user).where(eq(user.id, q.userId))).at(0);
+	const u = (
+		await db.select().from(user).where(eq(user.id, q.userId)).$withCache(false)
+	).at(0);
 
 	if (!u?.id) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
 

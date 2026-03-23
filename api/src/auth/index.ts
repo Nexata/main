@@ -54,6 +54,7 @@ export const authRouter = new Elysia({
 							),
 						),
 					)
+					.$withCache(false)
 			).at(0);
 
 			if (!u) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
