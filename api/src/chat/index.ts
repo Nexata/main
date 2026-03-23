@@ -337,61 +337,77 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 				let toolOutput: unknown;
 				if (body.approved) {
-					switch (approvalPart.toolName) {
-						case 'NexataReingest':
-							toolOutput = await Nexata.reingest(
-								activeUser,
-								approvalPart.input as { fileId: string },
-							);
-							break;
+					try {
+						switch (approvalPart.toolName) {
+							case 'NexataReingest':
+								toolOutput = await Nexata.reingest(
+									activeUser,
+									approvalPart.input as { fileId: string },
+								);
+								break;
 
-						case 'GmailIngestAttachments': {
-							const credentials = await getCredentialsForUser(
-								activeUser,
-								'usage',
-							);
-							const gmailCred = credentials.find(
-								(c): c is CachedCredential =>
-									c.scope === OauthScope.GMAIL &&
-									(!approvalPart.input.credentialEmail ||
-										c.email === approvalPart.input.credentialEmail),
-							);
+							case 'GmailIngestAttachments': {
+								const credentials = await getCredentialsForUser(
+									activeUser,
+									'usage',
+								);
+								const gmailCred = credentials.find(
+									(c): c is CachedCredential =>
+										c.scope === OauthScope.GMAIL &&
+										(!approvalPart.input.credentialEmail ||
+											c.email === approvalPart.input.credentialEmail),
+								);
 
-							if (!gmailCred)
+								if (!gmailCred)
+									throw httpError(
+										HttpCode.BAD_REQUEST,
+										ErrorCode.TOOL_CALL_NOT_FOUND,
+										activeUser.language,
+									);
+
+								const { at, rt } = await ensureFreshTokens(
+									gmailCred.id,
+									gmailCred.provider,
+									gmailCred.accessToken,
+									gmailCred.refreshToken,
+									gmailCred.accessTokenExpiresAt,
+									activeUser.slug,
+									activeUser.language,
+								);
+
+								toolOutput = await Gmail.ingestAttachments(
+									Gmail.fromTokens(at, rt),
+									activeUser,
+									approvalPart.input as {
+										messageId: string;
+										credentialEmail?: string;
+										attachmentIds?: string[];
+									},
+								);
+								break;
+							}
+
+							default:
 								throw httpError(
 									HttpCode.BAD_REQUEST,
 									ErrorCode.TOOL_CALL_NOT_FOUND,
 									activeUser.language,
 								);
-
-							const { at, rt } = await ensureFreshTokens(
-								gmailCred.id,
-								gmailCred.provider,
-								gmailCred.accessToken,
-								gmailCred.refreshToken,
-								gmailCred.accessTokenExpiresAt,
-								activeUser.slug,
-								activeUser.language,
-							);
-
-							toolOutput = await Gmail.ingestAttachments(
-								Gmail.fromTokens(at, rt),
-								activeUser,
-								approvalPart.input as {
-									messageId: string;
-									credentialEmail?: string;
-									attachmentIds?: string[];
-								},
-							);
-							break;
 						}
-
-						default:
-							throw httpError(
-								HttpCode.BAD_REQUEST,
-								ErrorCode.TOOL_CALL_NOT_FOUND,
-								activeUser.language,
-							);
+					} catch (error) {
+						captureException(error, {
+							tags: { source: 'chat:answer:approve:tool' },
+							extra: {
+								toolName: approvalPart.toolName,
+								threadId: body.threadId,
+							},
+						});
+						toolOutput = {
+							error:
+								error instanceof Error
+									? error.message
+									: 'Tool execution failed',
+						};
 					}
 				} else {
 					toolOutput = { result: 'DENIED' };

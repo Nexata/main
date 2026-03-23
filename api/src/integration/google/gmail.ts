@@ -211,9 +211,7 @@ export namespace Gmail {
 					snippet: detail.data.snippet ?? '',
 					isUnread: detail.data.labelIds?.includes('UNREAD') ?? false,
 					hasAttachment:
-						detail.data.payload?.parts?.some(
-							(p) => p.filename && p.body?.attachmentId,
-						) ?? false,
+						detail.data.payload?.parts?.some((p) => !!p.filename) ?? false,
 					labels: detail.data.labelIds ?? [],
 				};
 			}),
