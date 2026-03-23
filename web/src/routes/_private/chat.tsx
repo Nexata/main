@@ -33,6 +33,9 @@ export const Route = createFileRoute('/_private/chat')({
 
 type UIParts = UIMessage['parts'];
 
+// Tools that require user approval before execution
+const APPROVAL_TOOLS = new Set(['NexataReingest', 'GmailIngestAttachments']);
+
 function normalizeParts(
 	content: unknown,
 	toolOutputMap?: Map<string, { output: unknown; isError: boolean }>,
@@ -50,6 +53,8 @@ function normalizeParts(
 				const mapped = toolOutputMap?.get(part.toolCallId);
 				const output = part.output ?? mapped?.output ?? null;
 				const isError = mapped?.isError ?? false;
+				const pendingApproval =
+					APPROVAL_TOOLS.has(part.toolName) && output == null && !isError;
 				return {
 					type: `tool-${part.toolName}`,
 					toolCallId: part.toolCallId,
@@ -57,9 +62,12 @@ function normalizeParts(
 						? 'output-error'
 						: output != null
 							? 'output-available'
-							: 'input-available',
+							: pendingApproval
+								? 'approval-requested'
+								: 'input-available',
 					input: part.input ?? {},
 					output,
+					...(pendingApproval ? { approval: { id: part.toolCallId } } : {}),
 				};
 			}
 			// Skip dynamic-tool parts that were already converted from tool-call
