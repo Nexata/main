@@ -304,6 +304,30 @@ export function NexataChat() {
 	}, [chatStatus, activeThreadId, addStreamingThread, removeStreamingThread]);
 
 	// ----------------------------
+	// Patch mock user message ID with real server-assigned ID
+	// ----------------------------
+
+	const lastUserMessageId = useChatUIStore((s) => s.lastUserMessageId);
+	const setLastUserMessageId = useChatUIStore((s) => s.setLastUserMessageId);
+
+	useEffect(() => {
+		if (!lastUserMessageId) return;
+
+		const lastUserMsg = [...messages].reverse().find((m) => m.role === 'user');
+		if (!lastUserMsg || lastUserMsg.id === lastUserMessageId) {
+			setLastUserMessageId(null);
+			return;
+		}
+
+		setMessages(
+			messages.map((m) =>
+				m.id === lastUserMsg.id ? { ...m, id: lastUserMessageId } : m,
+			),
+		);
+		setLastUserMessageId(null);
+	}, [lastUserMessageId, messages, setMessages, setLastUserMessageId]);
+
+	// ----------------------------
 	// Background stream monitor
 	// Uses Chat instance's ~registerStatusCallback for non-active threads
 	// ----------------------------

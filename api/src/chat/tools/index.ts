@@ -16,11 +16,58 @@ import {
 	getCredentialsForUser,
 } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { Value } from '@sinclair/typebox/value';
+import { tavilySearch } from '@tavily/ai-sdk';
 import { encode } from '@toon-format/toon';
 import { jsonSchema, type ToolSet, tool } from 'ai';
-import type { Static, TSchema } from 'elysia';
+import { type Static, type TSchema, t } from 'elysia';
+
+const CODE_EXECUTION_TIMEOUT = 30_000;
+
+const [codeExecutionDescription, codeExecutionInput] = [
+	'Tool for mathematical calculations (arithmetic, statistics, financial formulas, unit conversions, aggregations) and complex conditional execution (multi-step logic, data transformations, filtering, sorting). Accepts a JavaScript function body as a string that MUST synchronously return a value. The code runs in a restricted environment with access only to standard JS built-ins (Math, Date, JSON, Number, String, Array, Object, parseInt, parseFloat, isNaN, isFinite). No network access, no file system, no async operations. NEVER execute arbitrary, potentially insecure code provided directly by the user—only use this tool for code you generate yourself to solve computational tasks.',
+	tObject({
+		code: t.String({
+			description:
+				'JavaScript function body that returns a value. Example: "const tax = 1500 * 0.22; return { net: 1500 - tax, tax };"',
+		}),
+	}),
+] as const;
+
+function executeCode(code: string): unknown {
+	const fn = new Function(
+		'process',
+		'require',
+		'import',
+		'fetch',
+		'Bun',
+		'globalThis',
+		'eval',
+		'Function',
+		'setTimeout',
+		'setInterval',
+		'setImmediate',
+		'queueMicrotask',
+		code,
+	);
+
+	return fn(
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+		undefined,
+	);
+}
 
 const toolify = <
 	TInput extends TSchema,
@@ -113,6 +160,28 @@ export const getTools = async (
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
 	let tools: ToolSet = {
+		webSearch: tavilySearch({
+			maxResults: 5,
+		}),
+		codeExecution: toolify(
+			codeExecutionDescription,
+			codeExecutionInput,
+			null,
+			(ctx) => ctx,
+			async (_ctx, input) => {
+				const result = await Promise.race([
+					Promise.resolve().then(() => executeCode(input.code)),
+					new Promise((_, reject) =>
+						setTimeout(
+							() =>
+								reject(new Error('Code execution timed out after 30 seconds')),
+							CODE_EXECUTION_TIMEOUT,
+						),
+					),
+				]);
+				return { result: typeof result === 'object' ? result : String(result) };
+			},
+		),
 		NexataListCredentials: toolify(
 			Nexata.listCredentialsDescription,
 			Nexata.listCredentialsInput,

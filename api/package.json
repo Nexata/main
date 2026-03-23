@@ -24,6 +24,7 @@
 		"@neondatabase/serverless": "^1.0.2",
 		"@sentry/bun": "^10.45.0",
 		"@sinclair/typebox": "^0.34.48",
+		"@tavily/ai-sdk": "^0.4.1",
 		"@toon-format/toon": "^2.1.0",
 		"@types/node": "^25.5.0",
 		"@types/nodemailer": "^7.0.11",

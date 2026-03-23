@@ -234,7 +234,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				consumeSseStream: consumeStream,
 				generateMessageId: () => assistantMessageId,
 				messageMetadata: ({ part }) => {
-					if (part.type === 'start') return { threadId, threadTitle };
+					if (part.type === 'start')
+						return { threadId, threadTitle, userMessageId: userMessage.id };
 				},
 			});
 		},

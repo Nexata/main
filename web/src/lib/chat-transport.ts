@@ -199,8 +199,11 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 								const event = JSON.parse(json);
 
 								if (event.type === 'start' && event.messageMetadata?.threadId) {
-									const { threadId: newThreadId, threadTitle } =
-										event.messageMetadata;
+									const {
+										threadId: newThreadId,
+										threadTitle,
+										userMessageId,
+									} = event.messageMetadata;
 									const store = useChatUIStore.getState();
 
 									if (newThreadId !== store.activeThreadId) {
@@ -214,6 +217,10 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 									}
 
 									store.addStreamingThread(newThreadId);
+
+									if (userMessageId) {
+										store.setLastUserMessageId(userMessageId);
+									}
 								}
 							} catch {
 								// ignore malformed chunks
