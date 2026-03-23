@@ -518,6 +518,36 @@ function NexataReingestRenderer({ output }: { output: any }) {
   );
 }
 
+function GmailIngestAttachmentsRenderer({ output }: { output: any }) {
+  if (!output) return <EmptyOutput />;
+  const results: { filename: string; status: string; fileId?: string }[] = output.results ?? [];
+  return (
+    <div className="flex flex-col gap-2">
+      {output.subject && <Field label={td_subject()}>{output.subject}</Field>}
+      {output.messageId && <Field label="Message ID"><span className="font-mono text-xs">{output.messageId}</span></Field>}
+      {results.length > 0 && (
+        <div className="flex flex-col gap-1.5">
+          <CountBadge icon={Paperclip} label={td_files({ count: results.length })} />
+          <div className="space-y-1">
+            {results.map((r, i) => (
+              <div key={i} className="flex items-center gap-2 rounded-md border border-border/40 bg-muted/30 px-3 py-2 text-sm">
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="flex-1 truncate">{r.filename}</span>
+                <Badge className={cn(
+                  r.status === "OK" && "bg-green-500/10 text-green-600",
+                  r.status === "FAILED" && "bg-red-500/10 text-red-600",
+                )}>
+                  {r.status}
+                </Badge>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*                              Fallback / Empty                               */
 /* -------------------------------------------------------------------------- */
@@ -564,6 +594,8 @@ const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
   // Calendar read
   CalendarRead: EventDetailRenderer,
   MicrosoftCalendarRead: EventDetailRenderer,
+  // Gmail
+  GmailIngestAttachments: GmailIngestAttachmentsRenderer,
   // Nexata
   NexataFileSearch: NexataFileSearchRenderer,
   NexataFileRead: NexataFileReadRenderer,

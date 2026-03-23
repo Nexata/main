@@ -52,6 +52,14 @@
 			"approved": "Re-ingesta aprobada",
 			"denied": "Re-ingesta denegada"
 		},
+		"gmail_ingest_approval": {
+			"title": "Confirmar ingesta de adjuntos",
+			"description": "El asistente quiere ingestar adjuntos de este correo:",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de adjuntos aprobada",
+			"denied": "Ingesta de adjuntos denegada"
+		},
 		"ask_questions": {
 			"status": {
 				"answering": "Respondé las preguntas",
@@ -901,7 +909,10 @@
 			"search_error": "Error al buscar en Gmail",
 			"read": "Leyendo correo de Gmail...",
 			"read_success": "Correo de Gmail leído",
-			"read_error": "Error al leer correo de Gmail"
+			"read_error": "Error al leer correo de Gmail",
+			"ingest_attachments": "Ingestando adjuntos de Gmail...",
+			"ingest_attachments_success": "Adjuntos de Gmail ingestados",
+			"ingest_attachments_error": "Error al ingestar adjuntos de Gmail"
 		},
 		"drive": {
 			"search": "Buscando en Google Drive...",

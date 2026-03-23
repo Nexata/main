@@ -13,8 +13,14 @@ import { getTools } from '@api/chat/tools';
 import { Nexata } from '@api/chat/tools/nexata';
 import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
-import { FinishReason, message, thread } from '@api/schema';
+import { Gmail } from '@api/integration/google';
+import { FinishReason, message, OauthScope, thread } from '@api/schema';
 import { checkTenantCanChat } from '@api/utils/billing';
+import {
+	type CachedCredential,
+	ensureFreshTokens,
+	getCredentialsForUser,
+} from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -303,30 +309,26 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				Array.isArray(lastMessage.content) ? lastMessage.content : []
 			) as unknown[];
 
-			// ===== NexataReingest approval =====
-			const isApproval = body.toolCallId != null && body.approved != null;
+			// ===== Tool approval (NexataReingest, GmailIngestAttachments, etc.) =====
+			const isApproval = body.approved != null;
 
 			if (isApproval) {
-				const reingestPart = contentParts.find(
+				const approvalPart = [...contentParts].reverse().find(
 					(
 						part,
 					): part is {
 						type: 'tool-call';
 						toolCallId: string;
 						toolName: string;
-						input: { fileId: string };
+						input: Record<string, unknown>;
 					} =>
 						typeof part === 'object' &&
 						part !== null &&
 						'type' in part &&
-						part.type === 'tool-call' &&
-						'toolCallId' in part &&
-						part.toolCallId === body.toolCallId &&
-						'toolName' in part &&
-						part.toolName === 'NexataReingest',
+						part.type === 'tool-call',
 				);
 
-				if (!reingestPart)
+				if (!approvalPart)
 					throw httpError(
 						HttpCode.BAD_REQUEST,
 						ErrorCode.TOOL_CALL_NOT_FOUND,
@@ -335,9 +337,64 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 				let toolOutput: unknown;
 				if (body.approved) {
-					toolOutput = await Nexata.reingest(activeUser, reingestPart.input);
+					switch (approvalPart.toolName) {
+						case 'NexataReingest':
+							toolOutput = await Nexata.reingest(
+								activeUser,
+								approvalPart.input as { fileId: string },
+							);
+							break;
+
+						case 'GmailIngestAttachments': {
+							const credentials = await getCredentialsForUser(
+								activeUser,
+								'usage',
+							);
+							const gmailCred = credentials.find(
+								(c): c is CachedCredential =>
+									c.scope === OauthScope.GMAIL &&
+									(!approvalPart.input.credentialEmail ||
+										c.email === approvalPart.input.credentialEmail),
+							);
+
+							if (!gmailCred)
+								throw httpError(
+									HttpCode.BAD_REQUEST,
+									ErrorCode.TOOL_CALL_NOT_FOUND,
+									activeUser.language,
+								);
+
+							const { at, rt } = await ensureFreshTokens(
+								gmailCred.id,
+								gmailCred.provider,
+								gmailCred.accessToken,
+								gmailCred.refreshToken,
+								gmailCred.accessTokenExpiresAt,
+								activeUser.slug,
+								activeUser.language,
+							);
+
+							toolOutput = await Gmail.ingestAttachments(
+								Gmail.fromTokens(at, rt),
+								activeUser,
+								approvalPart.input as {
+									messageId: string;
+									credentialEmail?: string;
+									attachmentIds?: string[];
+								},
+							);
+							break;
+						}
+
+						default:
+							throw httpError(
+								HttpCode.BAD_REQUEST,
+								ErrorCode.TOOL_CALL_NOT_FOUND,
+								activeUser.language,
+							);
+					}
 				} else {
-					toolOutput = { result: 'DENIED', name: null };
+					toolOutput = { result: 'DENIED' };
 				}
 
 				const toolResultMessage = {
@@ -346,8 +403,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					content: [
 						{
 							type: 'tool-result',
-							toolCallId: reingestPart.toolCallId,
-							toolName: 'NexataReingest',
+							toolCallId: approvalPart.toolCallId,
+							toolName: approvalPart.toolName,
 							result: toolOutput,
 							output: {
 								type: 'text',
@@ -609,7 +666,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			detail: {
 				summary: 'Answer tool call',
 				description:
-					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for a NexataReingest tool call. Does not consume a message credit.',
+					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for an approval-requiring tool call (e.g. NexataReingest, GmailIngestAttachments). Does not consume a message credit.',
 			},
 			body: tObject({
 				threadId: t.String({
@@ -621,10 +678,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						'The user answers for NexataAskQuestions, as a JSON value.',
 				}),
 				toolCallId: Nullish(t.String(), {
-					description: 'The tool call ID for NexataReingest approval.',
+					description:
+						'The tool call ID for the approval. Optional — the last tool-call part is used if omitted.',
 				}),
 				approved: Nullish(t.Boolean(), {
-					description: 'Whether the NexataReingest tool call was approved.',
+					description: 'Whether the approval-requiring tool call was approved.',
 				}),
 				languagePreference: Nullish(t.String(), {
 					description: 'Language preference for the chat response.',
