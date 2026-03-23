@@ -76,7 +76,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						activeUser.language,
 					);
 
-				threadMessages.splice(0, editedMessageIndex + 1);
+				threadMessages.splice(editedMessageIndex);
 			}
 
 			// Attached files handling: if files provided
