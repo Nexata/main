@@ -171,7 +171,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					languagePreference,
 				}),
 				abortSignal: request.signal,
-				stopWhen: stepCountIs(50),
+				stopWhen: stepCountIs(200),
 				tools: await getTools(
 					activeUser,
 					body.threadId,
@@ -442,7 +442,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						languagePreference,
 					}),
 					abortSignal: request.signal,
-					stopWhen: stepCountIs(50),
+					stopWhen: stepCountIs(200),
 					tools: await getTools(activeUser, body.threadId, [], true),
 					experimental_transform: redactReasoningTransform(),
 					messages: threadMessages.map(
@@ -587,7 +587,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					languagePreference,
 				}),
 				abortSignal: request.signal,
-				stopWhen: stepCountIs(50),
+				stopWhen: stepCountIs(200),
 				tools: await getTools(activeUser, body.threadId, [], true),
 				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(
