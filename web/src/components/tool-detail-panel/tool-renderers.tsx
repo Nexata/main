@@ -1,5 +1,5 @@
 import React from "react";
-import { Mail, File, Calendar, Users, MessageSquare, Database, Clock, Paperclip, ExternalLink } from "lucide-react";
+import { Mail, File, Calendar, Users, MessageSquare, Database, Clock, Paperclip, ExternalLink, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
   "chat.tool_detail.from" as td_from,
@@ -21,6 +21,7 @@ import {
   "chat.tool_detail.users" as td_users,
   "chat.tool_detail.entries" as td_entries,
   "chat.tool_detail.chunks" as td_chunks,
+  "chat.tool_detail.results" as td_results,
   "chat.tool_detail.no_output" as td_no_output,
 } from "@/paraglide/messages.js";
 
@@ -549,6 +550,74 @@ function GmailIngestAttachmentsRenderer({ output }: { output: any }) {
 }
 
 /* -------------------------------------------------------------------------- */
+/*                           Web Search renderer                               */
+/* -------------------------------------------------------------------------- */
+
+function WebSearchRenderer({ output }: { output: any }) {
+  const results: any[] = Array.isArray(output?.results) ? output.results : [];
+  if (results.length === 0) return <EmptyOutput />;
+
+  return (
+    <div className="flex flex-col gap-2">
+      <CountBadge icon={Search} label={td_results({ count: results.length })} />
+      <div className="flex flex-col gap-1.5">
+        {results.map((r: any, i: number) => (
+          <ListCard key={r.url ?? i}>
+            <div className="flex flex-col gap-1">
+              <div className="flex items-start justify-between gap-2">
+                <span className="text-sm font-medium line-clamp-2">{r.title || r.url}</span>
+                {r.url && (
+                  <a
+                    href={r.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                  </a>
+                )}
+              </div>
+              {r.url && (
+                <span className="text-xs text-muted-foreground/60 truncate">{r.url}</span>
+              )}
+              {r.content && (
+                <p className="text-xs text-muted-foreground mt-0.5 line-clamp-3">{r.content}</p>
+              )}
+            </div>
+          </ListCard>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         Code Execution renderer                             */
+/* -------------------------------------------------------------------------- */
+
+function CodeExecutionRenderer({ output }: { output: any }) {
+  if (!output) return <EmptyOutput />;
+
+  const hasError = output.error !== undefined;
+  const displayValue = hasError ? output.error : (output.result ?? output);
+
+  return (
+    <div className="flex flex-col gap-2">
+      {hasError && (
+        <Badge className="bg-red-500/10 text-red-600 self-start">Error</Badge>
+      )}
+      <pre className={cn(
+        "text-xs rounded-lg p-3 overflow-x-auto max-h-96 whitespace-pre-wrap break-words",
+        hasError ? "bg-red-500/5 text-red-600 dark:text-red-400" : "bg-muted/50",
+      )}>
+        {typeof displayValue === "string" ? displayValue : JSON.stringify(displayValue, null, 2)}
+      </pre>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 /*                              Fallback / Empty                               */
 /* -------------------------------------------------------------------------- */
 
@@ -572,6 +641,10 @@ function JsonFallbackRenderer({ output }: { output: any }) {
 /* -------------------------------------------------------------------------- */
 
 const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
+  // Web search
+  webSearch: WebSearchRenderer,
+  // Code execution
+  codeExecution: CodeExecutionRenderer,
   // Email search
   GmailSearch: EmailListRenderer,
   OutlookSearch: EmailListRenderer,

@@ -8,6 +8,8 @@ import {
   X,
   Ban,
   Globe,
+  Search,
+  Code,
   Sparkles,
   Hash,
   Send,
@@ -33,6 +35,12 @@ import {
 import {
   'components.reasoning_block.title' as components_reasoning_block_title,
   'components.reasoning_block.description' as components_reasoning_block_description,
+  'tools.web_search.search' as tools_web_search_search,
+  'tools.web_search.search_success' as tools_web_search_search_success,
+  'tools.web_search.search_error' as tools_web_search_search_error,
+  'tools.code_execution.execute' as tools_code_execution_execute,
+  'tools.code_execution.execute_success' as tools_code_execution_execute_success,
+  'tools.code_execution.execute_error' as tools_code_execution_execute_error,
   'tools.gmail.search' as tools_gmail_search,
   'tools.gmail.read' as tools_gmail_read,
   'tools.gmail.ingest_attachments' as tools_gmail_ingest_attachments,
@@ -723,6 +731,8 @@ const ReasoningBlock = ({
 /* -------------------------------------------------------------------------- */
 
 const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => string; error: () => string }> = {
+  webSearch:                { pending: tools_web_search_search,                success: tools_web_search_search_success,               error: tools_web_search_search_error },
+  codeExecution:            { pending: tools_code_execution_execute,           success: tools_code_execution_execute_success,           error: tools_code_execution_execute_error },
   GmailSearch:              { pending: tools_gmail_search,                    success: tools_gmail_search_success,                    error: tools_gmail_search_error },
   GmailRead:                { pending: tools_gmail_read,                      success: tools_gmail_read_success,                      error: tools_gmail_read_error },
   GmailIngestAttachments:   { pending: tools_gmail_ingest_attachments,        success: tools_gmail_ingest_attachments_success,        error: tools_gmail_ingest_attachments_error },
@@ -786,6 +796,12 @@ const TOOL_ICON_MAP: Record<string, string> = {
   CalendarRead:             '/datasource_icons/gcalendar.png',
 }
 
+// Tools that use inline lucide icons instead of image files
+const TOOL_LUCIDE_MAP: Record<string, React.ElementType> = {
+  webSearch: Search,
+  codeExecution: Code,
+}
+
 function getToolLabel(rawToolName: string, state?: string) {
   const entry = TOOL_LABEL_MAP[rawToolName]
   if (!entry) return rawToolName
@@ -829,9 +845,10 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
   const isDenied  = part.state === "output-denied"
   const isPending = !isSuccess && !isError && !isDenied
 
-  const label    = getToolLabel(rawToolName, part.state)
-  const isNexata = NEXATA_TOOLS.has(rawToolName)
-  const icon     = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
+  const label      = getToolLabel(rawToolName, part.state)
+  const isNexata   = NEXATA_TOOLS.has(rawToolName)
+  const icon       = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
+  const LucideIcon = !isNexata && !icon ? TOOL_LUCIDE_MAP[rawToolName] : null
 
   const emails       = getCredentialEmails(part)
   const visibleEmails = emails.slice(0, 2)
@@ -872,7 +889,7 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
       <div className="flex items-center justify-between gap-4 px-4 py-3">
         <div className="flex items-center gap-3 min-w-0">
 
-          {/* Icon: Nexata > tool icon map > fallback */}
+          {/* Icon: Nexata > tool icon map > lucide map > fallback */}
           {isNexata ? (
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/50 border border-border/40 shrink-0">
               <img
@@ -884,6 +901,10 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
           ) : icon ? (
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/60 border border-border/40 shrink-0">
               <img src={icon} alt={rawToolName} className="h-4 w-4 object-contain" />
+            </div>
+          ) : LucideIcon ? (
+            <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/60 border border-border/40 shrink-0">
+              <LucideIcon className="h-4 w-4 text-muted-foreground" />
             </div>
           ) : (
             <div className="flex items-center justify-center h-8 w-8 rounded-lg bg-muted/60 border border-border/40 shrink-0">

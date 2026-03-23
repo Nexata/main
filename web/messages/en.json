@@ -332,6 +332,7 @@
 			"files": "{count} files",
 			"users": "{count} users",
 			"chunks": "{count} chunks",
+			"results": "{count} results",
 			"from": "From",
 			"to": "To",
 			"subject": "Subject",
@@ -903,6 +904,16 @@
 		}
 	},
 	"tools": {
+		"web_search": {
+			"search": "Searching the web...",
+			"search_success": "Web search complete",
+			"search_error": "Error searching the web"
+		},
+		"code_execution": {
+			"execute": "Executing code...",
+			"execute_success": "Code executed",
+			"execute_error": "Error executing code"
+		},
 		"gmail": {
 			"search": "Searching Gmail...",
 			"search_success": "Gmail search complete",

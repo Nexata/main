@@ -332,6 +332,7 @@
 			"files": "{count} archivos",
 			"users": "{count} usuarios",
 			"chunks": "{count} fragmentos",
+			"results": "{count} resultados",
 			"from": "De",
 			"to": "Para",
 			"subject": "Asunto",
@@ -903,6 +904,16 @@
 		}
 	},
 	"tools": {
+		"web_search": {
+			"search": "Buscando en la web...",
+			"search_success": "Búsqueda web completada",
+			"search_error": "Error al buscar en la web"
+		},
+		"code_execution": {
+			"execute": "Ejecutando código...",
+			"execute_success": "Código ejecutado",
+			"execute_error": "Error al ejecutar código"
+		},
 		"gmail": {
 			"search": "Buscando en Gmail...",
 			"search_success": "Búsqueda en Gmail completada",
