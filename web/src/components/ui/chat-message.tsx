@@ -1804,14 +1804,11 @@ export function AskQuestionsRenderer({
     return true
   }).length
 
-  const allAnswered = questions.length > 0 && answeredCount === questions.length
-
   function handleChange(i: number, value: AnswerValue) {
     setAnswers((prev) => ({ ...prev, [i]: value }))
   }
 
   function handleSubmit() {
-    if (!allAnswered) return
     submittedToolCalls.add(part.toolCallId ?? "")
     setSubmitted(true)
     onSubmit?.(part.toolCallId, answers)
@@ -1967,7 +1964,6 @@ export function AskQuestionsRenderer({
         {!isDisabled && (
           <Button
             size="sm"
-            disabled={!allAnswered}
             onClick={handleSubmit}
             className="gap-1.5 cursor-pointer"
           >
