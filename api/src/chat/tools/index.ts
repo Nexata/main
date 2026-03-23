@@ -17,13 +17,17 @@ import {
 } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { tObject } from '@api/utils/type';
+import singlefileVariant from '@jitl/quickjs-singlefile-cjs-release-sync';
 import { captureException } from '@sentry/bun';
 import { Value } from '@sinclair/typebox/value';
 import { tavilySearch } from '@tavily/ai-sdk';
 import { encode } from '@toon-format/toon';
 import { jsonSchema, type ToolSet, tool } from 'ai';
 import { type Static, type TSchema, t } from 'elysia';
-import { getQuickJS, shouldInterruptAfterDeadline } from 'quickjs-emscripten';
+import {
+	newQuickJSWASMModuleFromVariant,
+	shouldInterruptAfterDeadline,
+} from 'quickjs-emscripten-core';
 
 const CODE_EXECUTION_TIMEOUT = 30_000;
 const CODE_MEMORY_LIMIT = 1024 * 1024 * 32; // 32 MB
@@ -39,7 +43,7 @@ const [codeExecutionDescription, codeExecutionInput] = [
 ] as const;
 
 async function executeCode(code: string): Promise<unknown> {
-	const QuickJS = await getQuickJS();
+	const QuickJS = await newQuickJSWASMModuleFromVariant(singlefileVariant);
 	const runtime = QuickJS.newRuntime();
 	runtime.setInterruptHandler(
 		shouldInterruptAfterDeadline(Date.now() + CODE_EXECUTION_TIMEOUT),
