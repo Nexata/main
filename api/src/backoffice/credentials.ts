@@ -26,10 +26,13 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 				),
 			);
 
+		const withRefresher = credentialsToRefresh.filter(
+			(cred) => providerRefreshers[cred.provider],
+		);
+
 		const refreshResults = await Promise.allSettled(
-			credentialsToRefresh.map(async (cred) => {
-				const refresher = providerRefreshers[cred.provider];
-				if (!refresher) return;
+			withRefresher.map(async (cred) => {
+				const refresher = providerRefreshers[cred.provider]!;
 
 				await refresher(cred.id, {
 					slug: cred.userSlug,
@@ -44,6 +47,7 @@ export const credentialsRouter = new Elysia({ prefix: '/credentials' }).put(
 		return {
 			refreshed: refreshResults.filter((r) => r.status === 'fulfilled').length,
 			total: credentialsToRefresh.length,
+			skipped: credentialsToRefresh.length - withRefresher.length,
 		};
 	},
 	{

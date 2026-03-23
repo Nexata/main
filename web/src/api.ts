@@ -12,30 +12,42 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 export const apiClient = edenTreaty<App>(API_BASE_URL);
 
+let refreshPromise: Promise<string> | null = null;
+
 export async function refreshAccessToken() {
-	const refreshToken = getRefreshToken();
-	if (!refreshToken) throw new Error('No refresh token');
+	if (refreshPromise) return refreshPromise;
 
-	const fingerprint = await getFingerprint();
+	refreshPromise = (async () => {
+		try {
+			const refreshToken = getRefreshToken();
+			if (!refreshToken) throw new Error('No refresh token');
 
-	const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
-		method: 'POST',
-		headers: {
-			'Content-Type': 'application/json',
-			fingerprint,
-			'user-agent': navigator.userAgent,
-		},
-		body: JSON.stringify({ token: refreshToken }),
-	});
+			const fingerprint = await getFingerprint();
 
-	if (!response.ok) {
-		throw new Error('Refresh token inválido');
-	}
+			const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					fingerprint,
+					'user-agent': navigator.userAgent,
+				},
+				body: JSON.stringify({ token: refreshToken }),
+			});
 
-	const data = await response.json();
-	saveTokens(data.accessToken, data.refreshToken);
+			if (!response.ok) {
+				throw new Error('Refresh token inválido');
+			}
 
-	return data.accessToken;
+			const data = await response.json();
+			saveTokens(data.accessToken, data.refreshToken);
+
+			return data.accessToken as string;
+		} finally {
+			refreshPromise = null;
+		}
+	})();
+
+	return refreshPromise;
 }
 
 type ApiError = {

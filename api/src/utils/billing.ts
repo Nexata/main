@@ -80,7 +80,7 @@ export async function getStorageUsage(
 ): Promise<number> {
 	if (!skipCache) {
 		const cached = await cache.get<number>(STORAGE_KEY(slug));
-		if (cached) return cached;
+		if (cached !== null && cached !== undefined) return cached;
 	}
 
 	const result = (
@@ -105,7 +105,7 @@ export async function getEmbedUsage(
 ): Promise<number> {
 	if (!skipCache) {
 		const cached = await cache.get<number>(EMBED_KEY(slug));
-		if (cached) return cached;
+		if (cached !== null && cached !== undefined) return cached;
 	}
 
 	const result = (
@@ -133,7 +133,7 @@ export async function getMessageUsage(
 ): Promise<number> {
 	if (!skipCache) {
 		const cached = await cache.get<number>(MESSAGE_KEY(slug));
-		if (cached) return cached;
+		if (cached !== null && cached !== undefined) return cached;
 	}
 
 	const result = (
@@ -161,7 +161,7 @@ export async function getRefillMessages(
 ): Promise<number> {
 	if (!skipCache) {
 		const cached = await cache.get<number>(REFILL_KEY(slug));
-		if (cached) return cached;
+		if (cached !== null && cached !== undefined) return cached;
 	}
 
 	const result = (

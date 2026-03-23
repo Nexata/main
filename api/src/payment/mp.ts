@@ -15,7 +15,6 @@ import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { getUsdArsQuote } from '@api/utils/quote';
 import { Nullish, tObject } from '@api/utils/type';
-import { captureException } from '@sentry/bun';
 import dayjs from 'dayjs';
 import { and, eq } from 'drizzle-orm';
 import Elysia, { t } from 'elysia';
@@ -109,18 +108,19 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 
 			const xSignature = headers['x-signature'];
 			const xRequestId = headers['x-request-id'];
-			if (xSignature && xRequestId) {
-				const parts = Object.fromEntries(
-					xSignature.split(',').map((p) => p.split('=', 2) as [string, string]),
-				);
-				const manifest = `id:${dataId};request-id:${xRequestId};ts:${parts.ts};`;
-				const hmac = createHmac('sha256', requireEnv('MP_WEBHOOK_KEY'))
-					.update(manifest)
-					.digest('hex');
+			if (!xSignature || !xRequestId)
+				throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
 
-				if (hmac !== parts.v1)
-					throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
-			}
+			const parts = Object.fromEntries(
+				xSignature.split(',').map((p) => p.split('=', 2) as [string, string]),
+			);
+			const manifest = `id:${dataId};request-id:${xRequestId};ts:${parts.ts};`;
+			const hmac = createHmac('sha256', requireEnv('MP_WEBHOOK_KEY'))
+				.update(manifest)
+				.digest('hex');
+
+			if (hmac !== parts.v1)
+				throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
 
 			const paymentId = body.data?.id ?? dataId;
 			const paymentService = new Payment(MP_CLIENT(paymentId));
@@ -210,7 +210,7 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 							language: admin.language as Language,
 						}),
 					),
-				).catch((error) => captureException(error));
+				);
 			}
 		},
 		{

@@ -315,7 +315,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				body.months,
 			);
 
-			await Promise.allSettled([
+			await Promise.all([
 				db
 					.update(bill)
 					.set({
