@@ -287,7 +287,7 @@ export type FullMessage = ModelMessage &
 	PartialMessage & {
 		extraReason: boolean;
 		createdAt: Date;
-		files: { id: string; name: string; type: string }[];
+		files: { id: string; name: string; type: string; url: string }[];
 	};
 
 export async function getThreadMessages(

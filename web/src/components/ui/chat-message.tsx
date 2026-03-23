@@ -19,7 +19,7 @@ import {
   Paperclip,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
-import { FilePreview } from "@/components/ui/file-preview"
+import { FilePreview, type RemoteFile } from "@/components/ui/file-preview"
 import { MarkdownRenderer } from "@/components/ui/markdown-renderer"
 import { CopyButton } from "@/components/ui/copy-button"
 import { useChatUIStore } from "@/lib/chat.store"
@@ -270,24 +270,31 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   })
 
   // Helper para FilePreview
-  function filePartToBrowserFile(part: Record<string, unknown>): File {
-    if (!part.url) {
-      return new File(
-        [],
-        (part.filename as string) ?? "Unknown",
-        { type: (part.mediaType as string) ?? "application/octet-stream" }
-      )
+  function filePartToPreviewData(part: Record<string, unknown>): File | RemoteFile {
+    const url = part.url as string | undefined
+    const name = (part.filename as string) ?? "Unknown"
+    const mediaType = (part.mediaType as string) ?? "application/octet-stream"
+
+    // Remote HTTP URL — return descriptor directly
+    if (url && !url.startsWith("data:")) {
+      return { name, type: mediaType, url }
     }
 
-    const base64 = (part.url as string).split(",")[1]
+    // No URL — return empty File
+    if (!url) {
+      return new File([], name, { type: mediaType })
+    }
+
+    // Base64 data URI — decode into browser File
+    const base64 = url.split(",")[1]
     const bytes = atob(base64 ?? "")
     const array = new Uint8Array(bytes.length)
     for (let i = 0; i < bytes.length; i++) array[i] = bytes.charCodeAt(i)
 
     return new File(
       [array],
-      (part.filename as string) ?? "Unknown",
-      { type: (part.mediaType as string) ?? "application/octet-stream" }
+      name,
+      { type: mediaType }
     )
   }
 
@@ -462,14 +469,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 
                   {/* FILES */}
                   {fileBuffer.map(({ part }, i) => {
-                    const browserFile = filePartToBrowserFile(part)
+                    const previewData = filePartToPreviewData(part)
 
                     return (
                       <div
                         key={`file-${i}`}
                         className="mt-3 scale-90 origin-left"
                       >
-                        <FilePreview file={browserFile} />
+                        <FilePreview file={previewData} />
                       </div>
                     )
                   })}

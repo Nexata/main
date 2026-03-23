@@ -17,9 +17,15 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip" // shadcn tooltip
 
+export type RemoteFile = { name: string; type: string; url: string }
+
 interface FilePreviewProps {
-  file: File
+  file: File | RemoteFile
   onRemove?: () => void
+}
+
+function isRemoteFile(file: File | RemoteFile): file is RemoteFile {
+  return !(file instanceof File)
 }
 
 function truncateFileName(name: string | undefined, maxLength = 16) {
@@ -41,7 +47,7 @@ function truncateFileName(name: string | undefined, maxLength = 16) {
 
 /* ---------------- ICON RESOLVER ---------------- */
 
-function getFileIcon(file: File) {
+function getFileIcon(file: File | RemoteFile) {
   const ext = file.name?.split(".").pop()?.toLowerCase() || ""
 
   if (file.type?.startsWith("image/")) return ImageIcon
@@ -124,7 +130,10 @@ BaseCard.displayName = "BaseCard"
 
 const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
   ({ file, onRemove }, ref) => {
-    const url = useMemo(() => URL.createObjectURL(file), [file])
+    const url = useMemo(
+      () => isRemoteFile(file) ? file.url : URL.createObjectURL(file),
+      [file],
+    )
 
     return (
       <TooltipProvider>
@@ -159,6 +168,7 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
     const [preview, setPreview] = React.useState("")
 
     useEffect(() => {
+      if (isRemoteFile(file)) return
       const reader = new FileReader()
       reader.onload = (e) => {
         const text = (e.target?.result as string) || ""

@@ -178,13 +178,24 @@ export function NexataChat() {
 
 		return threadMessages
 			.filter((m) => m.role === 'user' || m.role === 'assistant')
-			.map((m) => ({
-				id: m.id,
-				role: m.role,
-				createdAt: m.createdAt,
-				metadata: { hydrated: true },
-				parts: normalizeParts(m.content, toolOutputMap),
-			}));
+			.map((m) => {
+				const fileParts = (m.files ?? [])
+					.filter((f) => f.id)
+					.map((f) => ({
+						type: 'file' as const,
+						filename: f.name,
+						mediaType: f.type,
+						url: f.url,
+					}));
+
+				return {
+					id: m.id,
+					role: m.role,
+					createdAt: m.createdAt,
+					metadata: { hydrated: true },
+					parts: [...fileParts, ...normalizeParts(m.content, toolOutputMap)],
+				};
+			});
 	}, [threadMessages]);
 
 	// ----------------------------
