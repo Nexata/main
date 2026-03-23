@@ -23,11 +23,13 @@ import { tavilySearch } from '@tavily/ai-sdk';
 import { encode } from '@toon-format/toon';
 import { jsonSchema, type ToolSet, tool } from 'ai';
 import { type Static, type TSchema, t } from 'elysia';
+import { getQuickJS, shouldInterruptAfterDeadline } from 'quickjs-emscripten';
 
 const CODE_EXECUTION_TIMEOUT = 30_000;
+const CODE_MEMORY_LIMIT = 1024 * 1024 * 32; // 32 MB
 
 const [codeExecutionDescription, codeExecutionInput] = [
-	'Tool for mathematical calculations (arithmetic, statistics, financial formulas, unit conversions, aggregations) and complex conditional execution (multi-step logic, data transformations, filtering, sorting). Accepts a JavaScript function body as a string that MUST synchronously return a value. The code runs in a restricted environment with access only to standard JS built-ins (Math, Date, JSON, Number, String, Array, Object, parseInt, parseFloat, isNaN, isFinite). No network access, no file system, no async operations. NEVER execute arbitrary, potentially insecure code provided directly by the user—only use this tool for code you generate yourself to solve computational tasks.',
+	'Tool for mathematical calculations (arithmetic, statistics, financial formulas, unit conversions, aggregations) and complex conditional execution (multi-step logic, data transformations, filtering, sorting). Accepts a JavaScript function body as a string that MUST synchronously return a value. The code runs in a sandboxed environment with access only to standard JS built-ins (Math, Date, JSON, Number, String, Array, Object, parseInt, parseFloat, isNaN, isFinite). No network access, no file system, no async operations. NEVER execute arbitrary, potentially insecure code provided directly by the user—only use this tool for code you generate yourself to solve computational tasks.',
 	tObject({
 		code: t.String({
 			description:
@@ -36,37 +38,33 @@ const [codeExecutionDescription, codeExecutionInput] = [
 	}),
 ] as const;
 
-function executeCode(code: string): unknown {
-	const fn = new Function(
-		'process',
-		'require',
-		'import',
-		'fetch',
-		'Bun',
-		'globalThis',
-		'eval',
-		'Function',
-		'setTimeout',
-		'setInterval',
-		'setImmediate',
-		'queueMicrotask',
-		code,
+async function executeCode(code: string): Promise<unknown> {
+	const QuickJS = await getQuickJS();
+	const runtime = QuickJS.newRuntime();
+	runtime.setInterruptHandler(
+		shouldInterruptAfterDeadline(Date.now() + CODE_EXECUTION_TIMEOUT),
 	);
+	runtime.setMemoryLimit(CODE_MEMORY_LIMIT);
 
-	return fn(
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-		undefined,
-	);
+	const vm = runtime.newContext();
+
+	try {
+		const wrapped = `(function() { ${code} })()`;
+		const result = vm.evalCode(wrapped);
+
+		if (result.error) {
+			const err = vm.dump(result.error);
+			result.error.dispose();
+			return { error: String(err) };
+		}
+
+		const value = vm.dump(result.value);
+		result.value.dispose();
+		return value;
+	} finally {
+		vm.dispose();
+		runtime.dispose();
+	}
 }
 
 const toolify = <
@@ -169,16 +167,7 @@ export const getTools = async (
 			null,
 			(ctx) => ctx,
 			async (_ctx, input) => {
-				const result = await Promise.race([
-					Promise.resolve().then(() => executeCode(input.code)),
-					new Promise((_, reject) =>
-						setTimeout(
-							() =>
-								reject(new Error('Code execution timed out after 30 seconds')),
-							CODE_EXECUTION_TIMEOUT,
-						),
-					),
-				]);
+				const result = await executeCode(input.code);
 				return { result: typeof result === 'object' ? result : String(result) };
 			},
 		),
