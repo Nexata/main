@@ -9,6 +9,7 @@ import {
   FileSpreadsheet,
   X,
   FileText as PdfIcon,
+  ExternalLink,
 } from "lucide-react"
 import {
   Tooltip,
@@ -80,8 +81,8 @@ function getFileIcon(file: File | RemoteFile) {
 
 /* ---------------- ROOT WRAPPER ---------------- */
 
-const BaseCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; onRemove?: () => void }>(
-  ({ children, onRemove }, ref) => (
+const BaseCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; url?: string; onRemove?: () => void }>(
+  ({ children, url, onRemove }, ref) => (
     <motion.div
       ref={ref}
       layout
@@ -97,7 +98,19 @@ const BaseCard = React.forwardRef<HTMLDivElement, { children: React.ReactNode; o
         transition-all
       "
     >
-      {children}
+      {url ? (
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center min-w-0 flex-1"
+        >
+          {children}
+          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground shrink-0 ml-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        </a>
+      ) : (
+        children
+      )}
 
       {onRemove && (
         <button
@@ -137,7 +150,7 @@ const ImageFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 
     return (
       <TooltipProvider>
-        <BaseCard ref={ref} onRemove={onRemove}>
+        <BaseCard ref={ref} url={isRemoteFile(file) ? file.url : undefined} onRemove={onRemove}>
           <img
             src={url}
             alt={file.name}
@@ -179,7 +192,7 @@ const TextFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 
     return (
       <TooltipProvider>
-        <BaseCard ref={ref} onRemove={onRemove}>
+        <BaseCard ref={ref} url={isRemoteFile(file) ? file.url : undefined} onRemove={onRemove}>
           <div className="flex items-center gap-2">
             <div className="h-10 w-10 shrink-0 rounded-md border bg-muted p-1 text-[8px] leading-tight overflow-hidden text-muted-foreground">
               {preview || "..."}
@@ -211,7 +224,7 @@ const GenericFilePreview = React.forwardRef<HTMLDivElement, FilePreviewProps>(
 
     return (
       <TooltipProvider>
-        <BaseCard ref={ref} onRemove={onRemove}>
+        <BaseCard ref={ref} url={isRemoteFile(file) ? file.url : undefined} onRemove={onRemove}>
           <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border bg-muted">
               <Icon className="h-5 w-5 text-muted-foreground" />
