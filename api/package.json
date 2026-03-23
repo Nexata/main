@@ -8,8 +8,8 @@
 		"check": "biome check --fix --unsafe --verbose"
 	},
 	"dependencies": {
-		"@ai-sdk/deepinfra": "^2.0.39",
-		"@ai-sdk/groq": "^3.0.29",
+		"@ai-sdk/deepinfra": "^2.0.41",
+		"@ai-sdk/groq": "^3.0.31",
 		"@ai-sdk/provider": "^3.0.8",
 		"@elysiajs/cors": "^1.4.1",
 		"@elysiajs/jwt": "^1.4.1",
@@ -31,7 +31,7 @@
 		"@types/nodemailer": "^7.0.11",
 		"@types/turndown": "^5.0.6",
 		"@upstash/redis": "^1.37.0",
-		"ai": "^6.0.116",
+		"ai": "^6.0.137",
 		"ai-fallback": "^2.0.0",
 		"arctic": "^3.7.0",
 		"dayjs": "^1.11.20",
