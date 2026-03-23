@@ -1,5 +1,5 @@
 {
-  "id": "d8988cb0-0b28-4b96-a0e7-9a3520698645",
+  "id": "749a07c4-7ddb-498a-8bc8-8c5ca43ec32b",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -55,6 +55,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'periodic'"
+        },
+        "months": {
+          "name": "months",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
         },
         "details": {
           "name": "details",

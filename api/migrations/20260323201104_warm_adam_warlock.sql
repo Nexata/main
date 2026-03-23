@@ -1,4 +1,4 @@
-CREATE EXTENSION IF NOT EXISTS vector;
+CREATE EXTENSION IF NOT EXISTS "vector";
 
 CREATE TYPE "public"."bill_source" AS ENUM('periodic', 'plan_change', 'refill');
 CREATE TYPE "public"."billable_event_type" AS ENUM('embed', 'storage', 'message', 'refill');
@@ -20,6 +20,7 @@ CREATE TABLE "bill" (
 	"amount" numeric NOT NULL,
 	"plan" "plan" NOT NULL,
 	"source" "bill_source" DEFAULT 'periodic' NOT NULL,
+	"months" integer DEFAULT 1 NOT NULL,
 	"details" json NOT NULL
 );
 

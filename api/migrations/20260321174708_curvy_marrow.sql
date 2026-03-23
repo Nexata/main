@@ -1,1 +1,0 @@
-ALTER TABLE "bill" ADD COLUMN "months" integer DEFAULT 1 NOT NULL;
