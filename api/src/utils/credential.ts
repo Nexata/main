@@ -85,7 +85,6 @@ export async function invalidateCredentialCache(
 	affectedUserIds?: string[],
 ) {
 	const credKey = credentialCacheKey(slug, credentialId);
-	const accessEntries = allAccessLevelEntries(credentialId);
 
 	const userKeys = affectedUserIds?.length
 		? affectedUserIds.map((uid) => userCredentialsSetKey(slug, uid))
@@ -93,7 +92,7 @@ export async function invalidateCredentialCache(
 
 	return Promise.all([
 		cache.del(credKey),
-		...userKeys.map((key) => cache.srem(key, ...accessEntries)),
+		...userKeys.map((key) => cache.del(key)),
 	]);
 }
 
