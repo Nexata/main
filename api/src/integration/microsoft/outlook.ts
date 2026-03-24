@@ -201,7 +201,6 @@ export namespace Outlook {
 		'importance',
 		'flag',
 		'parentFolderId',
-		'attachments',
 	].join(',');
 
 	export const [readDescription, readInput] = [
@@ -217,6 +216,7 @@ export namespace Outlook {
 		const msg: Message = await client
 			.api(`/me/messages/${input.messageId.replace(/\//g, '-')}`)
 			.select(READ_SELECT)
+			.expand('attachments($select=id,name,contentType,size,isInline)')
 			.header('Prefer', 'outlook.body-content-type="text"')
 			.get();
 
