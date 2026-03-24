@@ -35,7 +35,11 @@ export const Route = createFileRoute('/_private/chat')({
 type UIParts = UIMessage['parts'];
 
 // Tools that require user approval before execution
-const APPROVAL_TOOLS = new Set(['NexataReingest', 'GmailIngestAttachments']);
+const APPROVAL_TOOLS = new Set([
+	'NexataReingest',
+	'GmailIngestAttachments',
+	'OutlookIngestAttachments',
+]);
 
 function normalizeParts(
 	content: unknown,

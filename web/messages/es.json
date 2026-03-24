@@ -60,6 +60,17 @@
 			"approved": "Ingesta de adjuntos aprobada",
 			"denied": "Ingesta de adjuntos denegada"
 		},
+		"outlook_ingest_approval": {
+			"title": "Confirmar ingesta de adjuntos",
+			"description": "El asistente quiere ingestar adjuntos de este correo:",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de adjuntos aprobada",
+			"denied": "Ingesta de adjuntos denegada"
+		},
+		"ingest_approval": {
+			"attachment_count": "{count} adjunto(s)"
+		},
 		"ask_questions": {
 			"status": {
 				"answering": "Respondé las preguntas",
@@ -954,7 +965,10 @@
 			"search_error": "Error al buscar en Outlook",
 			"read": "Leyendo correo de Outlook...",
 			"read_success": "Correo de Outlook leído",
-			"read_error": "Error al leer correo de Outlook"
+			"read_error": "Error al leer correo de Outlook",
+			"ingest_attachments": "Ingestando adjuntos de Outlook...",
+			"ingest_attachments_success": "Adjuntos de Outlook ingestados",
+			"ingest_attachments_error": "Error al ingestar adjuntos de Outlook"
 		},
 		"microsoft_calendar": {
 			"list": "Listando calendarios de Microsoft...",

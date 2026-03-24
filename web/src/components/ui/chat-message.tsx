@@ -48,6 +48,7 @@ import {
   'tools.drive.list' as tools_drive_list,
   'tools.outlook.search' as tools_outlook_search,
   'tools.outlook.read' as tools_outlook_read,
+  'tools.outlook.ingest_attachments' as tools_outlook_ingest_attachments,
   'tools.microsoft_calendar.list' as tools_microsoft_calendar_list,
   'tools.microsoft_calendar.events' as tools_microsoft_calendar_events,
   'tools.microsoft_calendar.read' as tools_microsoft_calendar_read,
@@ -82,6 +83,8 @@ import {
   'tools.outlook.search_error' as tools_outlook_search_error,
   'tools.outlook.read_success' as tools_outlook_read_success,
   'tools.outlook.read_error' as tools_outlook_read_error,
+  'tools.outlook.ingest_attachments_success' as tools_outlook_ingest_attachments_success,
+  'tools.outlook.ingest_attachments_error' as tools_outlook_ingest_attachments_error,
   'tools.microsoft_calendar.list_success' as tools_microsoft_calendar_list_success,
   'tools.microsoft_calendar.list_error' as tools_microsoft_calendar_list_error,
   'tools.microsoft_calendar.events_success' as tools_microsoft_calendar_events_success,
@@ -147,6 +150,13 @@ import {
   'components.gmail_ingest_approval.deny' as components_gmail_ingest_approval_deny,
   'components.gmail_ingest_approval.approved' as components_gmail_ingest_approval_approved,
   'components.gmail_ingest_approval.denied' as components_gmail_ingest_approval_denied,
+  'components.outlook_ingest_approval.title' as components_outlook_ingest_approval_title,
+  'components.outlook_ingest_approval.description' as components_outlook_ingest_approval_description,
+  'components.outlook_ingest_approval.approve' as components_outlook_ingest_approval_approve,
+  'components.outlook_ingest_approval.deny' as components_outlook_ingest_approval_deny,
+  'components.outlook_ingest_approval.approved' as components_outlook_ingest_approval_approved,
+  'components.outlook_ingest_approval.denied' as components_outlook_ingest_approval_denied,
+  'components.ingest_approval.attachment_count' as components_ingest_approval_attachment_count,
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
   'chat.edit.cancel' as chat_edit_cancel,
@@ -568,6 +578,22 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   return
                 }
 
+                if (
+                  rawName === "OutlookIngestAttachments" &&
+                  ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
+                ) {
+                  blocks.push(
+                    <OutlookIngestApprovalRenderer
+                      key={`outlook-ingest-approval-${index}`}
+                      part={part}
+                      onRespond={(approvalId: string, approved: boolean) => {
+                        addToolApprovalResponse?.({ id: approvalId, approved })
+                      }}
+                    />
+                  )
+                  return
+                }
+
                 blocks.push(
                   <ToolRenderer
                     key={`tool-${index}`}
@@ -740,6 +766,7 @@ const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => str
   DriveListDir:             { pending: tools_drive_list,                      success: tools_drive_list_success,                      error: tools_drive_list_error },
   OutlookSearch:            { pending: tools_outlook_search,                  success: tools_outlook_search_success,                  error: tools_outlook_search_error },
   OutlookRead:              { pending: tools_outlook_read,                    success: tools_outlook_read_success,                    error: tools_outlook_read_error },
+  OutlookIngestAttachments: { pending: tools_outlook_ingest_attachments,      success: tools_outlook_ingest_attachments_success,      error: tools_outlook_ingest_attachments_error },
   MicrosoftCalendarList:    { pending: tools_microsoft_calendar_list,         success: tools_microsoft_calendar_list_success,         error: tools_microsoft_calendar_list_error },
   MicrosoftCalendarEvents:  { pending: tools_microsoft_calendar_events,       success: tools_microsoft_calendar_events_success,       error: tools_microsoft_calendar_events_error },
   MicrosoftCalendarRead:    { pending: tools_microsoft_calendar_read,         success: tools_microsoft_calendar_read_success,         error: tools_microsoft_calendar_read_error },
@@ -784,6 +811,7 @@ const TOOL_ICON_MAP: Record<string, string> = {
   DriveListDir:             '/datasource_icons/gdrive.png',
   OutlookSearch:            '/datasource_icons/outlook.png',
   OutlookRead:              '/datasource_icons/outlook.png',
+  OutlookIngestAttachments: '/datasource_icons/outlook.png',
   MicrosoftCalendarList:    '/datasource_icons/ocalendar.png',
   MicrosoftCalendarEvents:  '/datasource_icons/ocalendar.png',
   MicrosoftCalendarRead:    '/datasource_icons/ocalendar.png',
@@ -1495,7 +1523,6 @@ function ReingestApprovalRenderer({
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
 }) {
-  const input = part.input as { fileId?: string } | undefined
   const approvalId: string | undefined = part.approval?.id
   const state: string | undefined = part.state
 
@@ -1570,23 +1597,6 @@ function ReingestApprovalRenderer({
           </div>
         )}
       </div>
-
-      {/* File info */}
-      {input?.fileId && (
-        <div className="px-4 sm:px-5 py-3 flex items-center gap-2.5">
-          <div className={cn(
-            "flex items-center gap-2 rounded-lg border p-3 flex-1 transition-all duration-200",
-            isResponded
-              ? "border-border/30 bg-muted/20"
-              : "border-border/40 bg-background/40"
-          )}>
-            <RotateCcw className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm text-foreground font-mono truncate">
-              {input.fileId}
-            </span>
-          </div>
-        </div>
-      )}
 
       {/* Footer */}
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
@@ -1714,8 +1724,8 @@ function GmailIngestApprovalRenderer({
         )}
       </div>
 
-      {/* Message info */}
-      {input?.messageId && (
+      {/* Attachment count */}
+      {input?.attachmentIds && input.attachmentIds.length > 0 && (
         <div className="px-4 sm:px-5 py-3 flex items-center gap-2.5">
           <div className={cn(
             "flex items-center gap-2 rounded-lg border p-3 flex-1 transition-all duration-200",
@@ -1724,8 +1734,8 @@ function GmailIngestApprovalRenderer({
               : "border-border/40 bg-background/40"
           )}>
             <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
-            <span className="text-sm text-foreground font-mono truncate">
-              {input.messageId}
+            <span className="text-sm text-foreground">
+              {components_ingest_approval_attachment_count({ count: input.attachmentIds.length })}
             </span>
           </div>
         </div>
@@ -1764,6 +1774,149 @@ function GmailIngestApprovalRenderer({
             >
               <Check className="h-3.5 w-3.5" />
               {components_gmail_ingest_approval_approve()}
+            </Button>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+// ── OutlookIngestApprovalRenderer ───────────────────────────────────────────
+
+function OutlookIngestApprovalRenderer({
+  part,
+  onRespond,
+}: {
+  part: any
+  onRespond?: (approvalId: string, approved: boolean) => void
+}) {
+  const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
+  const approvalId: string | undefined = part.approval?.id
+  const state: string | undefined = part.state
+
+  const isResponded =
+    state === "approval-responded" ||
+    state === "output-available" ||
+    state === "output-error" ||
+    state === "output-denied" ||
+    respondedApprovals.has(approvalId ?? "")
+
+  const wasApproved = isResponded
+    ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
+    : false
+
+  function handleApprove() {
+    if (!approvalId || isResponded) return
+    respondedApprovals.add(approvalId)
+    respondedApprovals.add(`approved:${approvalId}`)
+    onRespond?.(approvalId, true)
+  }
+
+  function handleDeny() {
+    if (!approvalId || isResponded) return
+    respondedApprovals.add(approvalId)
+    onRespond?.(approvalId, false)
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
+    >
+      {/* Header */}
+      <div className="relative px-4 sm:px-5 pt-4 pb-3 flex items-center gap-3 border-b border-border/40 bg-muted/30">
+        {/* top state bar */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-[2px]",
+          isResponded
+            ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
+            : "bg-amber-400/60"
+        )} />
+        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted/50 border border-border/40 shrink-0">
+          <img
+            src="/datasource_icons/outlook.png"
+            alt="Outlook"
+            className="h-4.5 w-auto max-w-[30px] object-contain opacity-80"
+          />
+        </div>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-sm font-semibold text-foreground leading-tight">
+            {components_outlook_ingest_approval_title()}
+          </span>
+          <span className="text-xs text-muted-foreground leading-tight mt-0.5">
+            {components_outlook_ingest_approval_description()}
+          </span>
+        </div>
+        {isResponded && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className={cn(
+              "flex items-center justify-center h-6 w-6 rounded-full border",
+              wasApproved
+                ? "bg-green-500/15 border-green-500/25"
+                : "bg-red-500/15 border-red-500/25"
+            )}>
+              {wasApproved
+                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+              }
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Attachment count */}
+      {input?.attachmentIds && input.attachmentIds.length > 0 && (
+        <div className="px-4 sm:px-5 py-3 flex items-center gap-2.5">
+          <div className={cn(
+            "flex items-center gap-2 rounded-lg border p-3 flex-1 transition-all duration-200",
+            isResponded
+              ? "border-border/30 bg-muted/20"
+              : "border-border/40 bg-background/40"
+          )}>
+            <Paperclip className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-foreground">
+              {components_ingest_approval_attachment_count({ count: input.attachmentIds.length })}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
+        {isResponded ? (
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {wasApproved
+              ? components_outlook_ingest_approval_approved()
+              : components_outlook_ingest_approval_denied()
+            }
+          </span>
+        ) : (
+          <span className="text-xs text-muted-foreground">
+            {components_outlook_ingest_approval_description()}
+          </span>
+        )}
+
+        {!isResponded && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDeny}
+              className="gap-1.5 cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+              {components_outlook_ingest_approval_deny()}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              className="gap-1.5 cursor-pointer"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {components_outlook_ingest_approval_approve()}
             </Button>
           </div>
         )}

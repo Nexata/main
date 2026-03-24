@@ -60,6 +60,17 @@
 			"approved": "Attachment ingestion approved",
 			"denied": "Attachment ingestion denied"
 		},
+		"outlook_ingest_approval": {
+			"title": "Confirm attachment ingestion",
+			"description": "The assistant wants to ingest attachments from this email:",
+			"approve": "Approve",
+			"deny": "Deny",
+			"approved": "Attachment ingestion approved",
+			"denied": "Attachment ingestion denied"
+		},
+		"ingest_approval": {
+			"attachment_count": "{count} attachment(s)"
+		},
 		"ask_questions": {
 			"status": {
 				"answering": "Answer the questions",
@@ -954,7 +965,10 @@
 			"search_error": "Error searching Outlook",
 			"read": "Reading Outlook message...",
 			"read_success": "Outlook message read",
-			"read_error": "Error reading Outlook message"
+			"read_error": "Error reading Outlook message",
+			"ingest_attachments": "Ingesting Outlook attachments...",
+			"ingest_attachments_success": "Outlook attachments ingested",
+			"ingest_attachments_error": "Error ingesting Outlook attachments"
 		},
 		"microsoft_calendar": {
 			"list": "Listing Microsoft calendars...",

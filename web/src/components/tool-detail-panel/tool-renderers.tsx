@@ -525,7 +525,6 @@ function GmailIngestAttachmentsRenderer({ output }: { output: any }) {
   return (
     <div className="flex flex-col gap-2">
       {output.subject && <Field label={td_subject()}>{output.subject}</Field>}
-      {output.messageId && <Field label="Message ID"><span className="font-mono text-xs">{output.messageId}</span></Field>}
       {results.length > 0 && (
         <div className="flex flex-col gap-1.5">
           <CountBadge icon={Paperclip} label={td_files({ count: results.length })} />
@@ -667,8 +666,9 @@ const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
   // Calendar read
   CalendarRead: EventDetailRenderer,
   MicrosoftCalendarRead: EventDetailRenderer,
-  // Gmail
+  // Gmail / Outlook ingest
   GmailIngestAttachments: GmailIngestAttachmentsRenderer,
+  OutlookIngestAttachments: GmailIngestAttachmentsRenderer,
   // Nexata
   NexataFileSearch: NexataFileSearchRenderer,
   NexataFileRead: NexataFileReadRenderer,
