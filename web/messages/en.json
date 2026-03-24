@@ -46,7 +46,7 @@
 		},
 		"reingest_approval": {
 			"title": "Confirm re-ingestion",
-			"description": "The assistant wants to re-ingest this file:",
+			"description": "The assistant wants to re-ingest this file",
 			"approve": "Approve",
 			"deny": "Deny",
 			"approved": "Re-ingestion approved",
@@ -54,7 +54,7 @@
 		},
 		"gmail_ingest_approval": {
 			"title": "Confirm attachment ingestion",
-			"description": "The assistant wants to ingest attachments from this email:",
+			"description": "The assistant wants to ingest attachments from this email",
 			"approve": "Approve",
 			"deny": "Deny",
 			"approved": "Attachment ingestion approved",
@@ -62,7 +62,7 @@
 		},
 		"outlook_ingest_approval": {
 			"title": "Confirm attachment ingestion",
-			"description": "The assistant wants to ingest attachments from this email:",
+			"description": "The assistant wants to ingest attachments from this email",
 			"approve": "Approve",
 			"deny": "Deny",
 			"approved": "Attachment ingestion approved",

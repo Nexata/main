@@ -1600,16 +1600,12 @@ function ReingestApprovalRenderer({
 
       {/* Footer */}
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
-        {isResponded ? (
+        {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
             {wasApproved
               ? components_reingest_approval_approved()
               : components_reingest_approval_denied()
             }
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {components_reingest_approval_description()}
           </span>
         )}
 
@@ -1743,16 +1739,12 @@ function GmailIngestApprovalRenderer({
 
       {/* Footer */}
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
-        {isResponded ? (
+        {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
             {wasApproved
               ? components_gmail_ingest_approval_approved()
               : components_gmail_ingest_approval_denied()
             }
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {components_gmail_ingest_approval_description()}
           </span>
         )}
 
@@ -1886,16 +1878,12 @@ function OutlookIngestApprovalRenderer({
 
       {/* Footer */}
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
-        {isResponded ? (
+        {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
             {wasApproved
               ? components_outlook_ingest_approval_approved()
               : components_outlook_ingest_approval_denied()
             }
-          </span>
-        ) : (
-          <span className="text-xs text-muted-foreground">
-            {components_outlook_ingest_approval_description()}
           </span>
         )}
 

@@ -14,6 +14,7 @@ import { Nexata } from '@api/chat/tools/nexata';
 import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
 import { Gmail } from '@api/integration/google';
+import { Outlook } from '@api/integration/microsoft';
 import { FinishReason, message, OauthScope, thread } from '@api/schema';
 import { checkTenantCanChat } from '@api/utils/billing';
 import {
@@ -339,61 +340,77 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				let toolOutput: unknown;
 				if (body.approved) {
 					try {
-						switch (approvalPart.toolName) {
-							case 'NexataReingest':
-								toolOutput = await Nexata.reingest(
-									activeUser,
-									approvalPart.input as { fileId: string },
-								);
-								break;
+						if (approvalPart.toolName === 'NexataReingest') {
+							toolOutput = await Nexata.reingest(
+								activeUser,
+								approvalPart.input as { fileId: string },
+							);
+						} else {
+							const ingestTools: Record<
+								string,
+								{
+									scope: OauthScope;
+									fromTokens: (at: string, rt: string) => unknown;
+									execute: (
+										client: never,
+										au: typeof activeUser,
+										input: never,
+									) => Promise<unknown>;
+								}
+							> = {
+								GmailIngestAttachments: {
+									scope: OauthScope.GMAIL,
+									fromTokens: Gmail.fromTokens,
+									execute: Gmail.ingestAttachments,
+								},
+								OutlookIngestAttachments: {
+									scope: OauthScope.OUTLOOK,
+									fromTokens: Outlook.fromTokens,
+									execute: Outlook.ingestAttachments,
+								},
+							};
 
-							case 'GmailIngestAttachments': {
-								const credentials = await getCredentialsForUser(
-									activeUser,
-									'usage',
-								);
-								const gmailCred = credentials.find(
-									(c): c is CachedCredential =>
-										c.scope === OauthScope.GMAIL &&
-										(!approvalPart.input.credentialEmail ||
-											c.email === approvalPart.input.credentialEmail),
-								);
-
-								if (!gmailCred)
-									throw httpError(
-										HttpCode.BAD_REQUEST,
-										ErrorCode.TOOL_CALL_NOT_FOUND,
-										activeUser.language,
-									);
-
-								const { at, rt } = await ensureFreshTokens(
-									gmailCred.id,
-									gmailCred.provider,
-									gmailCred.accessToken,
-									gmailCred.refreshToken,
-									gmailCred.accessTokenExpiresAt,
-									activeUser.slug,
-									activeUser.language,
-								);
-
-								toolOutput = await Gmail.ingestAttachments(
-									Gmail.fromTokens(at, rt),
-									activeUser,
-									approvalPart.input as {
-										messageId: string;
-										credentialEmail?: string;
-										attachmentIds?: string[];
-									},
-								);
-								break;
-							}
-
-							default:
+							const handler = ingestTools[approvalPart.toolName];
+							if (!handler)
 								throw httpError(
 									HttpCode.BAD_REQUEST,
 									ErrorCode.TOOL_CALL_NOT_FOUND,
 									activeUser.language,
 								);
+
+							const credentials = await getCredentialsForUser(
+								activeUser,
+								'usage',
+							);
+							const cred = credentials.find(
+								(c): c is CachedCredential =>
+									c.scope === handler.scope &&
+									(!approvalPart.input.credentialEmail ||
+										c.email === approvalPart.input.credentialEmail),
+							);
+
+							if (!cred)
+								throw httpError(
+									HttpCode.BAD_REQUEST,
+									ErrorCode.TOOL_CALL_NOT_FOUND,
+									activeUser.language,
+								);
+
+							const { at, rt } = await ensureFreshTokens(
+								cred.id,
+								cred.provider,
+								cred.accessToken,
+								cred.refreshToken,
+								cred.accessTokenExpiresAt,
+								activeUser.slug,
+								activeUser.language,
+							);
+
+							toolOutput = await handler.execute(
+								handler.fromTokens(at, rt) as never,
+								activeUser,
+								approvalPart.input as never,
+							);
 						}
 					} catch (error) {
 						captureException(error, {
@@ -685,7 +702,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			detail: {
 				summary: 'Answer tool call',
 				description:
-					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for an approval-requiring tool call (e.g. NexataReingest, GmailIngestAttachments). Does not consume a message credit.',
+					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for an approval-requiring tool call (e.g. NexataReingest, GmailIngestAttachments, OutlookIngestAttachments). Does not consume a message credit.',
 			},
 			body: tObject({
 				threadId: t.String({
