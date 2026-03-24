@@ -44,6 +44,7 @@ import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
+import { extractErrorText } from "@/lib/error";
 import { useChatUIStore } from '@/lib/chat.store';
 import { removeChatInstance } from '@/lib/chat-pool';
 import { useTypingText } from '@/hooks/use-typing-text';
@@ -219,7 +220,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
     } catch (error) {
       infoToast.error(toastId, {
         title: sidebar_delete_toast_error_title(),
-        description: sidebar_delete_toast_error_desc(),
+        description: extractErrorText(error) ?? sidebar_delete_toast_error_desc(),
       });
 
       await queryClient.invalidateQueries({

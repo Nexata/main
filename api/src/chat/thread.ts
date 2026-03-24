@@ -10,13 +10,23 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 	.use(authPlugin())
 	.get(
 		'/:id',
-		async ({ params: { id }, query, activeUser: { slug } }) =>
-			getThreadMessages(id, {
+		async ({ params: { id }, query, activeUser }) => {
+			const messages = await getThreadMessages(id, {
 				content: 'full',
-				slug,
+				slug: activeUser.slug,
 				limit: query.limit,
 				cursor: query.cursor,
-			}),
+			});
+			const [owner] = await db
+				.select({ userId: thread.userId })
+				.from(thread)
+				.where(eq(thread.id, id))
+				.limit(1);
+			return {
+				messages,
+				isOwner: owner?.userId === activeUser.id,
+			};
+		},
 		{
 			detail: { summary: 'Read thread by ID (asc)' },
 			params: tObject({ id: t.String({ format: 'uuid' }) }),

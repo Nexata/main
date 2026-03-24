@@ -320,7 +320,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
       )}
     >
       {/* Inline Edit Mode */}
-      {isUser && isEditing ? (
+      {isUser && isEditing && onEdit ? (
         <div className="w-full sm:max-w-[85%] flex flex-col gap-2.5">
           <textarea
             value={editText}
@@ -597,7 +597,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               )}
 
               {/* Edit button (for user messages) */}
-              {isUser && (
+              {isUser && onEdit && (
                 <Tooltip>
                   <TooltipTrigger>
                     <button

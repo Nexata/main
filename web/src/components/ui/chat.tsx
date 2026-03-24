@@ -8,7 +8,7 @@ import {
   type ReactElement,
 } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowDown, Calendar, FileText, Mail, Search } from "lucide-react"
+import { ArrowDown, Calendar, Eye, FileText, Mail, Search } from "lucide-react"
 import type { UIMessage } from "@ai-sdk/react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
@@ -21,6 +21,7 @@ import {
   'chat.suggestions.prompt_2' as chat_suggestions_prompt_2,
   'chat.suggestions.prompt_3' as chat_suggestions_prompt_3,
   'chat.suggestions.prompt_4' as chat_suggestions_prompt_4,
+  'chat.shared.banner' as chat_shared_banner,
 } from '@/paraglide/messages.js'
 
 interface ChatPropsBase {
@@ -45,6 +46,7 @@ interface ChatPropsBase {
   onEditMessage?: (messageId: string, newText: string) => void
   onBranchOff?: (messageId: string) => void
   onRetry?: (messageId: string) => void
+  isReadOnly?: boolean
 }
 
 export function Chat({
@@ -66,6 +68,7 @@ export function Chat({
   onEditMessage,
   onBranchOff,
   onRetry,
+  isReadOnly,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -191,24 +194,35 @@ export function Chat({
             exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.3, ease: [0.25, 0.46, 0.45, 0.94] }}
           >
-            <ChatForm
-              isPending={isHydrating || isStreaming}
-              handleSubmit={handleSubmit}
-            >
-              {({ files, setFiles }) => (
-                <MessageInput
-                  value={input}
-                  onChange={handleInputChange}
-                  allowAttachments
-                  files={files}
-                  setFiles={setFiles}
-                  stop={handleStop}
-                  isGenerating={isGenerating}
-                  transcribeAudio={transcribeAudio}
-                  setExtraReason={setExtraReason}
-                />
-              )}
-            </ChatForm>
+            {isReadOnly ? (
+              <div className="flex justify-center">
+                <div className="w-full max-w-4xl px-6">
+                  <div className="flex items-center gap-3 rounded-2xl border border-amber-500/30 bg-amber-50 dark:bg-amber-950/40 px-4 py-3 text-sm text-amber-800 dark:text-amber-200">
+                    <Eye className="h-4 w-4 shrink-0 opacity-80" />
+                    <span>{chat_shared_banner()}</span>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <ChatForm
+                isPending={isHydrating || isStreaming}
+                handleSubmit={handleSubmit}
+              >
+                {({ files, setFiles }) => (
+                  <MessageInput
+                    value={input}
+                    onChange={handleInputChange}
+                    allowAttachments
+                    files={files}
+                    setFiles={setFiles}
+                    stop={handleStop}
+                    isGenerating={isGenerating}
+                    transcribeAudio={transcribeAudio}
+                    setExtraReason={setExtraReason}
+                  />
+                )}
+              </ChatForm>
+            )}
           </motion.div>
         )}
       </AnimatePresence>

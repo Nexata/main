@@ -48,6 +48,7 @@ import {
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
 import UserSection from '@/components/user-section/user-section';
+import { extractErrorText } from '@/lib/error';
 import {
 	FEEDBACK_STATUS_OPTIONS,
 	type FeedbackList,
@@ -710,10 +711,10 @@ function FeedbackModal({ mode, feedback, open, onClose }: FeedbackModalProps) {
 			setComment('');
 			setType('');
 			setRemoveUrls([]);
-		} catch {
+		} catch (error) {
 			infoToast.error(toast, {
 				title: feedback_modal_error_title(),
-				description: feedback_modal_error_desc(),
+				description: extractErrorText(error) ?? feedback_modal_error_desc(),
 			});
 		}
 	};
@@ -1054,10 +1055,10 @@ function DeleteModal({
 				title: feedback_delete_success_title(),
 				description: feedback_delete_success_desc(),
 			});
-		} catch {
+		} catch (error) {
 			infoToast.error(toast, {
 				title: feedback_delete_error_title(),
-				description: feedback_delete_error_desc(),
+				description: extractErrorText(error) ?? feedback_delete_error_desc(),
 			});
 		}
 	};

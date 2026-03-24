@@ -92,6 +92,7 @@ import {
 	formatAmount as formatCurrencyAmount,
 	useCurrencyStore,
 } from '@/lib/currency.store';
+import { extractErrorText } from '@/lib/error';
 import { type Language, type Plan, useMyTenant } from '@/lib/user';
 import {
 	'admin.billing.batch.detail_months' as admin_billing_batch_detail_months,
@@ -1739,7 +1740,8 @@ function UsersSection() {
 		} catch (_error) {
 			infoToast.error(toastId, {
 				title: admin_users_delete_error_title(),
-				description: admin_users_delete_error_description(),
+				description:
+					extractErrorText(_error) ?? admin_users_delete_error_description(),
 			});
 
 			await queryClient.invalidateQueries({

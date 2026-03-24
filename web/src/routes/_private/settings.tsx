@@ -69,6 +69,7 @@ import {
 	deleteCredentialById,
 	listCredentials,
 } from '@/lib/credential';
+import { extractErrorText } from '@/lib/error';
 import type {
 	ReIngestResult,
 	SearchFilesParams,
@@ -209,7 +210,8 @@ function SettingsPage() {
 			console.error(err);
 			infoToast.error(toastId, {
 				title: common_error(),
-				description: components_credentials_toast_delete_error(),
+				description:
+					extractErrorText(err) ?? components_credentials_toast_delete_error(),
 			});
 		}
 	}
@@ -798,10 +800,12 @@ export function FilesManagementSection() {
 				title: settings_files_toast_delete_success(),
 				description: settings_files_toast_delete_success_desc({ label }),
 			});
-		} catch {
+		} catch (error) {
 			infoToast.error(toastId, {
 				title: common_error(),
-				description: settings_files_toast_delete_error_desc({ label }),
+				description:
+					extractErrorText(error) ??
+					settings_files_toast_delete_error_desc({ label }),
 			});
 		}
 	};
@@ -837,10 +841,11 @@ export function FilesManagementSection() {
 					description: settings_files_toast_reingest_unmodified_desc(),
 				});
 			}
-		} catch {
+		} catch (error) {
 			infoToast.error(toastId, {
 				title: common_error(),
-				description: settings_files_toast_reingest_error_desc(),
+				description:
+					extractErrorText(error) ?? settings_files_toast_reingest_error_desc(),
 			});
 		}
 	};
@@ -918,10 +923,12 @@ export function FilesManagementSection() {
 					description: settings_files_toast_reingest_all_unmodified_desc(),
 				});
 			}
-		} catch {
+		} catch (error) {
 			infoToast.error(toastId, {
 				title: common_error(),
-				description: settings_files_toast_reingest_bulk_error_desc(),
+				description:
+					extractErrorText(error) ??
+					settings_files_toast_reingest_bulk_error_desc(),
 			});
 		}
 	};

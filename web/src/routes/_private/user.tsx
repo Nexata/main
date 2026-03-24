@@ -20,6 +20,7 @@ import { useEffect, useState } from 'react';
 import { UAParser } from 'ua-parser-js';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { infoToast } from '@/components/info-toast/info-toast';
+import { LanguageSelector } from '@/components/language-selector/language-selector';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,6 @@ import {
 } from '@/components/ui/dialog';
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
-import { LanguageSelector } from '@/components/language-selector/language-selector';
 import { Separator } from '@/components/ui/separator';
 import {
 	Tooltip,
@@ -42,7 +42,9 @@ import {
 	TooltipProvider,
 	TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { usePersistedLanguage } from '@/hooks/use-sync-language';
 import { clearTokens } from '@/lib/auth';
+import { extractErrorText } from '@/lib/error';
 import { clearFingerprint, getFingerprint } from '@/lib/fingerprint';
 import { getTenantSessions } from '@/lib/tenant-session';
 import {
@@ -118,7 +120,6 @@ import {
 	'user.profile.info.messages_used' as user_profile_info_messages_used,
 } from '@/paraglide/messages.js';
 import { isLocale, setLocale } from '@/paraglide/runtime';
-import { usePersistedLanguage } from '@/hooks/use-sync-language';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
@@ -219,7 +220,8 @@ export default function ProfilePage() {
 		} catch (_error) {
 			infoToast.error(toastId, {
 				title: profile_device_revoke_error_title(),
-				description: profile_device_revoke_error_description(),
+				description:
+					extractErrorText(_error) ?? profile_device_revoke_error_description(),
 			});
 		}
 	}
@@ -243,7 +245,9 @@ export default function ProfilePage() {
 		} catch (_error) {
 			infoToast.error(toastId, {
 				title: profile_api_keys_toast_generate_error_title(),
-				description: profile_api_keys_toast_generate_error_description(),
+				description:
+					extractErrorText(_error) ??
+					profile_api_keys_toast_generate_error_description(),
 			});
 		}
 	}
@@ -267,7 +271,9 @@ export default function ProfilePage() {
 		} catch (_error) {
 			infoToast.error(toastId, {
 				title: profile_api_keys_toast_delete_error_title(),
-				description: profile_api_keys_toast_delete_error_description(),
+				description:
+					extractErrorText(_error) ??
+					profile_api_keys_toast_delete_error_description(),
 			});
 		}
 	}

@@ -324,6 +324,10 @@
 		"retry": {
 			"button": "Retry"
 		},
+		"shared": {
+			"banner": "You are viewing a shared chat. You can only branch off the conversation.",
+			"badge": "Shared chat"
+		},
 		"tool_detail": {
 			"title": "Tool detail",
 			"input": "Parameters",

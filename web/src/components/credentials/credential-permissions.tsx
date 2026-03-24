@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { cn } from "@/lib/utils"
+import { extractErrorText } from "@/lib/error"
 import UserInput from "@/components/user-input/user-input"
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button"
 import { deleteCredentialPermission, listCredentials, updateCredentialPermission } from "@/lib/credential"
@@ -107,7 +108,7 @@ export function CredentialPermissions({
 
             infoToast.error(toastId, {
                 title: components_credentials_permissions_remove_toast_error_title(),
-                description: components_credentials_permissions_remove_toast_error_description()
+                description: extractErrorText(error) ?? components_credentials_permissions_remove_toast_error_description()
             })
         }
     }

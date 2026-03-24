@@ -25,6 +25,7 @@ import { AccessLevelBadge } from "./access-level-badge"
 import { Globe } from "lucide-react"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import { infoToast } from "@/components/info-toast/info-toast"
+import { extractErrorText } from "@/lib/error"
 
 type Props = {
   credential: CredentialItem
@@ -69,8 +70,8 @@ export function CredentialDetailsRow({
       } else {
         infoToast.success(toastId, { title: components_credentials_global_toast_success_disabled() })
       }
-    } catch {
-      infoToast.error(toastId, { title: components_credentials_global_toast_error() })
+    } catch (error) {
+      infoToast.error(toastId, { title: components_credentials_global_toast_error(), description: extractErrorText(error) })
     } finally {
       setIsTogglingGlobal(false)
     }

@@ -10,6 +10,7 @@ import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import { useBranchOffMessage, useThreadById } from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
+import { extractErrorText } from '@/lib/error';
 import { useToolDetailStore } from '@/lib/tool-detail.store';
 import { useMe } from '@/lib/user';
 import {
@@ -154,11 +155,15 @@ export function NexataChat() {
 		? streamingThreadIds.has(activeThreadId)
 		: false;
 
-	const { data: threadMessages, isLoading: isThreadLoading } = useThreadById(
+	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
 		activeThreadId ?? null,
 		undefined,
 		{ enabled: !isActiveThreadStreaming },
 	);
+
+	const threadMessages = threadData?.messages;
+	const isOwner = threadData?.isOwner ?? true;
+	const isReadOnly = !!activeThreadId && !isOwner;
 
 	const hydratedMessages = useMemo<UIMessage[]>(() => {
 		if (!threadMessages) return [];
@@ -475,13 +480,7 @@ export function NexataChat() {
 
 	useEffect(() => {
 		if (!error) return;
-		let errorText = chat_meta_error();
-		try {
-			const parsed = JSON.parse(error.message);
-			if (parsed?.message?.text) errorText = parsed.message.text;
-		} catch {
-			// Not JSON — use fallback
-		}
+		const errorText = extractErrorText(error) ?? chat_meta_error();
 		infoToast.error(Date.now(), { description: errorText });
 	}, [error]);
 
@@ -507,9 +506,12 @@ export function NexataChat() {
 	handleSubmitRef.current = handleSubmit;
 	const inputRef = useRef(input);
 	inputRef.current = input;
+	const isReadOnlyRef = useRef(isReadOnly);
+	isReadOnlyRef.current = isReadOnly;
 
 	useEffect(() => {
 		const onKeyDown = (e: KeyboardEvent) => {
+			if (isReadOnlyRef.current) return;
 			if (e.key !== 'Enter' || e.shiftKey || e.ctrlKey || e.metaKey) return;
 			const tag = (document.activeElement?.tagName ?? '').toLowerCase();
 			if (['textarea', 'input', 'select', 'button', 'a'].includes(tag)) return;
@@ -602,9 +604,10 @@ export function NexataChat() {
 				if (result && typeof result === 'object' && 'threadId' in result) {
 					hydrateChat(result.threadId as string);
 				}
-			} catch {
+			} catch (error) {
 				infoToast.error(toastId, {
 					title: chat_branch_off_error(),
+					description: extractErrorText(error),
 				});
 			}
 		},
@@ -631,11 +634,14 @@ export function NexataChat() {
 					welcomeLabel={welcomeText}
 					isUserLoading={isMeLoading}
 					setExtraReason={setExtraReason}
-					addToolOutput={addToolOutput}
-					addToolApprovalResponse={addToolApprovalResponse}
-					onEditMessage={handleEditMessage}
+					addToolOutput={isReadOnly ? undefined : addToolOutput}
+					addToolApprovalResponse={
+						isReadOnly ? undefined : addToolApprovalResponse
+					}
+					onEditMessage={isReadOnly ? undefined : handleEditMessage}
 					onBranchOff={handleBranchOff}
-					onRetry={handleRetry}
+					onRetry={isReadOnly ? undefined : handleRetry}
+					isReadOnly={isReadOnly}
 				/>
 			</div>
 		</div>

@@ -35,6 +35,7 @@ import {
 } from "@/lib/admin";
 import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
 import { infoToast } from "@/components/info-toast/info-toast";
+import { extractErrorText } from "@/lib/error";
 import { getLocale } from "@/paraglide/runtime";
 
 type BatchBillingModalProps = {
@@ -85,8 +86,8 @@ export function BatchBillingModal({
         const checkout = await getCheckout(res.billId, redirect, language);
         if (checkout?.init_point) window.open(checkout.init_point, "_self");
       }
-    } catch {
-      infoToast.error(toastId, { title: batch_error_toast() });
+    } catch (error) {
+      infoToast.error(toastId, { title: batch_error_toast(), description: extractErrorText(error) });
     }
   };
 

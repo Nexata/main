@@ -324,6 +324,10 @@
 		"retry": {
 			"button": "Reintentar"
 		},
+		"shared": {
+			"banner": "Estás viendo un chat compartido. Solo podés bifurcar la conversación.",
+			"badge": "Chat compartido"
+		},
 		"tool_detail": {
 			"title": "Detalle de herramienta",
 			"input": "Parámetros",

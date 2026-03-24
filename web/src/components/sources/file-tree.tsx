@@ -50,6 +50,7 @@ import {
   "common.confirm" as common_confirm
 } from "@/paraglide/messages.js";
 import { infoToast } from "../info-toast/info-toast";
+import { extractErrorText } from "@/lib/error";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
 import { useDeleteFiles } from "@/lib/file";
 
@@ -372,7 +373,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
       infoToast.error(toastId, {
         title: components_file_tree_toast_error_title(),
-        description: components_file_tree_toast_error_all_failed({ count: toIngestIds.length }),
+        description: extractErrorText(err) ?? components_file_tree_toast_error_all_failed({ count: toIngestIds.length }),
       });
     }
   }
