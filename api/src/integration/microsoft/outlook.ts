@@ -1,13 +1,17 @@
 import { authPlugin } from '@api/auth';
+import { NexataFile } from '@api/file';
+import { getMimeTypeFromExt } from '@api/file/lib/types';
 import { Microsoft } from '@api/integration/microsoft/lib';
 import type { Language } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import { getTokensForUser, userHasCredential } from '@api/utils/credential';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Client } from '@microsoft/microsoft-graph-client';
 import type {
 	Attachment,
+	FileAttachment,
 	Message,
 	Recipient,
 } from '@microsoft/microsoft-graph-types';
@@ -242,6 +246,121 @@ export namespace Outlook {
 			importance: msg.importance ?? 'normal',
 			flag: msg.flag?.flagStatus ?? 'notFlagged',
 			parentFolderId: msg.parentFolderId ?? null,
+		};
+	}
+
+	async function downloadAttachment(
+		client: Client,
+		messageId: string,
+		attachmentId: string,
+	): Promise<ArrayBuffer> {
+		const attachment: FileAttachment = await client
+			.api(`/me/messages/${messageId}/attachments/${attachmentId}`)
+			.get();
+
+		if (!attachment.contentBytes)
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
+
+		return Buffer.from(attachment.contentBytes, 'base64').buffer as ArrayBuffer;
+	}
+
+	export const [ingestAttachmentsDescription, ingestAttachmentsInput] = [
+		'Outlook tool to ingest (download and process) email attachments into Nexata so their content becomes searchable and readable. Use OutlookRead first to see available attachments, then call this tool with the message ID and optionally specific attachment IDs. If attachmentIds is omitted, all attachments on the message are ingested.',
+		tObject({
+			messageId: t.String({
+				description: 'The Outlook message ID containing the attachments.',
+			}),
+			credentialEmail: Nullish(t.String({ format: 'email' }), {
+				description:
+					'The email address of the Outlook account that owns this message. Should match the credentialEmail from search or read results.',
+			}),
+			attachmentIds: Nullish(t.Array(t.String()), {
+				description:
+					'Specific attachment IDs to ingest. If omitted, all attachments on the message are ingested.',
+			}),
+		}),
+	];
+
+	export async function ingestAttachments(
+		client: Client,
+		activeUser: ActiveUser,
+		input: Static<typeof ingestAttachmentsInput>,
+	) {
+		const message = await read(client, { messageId: input.messageId });
+
+		if (!message.attachments?.length)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language as Language,
+			);
+
+		const targets = input.attachmentIds?.length
+			? message.attachments.filter((a) => input.attachmentIds!.includes(a.id))
+			: message.attachments;
+
+		if (!targets.length)
+			throw httpError(
+				HttpCode.NOT_FOUND,
+				ErrorCode.FILE_NOT_FOUND,
+				activeUser.language as Language,
+			);
+
+		const blockReason = await checkTenantCanIngest(activeUser.slug);
+		if (blockReason)
+			throw httpError(
+				blockReason === ErrorCode.PAYMENT_REQUIRED
+					? HttpCode.PAYMENT_REQUIRED
+					: HttpCode.PRECONDITION_FAILED,
+				ErrorCode[blockReason as keyof typeof ErrorCode],
+				activeUser.language as Language,
+			);
+
+		const results: { filename: string; status: string; fileId?: string }[] = [];
+
+		for (const attachment of targets) {
+			const fileId = crypto.randomUUID();
+			try {
+				const content = await downloadAttachment(
+					client,
+					input.messageId,
+					attachment.id,
+				);
+
+				const resolvedMime =
+					attachment.contentType === 'application/octet-stream'
+						? getMimeTypeFromExt(attachment.name)
+						: attachment.contentType;
+
+				const file = new File([content], attachment.name, {
+					type: resolvedMime,
+				});
+
+				const status = await NexataFile.ingest(
+					{
+						id: fileId,
+						userId: activeUser.id,
+						slug: activeUser.slug,
+						name: attachment.name,
+						type: resolvedMime,
+					},
+					file,
+				);
+
+				results.push({
+					filename: attachment.name,
+					status,
+					fileId: status === 'OK' ? fileId : undefined,
+				});
+			} catch {
+				results.push({ filename: attachment.name, status: 'FAILED' });
+			}
+		}
+
+		return {
+			messageId: message.id,
+			subject: message.subject,
+			results,
 		};
 	}
 }

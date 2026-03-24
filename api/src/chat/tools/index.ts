@@ -419,6 +419,31 @@ export const getTools = async (
 			),
 		};
 
+	if (outlookCredentials.length && interactive)
+		tools = {
+			...tools,
+			OutlookIngestAttachments: toolify(
+				Outlook.ingestAttachmentsDescription,
+				Outlook.ingestAttachmentsInput,
+				outlookCredentials,
+				(credentials) => credentials,
+				async (c, input) => {
+					if (input.credentialEmail && c.email !== input.credentialEmail)
+						throw httpError(
+							HttpCode.FORBIDDEN,
+							ErrorCode.NO_CREDENTIAL_PERMISSION,
+						);
+					return Outlook.ingestAttachments(
+						await freshClient(c, Outlook.fromTokens),
+						activeUser,
+						input,
+					);
+				},
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+				{ needsApproval: true },
+			),
+		};
+
 	const microsoftCalendarCredentials = credentials.filter(
 		(c) => c.scope === OauthScope.MICROSOFT_CALENDAR,
 	);
