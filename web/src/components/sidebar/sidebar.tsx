@@ -32,6 +32,12 @@ import {
   "sidebar.settings" as sidebar_settings,
   "sidebar.feedback" as sidebar_feedback,
   "common.created_at" as common_created_at,
+  "sidebar.delete_toast.loading_title" as sidebar_delete_toast_loading_title,
+  "sidebar.delete_toast.loading_desc" as sidebar_delete_toast_loading_desc,
+  "sidebar.delete_toast.success_title" as sidebar_delete_toast_success_title,
+  "sidebar.delete_toast.success_desc" as sidebar_delete_toast_success_desc,
+  "sidebar.delete_toast.error_title" as sidebar_delete_toast_error_title,
+  "sidebar.delete_toast.error_desc" as sidebar_delete_toast_error_desc,
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
 import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
@@ -189,8 +195,8 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
     setChatToDelete(null);
 
     const toastId = infoToast.loading({
-      title: 'Deleting chat...',
-      description: 'Please wait while we delete the conversation.',
+      title: sidebar_delete_toast_loading_title(),
+      description: sidebar_delete_toast_loading_desc(),
     });
 
     try {
@@ -198,8 +204,8 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
       removeChatInstance(deletedThreadId);
 
       infoToast.success(toastId, {
-        title: 'Chat deleted',
-        description: 'The conversation was deleted successfully.',
+        title: sidebar_delete_toast_success_title(),
+        description: sidebar_delete_toast_success_desc(),
       });
 
       if (deletedThreadId === activeThreadId) {
@@ -212,8 +218,8 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
       });
     } catch (error) {
       infoToast.error(toastId, {
-        title: 'Failed to delete chat',
-        description: 'Something went wrong while deleting the conversation.',
+        title: sidebar_delete_toast_error_title(),
+        description: sidebar_delete_toast_error_desc(),
       });
 
       await queryClient.invalidateQueries({
@@ -427,7 +433,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                             <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
                           )}
                           <ThreadTitle
-                            title={chat.title ?? "New Chat"}
+                            title={chat.title ?? sidebar_new_chat()}
                             isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
                             isSaving={savingThreads.has(chat.id ?? "")}
                             sidebarWidth={sidebarWidth}
@@ -441,7 +447,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                               className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditClick(chat.id, chat.title ?? "New Chat");
+                                handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
                               }}
                             />
                             <Trash2

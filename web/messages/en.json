@@ -278,7 +278,15 @@
 		"theme": "Toggle theme",
 		"settings": "Settings",
 		"tenant_switch": "Switch Tenant",
-		"feedback": "Send feedback"
+		"feedback": "Send feedback",
+		"delete_toast": {
+			"loading_title": "Deleting chat…",
+			"loading_desc": "Please wait while we delete the conversation.",
+			"success_title": "Chat deleted",
+			"success_desc": "The conversation was deleted successfully.",
+			"error_title": "Failed to delete chat",
+			"error_desc": "Something went wrong while deleting the conversation."
+		}
 	},
 	"user_input": {
 		"placeholder": "Select user",
@@ -295,6 +303,8 @@
 			"copy": "Copy",
 			"copied": "Copied"
 		},
+		"interrupt_prompt": "Press Enter again to interrupt",
+		"drop_files": "Drop your files here to attach them.",
 		"edit": {
 			"button": "Edit",
 			"confirm_title": "Edit message?",
@@ -456,7 +466,8 @@
 				"title_single": "Delete \"{name}\"?",
 				"title_bulk": "Delete {count} file(s)?",
 				"description_single": "\"{name}\" will be permanently removed and cannot be recovered.",
-				"description_bulk": "You are about to permanently delete {count} file(s). This action cannot be undone."
+				"description_bulk": "You are about to permanently delete {count} file(s). This action cannot be undone.",
+				"label_bulk": "{count} files"
 			},
 			"toast": {
 				"delete_loading": "Deleting {label}…",
@@ -1386,5 +1397,34 @@
 			"start": "Start Free",
 			"demo": "Request Demo"
 		}
+	},
+
+	"toast": {
+		"loading_title": "Processing",
+		"loading_desc": "Please wait…",
+		"success_title": "Completed",
+		"success_desc": "The operation was successful",
+		"info_title": "Information",
+		"info_desc": "No changes were made",
+		"error_title": "Error",
+		"error_desc": "Something went wrong"
+	},
+
+	"clipboard": {
+		"copy_success": "Copied to clipboard",
+		"copy_error": "Failed to copy to clipboard"
+	},
+
+	"pwa": {
+		"offline_ready": "App ready to work offline",
+		"new_version": "A new version is available",
+		"reload_hint": "Click reload to update.",
+		"reload": "Reload"
+	},
+
+	"error_boundary": {
+		"title": "Something went wrong",
+		"description": "An unexpected error occurred. Please reload the page.",
+		"reload": "Reload"
 	}
 }

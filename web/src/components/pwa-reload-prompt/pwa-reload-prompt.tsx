@@ -1,5 +1,11 @@
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { RefreshCw, X } from "lucide-react";
+import {
+  "pwa.offline_ready" as pwa_offline_ready,
+  "pwa.new_version" as pwa_new_version,
+  "pwa.reload_hint" as pwa_reload_hint,
+  "pwa.reload" as pwa_reload,
+} from "@/paraglide/messages.js";
 
 const INTERVAL_MS = 60 * 60 * 1000; // check for updates every hour
 
@@ -32,12 +38,12 @@ export default function PwaReloadPrompt() {
         <div className="flex-1 space-y-1">
           <p className="text-sm font-medium text-foreground">
             {offlineReady
-              ? "App ready to work offline"
-              : "A new version is available"}
+              ? pwa_offline_ready()
+              : pwa_new_version()}
           </p>
           {needRefresh && (
             <p className="text-xs text-muted-foreground">
-              Click reload to update.
+              {pwa_reload_hint()}
             </p>
           )}
         </div>
@@ -49,7 +55,7 @@ export default function PwaReloadPrompt() {
               className="inline-flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
               <RefreshCw className="h-3 w-3" />
-              Reload
+              {pwa_reload()}
             </button>
           )}
           <button

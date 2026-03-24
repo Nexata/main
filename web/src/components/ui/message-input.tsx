@@ -16,7 +16,8 @@ import {
   "common.ask_nexy" as common_ask_nexy,
   "common.brain" as common_brain,
   "common.attachment" as common_attachment,
-  "common.brain_description" as common_brain_description
+  "common.brain_description" as common_brain_description,
+  "chat.drop_files" as chat_drop_files
 } from "@/paraglide/messages.js";
 
 
@@ -543,7 +544,7 @@ function FileUploadOverlay({ isDragging }: FileUploadOverlayProps) {
           aria-hidden
         >
           <Paperclip className="h-4 w-4" />
-          <span>Drop your files here to attach them.</span>
+          <span>{chat_drop_files()}</span>
         </motion.div>
       )}
     </AnimatePresence>

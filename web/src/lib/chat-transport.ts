@@ -2,6 +2,7 @@ import { DefaultChatTransport } from 'ai';
 import { API_BASE_URL } from '@/api';
 import { getAccessToken } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
+import { 'sidebar.new_chat' as sidebar_new_chat } from '@/paraglide/messages.js';
 import { useChatUIStore } from './chat.store';
 import { promoteChatInstance } from './chat-pool';
 
@@ -209,7 +210,7 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 										store.setActiveThreadId(newThreadId);
 										store.upsertOptimisticThread({
 											id: newThreadId,
-											title: threadTitle ?? 'New chat',
+											title: threadTitle ?? sidebar_new_chat(),
 											isTyping: true,
 										});
 									}

@@ -1,5 +1,15 @@
 import { toast } from "@/hooks/use-toast"
 import { Loader2, CheckCircle2, XCircle, Info } from "lucide-react"
+import {
+  "toast.loading_title" as toast_loading_title,
+  "toast.loading_desc" as toast_loading_desc,
+  "toast.success_title" as toast_success_title,
+  "toast.success_desc" as toast_success_desc,
+  "toast.info_title" as toast_info_title,
+  "toast.info_desc" as toast_info_desc,
+  "toast.error_title" as toast_error_title,
+  "toast.error_desc" as toast_error_desc,
+} from "@/paraglide/messages.js"
 
 type ToastId = string | number
 
@@ -13,11 +23,11 @@ const baseToastClass = "group relative flex gap-3 rounded-xl border bg-card/95 b
 export const infoToast = {
     loading(options: BaseOptions): ToastId {
         return toast({
-            title: options.title ?? "Procesando",
+            title: options.title ?? toast_loading_title(),
             description: (
                 <div className="flex items-center gap-2 text-muted-foreground">
                     <Loader2 className="h-4 w-4 animate-spin text-primary" />
-                    <span className="text-sm">{options.description ?? "Por favor espera…"}</span>
+                    <span className="text-sm">{options.description ?? toast_loading_desc()}</span>
                 </div>
             ),
             duration: Infinity,
@@ -28,11 +38,11 @@ export const infoToast = {
     success(toastId: ToastId, options: BaseOptions) {
         toast({
             id: toastId,
-            title: options.title ?? "Completado",
+            title: options.title ?? toast_success_title(),
             description: (
                 <div className="flex items-center gap-2">
                     <CheckCircle2 className="h-4 w-4 text-emerald-600 dark:text-emerald-500" />
-                    <span className="text-sm text-foreground">{options.description ?? "La operación fue exitosa"}</span>
+                    <span className="text-sm text-foreground">{options.description ?? toast_success_desc()}</span>
                 </div>
             ),
             duration: 3000,
@@ -47,11 +57,11 @@ export const infoToast = {
     info(toastId: ToastId, options: BaseOptions) {
         toast({
             id: toastId,
-            title: options.title ?? "Información",
+            title: options.title ?? toast_info_title(),
             description: (
                 <div className="flex items-center gap-2">
                     <Info className="h-4 w-4 text-blue-600 dark:text-blue-500" />
-                    <span className="text-sm text-foreground">{options.description ?? "No se realizaron cambios"}</span>
+                    <span className="text-sm text-foreground">{options.description ?? toast_info_desc()}</span>
                 </div>
             ),
             duration: 3000,
@@ -66,11 +76,11 @@ export const infoToast = {
     error(toastId: ToastId, options: BaseOptions) {
         toast({
             id: toastId,
-            title: options.title ?? "Error",
+            title: options.title ?? toast_error_title(),
             description: (
                 <div className="flex items-center gap-2">
                     <XCircle className="h-4 w-4 text-destructive" />
-                    <span className="text-sm text-foreground">{options.description ?? "Algo salió mal"}</span>
+                    <span className="text-sm text-foreground">{options.description ?? toast_error_desc()}</span>
                 </div>
             ),
             duration: 4000,

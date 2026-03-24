@@ -97,6 +97,7 @@ import {
 	'settings.files.active_filters.type' as settings_files_active_filters_type,
 	'settings.files.delete_dialog.description_bulk' as settings_files_delete_dialog_description_bulk,
 	'settings.files.delete_dialog.description_single' as settings_files_delete_dialog_description_single,
+	'settings.files.delete_dialog.label_bulk' as settings_files_delete_dialog_label_bulk,
 	'settings.files.delete_dialog.title_bulk' as settings_files_delete_dialog_title_bulk,
 	'settings.files.delete_dialog.title_single' as settings_files_delete_dialog_title_single,
 	'settings.files.description' as settings_files_description,
@@ -782,7 +783,9 @@ export function FilesManagementSection() {
 		const label =
 			deleteDialog.mode === 'single'
 				? `"${deleteDialog.fileName}"`
-				: `${deleteDialog.count} files`;
+				: settings_files_delete_dialog_label_bulk({
+						count: deleteDialog.count,
+					});
 		const toastId = infoToast.loading({
 			title: settings_files_toast_delete_loading({ label }),
 		});

@@ -1,5 +1,6 @@
 import { AnimatePresence, motion } from "framer-motion"
 import { X } from "lucide-react"
+import { "chat.interrupt_prompt" as chat_interrupt_prompt } from "@/paraglide/messages.js"
 
 interface InterruptPromptProps {
   isOpen: boolean
@@ -23,7 +24,7 @@ export function InterruptPrompt({ isOpen, close }: InterruptPromptProps) {
           exit={{ top: 0, filter: "blur(5px)" }}
           className="absolute left-1/2 flex -translate-x-1/2 overflow-hidden whitespace-nowrap rounded-full border bg-background py-1 text-center text-sm text-muted-foreground"
         >
-          <span className="ml-2.5">Press Enter again to interrupt</span>
+          <span className="ml-2.5">{chat_interrupt_prompt()}</span>
           <button
             className="ml-1 mr-2.5 flex items-center"
             type="button"

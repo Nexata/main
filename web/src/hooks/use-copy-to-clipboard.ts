@@ -1,5 +1,9 @@
 import { useCallback, useRef, useState } from "react"
 import { toast } from "sonner"
+import {
+  "clipboard.copy_success" as clipboard_copy_success,
+  "clipboard.copy_error" as clipboard_copy_error,
+} from "@/paraglide/messages.js"
 
 type UseCopyToClipboardProps = {
   text: string
@@ -8,7 +12,7 @@ type UseCopyToClipboardProps = {
 
 export function useCopyToClipboard({
   text,
-  copyMessage = "Copied to clipboard!",
+  copyMessage,
 }: UseCopyToClipboardProps) {
   const [isCopied, setIsCopied] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
@@ -17,7 +21,7 @@ export function useCopyToClipboard({
     navigator.clipboard
       .writeText(text)
       .then(() => {
-        toast.success(copyMessage)
+        toast.success(copyMessage ?? clipboard_copy_success())
         setIsCopied(true)
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current)
@@ -28,7 +32,7 @@ export function useCopyToClipboard({
         }, 2000)
       })
       .catch(() => {
-        toast.error("Failed to copy to clipboard.")
+        toast.error(clipboard_copy_error())
       })
   }, [text, copyMessage])
 

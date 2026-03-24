@@ -278,7 +278,15 @@
 		"theme": "Cambiar tema",
 		"settings": "Configuración",
 		"tenant_switch": "Cambiar Empresa",
-		"feedback": "Enviar feedback"
+		"feedback": "Enviar feedback",
+		"delete_toast": {
+			"loading_title": "Eliminando chat…",
+			"loading_desc": "Esperá mientras eliminamos la conversación.",
+			"success_title": "Chat eliminado",
+			"success_desc": "La conversación fue eliminada correctamente.",
+			"error_title": "Error al eliminar chat",
+			"error_desc": "Algo salió mal al eliminar la conversación."
+		}
 	},
 	"user_input": {
 		"placeholder": "Seleccionar usuario",
@@ -295,6 +303,8 @@
 			"copy": "Copiar",
 			"copied": "Copiado"
 		},
+		"interrupt_prompt": "Presiona Enter de nuevo para interrumpir",
+		"drop_files": "Arrastrá tus archivos aquí para adjuntarlos.",
 		"edit": {
 			"button": "Editar",
 			"confirm_title": "¿Editar mensaje?",
@@ -456,7 +466,8 @@
 				"title_single": "¿Eliminar \"{name}\"?",
 				"title_bulk": "¿Eliminar {count} archivo(s)?",
 				"description_single": "\"{name}\" será eliminado permanentemente y no podrá recuperarse.",
-				"description_bulk": "Estás por eliminar permanentemente {count} archivo(s). Esta acción no se puede deshacer."
+				"description_bulk": "Estás por eliminar permanentemente {count} archivo(s). Esta acción no se puede deshacer.",
+				"label_bulk": "{count} archivos"
 			},
 			"toast": {
 				"delete_loading": "Eliminando {label}…",
@@ -1386,5 +1397,34 @@
 			"start": "Empezar Gratis",
 			"demo": "Solicitar Demo"
 		}
+	},
+
+	"toast": {
+		"loading_title": "Procesando",
+		"loading_desc": "Por favor espera…",
+		"success_title": "Completado",
+		"success_desc": "La operación fue exitosa",
+		"info_title": "Información",
+		"info_desc": "No se realizaron cambios",
+		"error_title": "Error",
+		"error_desc": "Algo salió mal"
+	},
+
+	"clipboard": {
+		"copy_success": "Copiado al portapapeles",
+		"copy_error": "No se pudo copiar al portapapeles"
+	},
+
+	"pwa": {
+		"offline_ready": "La app está lista para funcionar sin conexión",
+		"new_version": "Hay una nueva versión disponible",
+		"reload_hint": "Hacé clic en recargar para actualizar.",
+		"reload": "Recargar"
+	},
+
+	"error_boundary": {
+		"title": "Algo salió mal",
+		"description": "Ocurrió un error inesperado. Por favor, recarga la página.",
+		"reload": "Recargar"
 	}
 }
