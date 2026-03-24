@@ -453,7 +453,8 @@
 			},
 			"actions": {
 				"refresh": "Refresh",
-				"delete": "Delete"
+				"delete": "Delete",
+				"upload": "Upload files"
 			},
 			"table": {
 				"name": "Name",
@@ -485,6 +486,10 @@
 				"label_bulk": "{count} files"
 			},
 			"toast": {
+				"upload_loading": "Uploading {count} file(s)…",
+				"upload_success": "Files uploaded",
+				"upload_success_desc": "{count} file(s) uploaded successfully.",
+				"upload_error_desc": "Could not upload files.",
 				"delete_loading": "Deleting {label}…",
 				"delete_success": "Deleted",
 				"delete_success_desc": "{label} removed successfully.",

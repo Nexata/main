@@ -453,7 +453,8 @@
 			},
 			"actions": {
 				"refresh": "Actualizar",
-				"delete": "Eliminar"
+				"delete": "Eliminar",
+				"upload": "Subir archivos"
 			},
 			"table": {
 				"name": "Nombre",
@@ -485,6 +486,10 @@
 				"label_bulk": "{count} archivos"
 			},
 			"toast": {
+				"upload_loading": "Subiendo {count} archivo(s)…",
+				"upload_success": "Archivos subidos",
+				"upload_success_desc": "{count} archivo(s) subido(s) correctamente.",
+				"upload_error_desc": "No se pudieron subir los archivos.",
 				"delete_loading": "Eliminando {label}…",
 				"delete_success": "Eliminado",
 				"delete_success_desc": "{label} eliminado correctamente.",

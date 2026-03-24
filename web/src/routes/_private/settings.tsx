@@ -11,9 +11,10 @@ import {
 	Search,
 	Settings as SettingsIcon,
 	Trash2,
+	Upload,
 	X,
 } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { ConfirmDeleteCredentialModal } from '@/components/credentials/credential-delete-modal';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { SourceRow } from '@/components/sources/source-row';
@@ -75,7 +76,12 @@ import type {
 	SearchFilesParams,
 	SearchFilesResult,
 } from '@/lib/file';
-import { reIngestByProvider, useDeleteFiles, useSearchFiles } from '@/lib/file';
+import {
+	reIngestByProvider,
+	useDeleteFiles,
+	useIngestFiles,
+	useSearchFiles,
+} from '@/lib/file';
 import { useMe } from '@/lib/user';
 import {
 	'common.cancel' as common_cancel,
@@ -90,6 +96,7 @@ import {
 	'settings.actions.back_to_chat' as settings_actions_back_to_chat,
 	'settings.files.actions.delete' as settings_files_actions_delete,
 	'settings.files.actions.refresh' as settings_files_actions_refresh,
+	'settings.files.actions.upload' as settings_files_actions_upload,
 	'settings.files.active_filters.name' as settings_files_active_filters_name,
 	'settings.files.active_filters.none' as settings_files_active_filters_none,
 	'settings.files.active_filters.provider' as settings_files_active_filters_provider,
@@ -141,6 +148,10 @@ import {
 	'settings.files.toast.reingest_result_desc' as settings_files_toast_reingest_result_desc,
 	'settings.files.toast.reingest_success_desc' as settings_files_toast_reingest_success_desc,
 	'settings.files.toast.reingest_unmodified_desc' as settings_files_toast_reingest_unmodified_desc,
+	'settings.files.toast.upload_error_desc' as settings_files_toast_upload_error_desc,
+	'settings.files.toast.upload_loading' as settings_files_toast_upload_loading,
+	'settings.files.toast.upload_success' as settings_files_toast_upload_success,
+	'settings.files.toast.upload_success_desc' as settings_files_toast_upload_success_desc,
 	'settings.files.tooltip.delete' as settings_files_tooltip_delete,
 	'settings.files.tooltip.reingest' as settings_files_tooltip_reingest,
 	'settings.files.user.system' as settings_files_user_system,
@@ -696,6 +707,36 @@ export function FilesManagementSection() {
 
 	const { data: files = [], isLoading, refetch } = useSearchFiles(filters);
 	const deleteMutation = useDeleteFiles();
+	const ingestMutation = useIngestFiles();
+	const fileInputRef = useRef<HTMLInputElement>(null);
+
+	const handleUpload = async () => {
+		const selectedFiles = fileInputRef.current?.files;
+		if (!selectedFiles || selectedFiles.length === 0) return;
+
+		const count = String(selectedFiles.length);
+		const toastId = infoToast.loading({
+			title: settings_files_toast_upload_loading({ count }),
+		});
+		try {
+			await ingestMutation.mutateAsync({
+				files: selectedFiles,
+			});
+			refetch();
+			infoToast.success(toastId, {
+				title: settings_files_toast_upload_success(),
+				description: settings_files_toast_upload_success_desc({ count }),
+			});
+		} catch (error) {
+			infoToast.error(toastId, {
+				title: common_error(),
+				description:
+					extractErrorText(error) ?? settings_files_toast_upload_error_desc(),
+			});
+		} finally {
+			if (fileInputRef.current) fileInputRef.current.value = '';
+		}
+	};
 
 	const toggleSelect = (id: string) =>
 		setSelected((prev) => {
@@ -1231,6 +1272,23 @@ export function FilesManagementSection() {
 								})}
 							</span>
 						)}
+						<input
+							type="file"
+							ref={fileInputRef}
+							multiple
+							onChange={handleUpload}
+							className="hidden"
+						/>
+						<Button
+							size="sm"
+							variant="default"
+							onClick={() => fileInputRef.current?.click()}
+							disabled={ingestMutation.isPending}
+							className="gap-1.5 cursor-pointer"
+						>
+							<Upload className="w-3.5 h-3.5" />{' '}
+							{settings_files_actions_upload()}
+						</Button>
 						<Button
 							size="sm"
 							variant="outline"
