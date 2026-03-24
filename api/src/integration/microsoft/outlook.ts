@@ -211,7 +211,7 @@ export namespace Outlook {
 
 	export async function read(client: Client, input: Static<typeof readInput>) {
 		const msg: Message = await client
-			.api(`/me/messages/${input.messageId}`)
+			.api(`/me/messages/${input.messageId.replace(/\//g, '-')}`)
 			.select(READ_SELECT)
 			.header('Prefer', 'outlook.body-content-type="text"')
 			.get();

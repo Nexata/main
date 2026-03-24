@@ -311,7 +311,7 @@ export namespace MicrosoftCalendar {
 
 	export async function read(client: Client, input: Static<typeof readInput>) {
 		const event: Event = await client
-			.api(`/me/events/${input.eventId}`)
+			.api(`/me/events/${input.eventId.replace(/\//g, '-')}`)
 			.select(EVENT_READ_SELECT)
 			.header('Prefer', 'outlook.body-content-type="text"')
 			.get();
