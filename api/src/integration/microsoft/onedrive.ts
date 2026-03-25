@@ -57,7 +57,7 @@ function parseCompoundId(compoundId: string): {
 	if (sep === -1) return { driveId: null, itemId: compoundId };
 	return {
 		driveId: compoundId.slice(0, sep),
-		itemId: compoundId,
+		itemId: compoundId.slice(sep + 1),
 	};
 }
 
