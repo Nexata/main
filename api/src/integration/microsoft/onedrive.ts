@@ -414,15 +414,23 @@ export namespace OneDrive {
 		const name = item.name;
 		if (!name) throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_NAME);
 
+		let fileContent: ArrayBuffer;
+
 		const downloadUrl = item['@microsoft.graph.downloadUrl'];
-		if (!downloadUrl)
-			throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_CONTENT);
-
-		const response = await fetch(downloadUrl);
-		if (!response.ok)
-			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
-
-		const fileContent = await response.arrayBuffer();
+		if (downloadUrl) {
+			const response = await fetch(downloadUrl);
+			if (!response.ok)
+				throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
+			fileContent = await response.arrayBuffer();
+		} else {
+			// Fallback: /content returns a 302 redirect to a pre-authenticated download URL
+			const stream: NodeJS.ReadableStream = await client
+				.api(`${apiPath}/content`)
+				.getStream();
+			fileContent = await new Response(
+				stream as unknown as ReadableStream,
+			).arrayBuffer();
+		}
 		const mimeType = item.file?.mimeType ?? getMimeTypeFromExt(name);
 
 		if (mimeType === 'unsupported')
