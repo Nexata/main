@@ -80,6 +80,14 @@ function childrenApiPath(compoundId: string | null): string {
 	return `/me/drive/items/${itemId}/children`;
 }
 
+function isMsaSearchError(error: unknown): boolean {
+	if (error instanceof Error) {
+		const msg = error.message.toLowerCase();
+		return msg.includes('msa') || msg.includes('microsoftsearch');
+	}
+	return false;
+}
+
 export namespace OneDrive {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
@@ -190,6 +198,64 @@ export namespace OneDrive {
 		}));
 	}
 
+	async function driveItemSearch(
+		client: Client,
+		input: Static<typeof searchInput>,
+	): Promise<NexataListDir> {
+		if ('cursor' in input) {
+			const response: { value?: DriveItem[]; '@odata.nextLink'?: string } =
+				await client.api(input.cursor).get();
+
+			return {
+				cursor: response['@odata.nextLink'] ?? null,
+				entries: await enrichEntries(
+					(response.value ?? []).map(mapDriveItemToEntry),
+				),
+			};
+		}
+
+		const queryParts: string[] = [];
+		if (input.query) queryParts.push(input.query);
+		if (input.name) queryParts.push(input.name);
+		const queryText = queryParts.join(' ') || '*';
+		const top = input.maxResults ?? 100;
+
+		const basePath = input.path
+			? `${itemApiPath(input.path)}/search(q='${encodeURIComponent(queryText)}')`
+			: `/me/drive/root/search(q='${encodeURIComponent(queryText)}')`;
+
+		const response: { value?: DriveItem[]; '@odata.nextLink'?: string } =
+			await client.api(basePath).select(ITEM_SELECT).top(top).get();
+
+		let entries = (response.value ?? []).map(mapDriveItemToEntry);
+
+		const allowedExts = new Set<string>();
+		if (input.fileExtensions?.length)
+			for (const ext of input.fileExtensions)
+				allowedExts.add(ext.toLowerCase());
+		if (input.fileCategories?.length)
+			for (const cat of input.fileCategories)
+				for (const ext of CATEGORY_TO_KQL_FILETYPES[cat]) allowedExts.add(ext);
+		if (allowedExts.size)
+			entries = entries.filter(
+				(e) => e.ext && allowedExts.has(e.ext.toLowerCase()),
+			);
+
+		if (input.modifiedAfter) {
+			const after = new Date(input.modifiedAfter);
+			entries = entries.filter((e) => e.updatedAt && e.updatedAt >= after);
+		}
+		if (input.modifiedBefore) {
+			const before = new Date(input.modifiedBefore);
+			entries = entries.filter((e) => e.updatedAt && e.updatedAt <= before);
+		}
+
+		return {
+			cursor: response['@odata.nextLink'] ?? null,
+			entries: await enrichEntries(entries),
+		};
+	}
+
 	export const [searchDescription, searchInput] = [
 		'OneDrive tool to search for files across OneDrive and SharePoint using Microsoft Search API with KQL syntax.',
 		t.Union([
@@ -235,56 +301,61 @@ export namespace OneDrive {
 		client: Client,
 		input: Static<typeof searchInput>,
 	): Promise<NexataListDir> {
-		let from = 0;
-		let size = 100;
-		let queryString = '*';
+		try {
+			let from = 0;
+			let size = 100;
+			let queryString = '*';
 
-		if ('cursor' in input) {
-			const parsed = JSON.parse(input.cursor) as {
-				from: number;
-				size: number;
-				queryString: string;
+			if ('cursor' in input) {
+				const parsed = JSON.parse(input.cursor) as {
+					from: number;
+					size: number;
+					queryString: string;
+				};
+				from = parsed.from;
+				size = parsed.size;
+				queryString = parsed.queryString;
+			} else {
+				queryString = buildKqlQuery(input);
+				size = input.maxResults ?? 100;
+			}
+
+			const searchBody = {
+				requests: [
+					{
+						entityTypes: ['driveItem'],
+						query: { queryString },
+						from,
+						size,
+					},
+				],
 			};
-			from = parsed.from;
-			size = parsed.size;
-			queryString = parsed.queryString;
-		} else {
-			queryString = buildKqlQuery(input);
-			size = input.maxResults ?? 100;
+
+			const response = await client.api('/search/query').post(searchBody);
+
+			const hitsContainer = response.value?.at(0)?.hitsContainers?.at(0);
+			const hits = hitsContainer?.hits ?? [];
+			const moreAvailable = hitsContainer?.moreResultsAvailable ?? false;
+			const totalCount = hitsContainer?.total ?? 0;
+
+			const entries: NexataListDirEntry[] = hits.map(
+				(hit: { resource: DriveItem }) => mapDriveItemToEntry(hit.resource),
+			);
+
+			const nextFrom = from + hits.length;
+			const cursor =
+				moreAvailable && nextFrom < totalCount
+					? JSON.stringify({ from: nextFrom, size, queryString })
+					: null;
+
+			return {
+				cursor,
+				entries: await enrichEntries(entries),
+			};
+		} catch (error) {
+			if (isMsaSearchError(error)) return driveItemSearch(client, input);
+			throw error;
 		}
-
-		const searchBody = {
-			requests: [
-				{
-					entityTypes: ['driveItem'],
-					query: { queryString },
-					from,
-					size,
-				},
-			],
-		};
-
-		const response = await client.api('/search/query').post(searchBody);
-
-		const hitsContainer = response.value?.at(0)?.hitsContainers?.at(0);
-		const hits = hitsContainer?.hits ?? [];
-		const moreAvailable = hitsContainer?.moreResultsAvailable ?? false;
-		const totalCount = hitsContainer?.total ?? 0;
-
-		const entries: NexataListDirEntry[] = hits.map(
-			(hit: { resource: DriveItem }) => mapDriveItemToEntry(hit.resource),
-		);
-
-		const nextFrom = from + hits.length;
-		const cursor =
-			moreAvailable && nextFrom < totalCount
-				? JSON.stringify({ from: nextFrom, size, queryString })
-				: null;
-
-		return {
-			cursor,
-			entries: await enrichEntries(entries),
-		};
 	}
 
 	export const [listDirDescription, listDirInput] = [
