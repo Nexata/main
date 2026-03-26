@@ -12,11 +12,6 @@
 		"dev": "bunx concurrently \"bun run api:dev\" \"bun run web:dev\"",
 		"preview": "docker compose up --build"
 	},
-	"overrides": {
-		"vite-plugin-pwa": {
-			"vite": "^8.0.2"
-		}
-	},
 	"workspaces": [
 		"api",
 		"web"
