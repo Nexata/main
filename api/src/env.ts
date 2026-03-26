@@ -66,12 +66,12 @@ export const REASONING_MODEL = createFallback({
 	],
 });
 
+const deepinfraVlm = deepinfra('meta-llama/Llama-4-Scout-17B-16E-Instruct');
+(deepinfraVlm as any).supportsStructuredOutputs = true;
+
 export const VLM_MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	models: [
-		groq('meta-llama/llama-4-scout-17b-16e-instruct'),
-		deepinfra('meta-llama/Llama-4-Scout-17B-16E-Instruct'),
-	],
+	models: [groq('meta-llama/llama-4-scout-17b-16e-instruct'), deepinfraVlm],
 });
 
 export const EMBEDDING_MODEL = deepinfra.embeddingModel('BAAI/bge-m3');
