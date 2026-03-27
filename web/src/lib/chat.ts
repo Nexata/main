@@ -103,9 +103,9 @@ export async function listThreads(params?: {
 		apiClient.chat.thread.get({
 			$headers: headers,
 			$query: {
-				cursor: params?.cursor ? new Date(params.cursor) : null,
+				...(params?.cursor ? { cursor: new Date(params.cursor) } : {}),
 				limit: params?.limit ?? 30,
-				search: params?.search ?? '',
+				...(params?.search ? { search: params.search } : {}),
 			},
 		}),
 	);
