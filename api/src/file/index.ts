@@ -590,21 +590,36 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					.where(
 						and(
 							eq(externalDir.id, id),
-							or(
-								eq(credential.userId, activeUser.id),
-								exists(
-									db
-										.select({ userId: credentialPermission.userId })
-										.from(credentialPermission)
-										.where(
-											and(
-												eq(credentialPermission.credentialId, credential.id),
-												eq(credentialPermission.userId, activeUser.id),
-												eq(credentialPermission.isAdmin, true),
+							activeUser.isAdmin
+								? exists(
+										db
+											.select({ id: user.id })
+											.from(user)
+											.where(
+												and(
+													eq(user.id, credential.userId),
+													eq(user.slug, activeUser.slug),
+												),
 											),
+									)
+								: or(
+										eq(credential.userId, activeUser.id),
+										exists(
+											db
+												.select({ userId: credentialPermission.userId })
+												.from(credentialPermission)
+												.where(
+													and(
+														eq(
+															credentialPermission.credentialId,
+															credential.id,
+														),
+														eq(credentialPermission.userId, activeUser.id),
+														eq(credentialPermission.isAdmin, true),
+													),
+												),
 										),
-								),
-							),
+									),
 						),
 					)
 			).at(0);
@@ -726,34 +741,52 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 				.where(
 					and(
 						eq(externalDir.id, id),
-						exists(
-							db
-								.select({ id: credential.id })
-								.from(credential)
-								.where(
-									and(
-										eq(credential.id, externalDir.credentialId),
-										or(
-											eq(credential.userId, activeUser.id),
-											exists(
-												db
-													.select({ userId: credentialPermission.userId })
-													.from(credentialPermission)
-													.where(
-														and(
-															eq(
-																credentialPermission.credentialId,
-																credential.id,
-															),
-															eq(credentialPermission.userId, activeUser.id),
-															eq(credentialPermission.isAdmin, true),
-														),
-													),
+						activeUser.isAdmin
+							? exists(
+									db
+										.select({ id: user.id })
+										.from(user)
+										.innerJoin(credential, eq(credential.userId, user.id))
+										.where(
+											and(
+												eq(credential.id, externalDir.credentialId),
+												eq(user.slug, activeUser.slug),
 											),
 										),
-									),
+								)
+							: exists(
+									db
+										.select({ id: credential.id })
+										.from(credential)
+										.where(
+											and(
+												eq(credential.id, externalDir.credentialId),
+												or(
+													eq(credential.userId, activeUser.id),
+													exists(
+														db
+															.select({
+																userId: credentialPermission.userId,
+															})
+															.from(credentialPermission)
+															.where(
+																and(
+																	eq(
+																		credentialPermission.credentialId,
+																		credential.id,
+																	),
+																	eq(
+																		credentialPermission.userId,
+																		activeUser.id,
+																	),
+																	eq(credentialPermission.isAdmin, true),
+																),
+															),
+													),
+												),
+											),
+										),
 								),
-						),
 					),
 				)
 				.returning({ id: externalDir.id }),
