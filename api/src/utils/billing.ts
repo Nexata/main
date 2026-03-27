@@ -49,7 +49,7 @@ export const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
  * Multiplier applied to raw chunk data (text bytes + embedding vector)
  * to account for HNSW index, row/tuple overhead, btree indexes, and TOAST storage.
  */
-export const STORAGE_OVERHEAD_MULTIPLIER = 3.5;
+export const STORAGE_OVERHEAD_MULTIPLIER = 4;
 
 /** SQL expression: estimated storage megabytes for a single chunk row. */
 export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + 4096) * ${STORAGE_OVERHEAD_MULTIPLIER} / (1024.0 * 1024.0)`;
