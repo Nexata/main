@@ -23,6 +23,7 @@ import {
 	checkTenantCanIngest,
 	incrementEmbedUsage,
 	incrementStorageUsage,
+	STORAGE_OVERHEAD_MULTIPLIER,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { uploadFile } from '@api/utils/s3';
@@ -282,7 +283,8 @@ export namespace NexataFile {
 
 			const totalEmbedTokens = (result.tokenUsage ?? 0) + embeddingUsage;
 			const storageDeltaMB =
-				chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) /
+				(chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) *
+					STORAGE_OVERHEAD_MULTIPLIER) /
 				(1024 * 1024);
 
 			await Promise.all([
@@ -783,20 +785,32 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 				.innerJoin(credential, eq(credential.id, externalDir.credentialId))
 				.where(
 					and(
-						or(
-							eq(credential.userId, activeUser.id),
-							exists(
-								db
-									.select({ userId: credentialPermission.userId })
-									.from(credentialPermission)
-									.where(
-										and(
-											eq(credentialPermission.credentialId, credential.id),
-											eq(credentialPermission.userId, activeUser.id),
+						activeUser.isAdmin
+							? exists(
+									db
+										.select({ id: user.id })
+										.from(user)
+										.where(
+											and(
+												eq(user.id, credential.userId),
+												eq(user.slug, activeUser.slug),
+											),
 										),
+								)
+							: or(
+									eq(credential.userId, activeUser.id),
+									exists(
+										db
+											.select({ userId: credentialPermission.userId })
+											.from(credentialPermission)
+											.where(
+												and(
+													eq(credentialPermission.credentialId, credential.id),
+													eq(credentialPermission.userId, activeUser.id),
+												),
+											),
 									),
-							),
-						),
+								),
 						provider ? eq(externalDir.provider, provider) : undefined,
 					),
 				)

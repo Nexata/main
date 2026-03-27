@@ -67,6 +67,7 @@ export const REASONING_MODEL = createFallback({
 });
 
 const deepinfraVlm = deepinfra('meta-llama/Llama-4-Scout-17B-16E-Instruct');
+// biome-ignore lint/suspicious/noExplicitAny: monkey-patching ai-sdk model property not exposed in types
 (deepinfraVlm as any).supportsStructuredOutputs = true;
 
 export const VLM_MODEL = createFallback({

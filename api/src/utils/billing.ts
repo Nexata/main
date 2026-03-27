@@ -45,6 +45,15 @@ export const REFILL_KEY = (slug: string) => `tenant:${slug}:refill-messages`;
 export const UNPAID_KEY = (slug: string) => `tenant:${slug}:unpaid-bill`;
 export const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
 
+/**
+ * Multiplier applied to raw chunk data (text bytes + embedding vector)
+ * to account for HNSW index, row/tuple overhead, btree indexes, and TOAST storage.
+ */
+export const STORAGE_OVERHEAD_MULTIPLIER = 3.5;
+
+/** SQL expression: estimated storage megabytes for a single chunk row. */
+export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + 4096) * ${STORAGE_OVERHEAD_MULTIPLIER} / (1024.0 * 1024.0)`;
+
 const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {
 	message: 'typeMessages',
 	storage: 'typeStorage',
@@ -86,7 +95,7 @@ export async function getStorageUsage(
 	const result = (
 		await db
 			.select({
-				consumption: sql<string>`coalesce((sum(octet_length(${chunk.text}) + 4096) / (1024.0 * 1024.0))::numeric, 0)`,
+				consumption: sql<string>`coalesce((sum(${chunkStorageMB}))::numeric, 0)`,
 			})
 			.from(chunk)
 			.innerJoin(file, eq(file.id, chunk.fileId))

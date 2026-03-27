@@ -70,6 +70,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	let usage = 0;
 
 	const pdf = await getDocumentProxy(f, {
+		// biome-ignore lint/suspicious/noExplicitAny: unpdf expects class constructor as Object
 		CanvasFactory: CanvasFactory as any,
 	});
 	const { text, totalPages } = await extractText(pdf);

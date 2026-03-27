@@ -8,6 +8,7 @@ import {
 	user,
 } from '@api/schema';
 import {
+	chunkStorageMB,
 	generateBillForTenant,
 	getTenantsDueForBilling,
 } from '@api/utils/billing';
@@ -26,7 +27,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 			const storageByTenant = await db
 				.select({
 					slug: user.slug,
-					consumption: sql<string>`(sum(octet_length(${chunk.text}) + 4096) / (1024.0 * 1024.0))::numeric`,
+					consumption: sql<string>`(sum(${chunkStorageMB}))::numeric`,
 				})
 				.from(chunk)
 				.innerJoin(file, eq(file.id, chunk.fileId))

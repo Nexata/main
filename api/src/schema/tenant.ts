@@ -35,14 +35,14 @@ export const PLANS: Record<
 		baseBill: 20,
 		messageLimit: 150,
 		storageLimit: 1 * 1024,
-		embedLimit: 1.5 * 1000 * 250_000,
+		embedLimit: 1000 * 250_000,
 		hasApiAccess: false,
 	},
 	[Plan.BUSINESS]: {
 		baseBill: 100,
 		messageLimit: 1000,
 		storageLimit: 10 * 1024,
-		embedLimit: 15 * 1000 * 250_000,
+		embedLimit: 10 * 1000 * 250_000,
 		hasApiAccess: true,
 	},
 	[Plan.PAY_AS_YOU_GO]: {
