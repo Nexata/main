@@ -208,3 +208,115 @@ export default function ToolDetailPanel() {
     </AnimatePresence>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*                         Mobile bottom-sheet panel                           */
+/* -------------------------------------------------------------------------- */
+
+export function MobileToolDetailPanel() {
+  const selectedTool = useToolDetailStore((s) => s.selectedTool);
+  const isOpen = useToolDetailStore((s) => s.isOpen);
+  const close = useToolDetailStore((s) => s.close);
+
+  return (
+    <AnimatePresence>
+      {isOpen && selectedTool && (
+        <>
+          {/* Backdrop */}
+          <motion.div
+            key="mobile-tool-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.2 }}
+            className="fixed inset-0 z-40 bg-black/50"
+            onClick={close}
+          />
+
+          {/* Bottom sheet */}
+          <motion.div
+            key="mobile-tool-sheet"
+            initial={{ y: "100%" }}
+            animate={{ y: 0 }}
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", stiffness: 300, damping: 30 }}
+            className="fixed inset-x-0 bottom-0 z-50 flex flex-col bg-background rounded-t-2xl overflow-hidden"
+            style={{
+              maxHeight: "85dvh",
+              paddingBottom: "env(safe-area-inset-bottom)",
+            }}
+          >
+            {/* Drag handle */}
+            <div className="flex justify-center pt-3 pb-1">
+              <div className="h-1 w-10 rounded-full bg-muted-foreground/30" />
+            </div>
+
+            <MobileToolDetailContent tool={selectedTool} />
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
+  );
+}
+
+function MobileToolDetailContent({ tool }: { tool: ToolDetailData }) {
+  const close = useToolDetailStore((s) => s.close);
+  const cfg = getStatusConfig(tool.state);
+  const StatusIcon = cfg.Icon;
+  const isRunning = tool.state !== "output-available" && tool.state !== "output-error" && tool.state !== "output-denied";
+
+  return (
+    <>
+      {/* Status accent bar */}
+      <div className={cn("h-[3px] w-full shrink-0", cfg.accent)} />
+
+      {/* Header */}
+      <div className="flex items-center gap-3 px-4 py-3.5 border-b bg-muted/15">
+        <div className="flex flex-col gap-0.5 min-w-0 flex-1">
+          <span className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+            {td_title()}
+          </span>
+          <span className="text-sm font-semibold text-foreground truncate">
+            {tool.toolName}
+          </span>
+        </div>
+
+        {/* Status pill */}
+        <div
+          className={cn(
+            "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-xs font-medium shrink-0",
+            cfg.pill,
+          )}
+        >
+          <StatusIcon className={cn("h-3 w-3", isRunning && "animate-spin")} />
+          {cfg.label()}
+        </div>
+
+        {/* Close */}
+        <button
+          onClick={close}
+          className="inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors shrink-0"
+          aria-label="Close"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto scrollbar-thin px-4 py-5 flex flex-col gap-6">
+        {/* Input parameters */}
+        <InputSection input={tool.input} />
+
+        {/* Output */}
+        <div className="flex flex-col gap-3">
+          <SectionDivider title={td_output()} />
+          {tool.output ? (
+            <ToolOutputRenderer toolName={tool.toolName} output={tool.output} isError={tool.state === 'output-error'} />
+          ) : (
+            <p className="text-sm text-muted-foreground italic px-1">{td_no_output()}</p>
+          )}
+        </div>
+      </div>
+    </>
+  );
+}

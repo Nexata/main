@@ -9,7 +9,7 @@ import { useEffect, useRef } from 'react';
 import { IoMenu } from 'react-icons/io5';
 import Sidebar from '@/components/sidebar/sidebar';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import ToolDetailPanel from '@/components/tool-detail-panel/tool-detail-panel';
+import ToolDetailPanel, { MobileToolDetailPanel } from '@/components/tool-detail-panel/tool-detail-panel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
@@ -160,8 +160,9 @@ function PrivateLayout() {
 				</motion.div>
 			</div>
 
-			{/* Tool detail right panel (desktop only) */}
+			{/* Tool detail panel */}
 			{!isMobile && <ToolDetailPanel />}
+			{isMobile && <MobileToolDetailPanel />}
 		</div>
 	);
 }
