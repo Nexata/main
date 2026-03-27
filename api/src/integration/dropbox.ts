@@ -381,6 +381,7 @@ export namespace Dropbox {
 						name: dirEntry.name,
 						provider: FileHost.DROPBOX,
 						url: dirEntry.url,
+						autoSync: true,
 						modifiedAt: dirEntry.updatedAt ?? new Date(),
 					})
 					.returning({ id: externalDir.id })

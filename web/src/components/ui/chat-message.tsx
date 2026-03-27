@@ -901,7 +901,7 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
           toolCallId,
           state: part.state,
           input: (part as { input?: unknown }).input,
-          output: (part as { output?: unknown }).output,
+          output: (part as { output?: unknown }).output ?? (part as { errorText?: string }).errorText,
         })
       }
     >

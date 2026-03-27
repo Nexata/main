@@ -682,12 +682,56 @@ const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
 };
 
 /**
+ * Extract a human-readable text from error output.
+ *
+ * Error output may arrive in different shapes:
+ * - Streaming: a plain string (the SDK's `errorText`), possibly JSON-encoded
+ * - Hydrated:  a parsed array like `[{ code: "...", text: "..." }]`
+ *
+ * Returns the display string if a `[0].text` field is found, or the raw string
+ * if the output is already a plain string. Returns `null` to fall back to JSON.
+ */
+function extractErrorDisplayText(output: unknown): string | null {
+  // Already-parsed array with .text (hydrated path)
+  if (Array.isArray(output)) {
+    const text = output[0]?.text;
+    if (typeof text === "string") return text;
+    return null;
+  }
+
+  // Plain string (streaming errorText path)
+  if (typeof output === "string") {
+    // Try to parse as JSON in case it's an encoded array with .text
+    try {
+      const parsed = JSON.parse(output);
+      if (Array.isArray(parsed)) {
+        const text = parsed[0]?.text;
+        if (typeof text === "string") return text;
+      }
+    } catch {
+      // not JSON — return the string as-is
+    }
+    return output;
+  }
+
+  return null;
+}
+
+/**
  * Renders tool output in a structured, human-readable format.
  * Falls back to JSON for unknown tools.
  */
 export function ToolOutputRenderer({ toolName, output, isError }: { toolName: string; output: unknown; isError?: boolean }) {
-  // When the tool errored, always show raw output with the JSON fallback
+  // When the tool errored, extract a human-readable message when possible
   if (isError) {
+    const displayText = extractErrorDisplayText(output);
+    if (displayText) {
+      return (
+        <pre className="text-xs bg-red-500/5 text-red-600 dark:text-red-400 rounded-lg p-3 overflow-x-auto max-h-96 whitespace-pre-wrap break-words">
+          {displayText}
+        </pre>
+      );
+    }
     return <JsonFallbackRenderer output={output} />;
   }
 
