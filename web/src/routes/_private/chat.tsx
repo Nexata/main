@@ -253,9 +253,15 @@ export function NexataChat() {
 	// ----------------------------
 
 	const appliedThreadRef = useRef<string | null>(null);
+	const justCreatedThreadRef = useRef<string | null>(null);
 
 	useEffect(() => {
 		appliedThreadRef.current = null;
+		// If activeThreadId was just set (promoted from __new__), mark it as just-created
+		// so we skip the first hydration fetch — the AI SDK already has the messages.
+		if (activeThreadId && streamingThreadIds.has(activeThreadId)) {
+			justCreatedThreadRef.current = activeThreadId;
+		}
 	}, [activeThreadId]);
 
 	useEffect(() => {
@@ -266,6 +272,14 @@ export function NexataChat() {
 		// Don't overwrite if this thread is currently streaming (has live messages)
 		const threadKey = activeThreadId;
 		if (streamingThreadIds.has(threadKey)) return;
+
+		// Skip initial hydration for a thread that was just created in this session.
+		// The AI SDK already holds the correct messages from the stream.
+		if (justCreatedThreadRef.current === activeThreadId) {
+			justCreatedThreadRef.current = null;
+			appliedThreadRef.current = activeThreadId;
+			return;
+		}
 
 		appliedThreadRef.current = activeThreadId;
 		setMessages(hydratedMessages);

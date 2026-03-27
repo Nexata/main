@@ -1,4 +1,8 @@
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import {
+	useInfiniteQuery,
+	useQuery,
+	useQueryClient,
+} from '@tanstack/react-query';
 import { apiClient, withAuthRetry } from '@/api';
 
 // Types
@@ -91,6 +95,7 @@ export function useDeleteThreadById() {
 
 // List threads (desc)
 export async function listThreads(params?: {
+	cursor?: string | null;
 	limit?: number;
 	search?: string;
 }) {
@@ -98,7 +103,8 @@ export async function listThreads(params?: {
 		apiClient.chat.thread.get({
 			$headers: headers,
 			$query: {
-				limit: params?.limit ?? 100,
+				cursor: params?.cursor ? new Date(params.cursor) : null,
+				limit: params?.limit ?? 30,
 				search: params?.search ?? '',
 			},
 		}),
@@ -111,6 +117,29 @@ export function useThreads(params?: { limit?: number; search?: string }) {
 	return useQuery<Threads>({
 		queryKey: ['chat-threads', params],
 		queryFn: () => listThreads(params),
+	});
+}
+
+const THREADS_PAGE_SIZE = 30;
+
+export function useInfiniteThreads(params?: { search?: string }) {
+	return useInfiniteQuery({
+		queryKey: ['chat-threads', { search: params?.search }],
+		queryFn: ({ pageParam }) =>
+			listThreads({
+				search: params?.search,
+				limit: THREADS_PAGE_SIZE,
+				cursor: pageParam,
+			}),
+		initialPageParam: null as string | null,
+		getNextPageParam: (lastPage) => {
+			if (!lastPage || lastPage.length < THREADS_PAGE_SIZE) return undefined;
+			const lastItem = lastPage[lastPage.length - 1];
+			if (!lastItem?.createdAt) return undefined;
+			return typeof lastItem.createdAt === 'string'
+				? lastItem.createdAt
+				: (lastItem.createdAt as Date).toISOString();
+		},
 	});
 }
 

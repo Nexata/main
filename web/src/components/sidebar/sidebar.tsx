@@ -18,6 +18,7 @@ import {
   IoCheckmark,
   IoClose,
 } from "react-icons/io5";
+import { Virtuoso } from "react-virtuoso";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import DeleteChatModal from "./delete-chat.modal";
@@ -40,7 +41,7 @@ import {
   "sidebar.delete_toast.error_desc" as sidebar_delete_toast_error_desc,
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
-import { useThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
+import { useInfiniteThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
@@ -130,16 +131,24 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   // New Thread Title
   const optimisticThreads = useChatUIStore((s) => s.optimisticThreads);
   // Get Threads
-  const { data: threads, isLoading: threadsLoading } = useThreads({ search: debouncedSearch || undefined });
+  const {
+    data: threadsData,
+    isLoading: threadsLoading,
+    hasNextPage,
+    isFetchingNextPage,
+    fetchNextPage,
+  } = useInfiniteThreads({ search: debouncedSearch || undefined });
+
+  const threads = threadsData?.pages.flat() ?? [];
 
   // Add new Thread Title
   const mergedThreads = [
     ...Object.values(optimisticThreads),
-    ...(threads ?? []),
+    ...threads,
   ].filter((t, index, self) => index === self.findIndex((x) => x.id === t.id));
 
   useEffect(() => {
-    if (!threads) return;
+    if (!threads.length) return;
 
     const { removeOptimisticThread } = useChatUIStore.getState();
 
@@ -148,7 +157,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
         removeOptimisticThread(t.id);
       }
     });
-  }, [threads]);
+  }, [threadsData]);
 
   const deleteThreadFn = useDeleteThreadById();
   const updateThreadFn = useUpdateThreadById();
@@ -370,101 +379,137 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
           {/* Lista de chats */}
           {!effectiveCollapsed && (
-            <div className="flex-1 overflow-y-auto mb-4 scrollbar-thin">
-              <div className="flex flex-col gap-2">
-                {threadsLoading && (
-                  <>
-                    {Array.from({ length: 5 }).map((_, i) => (
-                      <div
-                        key={i}
-                        className="px-3 py-2 rounded-lg flex items-center"
-                      >
-                        <div className="flex-1 space-y-2">
-                          <div className="h-8 w-full bg-muted/70 rounded-lg animate-pulse" />
-                        </div>
+            <div className="flex-1 min-h-0 mb-4">
+              {threadsLoading && (
+                <div className="flex flex-col gap-2">
+                  {Array.from({ length: 5 }).map((_, i) => (
+                    <div
+                      key={i}
+                      className="px-3 py-2 rounded-lg flex items-center"
+                    >
+                      <div className="flex-1 space-y-2">
+                        <div className="h-8 w-full bg-muted/70 rounded-lg animate-pulse" />
                       </div>
-                    ))}
-                  </>
-                )}
+                    </div>
+                  ))}
+                </div>
+              )}
 
-                {!threadsLoading && ((mergedThreads.length > 0 ? mergedThreads : [{ id: null, title: sidebar_new_chat(), createdAt: new Date() }]).map((chat) => (
-                  <div
-                    key={chat.id}
-                    onClick={() => {
-                      if (editingChatId === chat.id) return;
-                      handleSelectChat(chat.id);
-                    }}
-                    className={cn(
-                      "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
-                      chat.id === activeThreadId
-                        ? "bg-sidebar-primary/10 text-foreground font-medium border-sidebar-primary"
-                        : "hover:bg-muted/50 border-transparent"
-                    )}
-                  >
-                    {editingChatId !== null && editingChatId === chat.id ? (
-                      <div className="flex items-center w-full">
-                        <Input
-                          value={editingTitle}
-                          onChange={(e) => setEditingTitle(e.target.value)}
-                          autoFocus
-                          className="flex-1 bg-transparent border-b border-muted focus:border-primary"
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") handleEditSave(chat.id, editingTitle);
-                            else if (e.key === "Escape") setEditingChatId(null);
-                          }}
-                        />
-                        <div className="flex gap-2 ml-2">
-                          <IoCheckmark
-                            className="text-green-500 w-5 h-5 cursor-pointer"
-                            onClick={() => handleEditSave(chat.id, editingTitle)}
-                          />
-                          <IoClose
-                            className="text-red-500 w-5 h-5 cursor-pointer"
-                            onClick={() => setEditingChatId(null)}
-                          />
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                          {chat.id !== null && streamingThreadIds.has(chat.id) && (
-                            <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-primary" />
-                          )}
-                          {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
-                            <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
-                          )}
-                          <ThreadTitle
-                            title={chat.title ?? sidebar_new_chat()}
-                            isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
-                            isSaving={savingThreads.has(chat.id ?? "")}
-                            sidebarWidth={sidebarWidth}
-                            createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
-                          />
-                        </div>
+              {!threadsLoading && mergedThreads.length === 0 && (
+                <div
+                  onClick={() => handleSelectChat(null)}
+                  className={cn(
+                    "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
+                    "hover:bg-muted/50 border-transparent"
+                  )}
+                >
+                  <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                    <ThreadTitle
+                      title={sidebar_new_chat()}
+                      isTyping={false}
+                      isSaving={false}
+                      sidebarWidth={sidebarWidth}
+                      createdAt={new Date()}
+                    />
+                  </div>
+                </div>
+              )}
 
-                        {chat.id !== null && (
-                          <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                            <Pencil
-                              className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
-                              }}
+              {!threadsLoading && mergedThreads.length > 0 && (
+                <Virtuoso
+                  data={mergedThreads}
+                  endReached={() => {
+                    if (hasNextPage && !isFetchingNextPage) fetchNextPage();
+                  }}
+                  overscan={200}
+                  className="scrollbar-thin"
+                  style={{ height: '100%' }}
+                  itemContent={(_index, chat) => (
+                    <div
+                      onClick={() => {
+                        if (editingChatId === chat.id) return;
+                        handleSelectChat(chat.id);
+                      }}
+                      className={cn(
+                        "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
+                        chat.id === activeThreadId
+                          ? "bg-sidebar-primary/10 text-foreground font-medium border-sidebar-primary"
+                          : "hover:bg-muted/50 border-transparent"
+                      )}
+                    >
+                      {editingChatId !== null && editingChatId === chat.id ? (
+                        <div className="flex items-center w-full">
+                          <Input
+                            value={editingTitle}
+                            onChange={(e) => setEditingTitle(e.target.value)}
+                            autoFocus
+                            className="flex-1 bg-transparent border-b border-muted focus:border-primary"
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") handleEditSave(chat.id, editingTitle);
+                              else if (e.key === "Escape") setEditingChatId(null);
+                            }}
+                          />
+                          <div className="flex gap-2 ml-2">
+                            <IoCheckmark
+                              className="text-green-500 w-5 h-5 cursor-pointer"
+                              onClick={() => handleEditSave(chat.id, editingTitle)}
                             />
-                            <Trash2
-                              className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteClick(chat);
-                              }}
+                            <IoClose
+                              className="text-red-500 w-5 h-5 cursor-pointer"
+                              onClick={() => setEditingChatId(null)}
                             />
                           </div>
-                        )}
-                      </>
-                    )}
-                  </div>
-                )))}
-              </div>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                            {chat.id !== null && streamingThreadIds.has(chat.id) && (
+                              <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-primary" />
+                            )}
+                            {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
+                              <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
+                            )}
+                            <ThreadTitle
+                              title={chat.title ?? sidebar_new_chat()}
+                              isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
+                              isSaving={savingThreads.has(chat.id ?? "")}
+                              sidebarWidth={sidebarWidth}
+                              createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
+                            />
+                          </div>
+
+                          {chat.id !== null && (
+                            <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                              <Pencil
+                                className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
+                                }}
+                              />
+                              <Trash2
+                                className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteClick(chat);
+                                }}
+                              />
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  )}
+                  components={{
+                    Footer: () =>
+                      isFetchingNextPage ? (
+                        <div className="flex justify-center py-2">
+                          <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+                        </div>
+                      ) : null,
+                  }}
+                />
+              )}
             </div>
           )}
 
