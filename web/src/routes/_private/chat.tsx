@@ -395,10 +395,10 @@ export function NexataChat() {
 	]);
 
 	// ----------------------------
-	// After a NexataAskQuestions answer stream the SDK replaces the QA assistant
-	// message in-place with a combined [text + QA(output-available) + answer] message.
+	// After a tool-answer stream (QA or approval) the SDK replaces the assistant
+	// message in-place with a combined [tool(responded) + text] message.
 	// Once the stream is done we reset the hydration guard so the next React Query
-	// refetch can split it back into the two separate DB messages.
+	// refetch can split it back into the separate DB messages.
 	// ----------------------------
 
 	useEffect(() => {
@@ -407,32 +407,49 @@ export function NexataChat() {
 		const lastMsg = messages.at(-1);
 		if (lastMsg?.role !== 'assistant') return;
 
-		// Detect the combined QA+answer pattern: QA tool part followed by a text part
-		let foundQA = false;
-		let hasTextAfterQA = false;
+		// Detect the combined tool+answer pattern: a responded tool part followed
+		// by a text part. Covers both QA tools and approval tools.
+		let foundTool = false;
+		let hasTextAfterTool = false;
 		for (const p of lastMsg.parts ?? []) {
 			const typedPart = p as {
 				type: string;
 				toolName?: string;
 				state?: string;
 			};
-			if (
-				!foundQA &&
-				(typedPart.type === 'tool-NexataAskQuestions' ||
-					(typedPart.type === 'dynamic-tool' &&
-						typedPart.toolName === 'NexataAskQuestions')) &&
-				typedPart.state === 'output-available'
-			) {
-				foundQA = true;
-			} else if (foundQA && typedPart.type === 'text') {
-				hasTextAfterQA = true;
+
+			if (!foundTool) {
+				const rawName =
+					typedPart.type === 'dynamic-tool'
+						? typedPart.toolName
+						: typedPart.type.startsWith('tool-')
+							? typedPart.type.replace('tool-', '')
+							: undefined;
+
+				// QA tool in output-available state
+				const isQA =
+					rawName === 'NexataAskQuestions' &&
+					typedPart.state === 'output-available';
+
+				// Approval tool in responded/output state
+				const isApproval =
+					rawName !== undefined &&
+					APPROVAL_TOOLS.has(rawName) &&
+					(typedPart.state === 'approval-responded' ||
+						typedPart.state === 'output-available');
+
+				if (isQA || isApproval) {
+					foundTool = true;
+				}
+			} else if (typedPart.type === 'text') {
+				hasTextAfterTool = true;
 				break;
 			}
 		}
 
-		if (hasTextAfterQA) {
-			// Allow the hydration effect to re-run and load the proper two-message
-			// state from the DB (QA message + separate answer message).
+		if (hasTextAfterTool) {
+			// Allow the hydration effect to re-run and load the proper multi-message
+			// state from the DB (tool message + separate answer message).
 			appliedThreadRef.current = null;
 		}
 	}, [chatStatus, activeThreadId, messages]);

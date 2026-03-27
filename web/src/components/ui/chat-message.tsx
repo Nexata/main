@@ -233,6 +233,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   isLastInGroup = true,
 }) => {
   const isUser = message.role === "user"
+  const isHydrated = !!(message.metadata as Record<string, unknown> | undefined)?.hydrated
   const editingMessageId = useChatUIStore((s) => s.editingMessageId)
   const editingMessageText = useChatUIStore((s) => s.editingMessageText)
   const startEditing = useChatUIStore((s) => s.startEditing)
@@ -474,7 +475,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               blocks.push(
                 <motion.div
                   key={bubbleKey}
-                  initial={{ opacity: 0, y: 8 }}
+                  initial={isHydrated ? false : { opacity: 0, y: 8 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ duration: 0.28, ease: "easeOut" }}
                   className={cn(chatBubbleVariants({ isUser, animation: "none" }))}
@@ -543,6 +544,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       key={`ask-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isHydrated={isHydrated}
                       onSubmit={(toolCallId, answers) => {
                         addToolOutput?.({
                           toolCallId,
@@ -564,6 +566,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       key={`reingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isHydrated={isHydrated}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -581,6 +584,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       key={`gmail-ingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isHydrated={isHydrated}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -598,6 +602,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       key={`outlook-ingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isHydrated={isHydrated}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -1532,10 +1537,12 @@ function ReingestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isHydrated = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isHydrated?: boolean
 }) {
   const approvalId: string | undefined = part.approval?.id
   const state: string | undefined = part.state
@@ -1566,7 +1573,7 @@ function ReingestApprovalRenderer({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={isHydrated ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
@@ -1657,10 +1664,12 @@ function GmailIngestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isHydrated = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isHydrated?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -1692,7 +1701,7 @@ function GmailIngestApprovalRenderer({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={isHydrated ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
@@ -1800,10 +1809,12 @@ function OutlookIngestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isHydrated = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isHydrated?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -1835,7 +1846,7 @@ function OutlookIngestApprovalRenderer({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={isHydrated ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
@@ -1943,10 +1954,12 @@ export function AskQuestionsRenderer({
   part,
   onSubmit,
   isSyncing = false,
+  isHydrated = false,
 }: {
   part: any
   onSubmit?: (toolCallId: string, answers: Record<number, AnswerValue>) => void
   isSyncing?: boolean
+  isHydrated?: boolean
 }) {
   const input = part.input as AskQuestionsInput | undefined
   const isStreaming = part.state === "input-streaming"
@@ -2000,7 +2013,7 @@ export function AskQuestionsRenderer({
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 8 }}
+      initial={isHydrated ? false : { opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, ease: "easeOut" }}
       className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
