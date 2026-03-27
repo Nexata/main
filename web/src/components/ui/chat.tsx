@@ -24,6 +24,7 @@ import {
   'chat.suggestions.prompt_3' as chat_suggestions_prompt_3,
   'chat.suggestions.prompt_4' as chat_suggestions_prompt_4,
   'chat.shared.banner' as chat_shared_banner,
+  'chat.meta.syncing' as chat_meta_syncing,
 } from '@/paraglide/messages.js'
 
 interface ChatPropsBase {
@@ -196,8 +197,11 @@ export function Chat({
                 )}
 
                 {!isStreaming && isSyncing && (
-                  <div className="flex items-center gap-2 px-2 py-1">
-                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
+                  <div className="flex items-center gap-2.5 px-2 py-2">
+                    <Loader2 className="h-4 w-4 animate-spin text-primary/70" />
+                    <span className="text-xs font-medium text-muted-foreground">
+                      {chat_meta_syncing()}
+                    </span>
                   </div>
                 )}
               </ChatMessages>
@@ -227,7 +231,7 @@ export function Chat({
               </div>
             ) : (
               <ChatForm
-                isPending={isHydrating || isStreaming}
+                isPending={isHydrating || isStreaming || !!isSyncing}
                 handleSubmit={handleSubmit}
               >
                 {({ files, setFiles }) => (
@@ -403,6 +407,11 @@ export const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
     const [files, setFiles] = useState<File[] | null>(null)
 
     const onSubmit = (event: React.FormEvent) => {
+      if (isPending) {
+        event.preventDefault()
+        return
+      }
+
       if (!files) {
         handleSubmit(event)
         return

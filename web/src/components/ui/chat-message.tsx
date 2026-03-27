@@ -459,6 +459,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           {(() => {
             const blocks: React.ReactNode[] = []
             let buffer: { part: Record<string, unknown>; globalIndex: number }[] = []
+            const renderedToolCallIds = new Set<string>()
 
             const flushBuffer = () => {
               if (!buffer.length) return
@@ -527,6 +528,11 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               }
 
               if (isToolPart(part)) {
+                // Deduplicate tool parts by toolCallId — during auto-submit
+                // streams the SDK may hold two copies of the same tool call.
+                const tcId = (part as { toolCallId?: string }).toolCallId
+                if (tcId && renderedToolCallIds.has(tcId)) return
+                if (tcId) renderedToolCallIds.add(tcId)
                 const rawName = part.type === "dynamic-tool"
                   ? part.toolName
                   : part.type.replace("tool-", "")

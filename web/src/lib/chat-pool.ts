@@ -8,6 +8,12 @@ import { createAuthenticatedChatTransport } from './chat-transport';
  */
 const chatPool = new Map<string, AIChat<UIMessage>>();
 
+/**
+ * Mutable key refs so the `onData` closure always sees the current key
+ * even after a __new__ → realThreadId promotion.
+ */
+const keyRefs = new Map<string, { current: string }>();
+
 export const NEW_CHAT_KEY = '__new__';
 
 /**
@@ -55,6 +61,8 @@ function shouldSendAutomatically({
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 	const key = threadId ?? NEW_CHAT_KEY;
 	if (!chatPool.has(key)) {
+		const keyRef = { current: key };
+		keyRefs.set(key, keyRef);
 		chatPool.set(
 			key,
 			new AIChat({
@@ -67,7 +75,7 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 							error?: string;
 						};
 						if (data.success) {
-							useChatUIStore.getState().markThreadSynced(key);
+							useChatUIStore.getState().markThreadSynced(keyRef.current);
 						}
 					}
 				},
@@ -86,6 +94,20 @@ export function promoteChatInstance(realThreadId: string): void {
 	if (instance) {
 		chatPool.set(realThreadId, instance);
 		chatPool.delete(NEW_CHAT_KEY);
+
+		// Migrate the mutable keyRef so the onData closure sees the real ID
+		const ref = keyRefs.get(NEW_CHAT_KEY);
+		if (ref) {
+			ref.current = realThreadId;
+			keyRefs.set(realThreadId, ref);
+			keyRefs.delete(NEW_CHAT_KEY);
+		}
+
+		// Migrate unsynced state: clear the __new__ entry (now stale)
+		// and ensure the real thread ID is tracked as unsynced.
+		const store = useChatUIStore.getState();
+		store.markThreadSynced(NEW_CHAT_KEY);
+		store.markThreadUnsynced(realThreadId);
 	}
 }
 
@@ -94,6 +116,7 @@ export function promoteChatInstance(realThreadId: string): void {
  */
 export function removeChatInstance(threadId: string): void {
 	chatPool.delete(threadId);
+	keyRefs.delete(threadId);
 }
 
 /**

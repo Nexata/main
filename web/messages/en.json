@@ -320,7 +320,8 @@
 		"meta": {
 			"title": "Nexata | Chat",
 			"thinking": "Thinking",
-			"error": "An error occurred while processing your message"
+			"error": "An error occurred while processing your message",
+			"syncing": "Syncing"
 		},
 		"copy": {
 			"copy": "Copy",
