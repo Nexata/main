@@ -9,10 +9,13 @@ import { useEffect, useRef } from 'react';
 import { IoMenu } from 'react-icons/io5';
 import Sidebar from '@/components/sidebar/sidebar';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
-import ToolDetailPanel, { MobileToolDetailPanel } from '@/components/tool-detail-panel/tool-detail-panel';
+import ToolDetailPanel, {
+	MobileToolDetailPanel,
+} from '@/components/tool-detail-panel/tool-detail-panel';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
+import { useSidebarStore } from '@/lib/sidebar.store';
 import { useToolDetailStore } from '@/lib/tool-detail.store';
 import { useMyTenant } from '@/lib/user';
 
@@ -37,6 +40,22 @@ function PrivateLayout() {
 		toggle: toggleMobileSidebar,
 	} = useMobileSidebarStore();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
+
+	// CTRL+B / CMD+B to toggle sidebar (desktop only)
+	useEffect(() => {
+		const onKeyDown = (e: KeyboardEvent) => {
+			if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
+				e.preventDefault();
+				if (isMobile) {
+					toggleMobileSidebar();
+				} else {
+					useSidebarStore.getState().toggle();
+				}
+			}
+		};
+		document.addEventListener('keydown', onKeyDown);
+		return () => document.removeEventListener('keydown', onKeyDown);
+	}, [isMobile, toggleMobileSidebar]);
 
 	// Close mobile sidebar on route change
 	useEffect(() => {

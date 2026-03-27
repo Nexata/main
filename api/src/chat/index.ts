@@ -1,6 +1,8 @@
 import { authPlugin } from '@api/auth';
 import {
 	BUILD_SYSTEM_PROMPT,
+	createSyncedStream,
+	createSyncResolver,
 	generateThreadTitle,
 	getThreadMessages,
 	mapFinishReason,
@@ -27,7 +29,13 @@ import { sq } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { encode } from '@toon-format/toon';
-import { consumeStream, type ModelMessage, stepCountIs, streamText } from 'ai';
+import {
+	consumeStream,
+	createUIMessageStreamResponse,
+	type ModelMessage,
+	stepCountIs,
+	streamText,
+} from 'ai';
 import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
@@ -165,6 +173,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				});
 
 			// Final streaming
+			const syncResolver = createSyncResolver();
+
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 32768,
@@ -192,59 +202,56 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					finishReason: aiFinishReason,
 					response: { messages: responseMessages },
 				}) => {
-					await doPersist(
-						responseMessages,
-						mapFinishReason(aiFinishReason),
-					).catch((error) =>
-						captureException(error, {
-							tags: { source: 'chat:onFinish' },
-							extra: { threadId, finishReason: aiFinishReason },
-						}),
-					);
+					syncResolver.resolve({
+						messages: responseMessages,
+						reason: mapFinishReason(aiFinishReason),
+					});
 				},
 				onAbort: async ({ steps }) => {
 					const responseMessages = steps.flatMap(
 						(step) => step.response.messages,
 					);
-					await doPersist(responseMessages, FinishReason.STOPPED).catch(
-						(error) =>
-							captureException(error, {
-								tags: { source: 'chat:onAbort' },
-								extra: { threadId },
-							}),
-					);
+					syncResolver.resolve({
+						messages: responseMessages,
+						reason: FinishReason.STOPPED,
+					});
 				},
 				onError: async ({ error }) => {
 					if (error instanceof Error && error.name === 'AbortError') {
-						await doPersist([], FinishReason.STOPPED).catch((err) =>
-							captureException(err, {
-								tags: { source: 'chat:onError:abort' },
-								extra: { threadId },
-							}),
-						);
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.STOPPED,
+						});
 					} else {
-						await doPersist([], FinishReason.ERROR).catch((err) =>
-							captureException(err, {
-								tags: { source: 'chat:onError:persist' },
-								extra: { threadId },
-							}),
-						);
 						captureException(error, {
 							tags: { source: 'chat:onError' },
 							extra: { threadId },
+						});
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.ERROR,
 						});
 					}
 				},
 			});
 
-			return stream.toUIMessageStreamResponse({
+			const uiStream = createSyncedStream(
+				stream.toUIMessageStream({
+					generateMessageId: () => assistantMessageId,
+					messageMetadata: ({ part }) => {
+						if (part.type === 'start')
+							return { threadId, threadTitle, userMessageId: userMessage.id };
+					},
+				}),
+				syncResolver,
+				doPersist,
+				{ threadId, source: 'chat' },
+			);
+
+			return createUIMessageStreamResponse({
+				stream: uiStream,
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
-				generateMessageId: () => assistantMessageId,
-				messageMetadata: ({ part }) => {
-					if (part.type === 'start')
-						return { threadId, threadTitle, userMessageId: userMessage.id };
-				},
 			});
 		},
 		{
@@ -469,6 +476,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						assistantMessageId,
 					});
 
+				const syncResolver = createSyncResolver();
+
 				const stream = streamText({
 					model: MODEL,
 					maxOutputTokens: 32768,
@@ -491,61 +500,48 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						finishReason: aiFinishReason,
 						response: { messages: responseMessages },
 					}) => {
-						await doPersist(
-							responseMessages,
-							mapFinishReason(aiFinishReason),
-						).catch((error) =>
-							captureException(error, {
-								tags: { source: 'chat:answer:approve:onFinish' },
-								extra: {
-									threadId: body.threadId,
-									finishReason: aiFinishReason,
-								},
-							}),
-						);
+						syncResolver.resolve({
+							messages: responseMessages,
+							reason: mapFinishReason(aiFinishReason),
+						});
 					},
 					onAbort: async ({ steps }) => {
 						const responseMessages = steps.flatMap(
 							(step) => step.response.messages,
 						);
-						await doPersist(responseMessages, FinishReason.STOPPED).catch(
-							(error) =>
-								captureException(error, {
-									tags: { source: 'chat:answer:approve:onAbort' },
-									extra: { threadId: body.threadId },
-								}),
-						);
+						syncResolver.resolve({
+							messages: responseMessages,
+							reason: FinishReason.STOPPED,
+						});
 					},
 					onError: async ({ error }) => {
 						if (error instanceof Error && error.name === 'AbortError') {
-							await doPersist([], FinishReason.STOPPED).catch((err) =>
-								captureException(err, {
-									tags: {
-										source: 'chat:answer:approve:onError:abort',
-									},
-									extra: { threadId: body.threadId },
-								}),
-							);
+							syncResolver.resolve({
+								messages: [],
+								reason: FinishReason.STOPPED,
+							});
 						} else {
-							await doPersist([], FinishReason.ERROR).catch((err) =>
-								captureException(err, {
-									tags: {
-										source: 'chat:answer:approve:onError:persist',
-									},
-									extra: { threadId: body.threadId },
-								}),
-							);
 							captureException(error, {
-								tags: {
-									source: 'chat:answer:approve:onError',
-								},
+								tags: { source: 'chat:answer:approve:onError' },
 								extra: { threadId: body.threadId },
+							});
+							syncResolver.resolve({
+								messages: [],
+								reason: FinishReason.ERROR,
 							});
 						}
 					},
 				});
 
-				return stream.toUIMessageStreamResponse({
+				const uiStream = createSyncedStream(
+					stream.toUIMessageStream(),
+					syncResolver,
+					doPersist,
+					{ threadId: body.threadId, source: 'chat:answer:approve' },
+				);
+
+				return createUIMessageStreamResponse({
+					stream: uiStream,
 					headers: { 'Content-Type': 'text/event-stream' },
 					consumeSseStream: consumeStream,
 				});
@@ -615,6 +611,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					assistantMessageId,
 				});
 
+			const syncResolver = createSyncResolver();
+
 			const stream = streamText({
 				model: MODEL,
 				maxOutputTokens: 32768,
@@ -637,49 +635,34 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					finishReason: aiFinishReason,
 					response: { messages: responseMessages },
 				}) => {
-					await doPersist(
-						responseMessages,
-						mapFinishReason(aiFinishReason),
-					).catch((error) =>
-						captureException(error, {
-							tags: { source: 'chat:answer:onFinish' },
-							extra: {
-								threadId: body.threadId,
-								finishReason: aiFinishReason,
-							},
-						}),
-					);
+					syncResolver.resolve({
+						messages: responseMessages,
+						reason: mapFinishReason(aiFinishReason),
+					});
 				},
 				onAbort: async ({ steps }) => {
 					const responseMessages = steps.flatMap(
 						(step) => step.response.messages,
 					);
-					await doPersist(responseMessages, FinishReason.STOPPED).catch(
-						(error) =>
-							captureException(error, {
-								tags: { source: 'chat:answer:onAbort' },
-								extra: { threadId: body.threadId },
-							}),
-					);
+					syncResolver.resolve({
+						messages: responseMessages,
+						reason: FinishReason.STOPPED,
+					});
 				},
 				onError: async ({ error }) => {
 					if (error instanceof Error && error.name === 'AbortError') {
-						await doPersist([], FinishReason.STOPPED).catch((err) =>
-							captureException(err, {
-								tags: { source: 'chat:answer:onError:abort' },
-								extra: { threadId: body.threadId },
-							}),
-						);
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.STOPPED,
+						});
 					} else {
-						await doPersist([], FinishReason.ERROR).catch((err) =>
-							captureException(err, {
-								tags: { source: 'chat:answer:onError:persist' },
-								extra: { threadId: body.threadId },
-							}),
-						);
 						captureException(error, {
 							tags: { source: 'chat:answer:onError' },
 							extra: { threadId: body.threadId },
+						});
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.ERROR,
 						});
 					}
 				},
@@ -693,7 +676,15 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			// twice in the UI.  Without a messageId in "start", the SDK keeps the clone's
 			// original ID → replaceMessage() is used instead of pushMessage() → no duplication.
 			// The assistantMessageId UUID is still used exclusively for DB persistence below.
-			return stream.toUIMessageStreamResponse({
+			const uiStream = createSyncedStream(
+				stream.toUIMessageStream(),
+				syncResolver,
+				doPersist,
+				{ threadId: body.threadId, source: 'chat:answer' },
+			);
+
+			return createUIMessageStreamResponse({
+				stream: uiStream,
 				headers: { 'Content-Type': 'text/event-stream' },
 				consumeSseStream: consumeStream,
 			});

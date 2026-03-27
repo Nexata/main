@@ -216,6 +216,7 @@ export interface ChatMessageProps {
   onBranchOff?: (messageId: string) => void
   onRetry?: (messageId: string) => void
   isStreaming?: boolean
+  isSyncing?: boolean
   isLastInGroup?: boolean
 }
 
@@ -228,6 +229,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
   onBranchOff,
   onRetry,
   isStreaming = false,
+  isSyncing = false,
   isLastInGroup = true,
 }) => {
   const isUser = message.role === "user"
@@ -534,6 +536,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <AskQuestionsRenderer
                       key={`ask-${index}`}
                       part={part}
+                      isSyncing={isSyncing}
                       onSubmit={(toolCallId, answers) => {
                         addToolOutput?.({
                           toolCallId,
@@ -554,6 +557,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <ReingestApprovalRenderer
                       key={`reingest-approval-${index}`}
                       part={part}
+                      isSyncing={isSyncing}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -570,6 +574,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <GmailIngestApprovalRenderer
                       key={`gmail-ingest-approval-${index}`}
                       part={part}
+                      isSyncing={isSyncing}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -586,6 +591,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                     <OutlookIngestApprovalRenderer
                       key={`outlook-ingest-approval-${index}`}
                       part={part}
+                      isSyncing={isSyncing}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -1519,9 +1525,11 @@ const respondedApprovals = new Set<string>()
 function ReingestApprovalRenderer({
   part,
   onRespond,
+  isSyncing = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
+  isSyncing?: boolean
 }) {
   const approvalId: string | undefined = part.approval?.id
   const state: string | undefined = part.state
@@ -1615,6 +1623,7 @@ function ReingestApprovalRenderer({
               size="sm"
               variant="outline"
               onClick={handleDeny}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
@@ -1623,6 +1632,7 @@ function ReingestApprovalRenderer({
             <Button
               size="sm"
               onClick={handleApprove}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <Check className="h-3.5 w-3.5" />
@@ -1640,9 +1650,11 @@ function ReingestApprovalRenderer({
 function GmailIngestApprovalRenderer({
   part,
   onRespond,
+  isSyncing = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
+  isSyncing?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -1754,6 +1766,7 @@ function GmailIngestApprovalRenderer({
               size="sm"
               variant="outline"
               onClick={handleDeny}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
@@ -1762,6 +1775,7 @@ function GmailIngestApprovalRenderer({
             <Button
               size="sm"
               onClick={handleApprove}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <Check className="h-3.5 w-3.5" />
@@ -1779,9 +1793,11 @@ function GmailIngestApprovalRenderer({
 function OutlookIngestApprovalRenderer({
   part,
   onRespond,
+  isSyncing = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
+  isSyncing?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -1893,6 +1909,7 @@ function OutlookIngestApprovalRenderer({
               size="sm"
               variant="outline"
               onClick={handleDeny}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <X className="h-3.5 w-3.5" />
@@ -1901,6 +1918,7 @@ function OutlookIngestApprovalRenderer({
             <Button
               size="sm"
               onClick={handleApprove}
+              disabled={isSyncing}
               className="gap-1.5 cursor-pointer"
             >
               <Check className="h-3.5 w-3.5" />
@@ -1918,9 +1936,11 @@ function OutlookIngestApprovalRenderer({
 export function AskQuestionsRenderer({
   part,
   onSubmit,
+  isSyncing = false,
 }: {
   part: any
   onSubmit?: (toolCallId: string, answers: Record<number, AnswerValue>) => void
+  isSyncing?: boolean
 }) {
   const input = part.input as AskQuestionsInput | undefined
   const isStreaming = part.state === "input-streaming"
@@ -2106,6 +2126,7 @@ export function AskQuestionsRenderer({
           <Button
             size="sm"
             onClick={handleSubmit}
+            disabled={isSyncing}
             className="gap-1.5 cursor-pointer"
           >
             <Send className="h-3.5 w-3.5" />

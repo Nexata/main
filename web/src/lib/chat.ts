@@ -15,12 +15,13 @@ export type PaginationParams = {
 // Read thread by ID (asc)
 export async function getThreadById(
 	threadId: string,
-	params?: { limit?: number },
+	params?: { limit?: number; cursor?: string },
 ) {
 	return withAuthRetry((headers) =>
 		apiClient.chat.thread[threadId]!.get({
 			$headers: headers,
 			$query: {
+				...(params?.cursor ? { cursor: new Date(params.cursor) } : {}),
 				limit: params?.limit ?? 100,
 			},
 		}),
@@ -86,6 +87,19 @@ export function useDeleteThreadById() {
 
 	return async (threadId: string) => {
 		await deleteThreadById(threadId);
+
+		await queryClient.invalidateQueries({
+			queryKey: ['chat-threads'],
+		});
+	};
+}
+
+// Bulk delete threads by IDs
+export function useDeleteThreadsByIds() {
+	const queryClient = useQueryClient();
+
+	return async (threadIds: string[]) => {
+		await Promise.all(threadIds.map((id) => deleteThreadById(id)));
 
 		await queryClient.invalidateQueries({
 			queryKey: ['chat-threads'],

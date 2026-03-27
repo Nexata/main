@@ -286,6 +286,12 @@
 		"search": "Buscar Chats...",
 		"delete_chat_title": "¿Eliminar chat?",
 		"delete_chat_desc": "¿Estás seguro de eliminar el chat \"{title}\"? Esta acción no se puede deshacer.",
+		"delete_chats_title": "¿Eliminar {count} chats?",
+		"delete_chats_desc": "¿Estás seguro de eliminar {count} chats seleccionados? Esta acción no se puede deshacer.",
+		"selected_count": "{count} seleccionados",
+		"rename": "Renombrar",
+		"delete": "Eliminar",
+		"delete_selected": "Eliminar seleccionados",
 		"theme": "Cambiar tema",
 		"settings": "Configuración",
 		"tenant_switch": "Cambiar Empresa",
@@ -296,7 +302,13 @@
 			"success_title": "Chat eliminado",
 			"success_desc": "La conversación fue eliminada correctamente.",
 			"error_title": "Error al eliminar chat",
-			"error_desc": "Algo salió mal al eliminar la conversación."
+			"error_desc": "Algo salió mal al eliminar la conversación.",
+			"bulk_loading_title": "Eliminando {count} chats…",
+			"bulk_loading_desc": "Esperá mientras eliminamos las conversaciones.",
+			"bulk_success_title": "{count} chats eliminados",
+			"bulk_success_desc": "Las conversaciones fueron eliminadas correctamente.",
+			"bulk_error_title": "Error al eliminar chats",
+			"bulk_error_desc": "Algo salió mal al eliminar las conversaciones."
 		}
 	},
 	"user_input": {

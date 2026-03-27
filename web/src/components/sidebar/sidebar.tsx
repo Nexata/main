@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Pencil,
@@ -32,6 +32,10 @@ import {
   "sidebar.theme" as sidebar_theme,
   "sidebar.settings" as sidebar_settings,
   "sidebar.feedback" as sidebar_feedback,
+  "sidebar.rename" as sidebar_rename,
+  "sidebar.delete" as sidebar_delete,
+  "sidebar.delete_selected" as sidebar_delete_selected,
+  "sidebar.selected_count" as sidebar_selected_count,
   "common.created_at" as common_created_at,
   "sidebar.delete_toast.loading_title" as sidebar_delete_toast_loading_title,
   "sidebar.delete_toast.loading_desc" as sidebar_delete_toast_loading_desc,
@@ -39,9 +43,15 @@ import {
   "sidebar.delete_toast.success_desc" as sidebar_delete_toast_success_desc,
   "sidebar.delete_toast.error_title" as sidebar_delete_toast_error_title,
   "sidebar.delete_toast.error_desc" as sidebar_delete_toast_error_desc,
+  "sidebar.delete_toast.bulk_loading_title" as sidebar_delete_toast_bulk_loading_title,
+  "sidebar.delete_toast.bulk_loading_desc" as sidebar_delete_toast_bulk_loading_desc,
+  "sidebar.delete_toast.bulk_success_title" as sidebar_delete_toast_bulk_success_title,
+  "sidebar.delete_toast.bulk_success_desc" as sidebar_delete_toast_bulk_success_desc,
+  "sidebar.delete_toast.bulk_error_title" as sidebar_delete_toast_bulk_error_title,
+  "sidebar.delete_toast.bulk_error_desc" as sidebar_delete_toast_bulk_error_desc,
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
-import { useInfiniteThreads, useDeleteThreadById, useUpdateThreadById } from '@/lib/chat';
+import { useInfiniteThreads, useDeleteThreadById, useDeleteThreadsByIds, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
@@ -51,6 +61,14 @@ import { removeChatInstance } from '@/lib/chat-pool';
 import { useTypingText } from '@/hooks/use-typing-text';
 import { useSyncLocale } from "@/hooks/use-sync-language";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useSidebarStore } from "@/lib/sidebar.store";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "@/components/ui/context-menu";
 
 type SidebarProps = {
   isMobileOverlay?: boolean;
@@ -59,7 +77,8 @@ type SidebarProps = {
 
 export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarProps) {
   const navigate = useNavigate()
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const isCollapsed = useSidebarStore((s) => s.isCollapsed);
+  const toggleCollapsed = useSidebarStore((s) => s.toggle);
   useSyncLocale();
   const queryClient = useQueryClient();
 
@@ -160,12 +179,29 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   }, [threadsData]);
 
   const deleteThreadFn = useDeleteThreadById();
+  const deleteThreadsByIdsFn = useDeleteThreadsByIds();
   const updateThreadFn = useUpdateThreadById();
   const [chatToDelete, setChatToDelete] = useState<{
     id: string;
     title: string | null;
   } | null>(null);
+  const [bulkDeleteIds, setBulkDeleteIds] = useState<string[] | null>(null);
   const [editingChatId, setEditingChatId] = useState<string | null>(null);
+
+  // Multi-select state
+  const [selectedThreadIds, setSelectedThreadIds] = useState<Set<string>>(new Set());
+  const lastClickedIndexRef = useRef<number | null>(null);
+
+  // Clear selection on Escape
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && selectedThreadIds.size > 0) {
+        setSelectedThreadIds(new Set());
+      }
+    };
+    document.addEventListener('keydown', onKeyDown);
+    return () => document.removeEventListener('keydown', onKeyDown);
+  }, [selectedThreadIds.size]);
 
   // Edit Thread
   const [editingTitle, setEditingTitle] = useState("");
@@ -197,6 +233,11 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
 
   const handleDeleteClick = (chat: { id: string; title: string | null }) => setChatToDelete(chat);
+
+  const handleBulkDeleteClick = useCallback(() => {
+    if (selectedThreadIds.size === 0) return;
+    setBulkDeleteIds([...selectedThreadIds]);
+  }, [selectedThreadIds]);
 
   const confirmDelete = async () => {
     if (!chatToDelete) return;
@@ -235,6 +276,107 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
       await queryClient.invalidateQueries({
         queryKey: ['chat-threads'],
       });
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    if (!bulkDeleteIds || bulkDeleteIds.length === 0) return;
+
+    const idsToDelete = [...bulkDeleteIds];
+    const count = String(idsToDelete.length);
+    setBulkDeleteIds(null);
+    setSelectedThreadIds(new Set());
+
+    const toastId = infoToast.loading({
+      title: sidebar_delete_toast_bulk_loading_title({ count }),
+      description: sidebar_delete_toast_bulk_loading_desc(),
+    });
+
+    try {
+      await deleteThreadsByIdsFn(idsToDelete);
+      idsToDelete.forEach((id) => removeChatInstance(id));
+
+      infoToast.success(toastId, {
+        title: sidebar_delete_toast_bulk_success_title({ count }),
+        description: sidebar_delete_toast_bulk_success_desc(),
+      });
+
+      if (activeThreadId && idsToDelete.includes(activeThreadId)) {
+        useChatUIStore.getState().startNewChat();
+        navigate({ to: '/chat', search: { id: undefined } });
+      }
+
+      await queryClient.invalidateQueries({
+        queryKey: ['chat-threads'],
+      });
+    } catch (error) {
+      infoToast.error(toastId, {
+        title: sidebar_delete_toast_bulk_error_title(),
+        description: extractErrorText(error) ?? sidebar_delete_toast_bulk_error_desc(),
+      });
+
+      await queryClient.invalidateQueries({
+        queryKey: ['chat-threads'],
+      });
+    }
+  };
+
+  const handleThreadClick = (e: React.MouseEvent, chat: { id: string | null }, index: number) => {
+    if (!chat.id) return;
+    if (editingChatId === chat.id) return;
+
+    const isCtrl = e.ctrlKey || e.metaKey;
+    const isShift = e.shiftKey;
+
+    if (isCtrl) {
+      // Toggle individual selection
+      e.preventDefault();
+      setSelectedThreadIds((prev) => {
+        const next = new Set(prev);
+        if (next.has(chat.id!)) {
+          next.delete(chat.id!);
+        } else {
+          next.add(chat.id!);
+        }
+        return next;
+      });
+      lastClickedIndexRef.current = index;
+      return;
+    }
+
+    if (isShift && lastClickedIndexRef.current !== null) {
+      // Range selection
+      e.preventDefault();
+      const start = Math.min(lastClickedIndexRef.current, index);
+      const end = Math.max(lastClickedIndexRef.current, index);
+      setSelectedThreadIds((prev) => {
+        const next = new Set(prev);
+        for (let i = start; i <= end; i++) {
+          const thread = mergedThreads[i];
+          if (thread?.id) {
+            next.add(thread.id);
+          }
+        }
+        return next;
+      });
+      return;
+    }
+
+    // Normal click — clear selection and navigate
+    if (selectedThreadIds.size > 0) {
+      setSelectedThreadIds(new Set());
+    }
+    lastClickedIndexRef.current = index;
+    handleSelectChat(chat.id);
+  };
+
+  const handleThreadContextMenu = (chat: { id: string | null }, index: number) => {
+    if (!chat.id) return;
+
+    // If right-clicking a thread not in current selection, select only it
+    if (!selectedThreadIds.has(chat.id)) {
+      setSelectedThreadIds(new Set([chat.id]));
+      lastClickedIndexRef.current = index;
     }
   };
 
@@ -319,7 +461,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
               </motion.button>
             ) : (
               <motion.button
-                onClick={() => setIsCollapsed(!isCollapsed)}
+                onClick={toggleCollapsed}
                 className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -377,6 +519,19 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
             </div>
           )}
 
+          {/* Selection indicator */}
+          {!effectiveCollapsed && selectedThreadIds.size > 0 && (
+            <div className="mb-2 px-3 py-1.5 rounded-lg bg-primary/10 text-xs text-primary flex items-center justify-between">
+              <span>{sidebar_selected_count({ count: String(selectedThreadIds.size) })}</span>
+              <button
+                onClick={() => setSelectedThreadIds(new Set())}
+                className="text-primary/70 hover:text-primary cursor-pointer transition-colors"
+              >
+                <IoClose className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+
           {/* Lista de chats */}
           {!effectiveCollapsed && (
             <div className="flex-1 min-h-0 mb-4">
@@ -424,82 +579,131 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                   overscan={200}
                   className="scrollbar-thin"
                   style={{ height: '100%' }}
-                  itemContent={(_index, chat) => (
-                    <div
-                      onClick={() => {
-                        if (editingChatId === chat.id) return;
-                        handleSelectChat(chat.id);
-                      }}
-                      className={cn(
-                        "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
-                        chat.id === activeThreadId
-                          ? "bg-sidebar-primary/10 text-foreground font-medium border-sidebar-primary"
-                          : "hover:bg-muted/50 border-transparent"
-                      )}
-                    >
-                      {editingChatId !== null && editingChatId === chat.id ? (
-                        <div className="flex items-center w-full">
-                          <Input
-                            value={editingTitle}
-                            onChange={(e) => setEditingTitle(e.target.value)}
-                            autoFocus
-                            className="flex-1 bg-transparent border-b border-muted focus:border-primary"
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") handleEditSave(chat.id, editingTitle);
-                              else if (e.key === "Escape") setEditingChatId(null);
-                            }}
-                          />
-                          <div className="flex gap-2 ml-2">
-                            <IoCheckmark
-                              className="text-green-500 w-5 h-5 cursor-pointer"
-                              onClick={() => handleEditSave(chat.id, editingTitle)}
-                            />
-                            <IoClose
-                              className="text-red-500 w-5 h-5 cursor-pointer"
-                              onClick={() => setEditingChatId(null)}
-                            />
-                          </div>
-                        </div>
-                      ) : (
-                        <>
-                          <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                            {chat.id !== null && streamingThreadIds.has(chat.id) && (
-                              <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-primary" />
-                            )}
-                            {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
-                              <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
-                            )}
-                            <ThreadTitle
-                              title={chat.title ?? sidebar_new_chat()}
-                              isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
-                              isSaving={savingThreads.has(chat.id ?? "")}
-                              sidebarWidth={sidebarWidth}
-                              createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
-                            />
-                          </div>
+                  itemContent={(index, chat) => {
+                    const isSelected = chat.id !== null && selectedThreadIds.has(chat.id);
+                    const isMultiSelected = selectedThreadIds.size > 1;
 
-                          {chat.id !== null && (
-                            <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
-                              <Pencil
-                                className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
-                                }}
-                              />
-                              <Trash2
-                                className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  handleDeleteClick(chat);
-                                }}
-                              />
-                            </div>
+                    return (
+                      <ContextMenu>
+                        <ContextMenuTrigger
+                          onContextMenu={() => handleThreadContextMenu(chat, index)}
+                          asChild
+                        >
+                          <div
+                            onClick={(e) => handleThreadClick(e, chat, index)}
+                            className={cn(
+                              "px-3 py-2 rounded-lg flex justify-between items-center cursor-pointer group transition-all duration-150 border-l-2",
+                              isSelected
+                                ? "bg-primary/15 text-foreground border-primary/40"
+                                : chat.id === activeThreadId
+                                  ? "bg-sidebar-primary/10 text-foreground font-medium border-sidebar-primary"
+                                  : "hover:bg-muted/50 border-transparent"
+                            )}
+                          >
+                            {editingChatId !== null && editingChatId === chat.id ? (
+                              <div className="flex items-center w-full">
+                                <Input
+                                  value={editingTitle}
+                                  onChange={(e) => setEditingTitle(e.target.value)}
+                                  autoFocus
+                                  className="flex-1 bg-transparent border-b border-muted focus:border-primary"
+                                  onKeyDown={(e) => {
+                                    if (e.key === "Enter") handleEditSave(chat.id, editingTitle);
+                                    else if (e.key === "Escape") setEditingChatId(null);
+                                  }}
+                                />
+                                <div className="flex gap-2 ml-2">
+                                  <IoCheckmark
+                                    className="text-green-500 w-5 h-5 cursor-pointer"
+                                    onClick={() => handleEditSave(chat.id, editingTitle)}
+                                  />
+                                  <IoClose
+                                    className="text-red-500 w-5 h-5 cursor-pointer"
+                                    onClick={() => setEditingChatId(null)}
+                                  />
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                  {chat.id !== null && streamingThreadIds.has(chat.id) && (
+                                    <Loader2 className="w-3.5 h-3.5 shrink-0 animate-spin text-primary" />
+                                  )}
+                                  {chat.id !== null && chat.id !== activeThreadId && !streamingThreadIds.has(chat.id) && unreadThreadIds.has(chat.id) && (
+                                    <span className="w-2 h-2 shrink-0 rounded-full bg-primary ring-2 ring-primary/30" />
+                                  )}
+                                  <ThreadTitle
+                                    title={chat.title ?? sidebar_new_chat()}
+                                    isTyping={Boolean(optimisticThreads[chat.id ?? '']?.isTyping)}
+                                    isSaving={savingThreads.has(chat.id ?? "")}
+                                    sidebarWidth={sidebarWidth}
+                                    createdAt={(chat as { createdAt?: Date | string }).createdAt ?? new Date()}
+                                  />
+                                </div>
+
+                                {chat.id !== null && selectedThreadIds.size === 0 && (
+                                  <div className="flex gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
+                                    <Pencil
+                                      className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
+                                      }}
+                                    />
+                                    <Trash2
+                                      className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        handleDeleteClick(chat);
+                                      }}
+                                    />
+                                  </div>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </ContextMenuTrigger>
+
+                        <ContextMenuContent>
+                          {isSelected && isMultiSelected ? (
+                            /* Bulk context menu */
+                            <ContextMenuItem
+                              variant="destructive"
+                              onClick={handleBulkDeleteClick}
+                              className="cursor-pointer"
+                            >
+                              <Trash2 className="w-4 h-4 mr-1.5" />
+                              {sidebar_delete_selected()} ({selectedThreadIds.size})
+                            </ContextMenuItem>
+                          ) : (
+                            /* Single-item context menu */
+                            <>
+                              {chat.id !== null && (
+                                <>
+                                  <ContextMenuItem
+                                    onClick={() => handleEditClick(chat.id, chat.title ?? sidebar_new_chat())}
+                                    className="cursor-pointer"
+                                  >
+                                    <Pencil className="w-4 h-4 mr-1.5" />
+                                    {sidebar_rename()}
+                                  </ContextMenuItem>
+                                  <ContextMenuSeparator />
+                                  <ContextMenuItem
+                                    variant="destructive"
+                                    onClick={() => handleDeleteClick(chat)}
+                                    className="cursor-pointer"
+                                  >
+                                    <Trash2 className="w-4 h-4 mr-1.5" />
+                                    {sidebar_delete()}
+                                  </ContextMenuItem>
+                                </>
+                              )}
+                            </>
                           )}
-                        </>
-                      )}
-                    </div>
-                  )}
+                        </ContextMenuContent>
+                      </ContextMenu>
+                    );
+                  }}
                   components={{
                     Footer: () =>
                       isFetchingNextPage ? (
@@ -637,12 +841,20 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
         )}
       </MotionDiv>
 
-      {/* Modal de eliminación */}
+      {/* Modal de eliminación — single */}
       <DeleteChatModal
         open={!!chatToDelete}
         chatTitle={chatToDelete?.title}
         onCancel={() => setChatToDelete(null)}
         onConfirm={confirmDelete}
+      />
+
+      {/* Modal de eliminación — bulk */}
+      <DeleteChatModal
+        open={!!bulkDeleteIds && bulkDeleteIds.length > 0}
+        bulkCount={bulkDeleteIds?.length}
+        onCancel={() => setBulkDeleteIds(null)}
+        onConfirm={confirmBulkDelete}
       />
     </>
   );

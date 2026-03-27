@@ -1,4 +1,5 @@
 import { Chat as AIChat, type UIMessage } from '@ai-sdk/react';
+import { useChatUIStore } from './chat.store';
 import { createAuthenticatedChatTransport } from './chat-transport';
 
 /**
@@ -59,6 +60,17 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 			new AIChat({
 				transport: createAuthenticatedChatTransport(),
 				sendAutomaticallyWhen: shouldSendAutomatically,
+				onData: (dataPart) => {
+					if (dataPart.type === 'data-synced') {
+						const data = dataPart.data as {
+							success: boolean;
+							error?: string;
+						};
+						if (data.success) {
+							useChatUIStore.getState().markThreadSynced(key);
+						}
+					}
+				},
 			}),
 		);
 	}

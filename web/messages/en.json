@@ -286,6 +286,12 @@
 		"search": "Search Chats...",
 		"delete_chat_title": "Delete chat?",
 		"delete_chat_desc": "Are you sure you want to delete the chat \"{title}\"? This action cannot be undone.",
+		"delete_chats_title": "Delete {count} chats?",
+		"delete_chats_desc": "Are you sure you want to delete {count} selected chats? This action cannot be undone.",
+		"selected_count": "{count} selected",
+		"rename": "Rename",
+		"delete": "Delete",
+		"delete_selected": "Delete selected",
 		"theme": "Toggle theme",
 		"settings": "Settings",
 		"tenant_switch": "Switch Tenant",
@@ -296,7 +302,13 @@
 			"success_title": "Chat deleted",
 			"success_desc": "The conversation was deleted successfully.",
 			"error_title": "Failed to delete chat",
-			"error_desc": "Something went wrong while deleting the conversation."
+			"error_desc": "Something went wrong while deleting the conversation.",
+			"bulk_loading_title": "Deleting {count} chats…",
+			"bulk_loading_desc": "Please wait while we delete the conversations.",
+			"bulk_success_title": "{count} chats deleted",
+			"bulk_success_desc": "The conversations were deleted successfully.",
+			"bulk_error_title": "Failed to delete chats",
+			"bulk_error_desc": "Something went wrong while deleting the conversations."
 		}
 	},
 	"user_input": {

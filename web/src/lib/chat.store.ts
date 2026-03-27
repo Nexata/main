@@ -15,6 +15,7 @@ type ChatUIState = {
 	streamingThreadIds: Set<string>;
 	unreadThreadIds: Set<string>;
 	optimisticThreads: Record<string, OptimisticThread>;
+	unsyncedThreadIds: Set<string>;
 	editingMessageId: string | null;
 	editingMessageText: string;
 	lastUserMessageId: string | null;
@@ -27,6 +28,8 @@ type ChatUIState = {
 	removeStreamingThread: (threadId: string) => void;
 	addUnreadThread: (threadId: string) => void;
 	removeUnreadThread: (threadId: string) => void;
+	markThreadUnsynced: (threadId: string) => void;
+	markThreadSynced: (threadId: string) => void;
 	startEditing: (messageId: string, text: string) => void;
 	cancelEditing: () => void;
 	setLastUserMessageId: (id: string | null) => void;
@@ -39,6 +42,7 @@ export const useChatUIStore = create<ChatUIState>()(
 			viewStatus: 'idle',
 			streamingThreadIds: new Set<string>(),
 			unreadThreadIds: new Set<string>(),
+			unsyncedThreadIds: new Set<string>(),
 			optimisticThreads: {},
 			editingMessageId: null,
 			editingMessageText: '',
@@ -81,6 +85,20 @@ export const useChatUIStore = create<ChatUIState>()(
 					const next = new Set(state.unreadThreadIds);
 					next.delete(threadId);
 					return { unreadThreadIds: next };
+				}),
+			markThreadUnsynced: (threadId) =>
+				set((state) => {
+					if (state.unsyncedThreadIds.has(threadId)) return state;
+					const next = new Set(state.unsyncedThreadIds);
+					next.add(threadId);
+					return { unsyncedThreadIds: next };
+				}),
+			markThreadSynced: (threadId) =>
+				set((state) => {
+					if (!state.unsyncedThreadIds.has(threadId)) return state;
+					const next = new Set(state.unsyncedThreadIds);
+					next.delete(threadId);
+					return { unsyncedThreadIds: next };
 				}),
 			setActiveThreadId: (id) => set({ activeThreadId: id }),
 			upsertOptimisticThread: (thread) =>

@@ -10,6 +10,8 @@ import {
 import {
   "sidebar.delete_chat_desc" as sidebar_delete_chat_desc,
   "sidebar.delete_chat_title" as sidebar_delete_chat_title,
+  "sidebar.delete_chats_title" as sidebar_delete_chats_title,
+  "sidebar.delete_chats_desc" as sidebar_delete_chats_desc,
   "common.cancel" as common_cancel,
   "common.delete" as common_delete
 } from "@/paraglide/messages.js";
@@ -17,6 +19,7 @@ import {
 interface DeleteChatModalProps {
   open: boolean;
   chatTitle?: string | null | undefined;
+  bulkCount?: number;
   onCancel: () => void;
   onConfirm: () => void;
 }
@@ -24,16 +27,25 @@ interface DeleteChatModalProps {
 export default function DeleteChatModal({
   open,
   chatTitle,
+  bulkCount,
   onCancel,
   onConfirm,
 }: DeleteChatModalProps) {
+  const isBulk = bulkCount !== undefined && bulkCount > 1;
+
   return (
     <Dialog open={open} onOpenChange={onCancel}>
       <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>{sidebar_delete_chat_title()}</DialogTitle>
+          <DialogTitle>
+            {isBulk
+              ? sidebar_delete_chats_title({ count: String(bulkCount) })
+              : sidebar_delete_chat_title()}
+          </DialogTitle>
           <DialogDescription>
-            {sidebar_delete_chat_desc({ title: chatTitle || "" })}
+            {isBulk
+              ? sidebar_delete_chats_desc({ count: String(bulkCount) })
+              : sidebar_delete_chat_desc({ title: chatTitle || "" })}
           </DialogDescription>
         </DialogHeader>
         <DialogFooter className="flex justify-end gap-2">

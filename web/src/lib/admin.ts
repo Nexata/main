@@ -48,6 +48,7 @@ export type CreateUserInput = {
 	pfp?: File;
 	isAdmin?: boolean;
 	sendMail: boolean;
+	redirect?: string;
 };
 
 export async function createUser(data: CreateUserInput) {

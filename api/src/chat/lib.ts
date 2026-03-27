@@ -13,7 +13,9 @@ import {
 import { incrementMessageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
+import { captureException } from '@sentry/bun';
 import {
+	createUIMessageStream,
 	generateText,
 	type ModelMessage,
 	type StreamTextTransform,
@@ -518,4 +520,70 @@ export async function persistChat(params: {
 			.update(file)
 			.set({ messageId: userMessageId })
 			.where(and(eq(file.userId, activeUser.id), inArray(file.id, fileIds)));
+}
+
+const SYNC_TIMEOUT = 30_000;
+
+export type SyncResolver = {
+	promise: Promise<{ messages: ModelMessage[]; reason: FinishReason }>;
+	resolve: (v: { messages: ModelMessage[]; reason: FinishReason }) => void;
+};
+
+export function createSyncResolver(): SyncResolver {
+	let resolve: SyncResolver['resolve'];
+	const promise = new Promise<{
+		messages: ModelMessage[];
+		reason: FinishReason;
+	}>((res) => {
+		resolve = res;
+	});
+	return { promise, resolve: resolve! };
+}
+
+export function createSyncedStream(
+	aiUIStream: ReadableStream,
+	syncResolver: SyncResolver,
+	doPersist: (
+		responseMessages: ModelMessage[],
+		reason: FinishReason,
+	) => Promise<void>,
+	options: {
+		threadId: string;
+		source: string;
+	},
+) {
+	return createUIMessageStream({
+		async execute({ writer }) {
+			writer.merge(aiUIStream);
+
+			const { messages: responseMessages, reason } = await syncResolver.promise;
+
+			try {
+				await Promise.race([
+					doPersist(responseMessages, reason),
+					new Promise<never>((_, reject) =>
+						setTimeout(() => reject(new Error('Sync timeout')), SYNC_TIMEOUT),
+					),
+				]);
+				writer.write({
+					type: 'data-synced',
+					data: { success: true },
+					transient: true,
+				} as never);
+			} catch (error) {
+				captureException(error, {
+					tags: { source: `${options.source}:sync` },
+					extra: { threadId: options.threadId },
+				});
+				writer.write({
+					type: 'data-synced',
+					data: {
+						success: false,
+						error: error instanceof Error ? error.message : 'Sync failed',
+					},
+					transient: true,
+				} as never);
+			}
+		},
+	});
 }

@@ -1702,6 +1702,7 @@ function UsersSection() {
 			email: inviteEmail,
 			isAdmin: inviteIsAdmin,
 			sendMail: true,
+			redirect: `${import.meta.env.VITE_FRONT_URL}/login`,
 		});
 
 		setInviteEmail('');

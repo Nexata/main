@@ -3,12 +3,14 @@ import type { useChat } from '@ai-sdk/react'
 import {
   forwardRef,
   useCallback,
+  useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   type ReactElement,
 } from "react"
 import { motion, AnimatePresence } from "framer-motion"
-import { ArrowDown, Calendar, Eye, FileText, Mail, Search } from "lucide-react"
+import { ArrowDown, Calendar, Eye, FileText, Loader2, Mail, Search } from "lucide-react"
 import type { UIMessage } from "@ai-sdk/react"
 import { cn } from "@/lib/utils"
 import { useAutoScroll } from "@/hooks/use-auto-scroll"
@@ -47,6 +49,10 @@ interface ChatPropsBase {
   onBranchOff?: (messageId: string) => void
   onRetry?: (messageId: string) => void
   isReadOnly?: boolean
+  isSyncing?: boolean
+  onLoadOlderMessages?: () => void
+  isFetchingOlderMessages?: boolean
+  hasOlderMessages?: boolean
 }
 
 export function Chat({
@@ -69,6 +75,10 @@ export function Chat({
   onBranchOff,
   onRetry,
   isReadOnly,
+  isSyncing,
+  onLoadOlderMessages,
+  isFetchingOlderMessages,
+  hasOlderMessages,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -102,9 +112,10 @@ export function Chat({
         onBranchOff,
         onRetry,
         isStreaming,
+        isSyncing,
       }
     },
-    [addToolOutput, addToolApprovalResponse, onEditMessage, onBranchOff, onRetry, isStreaming]
+    [addToolOutput, addToolApprovalResponse, onEditMessage, onBranchOff, onRetry, isStreaming, isSyncing]
   )
 
   return (
@@ -164,7 +175,12 @@ export function Chat({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 0.46, 0.45, 0.94] }}
             >
-              <ChatMessages messages={messages}>
+              <ChatMessages
+                messages={messages}
+                onLoadOlderMessages={onLoadOlderMessages}
+                isFetchingOlderMessages={isFetchingOlderMessages}
+                hasOlderMessages={hasOlderMessages}
+              >
                 <MessageList
                   messages={messages}
                   disableTypingAnimation={
@@ -176,6 +192,12 @@ export function Chat({
                 {showThinking && (
                   <div className="px-2 py-1">
                     <ChatThinkingIndicator />
+                  </div>
+                )}
+
+                {!isStreaming && isSyncing && (
+                  <div className="flex items-center gap-2 px-2 py-1">
+                    <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />
                   </div>
                 )}
               </ChatMessages>
@@ -235,16 +257,83 @@ Chat.displayName = "Chat"
 export function ChatMessages({
   messages,
   children,
+  onLoadOlderMessages,
+  isFetchingOlderMessages,
+  hasOlderMessages,
 }: React.PropsWithChildren<{
   messages: UIMessage[]
+  onLoadOlderMessages?: () => void
+  isFetchingOlderMessages?: boolean
+  hasOlderMessages?: boolean
 }>) {
   const {
     containerRef,
     scrollToBottom,
-    handleScroll,
+    handleScroll: autoScrollHandler,
     shouldAutoScroll,
     handleTouchStart,
   } = useAutoScroll([messages])
+
+  // --- Scroll-to-top detection for loading older messages ---
+  const SCROLL_TOP_THRESHOLD = 100
+  const loadTriggeredRef = useRef(false)
+
+  // Reset trigger guard when fetch completes
+  useEffect(() => {
+    if (!isFetchingOlderMessages) {
+      loadTriggeredRef.current = false
+    }
+  }, [isFetchingOlderMessages])
+
+  // --- Preserve scroll position when messages are prepended ---
+  const prevFirstMessageIdRef = useRef<string | null>(null)
+  const scrollSnapshotRef = useRef<{ scrollHeight: number; scrollTop: number } | null>(null)
+
+  // Before render: snapshot scroll if the first message is about to change
+  const firstMessageId = messages.length > 0 ? messages[0]?.id ?? null : null
+
+  if (
+    prevFirstMessageIdRef.current !== null &&
+    firstMessageId !== prevFirstMessageIdRef.current &&
+    containerRef.current
+  ) {
+    // A prepend is about to happen — snapshot current scroll
+    scrollSnapshotRef.current = {
+      scrollHeight: containerRef.current.scrollHeight,
+      scrollTop: containerRef.current.scrollTop,
+    }
+  }
+
+  useLayoutEffect(() => {
+    const el = containerRef.current
+    const snapshot = scrollSnapshotRef.current
+
+    if (el && snapshot) {
+      const heightDelta = el.scrollHeight - snapshot.scrollHeight
+      el.scrollTop = snapshot.scrollTop + heightDelta
+      scrollSnapshotRef.current = null
+    }
+
+    prevFirstMessageIdRef.current = firstMessageId
+  }, [firstMessageId, containerRef])
+
+  const handleScroll = useCallback(() => {
+    autoScrollHandler()
+
+    const el = containerRef.current
+    if (!el) return
+
+    if (
+      hasOlderMessages &&
+      !isFetchingOlderMessages &&
+      !loadTriggeredRef.current &&
+      el.scrollTop < SCROLL_TOP_THRESHOLD &&
+      onLoadOlderMessages
+    ) {
+      loadTriggeredRef.current = true
+      onLoadOlderMessages()
+    }
+  }, [autoScrollHandler, containerRef, hasOlderMessages, isFetchingOlderMessages, onLoadOlderMessages])
 
   return (
     <div
@@ -255,6 +344,11 @@ export function ChatMessages({
     >
       <div className="col-[1/1] row-[1/1] flex justify-center">
         <div className="w-full max-w-4xl px-6">
+          {isFetchingOlderMessages && (
+            <div className="flex justify-center py-3">
+              <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
+            </div>
+          )}
           {children}
         </div>
       </div>

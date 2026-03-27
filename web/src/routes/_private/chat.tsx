@@ -7,7 +7,12 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
-import { useBranchOffMessage, useThreadById } from '@/lib/chat';
+import {
+	getThreadById,
+	type ThreadById,
+	useBranchOffMessage,
+	useThreadById,
+} from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
 import { extractErrorText } from '@/lib/error';
@@ -105,6 +110,67 @@ function normalizeParts(
 		.filter(Boolean) as UIParts;
 }
 
+const MESSAGES_PAGE_SIZE = 30;
+
+function hydrateThreadMessages(
+	threadMessages: ThreadById['messages'],
+): UIMessage[] {
+	if (!threadMessages?.length) return [];
+
+	// Build a map of toolCallId → { output, isError } from "tool" role messages
+	const toolOutputMap = new Map<
+		string,
+		{ output: unknown; isError: boolean }
+	>();
+	for (const m of threadMessages) {
+		if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
+		for (const part of m.content as any[]) {
+			if (part.type === 'tool-result' && part.toolCallId) {
+				const rawOutput = part.result ?? part.output ?? null;
+				const isWrapped =
+					rawOutput &&
+					typeof rawOutput === 'object' &&
+					'type' in rawOutput &&
+					'value' in rawOutput;
+				const isError =
+					!!part.isError || (isWrapped && rawOutput.type === 'error-text');
+				const unwrapped = isWrapped ? rawOutput.value : rawOutput;
+				const output =
+					typeof unwrapped === 'string'
+						? (() => {
+								try {
+									return decode(unwrapped);
+								} catch {
+									return unwrapped;
+								}
+							})()
+						: unwrapped;
+				toolOutputMap.set(part.toolCallId, { output, isError });
+			}
+		}
+	}
+
+	return threadMessages
+		.filter((m) => m.role === 'user' || m.role === 'assistant')
+		.map((m) => ({
+			id: m.id,
+			role: m.role,
+			createdAt: m.createdAt,
+			metadata: { hydrated: true },
+			parts: [
+				...(m.files ?? [])
+					.filter((f) => f.id)
+					.map((f) => ({
+						type: 'file' as const,
+						filename: f.name,
+						mediaType: f.type,
+						url: f.url,
+					})),
+				...normalizeParts(m.content, toolOutputMap),
+			],
+		}));
+}
+
 export function NexataChat() {
 	useEffect(() => {
 		document.title = chat_meta_title();
@@ -118,9 +184,11 @@ export function NexataChat() {
 		activeThreadId,
 		viewStatus,
 		streamingThreadIds,
+		unsyncedThreadIds,
 		addStreamingThread,
 		removeStreamingThread,
 		addUnreadThread,
+		markThreadUnsynced,
 	} = useChatUIStore();
 
 	const isNewChat =
@@ -168,7 +236,7 @@ export function NexataChat() {
 
 	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
 		activeThreadId ?? null,
-		undefined,
+		{ limit: MESSAGES_PAGE_SIZE },
 		{ enabled: !isActiveThreadStreaming && !isJustCreated },
 	);
 
@@ -176,65 +244,10 @@ export function NexataChat() {
 	const isOwner = threadData?.isOwner ?? true;
 	const isReadOnly = !!activeThreadId && !isOwner;
 
-	const hydratedMessages = useMemo<UIMessage[]>(() => {
-		if (!threadMessages) return [];
-
-		// Build a map of toolCallId → { output, isError } from "tool" role messages
-		const toolOutputMap = new Map<
-			string,
-			{ output: unknown; isError: boolean }
-		>();
-		for (const m of threadMessages) {
-			if (m.role !== 'tool' || !Array.isArray(m.content)) continue;
-			for (const part of m.content as any[]) {
-				if (part.type === 'tool-result' && part.toolCallId) {
-					const rawOutput = part.result ?? part.output ?? null;
-					// Unwrap { type: "text"|"error-text", value: "..." } envelope from persisted model messages
-					const isWrapped =
-						rawOutput &&
-						typeof rawOutput === 'object' &&
-						'type' in rawOutput &&
-						'value' in rawOutput;
-					const isError =
-						!!part.isError || (isWrapped && rawOutput.type === 'error-text');
-					const unwrapped = isWrapped ? rawOutput.value : rawOutput;
-					// Decode toon-encoded strings from persisted tool output back to structured objects
-					const output =
-						typeof unwrapped === 'string'
-							? (() => {
-									try {
-										return decode(unwrapped);
-									} catch {
-										return unwrapped;
-									}
-								})()
-							: unwrapped;
-					toolOutputMap.set(part.toolCallId, { output, isError });
-				}
-			}
-		}
-
-		return threadMessages
-			.filter((m) => m.role === 'user' || m.role === 'assistant')
-			.map((m) => {
-				const fileParts = (m.files ?? [])
-					.filter((f) => f.id)
-					.map((f) => ({
-						type: 'file' as const,
-						filename: f.name,
-						mediaType: f.type,
-						url: f.url,
-					}));
-
-				return {
-					id: m.id,
-					role: m.role,
-					createdAt: m.createdAt,
-					metadata: { hydrated: true },
-					parts: [...fileParts, ...normalizeParts(m.content, toolOutputMap)],
-				};
-			});
-	}, [threadMessages]);
+	const hydratedMessages = useMemo<UIMessage[]>(
+		() => hydrateThreadMessages(threadMessages ?? []),
+		[threadMessages],
+	);
 
 	// ----------------------------
 	// Chat Engine (per-thread from pool)
@@ -303,6 +316,85 @@ export function NexataChat() {
 	}, [isNewChat, setMessages]);
 
 	// ----------------------------
+	// Older messages pagination (scroll up to load)
+	// ----------------------------
+
+	const [isFetchingOlder, setIsFetchingOlder] = useState(false);
+	const [hasOlderMessages, setHasOlderMessages] = useState(true);
+
+	// Reset pagination state when thread changes
+	useEffect(() => {
+		setHasOlderMessages(true);
+		setIsFetchingOlder(false);
+	}, [activeThreadId]);
+
+	// After initial hydration, check if there could be more messages
+	useEffect(() => {
+		if (!threadMessages) return;
+		if (threadMessages.length < MESSAGES_PAGE_SIZE) {
+			setHasOlderMessages(false);
+		}
+	}, [threadMessages]);
+
+	const loadOlderMessages = useCallback(async () => {
+		if (!activeThreadId || isFetchingOlder || !hasOlderMessages) return;
+
+		// Find the oldest hydrated message's createdAt
+		const oldestMessage = messages.find(
+			(m) =>
+				(m as any).createdAt &&
+				(m.metadata as { hydrated?: boolean })?.hydrated,
+		);
+		const oldestCreatedAt = (oldestMessage as any)?.createdAt as
+			| Date
+			| string
+			| undefined;
+		if (!oldestCreatedAt) return;
+
+		const cursor =
+			typeof oldestCreatedAt === 'string'
+				? oldestCreatedAt
+				: oldestCreatedAt.toISOString();
+
+		setIsFetchingOlder(true);
+		try {
+			const olderData = await getThreadById(activeThreadId, {
+				limit: MESSAGES_PAGE_SIZE,
+				cursor,
+			});
+
+			const olderHydrated = hydrateThreadMessages(olderData.messages);
+
+			if (olderHydrated.length === 0) {
+				setHasOlderMessages(false);
+				return;
+			}
+
+			if (olderData.messages.length < MESSAGES_PAGE_SIZE) {
+				setHasOlderMessages(false);
+			}
+
+			// Deduplicate: exclude any messages already in the current set
+			const existingIds = new Set(messages.map((m) => m.id));
+			const newMessages = olderHydrated.filter((m) => !existingIds.has(m.id));
+
+			if (newMessages.length > 0) {
+				setMessages((prev) => [...newMessages, ...prev]);
+			}
+		} catch (error) {
+			console.error('Failed to load older messages', error);
+		} finally {
+			setIsFetchingOlder(false);
+		}
+	}, [
+		activeThreadId,
+		isFetchingOlder,
+		hasOlderMessages,
+		messages,
+		setMessages,
+	]);
+
+	// ----------------------------
 	// After a NexataAskQuestions answer stream the SDK replaces the QA assistant
 	// message in-place with a combined [text + QA(output-available) + answer] message.
 	// Once the stream is done we reset the hydration guard so the next React Query
@@ -353,6 +445,7 @@ export function NexataChat() {
 		const threadKey = activeThreadId ?? NEW_CHAT_KEY;
 		if (chatStatus === 'streaming' || chatStatus === 'submitted') {
 			addStreamingThread(threadKey);
+			markThreadUnsynced(threadKey);
 		}
 		if (chatStatus === 'error') {
 			removeStreamingThread(threadKey);
@@ -364,7 +457,13 @@ export function NexataChat() {
 			}, 300);
 			return () => clearTimeout(timeout);
 		}
-	}, [chatStatus, activeThreadId, addStreamingThread, removeStreamingThread]);
+	}, [
+		chatStatus,
+		activeThreadId,
+		addStreamingThread,
+		removeStreamingThread,
+		markThreadUnsynced,
+	]);
 
 	// ----------------------------
 	// Patch mock user message ID with real server-assigned ID
@@ -453,6 +552,7 @@ export function NexataChat() {
 	const isSdkStreaming =
 		chatStatus === 'streaming' || chatStatus === 'submitted';
 	const isHydrating = !!activeThreadId && isThreadLoading && !isSdkStreaming;
+	const isSyncing = unsyncedThreadIds.has(activeThreadId ?? NEW_CHAT_KEY);
 
 	// ----------------------------
 	// Input / Submit
@@ -667,6 +767,10 @@ export function NexataChat() {
 					onBranchOff={handleBranchOff}
 					onRetry={isReadOnly ? undefined : handleRetry}
 					isReadOnly={isReadOnly}
+					isSyncing={isSyncing}
+					onLoadOlderMessages={loadOlderMessages}
+					isFetchingOlderMessages={isFetchingOlder}
+					hasOlderMessages={hasOlderMessages}
 				/>
 			</div>
 		</div>
