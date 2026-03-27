@@ -463,6 +463,7 @@
 				"type": "Type",
 				"ingested": "Ingested",
 				"updated_at": "Updated At",
+				"auto_sync": "Auto-sync",
 				"actions": "Actions"
 			},
 			"empty": {
@@ -471,7 +472,10 @@
 			},
 			"tooltip": {
 				"reingest": "Re-ingest file",
-				"delete": "Delete file"
+				"delete": "Delete file",
+				"autosync_on": "Auto-sync enabled",
+				"autosync_off": "Auto-sync disabled",
+				"autosync_unavailable": "Not available for local files"
 			},
 			"pagination": {
 				"page_count": "{count} file(s) on this page",
@@ -502,10 +506,64 @@
 				"reingest_bulk_success_desc": "{count} file(s) re-ingested.",
 				"reingest_bulk_error_desc": "Could not re-ingest the selected files.",
 				"reingest_result_desc": "{ok} updated, {unmodified} unchanged, {failed} failed.",
-				"reingest_all_unmodified_desc": "All files were already up to date."
+				"reingest_all_unmodified_desc": "All files were already up to date.",
+				"autosync_updated": "Auto-sync updated.",
+				"autosync_error": "Could not update auto-sync."
 			},
 			"user": {
 				"system": "system"
+			}
+		},
+		"dirs": {
+			"title": "External Directories",
+			"description": "Folders synced from your external storage providers.",
+			"table": {
+				"name": "Name",
+				"provider": "Provider",
+				"credential": "Account",
+				"auto_sync": "Auto-sync",
+				"modified": "Modified",
+				"actions": "Actions"
+			},
+			"empty": {
+				"title": "No external directories",
+				"description": "Directories will appear here when you ingest folders from your storage sources."
+			},
+			"tooltip": {
+				"delete": "Delete directory",
+				"autosync_on": "Auto-sync enabled",
+				"autosync_off": "Auto-sync disabled",
+				"open_url": "Open in provider"
+			},
+			"selection": {
+				"count": "{count} selected"
+			},
+			"actions": {
+				"delete": "Delete"
+			},
+			"filters": {
+				"provider": "Provider",
+				"any_provider": "Any provider…"
+			},
+			"delete_dialog": {
+				"title_single": "Delete \"{name}\"?",
+				"title_bulk": "Delete {count} directory(ies)?",
+				"description_single": "The directory \"{name}\" and all its files will be permanently removed.",
+				"description_bulk": "You are about to permanently delete {count} directory(ies) and all their files. This action cannot be undone.",
+				"label_bulk": "{count} directories"
+			},
+			"toast": {
+				"delete_loading": "Deleting {label}…",
+				"delete_success": "Deleted",
+				"delete_success_desc": "{label} removed successfully.",
+				"delete_error_desc": "Could not delete {label}.",
+				"autosync_updated": "Auto-sync updated.",
+				"autosync_error": "Could not update auto-sync."
+			},
+			"pagination": {
+				"page_count": "{count} directory(ies) on this page",
+				"no_results": "No results",
+				"page": "Page {page}"
 			}
 		}
 	},

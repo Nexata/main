@@ -463,6 +463,7 @@
 				"type": "Tipo",
 				"ingested": "Ingestado",
 				"updated_at": "Actualizado",
+				"auto_sync": "Sincronización",
 				"actions": "Acciones"
 			},
 			"empty": {
@@ -471,7 +472,10 @@
 			},
 			"tooltip": {
 				"reingest": "Re-ingestar archivo",
-				"delete": "Eliminar archivo"
+				"delete": "Eliminar archivo",
+				"autosync_on": "Sincronización automática activada",
+				"autosync_off": "Sincronización automática desactivada",
+				"autosync_unavailable": "No disponible para archivos locales"
 			},
 			"pagination": {
 				"page_count": "{count} archivo(s) en esta página",
@@ -502,10 +506,64 @@
 				"reingest_bulk_success_desc": "{count} archivo(s) re-ingestados.",
 				"reingest_bulk_error_desc": "No se pudieron re-ingestar los archivos seleccionados.",
 				"reingest_result_desc": "{ok} actualizado(s), {unmodified} sin cambios, {failed} fallido(s).",
-				"reingest_all_unmodified_desc": "Todos los archivos ya estaban actualizados."
+				"reingest_all_unmodified_desc": "Todos los archivos ya estaban actualizados.",
+				"autosync_updated": "Sincronización automática actualizada.",
+				"autosync_error": "No se pudo actualizar la sincronización automática."
 			},
 			"user": {
 				"system": "sistema"
+			}
+		},
+		"dirs": {
+			"title": "Carpetas externas",
+			"description": "Carpetas sincronizadas desde tus proveedores de almacenamiento externo.",
+			"table": {
+				"name": "Nombre",
+				"provider": "Proveedor",
+				"credential": "Cuenta",
+				"auto_sync": "Sincronización",
+				"modified": "Modificado",
+				"actions": "Acciones"
+			},
+			"empty": {
+				"title": "Sin carpetas externas",
+				"description": "Las carpetas aparecerán aquí cuando ingieras directorios desde tus fuentes de almacenamiento."
+			},
+			"tooltip": {
+				"delete": "Eliminar carpeta",
+				"autosync_on": "Sincronización automática activada",
+				"autosync_off": "Sincronización automática desactivada",
+				"open_url": "Abrir en proveedor"
+			},
+			"selection": {
+				"count": "{count} seleccionada(s)"
+			},
+			"actions": {
+				"delete": "Eliminar"
+			},
+			"filters": {
+				"provider": "Proveedor",
+				"any_provider": "Cualquier proveedor…"
+			},
+			"delete_dialog": {
+				"title_single": "¿Eliminar \"{name}\"?",
+				"title_bulk": "¿Eliminar {count} carpeta(s)?",
+				"description_single": "La carpeta \"{name}\" y todos sus archivos serán eliminados permanentemente.",
+				"description_bulk": "Estás por eliminar permanentemente {count} carpeta(s) y todos sus archivos. Esta acción no se puede deshacer.",
+				"label_bulk": "{count} carpetas"
+			},
+			"toast": {
+				"delete_loading": "Eliminando {label}…",
+				"delete_success": "Eliminado",
+				"delete_success_desc": "{label} eliminado correctamente.",
+				"delete_error_desc": "No se pudo eliminar {label}.",
+				"autosync_updated": "Sincronización automática actualizada.",
+				"autosync_error": "No se pudo actualizar la sincronización automática."
+			},
+			"pagination": {
+				"page_count": "{count} carpeta(s) en esta página",
+				"no_results": "Sin resultados",
+				"page": "Página {page}"
 			}
 		}
 	},

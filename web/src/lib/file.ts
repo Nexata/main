@@ -355,3 +355,67 @@ export function useSearchFiles(params?: SearchFilesParams) {
 		queryFn: () => searchFiles(params),
 	});
 }
+
+/* ---------- Update file autoSync ---------- */
+
+export async function updateFileAutoSync(id: string, autoSync: boolean) {
+	return withAuthRetry((headers) =>
+		apiClient.file[id]!.patch({
+			$headers: headers,
+			autoSync,
+		}),
+	);
+}
+
+/* ======================================================
+   EXTERNAL DIRECTORIES
+====================================================== */
+
+/* ---------- Types ---------- */
+
+export type ExternalDirListParams = Parameters<
+	typeof apiClient.file.dir.get
+>[0]['$query'];
+
+/* ---------- List ---------- */
+
+export async function listExternalDirs(params?: ExternalDirListParams) {
+	return withAuthRetry((headers) =>
+		apiClient.file.dir.get({
+			$headers: headers,
+			$query: params ?? {},
+		}),
+	);
+}
+
+export type ExternalDirItem = Awaited<
+	ReturnType<typeof listExternalDirs>
+>[number];
+
+export function useExternalDirs(params?: ExternalDirListParams) {
+	return useQuery({
+		queryKey: ['external-dirs', JSON.stringify(params ?? {})],
+		queryFn: () => listExternalDirs(params),
+	});
+}
+
+/* ---------- Update (autoSync) ---------- */
+
+export async function updateExternalDir(id: string, autoSync: boolean) {
+	return withAuthRetry((headers) =>
+		apiClient.file.dir[id]!.patch({
+			$headers: headers,
+			autoSync,
+		}),
+	);
+}
+
+/* ---------- Delete ---------- */
+
+export async function deleteExternalDir(id: string) {
+	return withAuthRetry((headers) =>
+		apiClient.file.dir[id]!.delete({
+			$headers: headers,
+		}),
+	);
+}

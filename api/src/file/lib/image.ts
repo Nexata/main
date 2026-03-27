@@ -95,5 +95,6 @@ export async function imgToChunks(
 		}
 	}
 
-	return { metadata: raw, chunks, tokenUsage: usage };
+	// Intentionally token usage due to cost
+	return { metadata: raw, chunks, tokenUsage: usage * 20 };
 }

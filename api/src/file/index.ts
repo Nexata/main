@@ -761,6 +761,58 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 		},
 	)
 	.get(
+		'/dir',
+		async ({ activeUser, query: { provider, page } }) => {
+			const limit = 25;
+			const offset = ((page ?? 1) - 1) * limit;
+
+			return db
+				.select({
+					id: externalDir.id,
+					externalId: externalDir.externalId,
+					name: externalDir.name,
+					provider: externalDir.provider,
+					url: externalDir.url,
+					autoSync: externalDir.autoSync,
+					credentialId: externalDir.credentialId,
+					credentialEmail: credential.email,
+					modifiedAt: externalDir.modifiedAt,
+					createdAt: externalDir.createdAt,
+				})
+				.from(externalDir)
+				.innerJoin(credential, eq(credential.id, externalDir.credentialId))
+				.where(
+					and(
+						or(
+							eq(credential.userId, activeUser.id),
+							exists(
+								db
+									.select({ userId: credentialPermission.userId })
+									.from(credentialPermission)
+									.where(
+										and(
+											eq(credentialPermission.credentialId, credential.id),
+											eq(credentialPermission.userId, activeUser.id),
+										),
+									),
+							),
+						),
+						provider ? eq(externalDir.provider, provider) : undefined,
+					),
+				)
+				.orderBy(desc(externalDir.createdAt))
+				.limit(limit)
+				.offset(offset);
+		},
+		{
+			detail: { summary: 'List external directories' },
+			query: t.Object({
+				provider: Nullish(t.Enum(FileHost)),
+				page: Nullish(t.Integer({ minimum: 1, default: 1 })),
+			}),
+		},
+	)
+	.get(
 		'/',
 		async ({ activeUser, query }) => NexataFile.search(activeUser, query),
 		{

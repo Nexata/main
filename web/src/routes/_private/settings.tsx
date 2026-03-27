@@ -7,6 +7,7 @@ import {
 	ChevronRight,
 	ExternalLink,
 	FileText,
+	FolderSync,
 	RefreshCcw,
 	Search,
 	Settings as SettingsIcon,
@@ -44,6 +45,7 @@ import {
 	SelectValue,
 } from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch';
 import {
 	Table,
 	TableBody,
@@ -72,13 +74,18 @@ import {
 } from '@/lib/credential';
 import { extractErrorText } from '@/lib/error';
 import type {
+	ExternalDirListParams,
 	ReIngestResult,
 	SearchFilesParams,
 	SearchFilesResult,
 } from '@/lib/file';
 import {
+	deleteExternalDir,
 	reIngestByProvider,
+	updateExternalDir,
+	updateFileAutoSync,
 	useDeleteFiles,
+	useExternalDirs,
 	useIngestFiles,
 	useSearchFiles,
 } from '@/lib/file';
@@ -94,6 +101,37 @@ import {
 	'components.credentials.toast.delete.success' as components_credentials_toast_delete_success,
 	'settings.actions.admin_panel' as settings_actions_admin_panel,
 	'settings.actions.back_to_chat' as settings_actions_back_to_chat,
+	'settings.dirs.actions.delete' as settings_dirs_actions_delete,
+	'settings.dirs.delete_dialog.description_bulk' as settings_dirs_delete_dialog_description_bulk,
+	'settings.dirs.delete_dialog.description_single' as settings_dirs_delete_dialog_description_single,
+	'settings.dirs.delete_dialog.label_bulk' as settings_dirs_delete_dialog_label_bulk,
+	'settings.dirs.delete_dialog.title_bulk' as settings_dirs_delete_dialog_title_bulk,
+	'settings.dirs.delete_dialog.title_single' as settings_dirs_delete_dialog_title_single,
+	'settings.dirs.description' as settings_dirs_description,
+	'settings.dirs.empty.description' as settings_dirs_empty_description,
+	'settings.dirs.empty.title' as settings_dirs_empty_title,
+	'settings.dirs.filters.any_provider' as settings_dirs_filters_any_provider,
+	'settings.dirs.pagination.no_results' as settings_dirs_pagination_no_results,
+	'settings.dirs.pagination.page' as settings_dirs_pagination_page,
+	'settings.dirs.pagination.page_count' as settings_dirs_pagination_page_count,
+	'settings.dirs.selection.count' as settings_dirs_selection_count,
+	'settings.dirs.table.actions' as settings_dirs_table_actions,
+	'settings.dirs.table.auto_sync' as settings_dirs_table_auto_sync,
+	'settings.dirs.table.credential' as settings_dirs_table_credential,
+	'settings.dirs.table.modified' as settings_dirs_table_modified,
+	'settings.dirs.table.name' as settings_dirs_table_name,
+	'settings.dirs.table.provider' as settings_dirs_table_provider,
+	'settings.dirs.title' as settings_dirs_title,
+	'settings.dirs.toast.autosync_error' as settings_dirs_toast_autosync_error,
+	'settings.dirs.toast.autosync_updated' as settings_dirs_toast_autosync_updated,
+	'settings.dirs.toast.delete_error_desc' as settings_dirs_toast_delete_error_desc,
+	'settings.dirs.toast.delete_loading' as settings_dirs_toast_delete_loading,
+	'settings.dirs.toast.delete_success' as settings_dirs_toast_delete_success,
+	'settings.dirs.toast.delete_success_desc' as settings_dirs_toast_delete_success_desc,
+	'settings.dirs.tooltip.autosync_off' as settings_dirs_tooltip_autosync_off,
+	'settings.dirs.tooltip.autosync_on' as settings_dirs_tooltip_autosync_on,
+	'settings.dirs.tooltip.delete' as settings_dirs_tooltip_delete,
+	'settings.dirs.tooltip.open_url' as settings_dirs_tooltip_open_url,
 	'settings.files.actions.delete' as settings_files_actions_delete,
 	'settings.files.actions.refresh' as settings_files_actions_refresh,
 	'settings.files.actions.upload' as settings_files_actions_upload,
@@ -129,6 +167,7 @@ import {
 	'settings.files.pagination.page_count' as settings_files_pagination_page_count,
 	'settings.files.selection.count' as settings_files_selection_count,
 	'settings.files.table.actions' as settings_files_table_actions,
+	'settings.files.table.auto_sync' as settings_files_table_auto_sync,
 	'settings.files.table.ingested' as settings_files_table_ingested,
 	'settings.files.table.name' as settings_files_table_name,
 	'settings.files.table.owner' as settings_files_table_owner,
@@ -136,6 +175,8 @@ import {
 	'settings.files.table.type' as settings_files_table_type,
 	'settings.files.table.updated_at' as settings_files_table_updated_at,
 	'settings.files.title' as settings_files_title,
+	'settings.files.toast.autosync_error' as settings_files_toast_autosync_error,
+	'settings.files.toast.autosync_updated' as settings_files_toast_autosync_updated,
 	'settings.files.toast.delete_error_desc' as settings_files_toast_delete_error_desc,
 	'settings.files.toast.delete_loading' as settings_files_toast_delete_loading,
 	'settings.files.toast.delete_success' as settings_files_toast_delete_success,
@@ -152,6 +193,9 @@ import {
 	'settings.files.toast.upload_loading' as settings_files_toast_upload_loading,
 	'settings.files.toast.upload_success' as settings_files_toast_upload_success,
 	'settings.files.toast.upload_success_desc' as settings_files_toast_upload_success_desc,
+	'settings.files.tooltip.autosync_off' as settings_files_tooltip_autosync_off,
+	'settings.files.tooltip.autosync_on' as settings_files_tooltip_autosync_on,
+	'settings.files.tooltip.autosync_unavailable' as settings_files_tooltip_autosync_unavailable,
 	'settings.files.tooltip.delete' as settings_files_tooltip_delete,
 	'settings.files.tooltip.reingest' as settings_files_tooltip_reingest,
 	'settings.files.user.system' as settings_files_user_system,
@@ -283,6 +327,8 @@ function SettingsPage() {
 				/>
 
 				<FilesManagementSection />
+
+				<ExternalDirsSection />
 			</div>
 
 			<ConfirmDeleteCredentialModal
@@ -974,10 +1020,26 @@ export function FilesManagementSection() {
 		}
 	};
 
+	const handleFileAutoSyncToggle = async (fileId: string, value: boolean) => {
+		try {
+			await updateFileAutoSync(fileId, value);
+			refetch();
+			infoToast.success({
+				title: settings_files_toast_autosync_updated(),
+			});
+		} catch (error) {
+			infoToast.error({
+				title: common_error(),
+				description:
+					extractErrorText(error) ?? settings_files_toast_autosync_error(),
+			});
+		}
+	};
+
 	const SkeletonRows = () =>
 		Array.from({ length: 6 }).map((_, i) => (
 			<TableRow key={i} className="h-14">
-				{Array.from({ length: 8 }).map((__, j) => (
+				{Array.from({ length: 9 }).map((__, j) => (
 					<TableCell key={j}>
 						<div className="h-3 w-full rounded bg-muted animate-pulse" />
 					</TableCell>
@@ -1349,6 +1411,9 @@ export function FilesManagementSection() {
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
 									{settings_files_table_updated_at()}
 								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider text-center">
+									{settings_files_table_auto_sync()}
+								</TableHead>
 								<TableHead className="text-right font-semibold text-xs uppercase tracking-wider">
 									{settings_files_table_actions()}
 								</TableHead>
@@ -1360,7 +1425,7 @@ export function FilesManagementSection() {
 
 							{empty && (
 								<TableRow>
-									<TableCell colSpan={8}>
+									<TableCell colSpan={9}>
 										<div className="flex flex-col items-center py-14 text-center gap-2">
 											<div className="rounded-full bg-muted p-3">
 												<FileText className="w-5 h-5 text-muted-foreground" />
@@ -1430,6 +1495,31 @@ export function FilesManagementSection() {
 												{format(new Date(file.modifiedAt), 'MMM d, yyyy HH:mm')}
 											</span>
 										</TableCell>
+										<TableCell className="text-center">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<div className="inline-flex">
+															<Switch
+																checked={file.autoSync ?? false}
+																disabled={file.provider === 'nexata'}
+																onCheckedChange={(v) =>
+																	handleFileAutoSyncToggle(file.id, v)
+																}
+																className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+															/>
+														</div>
+													</TooltipTrigger>
+													<TooltipContent>
+														{file.provider === 'nexata'
+															? settings_files_tooltip_autosync_unavailable()
+															: file.autoSync
+																? settings_files_tooltip_autosync_on()
+																: settings_files_tooltip_autosync_off()}
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										</TableCell>
 										<TableCell>
 											<div className="flex justify-end gap-1">
 												<TooltipProvider>
@@ -1493,7 +1583,7 @@ export function FilesManagementSection() {
 											: settings_files_pagination_no_results()}
 									</span>
 								</TableCell>
-								<TableCell colSpan={3}>
+								<TableCell colSpan={4}>
 									<div className="flex items-center justify-end gap-2">
 										<span className="text-xs text-muted-foreground">
 											{settings_files_pagination_page({
@@ -1549,6 +1639,481 @@ export function FilesManagementSection() {
 							variant="destructive"
 							className="cursor-pointer"
 							onClick={handleConfirmDelete}
+						>
+							{common_delete()}
+						</Button>
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
+		</Card>
+	);
+}
+
+// --------------------------------------------------------------------------------
+// ----------------------- External Directories Section ---------------------------
+// --------------------------------------------------------------------------------
+
+type DirDeleteDialogState =
+	| { open: false }
+	| { open: true; mode: 'single'; dirId: string; dirName: string }
+	| { open: true; mode: 'bulk'; count: number; ids: string[] };
+
+export function ExternalDirsSection() {
+	const [filters, setFilters] = useState<ExternalDirListParams>({ page: 1 });
+	const [selected, setSelected] = useState<Set<string>>(new Set());
+	const [deleteDialog, setDeleteDialog] = useState<DirDeleteDialogState>({
+		open: false,
+	});
+
+	const { data: dirs = [], isLoading, refetch } = useExternalDirs(filters);
+
+	const toggleSelect = (id: string) =>
+		setSelected((prev) => {
+			const next = new Set(prev);
+			next.has(id) ? next.delete(id) : next.add(id);
+			return next;
+		});
+
+	const toggleSelectAll = () =>
+		setSelected(
+			selected.size === dirs.length
+				? new Set()
+				: new Set(dirs.map((d) => d.id)),
+		);
+
+	const nextPage = () =>
+		setFilters((f) => ({ ...f, page: ((f?.page as number) ?? 1) + 1 }));
+	const prevPage = () =>
+		setFilters((f) => ({
+			...f,
+			page: Math.max(1, ((f?.page as number) ?? 1) - 1),
+		}));
+
+	const currentPage = (filters?.page as number) ?? 1;
+	const hasSelection = selected.size > 0;
+	const empty = !isLoading && dirs.length === 0;
+
+	const handleDirAutoSyncToggle = async (dirId: string, value: boolean) => {
+		try {
+			await updateExternalDir(dirId, value);
+			refetch();
+			infoToast.success({
+				title: settings_dirs_toast_autosync_updated(),
+			});
+		} catch (error) {
+			infoToast.error({
+				title: common_error(),
+				description:
+					extractErrorText(error) ?? settings_dirs_toast_autosync_error(),
+			});
+		}
+	};
+
+	const handleConfirmDeleteDir = async () => {
+		if (!deleteDialog.open) return;
+		const ids =
+			deleteDialog.mode === 'single' ? [deleteDialog.dirId] : deleteDialog.ids;
+		const label =
+			deleteDialog.mode === 'single'
+				? `"${deleteDialog.dirName}"`
+				: settings_dirs_delete_dialog_label_bulk({
+						count: String(
+							deleteDialog.mode === 'bulk' ? deleteDialog.count : 1,
+						),
+					});
+		const toastId = infoToast.loading({
+			title: settings_dirs_toast_delete_loading({ label }),
+		});
+		try {
+			await Promise.all(ids.map((id) => deleteExternalDir(id)));
+			setSelected(new Set());
+			setDeleteDialog({ open: false });
+			refetch();
+			infoToast.success(toastId, {
+				title: settings_dirs_toast_delete_success(),
+				description: settings_dirs_toast_delete_success_desc({ label }),
+			});
+		} catch (error) {
+			infoToast.error(toastId, {
+				title: common_error(),
+				description:
+					extractErrorText(error) ??
+					settings_dirs_toast_delete_error_desc({ label }),
+			});
+		}
+	};
+
+	const dialogTitle = !deleteDialog.open
+		? ''
+		: deleteDialog.mode === 'single'
+			? settings_dirs_delete_dialog_title_single({
+					name: deleteDialog.dirName,
+				})
+			: settings_dirs_delete_dialog_title_bulk({
+					count: String(deleteDialog.count),
+				});
+
+	const dialogDescription = !deleteDialog.open
+		? ''
+		: deleteDialog.mode === 'single'
+			? settings_dirs_delete_dialog_description_single({
+					name: deleteDialog.dirName,
+				})
+			: settings_dirs_delete_dialog_description_bulk({
+					count: String(deleteDialog.count),
+				});
+
+	const DirSkeletonRows = () =>
+		Array.from({ length: 4 }).map((_, i) => (
+			<TableRow key={i} className="h-14">
+				{Array.from({ length: 7 }).map((__, j) => (
+					<TableCell key={j}>
+						<div className="h-3 w-full rounded bg-muted animate-pulse" />
+					</TableCell>
+				))}
+			</TableRow>
+		));
+
+	return (
+		<Card className="bg-sidebar">
+			<CardContent className="p-6 space-y-5">
+				{/* Header */}
+				<div>
+					<h2 className="text-lg font-semibold">{settings_dirs_title()}</h2>
+					<p className="text-sm text-muted-foreground">
+						{settings_dirs_description()}
+					</p>
+				</div>
+
+				<Separator />
+
+				{/* Filter + actions bar */}
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between sm:gap-4 sm:h-9">
+					<div className="flex items-center gap-3">
+						{/* Provider filter */}
+						<Select
+							value={(filters?.provider as string) ?? ''}
+							onValueChange={(v) =>
+								setFilters((f) => ({
+									...f,
+									provider: (v ||
+										undefined) as ExternalDirListParams['provider'],
+									page: 1,
+								}))
+							}
+						>
+							<SelectTrigger className="h-9 min-h-9 px-3 py-1 text-sm w-[180px]">
+								<SelectValue placeholder={settings_dirs_filters_any_provider()}>
+									{filters?.provider
+										? (() => {
+												const opt = getProviderOption(
+													filters.provider as string,
+												);
+												return opt ? (
+													<div className="flex items-center gap-2">
+														<img
+															src={opt.icon}
+															className="w-4 h-4 object-contain shrink-0"
+														/>
+														<span>{opt.name}</span>
+													</div>
+												) : (
+													filters.provider
+												);
+											})()
+										: null}
+								</SelectValue>
+							</SelectTrigger>
+							<SelectContent>
+								{PROVIDER_OPTIONS.filter((o) => o.id !== 'nexata').map(
+									(opt) => (
+										<SelectItem key={opt.id} value={opt.id}>
+											<div className="flex items-center gap-2">
+												<img
+													src={opt.icon}
+													className="w-4 h-4 object-contain shrink-0"
+												/>
+												<span>{opt.name}</span>
+											</div>
+										</SelectItem>
+									),
+								)}
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div className="flex items-center gap-2 shrink-0">
+						{hasSelection && (
+							<span className="text-xs text-muted-foreground">
+								{settings_dirs_selection_count({
+									count: String(selected.size),
+								})}
+							</span>
+						)}
+						<Button
+							size="sm"
+							variant="destructive"
+							disabled={!hasSelection}
+							onClick={() =>
+								setDeleteDialog({
+									open: true,
+									mode: 'bulk',
+									count: selected.size,
+									ids: [...selected],
+								})
+							}
+							className="gap-1.5 cursor-pointer disabled:opacity-40"
+						>
+							<Trash2 className="w-3.5 h-3.5" />{' '}
+							{settings_dirs_actions_delete()}
+						</Button>
+					</div>
+				</div>
+
+				{/* Table */}
+				<div className="rounded-lg border border-border overflow-hidden">
+					<Table>
+						<TableHeader>
+							<TableRow className="bg-muted/40 hover:bg-muted/40">
+								<TableHead className="w-10">
+									<Checkbox
+										checked={dirs.length > 0 && selected.size === dirs.length}
+										onCheckedChange={toggleSelectAll}
+									/>
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									{settings_dirs_table_name()}
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									{settings_dirs_table_provider()}
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									{settings_dirs_table_credential()}
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider">
+									{settings_dirs_table_modified()}
+								</TableHead>
+								<TableHead className="font-semibold text-xs uppercase tracking-wider text-center">
+									{settings_dirs_table_auto_sync()}
+								</TableHead>
+								<TableHead className="text-right font-semibold text-xs uppercase tracking-wider">
+									{settings_dirs_table_actions()}
+								</TableHead>
+							</TableRow>
+						</TableHeader>
+
+						<TableBody>
+							{isLoading && <DirSkeletonRows />}
+
+							{empty && (
+								<TableRow>
+									<TableCell colSpan={7}>
+										<div className="flex flex-col items-center py-14 text-center gap-2">
+											<div className="rounded-full bg-muted p-3">
+												<FolderSync className="w-5 h-5 text-muted-foreground" />
+											</div>
+											<p className="text-sm font-medium">
+												{settings_dirs_empty_title()}
+											</p>
+											<p className="text-xs text-muted-foreground max-w-xs">
+												{settings_dirs_empty_description()}
+											</p>
+										</div>
+									</TableCell>
+								</TableRow>
+							)}
+
+							{!isLoading &&
+								!empty &&
+								dirs.map((dir) => (
+									<TableRow
+										key={dir.id}
+										className={`transition-colors ${selected.has(dir.id) ? 'bg-primary/5' : ''}`}
+									>
+										<TableCell>
+											<Checkbox
+												checked={selected.has(dir.id)}
+												onCheckedChange={() => toggleSelect(dir.id)}
+											/>
+										</TableCell>
+										<TableCell>
+											<div className="flex items-center gap-2 min-w-0">
+												<div className="rounded-md bg-muted p-1.5 shrink-0">
+													<FolderSync className="w-3.5 h-3.5 text-muted-foreground" />
+												</div>
+												{dir.url ? (
+													<a
+														href={dir.url}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="text-sm font-medium truncate max-w-[220px] hover:underline"
+													>
+														{dir.name}
+														<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
+													</a>
+												) : (
+													<span className="text-sm font-medium truncate max-w-[220px]">
+														{dir.name}
+													</span>
+												)}
+											</div>
+										</TableCell>
+										<TableCell>
+											<ProviderBadge provider={dir.provider} />
+										</TableCell>
+										<TableCell>
+											<span className="text-sm text-muted-foreground truncate">
+												{dir.credentialEmail ?? '—'}
+											</span>
+										</TableCell>
+										<TableCell>
+											<span className="text-sm whitespace-nowrap">
+												{format(new Date(dir.modifiedAt), 'MMM d, yyyy HH:mm')}
+											</span>
+										</TableCell>
+										<TableCell className="text-center">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<div className="inline-flex">
+															<Switch
+																checked={dir.autoSync}
+																onCheckedChange={(v) =>
+																	handleDirAutoSyncToggle(dir.id, v)
+																}
+																className="cursor-pointer"
+															/>
+														</div>
+													</TooltipTrigger>
+													<TooltipContent>
+														{dir.autoSync
+															? settings_dirs_tooltip_autosync_on()
+															: settings_dirs_tooltip_autosync_off()}
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										</TableCell>
+										<TableCell>
+											<div className="flex justify-end gap-1">
+												<TooltipProvider>
+													{dir.url && (
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<a
+																	href={dir.url}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																>
+																	<Button
+																		size="icon"
+																		variant="ghost"
+																		className="h-8 w-8 cursor-pointer"
+																	>
+																		<ExternalLink className="w-3.5 h-3.5" />
+																	</Button>
+																</a>
+															</TooltipTrigger>
+															<TooltipContent>
+																{settings_dirs_tooltip_open_url()}
+															</TooltipContent>
+														</Tooltip>
+													)}
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Button
+																size="icon"
+																variant="ghost"
+																className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+																onClick={() =>
+																	setDeleteDialog({
+																		open: true,
+																		mode: 'single',
+																		dirId: dir.id,
+																		dirName: dir.name,
+																	})
+																}
+															>
+																<Trash2 className="w-3.5 h-3.5" />
+															</Button>
+														</TooltipTrigger>
+														<TooltipContent>
+															{settings_dirs_tooltip_delete()}
+														</TooltipContent>
+													</Tooltip>
+												</TooltipProvider>
+											</div>
+										</TableCell>
+									</TableRow>
+								))}
+						</TableBody>
+
+						<TableFooter className="bg-muted/30">
+							<TableRow>
+								<TableCell colSpan={4}>
+									<span className="text-xs text-muted-foreground">
+										{dirs.length > 0
+											? settings_dirs_pagination_page_count({
+													count: String(dirs.length),
+												})
+											: settings_dirs_pagination_no_results()}
+									</span>
+								</TableCell>
+								<TableCell colSpan={3}>
+									<div className="flex items-center justify-end gap-2">
+										<span className="text-xs text-muted-foreground">
+											{settings_dirs_pagination_page({
+												page: String(currentPage),
+											})}
+										</span>
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={prevPage}
+											disabled={currentPage === 1}
+											className="h-7 w-7 p-0 cursor-pointer"
+										>
+											<ChevronLeft className="w-4 h-4" />
+										</Button>
+										<Button
+											size="sm"
+											variant="outline"
+											onClick={nextPage}
+											disabled={dirs.length === 0}
+											className="h-7 w-7 p-0 cursor-pointer"
+										>
+											<ChevronRight className="w-4 h-4" />
+										</Button>
+									</div>
+								</TableCell>
+							</TableRow>
+						</TableFooter>
+					</Table>
+				</div>
+			</CardContent>
+
+			{/* Delete dialog */}
+			<Dialog
+				open={deleteDialog.open}
+				onOpenChange={(open) => !open && setDeleteDialog({ open: false })}
+			>
+				<DialogContent className="max-w-sm">
+					<DialogHeader>
+						<DialogTitle>{dialogTitle}</DialogTitle>
+						<DialogDescription>{dialogDescription}</DialogDescription>
+					</DialogHeader>
+					<DialogFooter className="flex justify-end gap-2">
+						<Button
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => setDeleteDialog({ open: false })}
+						>
+							{common_cancel()}
+						</Button>
+
+						<Button
+							variant="destructive"
+							className="cursor-pointer"
+							onClick={handleConfirmDeleteDir}
 						>
 							{common_delete()}
 						</Button>
