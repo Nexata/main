@@ -95,11 +95,20 @@ export function useDeleteThreadById() {
 }
 
 // Bulk delete threads by IDs
+export async function deleteThreadsByIds(threadIds: string[]) {
+	return withAuthRetry((headers) =>
+		apiClient.chat.thread.delete({
+			$headers: headers,
+			ids: threadIds,
+		}),
+	);
+}
+
 export function useDeleteThreadsByIds() {
 	const queryClient = useQueryClient();
 
 	return async (threadIds: string[]) => {
-		await Promise.all(threadIds.map((id) => deleteThreadById(id)));
+		await deleteThreadsByIds(threadIds);
 
 		await queryClient.invalidateQueries({
 			queryKey: ['chat-threads'],
