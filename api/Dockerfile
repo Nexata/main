@@ -9,6 +9,7 @@ COPY ./src ./src
 RUN bun build \
 	--compile \
 	--external sharp \
+	--external file-type \
 	--minify \
 	--outfile server \
 	src/index.ts
