@@ -553,6 +553,16 @@ export function createSyncedStream(
 	},
 ) {
 	return createUIMessageStream({
+		// Suppress the auto-generated messageId that createUIMessageStream
+		// normally injects into `start` SSE events via handleUIMessageStreamFinish.
+		// Without this, `/chat/answer` streams (which intentionally omit
+		// generateMessageId in toUIMessageStream) receive a random messageId that
+		// differs from the existing assistant message's ID, causing the AI SDK
+		// client to call pushMessage instead of replaceMessage — duplicating the
+		// assistant message (and all its QA / approval tool parts) in the UI.
+		// For `/chat` streams the inner toUIMessageStream already sets a messageId
+		// on the `start` event, so the injection is skipped regardless.
+		generateId: (() => undefined) as () => string,
 		async execute({ writer }) {
 			writer.merge(aiUIStream);
 
