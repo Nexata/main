@@ -482,6 +482,7 @@ function CompanyOverviewSection() {
 						unit="M"
 						colorClass="bg-violet-500"
 						loading={usageLoading}
+						displayMode="percentage"
 					/>
 
 					<UsageBar

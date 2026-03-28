@@ -10,6 +10,8 @@ type UsageBarProps = {
 	loading?: boolean
 	unit?: string
 	info?: string
+	/** When 'percentage', the header shows "X%" and a tooltip reveals the raw values */
+	displayMode?: 'absolute' | 'percentage'
 }
 
 export function UsageBar({
@@ -20,6 +22,7 @@ export function UsageBar({
 	loading = false,
 	unit,
 	info,
+	displayMode = 'absolute',
 }: UsageBarProps) {
 	const percentage =
 		!loading && total > 0 ? Math.min((used / total) * 100, 100) : 0
@@ -33,6 +36,9 @@ export function UsageBar({
 
 	const usedFormatted = formatValue(used)
 	const totalFormatted = formatValue(total)
+
+	const absoluteLabel = `${usedFormatted}${unit ? ` ${unit}` : ''} / ${totalFormatted}${unit ? ` ${unit}` : ''}`
+	const percentageLabel = `${Number(percentage.toFixed(1))}%`
 
 	return (
 		<div className="space-y-2">
@@ -65,9 +71,20 @@ export function UsageBar({
 
 				{loading ? (
 					<div className="h-4 w-20 rounded bg-muted animate-pulse" />
+				) : displayMode === 'percentage' ? (
+					<Tooltip>
+						<TooltipTrigger asChild>
+							<span className={`font-medium ${textColorClass} cursor-default`}>
+								{percentageLabel}
+							</span>
+						</TooltipTrigger>
+						<TooltipContent side="top" className="text-xs">
+							{absoluteLabel}
+						</TooltipContent>
+					</Tooltip>
 				) : (
 					<span className={`font-medium ${textColorClass}`}>
-						{usedFormatted}{unit ? ` ${unit}` : ''} / {totalFormatted}{unit ? ` ${unit}` : ''}
+						{absoluteLabel}
 					</span>
 				)}
 			</div>
