@@ -95,6 +95,6 @@ export async function imgToChunks(
 		}
 	}
 
-	// Intentionally inflate token usage due to cost diff vs regular embeddings
+	// Intentionally token usage due to cost
 	return { metadata: raw, chunks, tokenUsage: usage * 20 };
 }

@@ -175,7 +175,7 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
 
     const res = await setPlan(selectedPlan);
 
-    if (res?.billId && onPlanUpgraded) {
+    if (isUpgrade && res?.billId && onPlanUpgraded) {
       onOpenChange(false);
       onPlanUpgraded(res.billId);
       return;

@@ -144,9 +144,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 				.where(
 					and(
 						eq(bill.slug, activeUser.slug),
-						query.cursor
-							? lt(bill.createdAt, new Date(query.cursor))
-							: undefined,
+						query.cursor ? lt(bill.createdAt, query.cursor) : undefined,
 					),
 				)
 				.orderBy(desc(bill.createdAt))
@@ -154,7 +152,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 		{
 			detail: { summary: 'List bills' },
 			query: tObject({
-				cursor: Nullish(t.String({ format: 'date-time' }), {
+				cursor: Nullish(t.String({ format: 'date' }), {
 					description:
 						'Cursor for pagination, based on createdAt prop (creation date).',
 				}),
