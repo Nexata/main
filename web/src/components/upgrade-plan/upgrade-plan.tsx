@@ -45,12 +45,11 @@ import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
 import { CurrencyToggle } from "@/components/currency-toggle/currency-toggle";
 import { useMyTenant, type Plan } from "@/lib/user";
 import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button";
-import { useGetPaymentMpCheckout } from "@/lib/admin";
-import { getLocale } from "@/paraglide/runtime";
 
 type UpgradePlanModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onPlanUpgraded?: (billId: string) => void;
 };
 
 const ORDER: Plan[] = [
@@ -68,11 +67,10 @@ const PLAN_STORAGE_LIMITS: Record<string, number | null> = {
   pay_as_you_go: null,
 };
 
-export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) {
+export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: UpgradePlanModalProps) {
   const { data: tenant } = useMyTenant();
   const { data: usage } = useBillingUsage();
   const setPlan = useSetBillingPlan();
-  const getCheckout = useGetPaymentMpCheckout();
   const { data: usdArsQuote } = useUsdArsQuote();
   const quote = (usdArsQuote as number | null | undefined) ?? null;
   const showARS = useCurrencyStore((s) => s.showARS);
@@ -177,14 +175,10 @@ export function UpgradePlanModal({ open, onOpenChange }: UpgradePlanModalProps) 
 
     const res = await setPlan(selectedPlan);
 
-    if (isUpgrade && res?.billId) {
-      const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-      const language = getLocale();
-      const checkout = await getCheckout(res.billId, redirect, language);
-      if (checkout?.init_point) {
-        window.open(checkout.init_point, "_self");
-        return;
-      }
+    if (isUpgrade && res?.billId && onPlanUpgraded) {
+      onOpenChange(false);
+      onPlanUpgraded(res.billId);
+      return;
     }
 
     onOpenChange(false);

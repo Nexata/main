@@ -275,6 +275,18 @@
 				"confirm": "Confirm",
 				"acknowledge": "I understand"
 			}
+		},
+
+		"payment_choice_modal": {
+			"title": "How would you like to pay?",
+			"subtitle": "Choose how to pay for your new plan.",
+			"pay_now_title": "Pay now",
+			"pay_now_description": "Pay the current month and start using your plan immediately.",
+			"pay_now_button": "Go to payment",
+			"pay_advance_title": "Pay in advance",
+			"pay_advance_description": "Pay multiple months at once and get exclusive discounts.",
+			"pay_advance_badge": "Up to 20% off",
+			"pay_advance_button": "Choose months"
 		}
 	},
 

@@ -69,6 +69,7 @@ import {
 	TooltipTrigger,
 	Tooltip as TooltipUi,
 } from '@/components/ui/tooltip';
+import { PaymentChoiceModal } from '@/components/upgrade-plan/payment-choice-modal';
 import { UpgradePlanModal } from '@/components/upgrade-plan/upgrade-plan';
 import { UsageBar } from '@/components/usage-bar/usage-bar';
 import UserSection from '@/components/user-section/user-section';
@@ -291,7 +292,13 @@ function CompanyOverviewSection() {
 	const editTenantFn = useEditTenant();
 	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
 	const [upgradePlanOpen, setUpgradePlanOpen] = useState(false);
+	const [paymentChoiceBillId, setPaymentChoiceBillId] = useState<string | null>(
+		null,
+	);
+	const [batchAfterUpgradeOpen, setBatchAfterUpgradeOpen] = useState(false);
 	const { data: usage, isLoading: usageLoading } = useBillingUsage();
+	const { data: usdArsQuoteData } = useUsdArsQuote();
+	const usdArsQuote = (usdArsQuoteData as number | null | undefined) ?? null;
 
 	const embeddingsUsed = usage?.embeds?.used ?? 0;
 	const embeddingsTotal = usage?.embeds?.limit ?? 0;
@@ -570,6 +577,30 @@ function CompanyOverviewSection() {
 							});
 						}
 					}}
+					onPlanUpgraded={(billId) => {
+						queryClient.invalidateQueries({
+							queryKey: ['my-tenant'],
+						});
+						setPaymentChoiceBillId(billId);
+					}}
+				/>
+
+				<PaymentChoiceModal
+					open={paymentChoiceBillId !== null}
+					onOpenChange={(open) => {
+						if (!open) setPaymentChoiceBillId(null);
+					}}
+					billId={paymentChoiceBillId}
+					onSelectAdvance={() => {
+						setPaymentChoiceBillId(null);
+						setBatchAfterUpgradeOpen(true);
+					}}
+				/>
+
+				<BatchBillingModal
+					open={batchAfterUpgradeOpen}
+					onOpenChange={setBatchAfterUpgradeOpen}
+					usdArsQuote={usdArsQuote}
 				/>
 			</CardContent>
 		</Card>
