@@ -40,14 +40,15 @@ import * as m from '@/paraglide/messages.js';
 // Route definition
 export const Route = createFileRoute('/_private/billing')({
 	component: BillingPage,
+	head: () => ({
+		meta: [
+			{ title: m['billing.meta.title']() },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 function BillingPage() {
-	// Window title
-	useEffect(() => {
-		document.title = m['billing.meta.title']();
-	}, []);
-
 	const navigate = useNavigate();
 
 	return (

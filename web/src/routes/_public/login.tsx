@@ -1,21 +1,21 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { useEffect } from 'react';
-import { isLocale, setLocale } from '@/paraglide/runtime';
-import { getStoredLanguage } from '@/hooks/use-sync-language';
-import type { Language } from '@/lib/user';
 import { FcGoogle } from 'react-icons/fc';
 import { IoLogoMicrosoft } from 'react-icons/io5';
 import { SiDropbox } from 'react-icons/si';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { getStoredLanguage } from '@/hooks/use-sync-language';
 import { isAuthenticated } from '@/lib/auth';
 import {
 	getDropboxLoginUrl,
 	getGoogleLoginUrl,
 	getMicrosoftLoginUrl,
 } from '@/lib/oauth';
+import type { Language } from '@/lib/user';
 import {
+	'login.meta.description' as login_meta_description,
 	'login.meta.title' as login_meta_title,
 	'login.oauth.dropbox' as login_oauth_dropbox,
 	'login.oauth.google' as login_oauth_google,
@@ -23,6 +23,7 @@ import {
 	'login.subtitle' as login_subtitle,
 	'login.title' as login_title,
 } from '@/paraglide/messages.js';
+import { isLocale, setLocale } from '@/paraglide/runtime';
 
 export const Route = createFileRoute('/_public/login')({
 	beforeLoad: () => {
@@ -31,6 +32,18 @@ export const Route = createFileRoute('/_public/login')({
 		}
 	},
 	component: LoginPage,
+	head: () => ({
+		meta: [
+			{ title: login_meta_title() },
+			{ name: 'description', content: login_meta_description() },
+			{ property: 'og:title', content: login_meta_title() },
+			{ property: 'og:description', content: login_meta_description() },
+			{ property: 'og:url', content: 'https://nexata.app/login' },
+			{ name: 'twitter:title', content: login_meta_title() },
+			{ name: 'twitter:description', content: login_meta_description() },
+		],
+		links: [{ rel: 'canonical', href: 'https://nexata.app/login' }],
+	}),
 });
 
 function LoginPage() {
@@ -40,7 +53,6 @@ function LoginPage() {
 	useEffect(() => {
 		const locale = language as unknown as string;
 		if (isLocale(locale)) setLocale(locale, { reload: false });
-		document.title = login_meta_title({}, lc);
 	}, []);
 
 	return (

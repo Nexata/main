@@ -208,6 +208,12 @@ import {
 
 export const Route = createFileRoute('/_private/adminsettings')({
 	component: AdminSettingsPage,
+	head: () => ({
+		meta: [
+			{ title: admin_meta_title() },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 /* -------------------------------------------------------------------------- */
@@ -215,9 +221,6 @@ export const Route = createFileRoute('/_private/adminsettings')({
 /* -------------------------------------------------------------------------- */
 
 function AdminSettingsPage() {
-	useEffect(() => {
-		document.title = admin_meta_title();
-	}, []);
 	const navigate = useNavigate();
 	const { data: usdArsQuote } = useUsdArsQuote();
 

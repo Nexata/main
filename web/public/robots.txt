@@ -1,0 +1,18 @@
+# Nexata — https://nexata.app
+# robots.txt
+
+User-agent: *
+Allow: /home
+Allow: /login
+Allow: /tyc
+Allow: /privacy-policy
+Disallow: /chat
+Disallow: /settings
+Disallow: /adminsettings
+Disallow: /user
+Disallow: /billing
+Disallow: /callback
+Disallow: /tenant-selection
+
+# Sitemap
+Sitemap: https://nexata.app/sitemap.xml

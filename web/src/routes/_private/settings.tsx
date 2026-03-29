@@ -210,13 +210,16 @@ import {
 
 export const Route = createFileRoute('/_private/settings')({
 	component: SettingsPage,
+	head: () => ({
+		meta: [
+			{ title: settings_meta_title() },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 // ------------------------------- Settings Page ----------------------------------
 function SettingsPage() {
-	useEffect(() => {
-		document.title = settings_meta_title();
-	}, []);
 	const navigate = useNavigate();
 
 	const { data: me } = useMe();

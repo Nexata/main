@@ -1,105 +1,127 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { Navbar } from '@/components/navbar/navbar';
 import { Footer } from '@/components/footer/footer';
+import { Navbar } from '@/components/navbar/navbar';
 import { usePersistedLanguage } from '@/hooks/use-sync-language';
 import {
-	'navbar.nav_home' as navbar_nav_home,
-	'navbar.nav_platform' as navbar_nav_platform,
-	'navbar.nav_nexy' as navbar_nav_nexy,
-	'navbar.nav_use_cases' as navbar_nav_use_cases,
 	'navbar.nav_features' as navbar_nav_features,
-	'tyc.title' as tyc_title,
-	'tyc.last_updated' as tyc_last_updated,
-	'tyc.acceptance.title' as tyc_acceptance_title,
+	'navbar.nav_home' as navbar_nav_home,
+	'navbar.nav_nexy' as navbar_nav_nexy,
+	'navbar.nav_platform' as navbar_nav_platform,
+	'navbar.nav_use_cases' as navbar_nav_use_cases,
 	'tyc.acceptance.p1' as tyc_acceptance_p1,
-	'tyc.description.title' as tyc_description_title,
-	'tyc.description.p1' as tyc_description_p1,
+	'tyc.acceptance.title' as tyc_acceptance_title,
+	'tyc.contact.email_label' as tyc_contact_email_label,
+	'tyc.contact.footer' as tyc_contact_footer,
+	'tyc.contact.p1' as tyc_contact_p1,
+	'tyc.contact.title' as tyc_contact_title,
+	'tyc.definitions.connected_sources_desc' as tyc_definitions_connected_sources_desc,
+	'tyc.definitions.connected_sources_label' as tyc_definitions_connected_sources_label,
+	'tyc.definitions.external_data_desc' as tyc_definitions_external_data_desc,
+	'tyc.definitions.external_data_label' as tyc_definitions_external_data_label,
+	'tyc.definitions.ingested_data_desc' as tyc_definitions_ingested_data_desc,
+	'tyc.definitions.ingested_data_label' as tyc_definitions_ingested_data_label,
+	'tyc.definitions.regular_user_desc' as tyc_definitions_regular_user_desc,
+	'tyc.definitions.regular_user_label' as tyc_definitions_regular_user_label,
+	'tyc.definitions.tenant_admin_desc' as tyc_definitions_tenant_admin_desc,
+	'tyc.definitions.tenant_admin_label' as tyc_definitions_tenant_admin_label,
+	'tyc.definitions.tenant_desc' as tyc_definitions_tenant_desc,
+	'tyc.definitions.tenant_label' as tyc_definitions_tenant_label,
+	'tyc.definitions.title' as tyc_definitions_title,
+	'tyc.definitions.user_desc' as tyc_definitions_user_desc,
+	'tyc.definitions.user_label' as tyc_definitions_user_label,
+	'tyc.description.infocard' as tyc_description_infocard,
 	'tyc.description.item_1' as tyc_description_item_1,
 	'tyc.description.item_2' as tyc_description_item_2,
 	'tyc.description.item_3' as tyc_description_item_3,
 	'tyc.description.item_4' as tyc_description_item_4,
-	'tyc.description.infocard' as tyc_description_infocard,
-	'tyc.definitions.title' as tyc_definitions_title,
-	'tyc.definitions.user_label' as tyc_definitions_user_label,
-	'tyc.definitions.user_desc' as tyc_definitions_user_desc,
-	'tyc.definitions.tenant_label' as tyc_definitions_tenant_label,
-	'tyc.definitions.tenant_desc' as tyc_definitions_tenant_desc,
-	'tyc.definitions.tenant_admin_label' as tyc_definitions_tenant_admin_label,
-	'tyc.definitions.tenant_admin_desc' as tyc_definitions_tenant_admin_desc,
-	'tyc.definitions.regular_user_label' as tyc_definitions_regular_user_label,
-	'tyc.definitions.regular_user_desc' as tyc_definitions_regular_user_desc,
-	'tyc.definitions.connected_sources_label' as tyc_definitions_connected_sources_label,
-	'tyc.definitions.connected_sources_desc' as tyc_definitions_connected_sources_desc,
-	'tyc.definitions.ingested_data_label' as tyc_definitions_ingested_data_label,
-	'tyc.definitions.ingested_data_desc' as tyc_definitions_ingested_data_desc,
-	'tyc.definitions.external_data_label' as tyc_definitions_external_data_label,
-	'tyc.definitions.external_data_desc' as tyc_definitions_external_data_desc,
-	'tyc.obligations.title' as tyc_obligations_title,
-	'tyc.obligations.s41_title' as tyc_obligations_s41_title,
+	'tyc.description.p1' as tyc_description_p1,
+	'tyc.description.title' as tyc_description_title,
+	'tyc.indemnification.intro' as tyc_indemnification_intro,
+	'tyc.indemnification.item_1' as tyc_indemnification_item_1,
+	'tyc.indemnification.item_2' as tyc_indemnification_item_2,
+	'tyc.indemnification.item_3' as tyc_indemnification_item_3,
+	'tyc.indemnification.item_4' as tyc_indemnification_item_4,
+	'tyc.indemnification.title' as tyc_indemnification_title,
+	'tyc.ip.item_1' as tyc_ip_item_1,
+	'tyc.ip.item_2' as tyc_ip_item_2,
+	'tyc.ip.item_3' as tyc_ip_item_3,
+	'tyc.ip.title' as tyc_ip_title,
+	'tyc.last_updated' as tyc_last_updated,
+	'tyc.law.p1' as tyc_law_p1,
+	'tyc.law.title' as tyc_law_title,
+	'tyc.liability.s61_intro' as tyc_liability_s61_intro,
+	'tyc.liability.s61_item_1' as tyc_liability_s61_item_1,
+	'tyc.liability.s61_item_2' as tyc_liability_s61_item_2,
+	'tyc.liability.s61_item_3' as tyc_liability_s61_item_3,
+	'tyc.liability.s61_item_4' as tyc_liability_s61_item_4,
+	'tyc.liability.s61_title' as tyc_liability_s61_title,
+	'tyc.liability.s62_intro' as tyc_liability_s62_intro,
+	'tyc.liability.s62_item_1' as tyc_liability_s62_item_1,
+	'tyc.liability.s62_item_2' as tyc_liability_s62_item_2,
+	'tyc.liability.s62_item_3' as tyc_liability_s62_item_3,
+	'tyc.liability.s62_title' as tyc_liability_s62_title,
+	'tyc.liability.title' as tyc_liability_title,
+	'tyc.meta.description' as tyc_meta_description,
+	'tyc.meta.title' as tyc_meta_title,
+	'tyc.modifications.p1' as tyc_modifications_p1,
+	'tyc.modifications.title' as tyc_modifications_title,
 	'tyc.obligations.s41_intro' as tyc_obligations_s41_intro,
 	'tyc.obligations.s41_item_1' as tyc_obligations_s41_item_1,
 	'tyc.obligations.s41_item_2' as tyc_obligations_s41_item_2,
 	'tyc.obligations.s41_item_3' as tyc_obligations_s41_item_3,
 	'tyc.obligations.s41_item_4' as tyc_obligations_s41_item_4,
-	'tyc.obligations.s42_title' as tyc_obligations_s42_title,
+	'tyc.obligations.s41_title' as tyc_obligations_s41_title,
 	'tyc.obligations.s42_intro' as tyc_obligations_s42_intro,
 	'tyc.obligations.s42_item_1' as tyc_obligations_s42_item_1,
 	'tyc.obligations.s42_item_2' as tyc_obligations_s42_item_2,
 	'tyc.obligations.s42_item_3' as tyc_obligations_s42_item_3,
 	'tyc.obligations.s42_item_4' as tyc_obligations_s42_item_4,
 	'tyc.obligations.s42_item_5' as tyc_obligations_s42_item_5,
-	'tyc.obligations.s43_title' as tyc_obligations_s43_title,
+	'tyc.obligations.s42_title' as tyc_obligations_s42_title,
 	'tyc.obligations.s43_intro' as tyc_obligations_s43_intro,
 	'tyc.obligations.s43_item_1' as tyc_obligations_s43_item_1,
 	'tyc.obligations.s43_item_2' as tyc_obligations_s43_item_2,
 	'tyc.obligations.s43_item_3' as tyc_obligations_s43_item_3,
-	'tyc.ip.title' as tyc_ip_title,
-	'tyc.ip.item_1' as tyc_ip_item_1,
-	'tyc.ip.item_2' as tyc_ip_item_2,
-	'tyc.ip.item_3' as tyc_ip_item_3,
-	'tyc.liability.title' as tyc_liability_title,
-	'tyc.liability.s61_title' as tyc_liability_s61_title,
-	'tyc.liability.s61_intro' as tyc_liability_s61_intro,
-	'tyc.liability.s61_item_1' as tyc_liability_s61_item_1,
-	'tyc.liability.s61_item_2' as tyc_liability_s61_item_2,
-	'tyc.liability.s61_item_3' as tyc_liability_s61_item_3,
-	'tyc.liability.s61_item_4' as tyc_liability_s61_item_4,
-	'tyc.liability.s62_title' as tyc_liability_s62_title,
-	'tyc.liability.s62_intro' as tyc_liability_s62_intro,
-	'tyc.liability.s62_item_1' as tyc_liability_s62_item_1,
-	'tyc.liability.s62_item_2' as tyc_liability_s62_item_2,
-	'tyc.liability.s62_item_3' as tyc_liability_s62_item_3,
-	'tyc.indemnification.title' as tyc_indemnification_title,
-	'tyc.indemnification.intro' as tyc_indemnification_intro,
-	'tyc.indemnification.item_1' as tyc_indemnification_item_1,
-	'tyc.indemnification.item_2' as tyc_indemnification_item_2,
-	'tyc.indemnification.item_3' as tyc_indemnification_item_3,
-	'tyc.indemnification.item_4' as tyc_indemnification_item_4,
-	'tyc.privacy.title' as tyc_privacy_title,
-	'tyc.privacy.p1' as tyc_privacy_p1,
+	'tyc.obligations.s43_title' as tyc_obligations_s43_title,
+	'tyc.obligations.title' as tyc_obligations_title,
 	'tyc.privacy.infocard' as tyc_privacy_infocard,
-	'tyc.modifications.title' as tyc_modifications_title,
-	'tyc.modifications.p1' as tyc_modifications_p1,
-	'tyc.law.title' as tyc_law_title,
-	'tyc.law.p1' as tyc_law_p1,
-	'tyc.contact.title' as tyc_contact_title,
-	'tyc.contact.p1' as tyc_contact_p1,
-	'tyc.contact.email_label' as tyc_contact_email_label,
-	'tyc.contact.footer' as tyc_contact_footer,
+	'tyc.privacy.p1' as tyc_privacy_p1,
+	'tyc.privacy.title' as tyc_privacy_title,
+	'tyc.title' as tyc_title,
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_public/tyc')({
 	component: TermsAndConditions,
+	head: () => ({
+		meta: [
+			{ title: tyc_meta_title() },
+			{ name: 'description', content: tyc_meta_description() },
+			{ property: 'og:title', content: tyc_meta_title() },
+			{ property: 'og:description', content: tyc_meta_description() },
+			{ property: 'og:url', content: 'https://nexata.app/tyc' },
+			{ name: 'twitter:title', content: tyc_meta_title() },
+			{ name: 'twitter:description', content: tyc_meta_description() },
+		],
+		links: [{ rel: 'canonical', href: 'https://nexata.app/tyc' }],
+	}),
 });
 
 // -------------------------------- CONSTANTS --------------------------------
 
 const SECTION_IDS = [
-	'acceptance', 'description', 'definitions', 'obligations',
-	'ip', 'liability', 'indemnification', 'privacy',
-	'modifications', 'law', 'contact',
+	'acceptance',
+	'description',
+	'definitions',
+	'obligations',
+	'ip',
+	'liability',
+	'indemnification',
+	'privacy',
+	'modifications',
+	'law',
+	'contact',
 ];
 
 // -------------------------------- HELPERS --------------------------------
@@ -130,20 +152,33 @@ function CardItem({ label, desc }: { label: string; desc: string }) {
 	);
 }
 
-function SubGroup({ title, intro, items }: { title: string; intro: string; items: string[] }) {
+function SubGroup({
+	title,
+	intro,
+	items,
+}: {
+	title: string;
+	intro: string;
+	items: string[];
+}) {
 	return (
 		<div className="space-y-2">
 			<p className="font-semibold text-foreground">{title}</p>
 			<p>{intro}</p>
 			<ul className="space-y-1.5 pl-4">
-				{items.map((item) => <BulletItem key={item} text={item} />)}
+				{items.map((item) => (
+					<BulletItem key={item} text={item} />
+				))}
 			</ul>
 		</div>
 	);
 }
 
 function Section({
-	id, title, children, isLast,
+	id,
+	title,
+	children,
+	isLast,
 }: {
 	id: string;
 	title: string;
@@ -237,7 +272,6 @@ export default function TermsAndConditions() {
 
 			<main className="flex-1 pt-20 pb-20">
 				<div className="max-w-6xl mx-auto px-6">
-
 					{/* Hero */}
 					<motion.div
 						initial={{ opacity: 0, y: -20 }}
@@ -254,7 +288,6 @@ export default function TermsAndConditions() {
 					</motion.div>
 
 					<div className="grid lg:grid-cols-[240px_1fr] gap-10 items-start">
-
 						{/* Sidebar TOC */}
 						<aside className="hidden lg:block lg:sticky lg:top-24 space-y-1">
 							{tocSections.map((sec) => (
@@ -275,7 +308,6 @@ export default function TermsAndConditions() {
 
 						{/* Sections */}
 						<div className="space-y-10">
-
 							{/* 1. Acceptance */}
 							<Section id="acceptance" title={tyc_acceptance_title({}, lc)}>
 								<p>{tyc_acceptance_p1({}, lc)}</p>
@@ -285,7 +317,12 @@ export default function TermsAndConditions() {
 							<Section id="description" title={tyc_description_title({}, lc)}>
 								<p>{tyc_description_p1({}, lc)}</p>
 								<ul className="space-y-1.5 pl-4">
-									{[tyc_description_item_1, tyc_description_item_2, tyc_description_item_3, tyc_description_item_4].map((fn) => (
+									{[
+										tyc_description_item_1,
+										tyc_description_item_2,
+										tyc_description_item_3,
+										tyc_description_item_4,
+									].map((fn) => (
 										<BulletItem key={fn({}, lc)} text={fn({}, lc)} />
 									))}
 								</ul>
@@ -296,13 +333,34 @@ export default function TermsAndConditions() {
 							<Section id="definitions" title={tyc_definitions_title({}, lc)}>
 								<div className="grid sm:grid-cols-2 gap-3">
 									{[
-										{ label: tyc_definitions_user_label({}, lc), desc: tyc_definitions_user_desc({}, lc) },
-										{ label: tyc_definitions_tenant_label({}, lc), desc: tyc_definitions_tenant_desc({}, lc) },
-										{ label: tyc_definitions_tenant_admin_label({}, lc), desc: tyc_definitions_tenant_admin_desc({}, lc) },
-										{ label: tyc_definitions_regular_user_label({}, lc), desc: tyc_definitions_regular_user_desc({}, lc) },
-										{ label: tyc_definitions_connected_sources_label({}, lc), desc: tyc_definitions_connected_sources_desc({}, lc) },
-										{ label: tyc_definitions_ingested_data_label({}, lc), desc: tyc_definitions_ingested_data_desc({}, lc) },
-										{ label: tyc_definitions_external_data_label({}, lc), desc: tyc_definitions_external_data_desc({}, lc) },
+										{
+											label: tyc_definitions_user_label({}, lc),
+											desc: tyc_definitions_user_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_tenant_label({}, lc),
+											desc: tyc_definitions_tenant_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_tenant_admin_label({}, lc),
+											desc: tyc_definitions_tenant_admin_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_regular_user_label({}, lc),
+											desc: tyc_definitions_regular_user_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_connected_sources_label({}, lc),
+											desc: tyc_definitions_connected_sources_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_ingested_data_label({}, lc),
+											desc: tyc_definitions_ingested_data_desc({}, lc),
+										},
+										{
+											label: tyc_definitions_external_data_label({}, lc),
+											desc: tyc_definitions_external_data_desc({}, lc),
+										},
 									].map(({ label, desc }) => (
 										<CardItem key={label} label={label} desc={desc} />
 									))}
@@ -314,17 +372,32 @@ export default function TermsAndConditions() {
 								<SubGroup
 									title={tyc_obligations_s41_title({}, lc)}
 									intro={tyc_obligations_s41_intro({}, lc)}
-									items={[tyc_obligations_s41_item_1, tyc_obligations_s41_item_2, tyc_obligations_s41_item_3, tyc_obligations_s41_item_4].map((fn) => fn({}, lc))}
+									items={[
+										tyc_obligations_s41_item_1,
+										tyc_obligations_s41_item_2,
+										tyc_obligations_s41_item_3,
+										tyc_obligations_s41_item_4,
+									].map((fn) => fn({}, lc))}
 								/>
 								<SubGroup
 									title={tyc_obligations_s42_title({}, lc)}
 									intro={tyc_obligations_s42_intro({}, lc)}
-									items={[tyc_obligations_s42_item_1, tyc_obligations_s42_item_2, tyc_obligations_s42_item_3, tyc_obligations_s42_item_4, tyc_obligations_s42_item_5].map((fn) => fn({}, lc))}
+									items={[
+										tyc_obligations_s42_item_1,
+										tyc_obligations_s42_item_2,
+										tyc_obligations_s42_item_3,
+										tyc_obligations_s42_item_4,
+										tyc_obligations_s42_item_5,
+									].map((fn) => fn({}, lc))}
 								/>
 								<SubGroup
 									title={tyc_obligations_s43_title({}, lc)}
 									intro={tyc_obligations_s43_intro({}, lc)}
-									items={[tyc_obligations_s43_item_1, tyc_obligations_s43_item_2, tyc_obligations_s43_item_3].map((fn) => fn({}, lc))}
+									items={[
+										tyc_obligations_s43_item_1,
+										tyc_obligations_s43_item_2,
+										tyc_obligations_s43_item_3,
+									].map((fn) => fn({}, lc))}
 								/>
 							</Section>
 
@@ -342,20 +415,37 @@ export default function TermsAndConditions() {
 								<SubGroup
 									title={tyc_liability_s61_title({}, lc)}
 									intro={tyc_liability_s61_intro({}, lc)}
-									items={[tyc_liability_s61_item_1, tyc_liability_s61_item_2, tyc_liability_s61_item_3, tyc_liability_s61_item_4].map((fn) => fn({}, lc))}
+									items={[
+										tyc_liability_s61_item_1,
+										tyc_liability_s61_item_2,
+										tyc_liability_s61_item_3,
+										tyc_liability_s61_item_4,
+									].map((fn) => fn({}, lc))}
 								/>
 								<SubGroup
 									title={tyc_liability_s62_title({}, lc)}
 									intro={tyc_liability_s62_intro({}, lc)}
-									items={[tyc_liability_s62_item_1, tyc_liability_s62_item_2, tyc_liability_s62_item_3].map((fn) => fn({}, lc))}
+									items={[
+										tyc_liability_s62_item_1,
+										tyc_liability_s62_item_2,
+										tyc_liability_s62_item_3,
+									].map((fn) => fn({}, lc))}
 								/>
 							</Section>
 
 							{/* 7. Indemnification */}
-							<Section id="indemnification" title={tyc_indemnification_title({}, lc)}>
+							<Section
+								id="indemnification"
+								title={tyc_indemnification_title({}, lc)}
+							>
 								<p>{tyc_indemnification_intro({}, lc)}</p>
 								<ul className="space-y-1.5 pl-4">
-									{[tyc_indemnification_item_1, tyc_indemnification_item_2, tyc_indemnification_item_3, tyc_indemnification_item_4].map((fn) => (
+									{[
+										tyc_indemnification_item_1,
+										tyc_indemnification_item_2,
+										tyc_indemnification_item_3,
+										tyc_indemnification_item_4,
+									].map((fn) => (
 										<BulletItem key={fn({}, lc)} text={fn({}, lc)} />
 									))}
 								</ul>
@@ -368,7 +458,10 @@ export default function TermsAndConditions() {
 							</Section>
 
 							{/* 9. Modifications */}
-							<Section id="modifications" title={tyc_modifications_title({}, lc)}>
+							<Section
+								id="modifications"
+								title={tyc_modifications_title({}, lc)}
+							>
 								<p>{tyc_modifications_p1({}, lc)}</p>
 							</Section>
 
@@ -381,14 +474,20 @@ export default function TermsAndConditions() {
 							<Section id="contact" title={tyc_contact_title({}, lc)} isLast>
 								<p>{tyc_contact_p1({}, lc)}</p>
 								<div className="rounded-xl border border-border bg-card p-4 flex items-center justify-between">
-									<span className="font-semibold text-foreground text-sm">{tyc_contact_email_label({}, lc)}</span>
-									<a href="mailto:legal@nexata.com" className="text-primary underline underline-offset-2 text-sm">
+									<span className="font-semibold text-foreground text-sm">
+										{tyc_contact_email_label({}, lc)}
+									</span>
+									<a
+										href="mailto:legal@nexata.com"
+										className="text-primary underline underline-offset-2 text-sm"
+									>
 										legal@nexata.com
 									</a>
 								</div>
-								<p className="text-xs text-muted-foreground">{tyc_contact_footer({}, lc)}</p>
+								<p className="text-xs text-muted-foreground">
+									{tyc_contact_footer({}, lc)}
+								</p>
 							</Section>
-
 						</div>
 					</div>
 				</div>

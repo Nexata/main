@@ -123,6 +123,12 @@ import { isLocale, setLocale } from '@/paraglide/runtime';
 
 export const Route = createFileRoute('/_private/user')({
 	component: ProfilePage,
+	head: () => ({
+		meta: [
+			{ title: `Nexata | ${profile_header_title()}` },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 export default function ProfilePage() {
@@ -146,9 +152,8 @@ export default function ProfilePage() {
 		null,
 	);
 
-	// Title + User
+	// Sync display name from server
 	useEffect(() => {
-		document.title = `Nexata | ${profile_header_title()}`;
 		if (me?.displayName) setDisplayName(me.displayName);
 	}, [me]);
 

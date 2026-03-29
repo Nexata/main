@@ -15,10 +15,11 @@ import { getTools } from '@api/chat/tools';
 import { Nexata } from '@api/chat/tools/nexata';
 import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
-import { Gmail } from '@api/integration/google';
-import { Outlook } from '@api/integration/microsoft';
+import { Dropbox } from '@api/integration/dropbox';
+import { Drive, Gmail } from '@api/integration/google';
+import { OneDrive, Outlook } from '@api/integration/microsoft';
 import { FinishReason, message, OauthScope, thread } from '@api/schema';
-import { checkTenantCanChat } from '@api/utils/billing';
+import { checkTenantCanChat, checkTenantCanIngest } from '@api/utils/billing';
 import {
 	type CachedCredential,
 	ensureFreshTokens,
@@ -362,6 +363,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 										client: never,
 										au: typeof activeUser,
 										input: never,
+										credentialId: string,
 									) => Promise<unknown>;
 								}
 							> = {
@@ -374,6 +376,75 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 									scope: OauthScope.OUTLOOK,
 									fromTokens: Outlook.fromTokens,
 									execute: Outlook.ingestAttachments,
+								},
+								DriveIngest: {
+									scope: OauthScope.DRIVE,
+									fromTokens: Drive.fromTokens,
+									execute: async (client, au, input, credentialId) => {
+										const blockReason = await checkTenantCanIngest(au.slug);
+										if (blockReason)
+											throw httpError(
+												blockReason === ErrorCode.PAYMENT_REQUIRED
+													? HttpCode.PAYMENT_REQUIRED
+													: HttpCode.PRECONDITION_FAILED,
+												ErrorCode[blockReason as keyof typeof ErrorCode],
+												au.language,
+											);
+										return Drive.ingest(
+											client,
+											au.id,
+											au.slug,
+											credentialId,
+											(input as { selection: { isDir: boolean; id: string }[] })
+												.selection,
+										);
+									},
+								},
+								DropboxIngest: {
+									scope: OauthScope.DROPBOX,
+									fromTokens: Dropbox.fromTokens,
+									execute: async (client, au, input, credentialId) => {
+										const blockReason = await checkTenantCanIngest(au.slug);
+										if (blockReason)
+											throw httpError(
+												blockReason === ErrorCode.PAYMENT_REQUIRED
+													? HttpCode.PAYMENT_REQUIRED
+													: HttpCode.PRECONDITION_FAILED,
+												ErrorCode[blockReason as keyof typeof ErrorCode],
+												au.language,
+											);
+										return Dropbox.ingest(
+											client,
+											au.id,
+											au.slug,
+											credentialId,
+											(input as { selection: { isDir: boolean; id: string }[] })
+												.selection,
+										);
+									},
+								},
+								OneDriveIngest: {
+									scope: OauthScope.ONE_DRIVE,
+									fromTokens: OneDrive.fromTokens,
+									execute: async (client, au, input, credentialId) => {
+										const blockReason = await checkTenantCanIngest(au.slug);
+										if (blockReason)
+											throw httpError(
+												blockReason === ErrorCode.PAYMENT_REQUIRED
+													? HttpCode.PAYMENT_REQUIRED
+													: HttpCode.PRECONDITION_FAILED,
+												ErrorCode[blockReason as keyof typeof ErrorCode],
+												au.language,
+											);
+										return OneDrive.ingest(
+											client,
+											au.id,
+											au.slug,
+											credentialId,
+											(input as { selection: { isDir: boolean; id: string }[] })
+												.selection,
+										);
+									},
 								},
 							};
 
@@ -417,6 +488,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								handler.fromTokens(at, rt) as never,
 								activeUser,
 								approvalPart.input as never,
+								cred.id,
 							);
 						}
 					} catch (error) {

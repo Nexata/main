@@ -25,6 +25,12 @@ export const Route = createFileRoute('/_public/tenant-selection')({
 		};
 	},
 	component: TenantSelectionPage,
+	head: () => ({
+		meta: [
+			{ title: tenant_selection_title() },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 function stringToColor(str: string) {
@@ -37,10 +43,6 @@ function stringToColor(str: string) {
 export default function TenantSelectionPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
-
-	React.useEffect(() => {
-		document.title = tenant_selection_title();
-	}, []);
 
 	const { sessions: encoded } = useSearch({
 		from: '/_public/tenant-selection',

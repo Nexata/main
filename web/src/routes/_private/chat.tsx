@@ -31,6 +31,12 @@ export const Route = createFileRoute('/_private/chat')({
 		id: typeof search.id === 'string' ? search.id : undefined,
 	}),
 	component: NexataChat,
+	head: () => ({
+		meta: [
+			{ title: chat_meta_title() },
+			{ name: 'robots', content: 'noindex' },
+		],
+	}),
 });
 
 // ----------------------------
@@ -172,10 +178,6 @@ function hydrateThreadMessages(
 }
 
 export function NexataChat() {
-	useEffect(() => {
-		document.title = chat_meta_title();
-	}, []);
-
 	// ----------------------------
 	// Store
 	// ----------------------------

@@ -689,6 +689,23 @@ export namespace OneDrive {
 		return stats;
 	}
 
+	export const [ingestDescription, ingestInput] = [
+		'OneDrive tool to ingest (download and vectorize) files or folders from OneDrive into Nexata. Use OneDriveSearch or OneDriveListDir first to find items, then pass their external IDs here. Directories are ingested recursively. Only use when the user explicitly requests ingestion.',
+		tObject({
+			selection: t.Array(
+				tObject({
+					id: t.String({
+						description: 'External OneDrive ID of the file or folder.',
+					}),
+					isDir: t.Boolean({
+						description: 'Whether the item is a directory.',
+					}),
+				}),
+				{ minItems: 1 },
+			),
+		}),
+	];
+
 	export async function ingest(
 		client: Client,
 		userId: string,

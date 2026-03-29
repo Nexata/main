@@ -1,5 +1,5 @@
 import * as Sentry from '@sentry/react';
-import { createRootRoute, Outlet } from '@tanstack/react-router';
+import { createRootRoute, HeadContent, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
 import {
 	'error_boundary.description' as error_boundary_description,
@@ -29,9 +29,30 @@ function ErrorFallback() {
 
 const RootLayout = () => (
 	<Sentry.ErrorBoundary fallback={ErrorFallback}>
+		<HeadContent />
 		<Outlet />
 		<TanStackRouterDevtools />
 	</Sentry.ErrorBoundary>
 );
 
-export const Route = createRootRoute({ component: RootLayout });
+export const Route = createRootRoute({
+	component: RootLayout,
+	head: () => ({
+		meta: [
+			{ title: 'Nexata — Asistente de negocios con IA' },
+			{
+				name: 'description',
+				content:
+					'Nexata es un asistente empresarial potenciado por inteligencia artificial. Conecta tus herramientas, centraliza tu informacion y obtiene respuestas al instante.',
+			},
+			{ property: 'og:site_name', content: 'Nexata' },
+			{ property: 'og:type', content: 'website' },
+			{ property: 'og:image', content: 'https://nexata.app/og-image.png' },
+			{ property: 'og:image:width', content: '1200' },
+			{ property: 'og:image:height', content: '630' },
+			{ property: 'og:locale', content: 'es_ES' },
+			{ name: 'twitter:card', content: 'summary_large_image' },
+			{ name: 'twitter:image', content: 'https://nexata.app/og-image.png' },
+		],
+	}),
+});

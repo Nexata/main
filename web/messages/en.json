@@ -271,7 +271,8 @@
 
 	"login": {
 		"meta": {
-			"title": "Nexata | Login"
+			"title": "Nexata | Login",
+			"description": "Sign in to Nexata. Access your AI-powered business assistant."
 		},
 		"title": "Sign in",
 		"subtitle": "Access your Nexata account",
@@ -1119,6 +1120,10 @@
 	},
 
 	"privacy_policy": {
+		"meta": {
+			"title": "Nexata | Privacy Policy",
+			"description": "Learn how Nexata collects, uses, and protects your personal information. We never sell your data to third parties."
+		},
 		"title": "Privacy Policy",
 		"last_updated": "Last updated: March 16, 2026 · Version 1.0",
 		"footer_tagline": "Your enterprise knowledge, unified.",
@@ -1271,7 +1276,8 @@
 
 	"tyc": {
 		"meta": {
-			"title": "Nexata | Terms and Conditions"
+			"title": "Nexata | Terms and Conditions",
+			"description": "Read the terms and conditions for using the Nexata platform."
 		},
 		"title": "Terms and Conditions",
 		"last_updated": "Last updated: March 16, 2026",
@@ -1387,6 +1393,10 @@
 	},
 
 	"home": {
+		"meta": {
+			"title": "Nexata — AI-Powered Business Assistant",
+			"description": "Connect your tools, centralize your enterprise knowledge, and get smart answers instantly with Nexata."
+		},
 		"hero": {
 			"title": "Your enterprise knowledge, one question away",
 			"tagline": "Powered by Nexy, your knowledge assistant",

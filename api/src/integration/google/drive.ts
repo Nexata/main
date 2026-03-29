@@ -681,6 +681,23 @@ export namespace Drive {
 		return stats;
 	}
 
+	export const [ingestDescription, ingestInput] = [
+		'Google Drive tool to ingest (download and vectorize) files or folders from Google Drive into Nexata. Use DriveSearch or DriveListDir first to find items, then pass their external IDs here. Directories are ingested recursively. Only use when the user explicitly requests ingestion.',
+		tObject({
+			selection: t.Array(
+				tObject({
+					id: t.String({
+						description: 'External Google Drive ID of the file or folder.',
+					}),
+					isDir: t.Boolean({
+						description: 'Whether the item is a directory.',
+					}),
+				}),
+				{ minItems: 1 },
+			),
+		}),
+	];
+
 	export async function ingest(
 		drv: drive_v3.Drive,
 		userId: string,

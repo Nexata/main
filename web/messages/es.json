@@ -271,7 +271,8 @@
 
 	"login": {
 		"meta": {
-			"title": "Nexata | Iniciar sesión"
+			"title": "Nexata | Iniciar sesión",
+			"description": "Inicia sesion en Nexata. Accede a tu asistente empresarial con IA."
 		},
 		"title": "Iniciar sesión",
 		"subtitle": "Accedé a tu cuenta de Nexata",
@@ -1119,6 +1120,10 @@
 	},
 
 	"privacy_policy": {
+		"meta": {
+			"title": "Nexata | Politica de Privacidad",
+			"description": "Conoce como Nexata recopila, usa y protege tu informacion personal. No vendemos tus datos a terceros."
+		},
 		"title": "Politica de Privacidad",
 		"last_updated": "Ultima actualizacion: 16 de marzo de 2026 · Version 1.0",
 		"footer_tagline": "Tu conocimiento empresarial, unificado.",
@@ -1271,7 +1276,8 @@
 
 	"tyc": {
 		"meta": {
-			"title": "Nexata | Terminos y Condiciones"
+			"title": "Nexata | Terminos y Condiciones",
+			"description": "Lee los terminos y condiciones de uso de la plataforma Nexata."
 		},
 		"title": "Terminos y Condiciones",
 		"last_updated": "Ultima actualizacion: 16 de marzo de 2026",
@@ -1387,6 +1393,10 @@
 	},
 
 	"home": {
+		"meta": {
+			"title": "Nexata — Asistente de negocios con IA",
+			"description": "Conecta tus herramientas, centraliza tu informacion empresarial y obtiene respuestas inteligentes al instante con Nexata."
+		},
 		"hero": {
 			"title": "Tu conocimiento empresarial, una pregunta de distancia",
 			"tagline": "Potenciado por Nexy, tu asistente de conocimiento",

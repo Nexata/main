@@ -10,6 +10,7 @@ import {
 } from '@api/integration/microsoft';
 import { OauthScope } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
+import { checkTenantCanIngest } from '@api/utils/billing';
 import {
 	type CachedCredential,
 	ensureFreshTokens,
@@ -310,6 +311,37 @@ export const getTools = async (
 			),
 		};
 
+	if (dropboxCredentials.length && interactive)
+		tools = {
+			...tools,
+			DropboxIngest: toolify(
+				Dropbox.ingestDescription,
+				Dropbox.ingestInput,
+				dropboxCredentials,
+				(credentials) => credentials,
+				async (c, input) => {
+					const blockReason = await checkTenantCanIngest(activeUser.slug);
+					if (blockReason)
+						throw httpError(
+							blockReason === ErrorCode.PAYMENT_REQUIRED
+								? HttpCode.PAYMENT_REQUIRED
+								: HttpCode.PRECONDITION_FAILED,
+							ErrorCode[blockReason as keyof typeof ErrorCode],
+							activeUser.language,
+						);
+					return Dropbox.ingest(
+						await freshClient(c, Dropbox.fromTokens),
+						activeUser.id,
+						activeUser.slug,
+						c.id,
+						input.selection,
+					);
+				},
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+				{ needsApproval: true },
+			),
+		};
+
 	const driveCredentials = credentials.filter(
 		(c) => c.scope === OauthScope.DRIVE,
 	);
@@ -333,6 +365,37 @@ export const getTools = async (
 				async (c, input) =>
 					Drive.listDir(await freshClient(c, Drive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	if (driveCredentials.length && interactive)
+		tools = {
+			...tools,
+			DriveIngest: toolify(
+				Drive.ingestDescription,
+				Drive.ingestInput,
+				driveCredentials,
+				(credentials) => credentials,
+				async (c, input) => {
+					const blockReason = await checkTenantCanIngest(activeUser.slug);
+					if (blockReason)
+						throw httpError(
+							blockReason === ErrorCode.PAYMENT_REQUIRED
+								? HttpCode.PAYMENT_REQUIRED
+								: HttpCode.PRECONDITION_FAILED,
+							ErrorCode[blockReason as keyof typeof ErrorCode],
+							activeUser.language,
+						);
+					return Drive.ingest(
+						await freshClient(c, Drive.fromTokens),
+						activeUser.id,
+						activeUser.slug,
+						c.id,
+						input.selection,
+					);
+				},
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+				{ needsApproval: true },
 			),
 		};
 
@@ -511,6 +574,37 @@ export const getTools = async (
 				async (c, input) =>
 					OneDrive.listDir(await freshClient(c, OneDrive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+			),
+		};
+
+	if (oneDriveCredentials.length && interactive)
+		tools = {
+			...tools,
+			OneDriveIngest: toolify(
+				OneDrive.ingestDescription,
+				OneDrive.ingestInput,
+				oneDriveCredentials,
+				(credentials) => credentials,
+				async (c, input) => {
+					const blockReason = await checkTenantCanIngest(activeUser.slug);
+					if (blockReason)
+						throw httpError(
+							blockReason === ErrorCode.PAYMENT_REQUIRED
+								? HttpCode.PAYMENT_REQUIRED
+								: HttpCode.PRECONDITION_FAILED,
+							ErrorCode[blockReason as keyof typeof ErrorCode],
+							activeUser.language,
+						);
+					return OneDrive.ingest(
+						await freshClient(c, OneDrive.fromTokens),
+						activeUser.id,
+						activeUser.slug,
+						c.id,
+						input.selection,
+					);
+				},
+				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
+				{ needsApproval: true },
 			),
 		};
 
