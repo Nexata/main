@@ -28,6 +28,7 @@ import {
 	and,
 	eq,
 	gte,
+	isNotNull,
 	isNull,
 	lte,
 	ne,
@@ -589,7 +590,7 @@ export async function getTenantsDueForBilling(): Promise<
 					language: user.language,
 					displayName: user.displayName,
 				}),
-				{ filterWhere: user.id },
+				{ filterWhere: isNotNull(user.id) },
 			),
 		})
 		.from(tenant)
