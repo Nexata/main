@@ -223,7 +223,7 @@ export async function hasUnpaidBill(slug: string): Promise<boolean> {
 	const cached = await cache.get<boolean>(UNPAID_KEY(slug));
 	if (cached !== null) return cached;
 
-	const graceCutoff = dayjs().subtract(3, 'day').format('YYYY-MM-DD');
+	const graceCutoff = dayjs().subtract(3, 'day').startOf('day').toDate();
 
 	const unpaidBill = (
 		await db
@@ -576,7 +576,7 @@ export async function getTenantsDueForBilling(): Promise<
 	TenantDueForBilling[]
 > {
 	const now = dayjs().endOf('day').toDate();
-	const graceCutoff = dayjs().subtract(3, 'day').format('YYYY-MM-DD');
+	const graceCutoff = dayjs().subtract(3, 'day').startOf('day').toDate();
 
 	return db
 		.select({
