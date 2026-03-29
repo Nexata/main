@@ -179,6 +179,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 32768,
+				providerOptions: {
+					deepinfra: { parallel_tool_calls: false },
+					groq: { parallelToolCalls: false },
+				},
 				system: BUILD_SYSTEM_PROMPT({
 					...activeUser,
 					languagePreference,
@@ -335,7 +339,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						typeof part === 'object' &&
 						part !== null &&
 						'type' in part &&
-						part.type === 'tool-call',
+						part.type === 'tool-call' &&
+						(body.toolCallId
+							? 'toolCallId' in part && part.toolCallId === body.toolCallId
+							: true),
 				);
 
 				if (!approvalPart)
@@ -553,6 +560,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				const stream = streamText({
 					model: MODEL,
 					maxOutputTokens: 32768,
+					providerOptions: {
+						deepinfra: { parallel_tool_calls: false },
+						groq: { parallelToolCalls: false },
+					},
 					system: BUILD_SYSTEM_PROMPT({
 						...activeUser,
 						languagePreference,
@@ -633,7 +644,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					'type' in part &&
 					part.type === 'tool-call' &&
 					'toolName' in part &&
-					part.toolName === 'NexataAskQuestions',
+					part.toolName === 'NexataAskQuestions' &&
+					(body.toolCallId
+						? 'toolCallId' in part && part.toolCallId === body.toolCallId
+						: true),
 			);
 
 			if (!toolCallPart)
@@ -688,6 +702,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const stream = streamText({
 				model: MODEL,
 				maxOutputTokens: 32768,
+				providerOptions: {
+					deepinfra: { parallel_tool_calls: false },
+					groq: { parallelToolCalls: false },
+				},
 				system: BUILD_SYSTEM_PROMPT({
 					...activeUser,
 					languagePreference,

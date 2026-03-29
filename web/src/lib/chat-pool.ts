@@ -47,14 +47,24 @@ function shouldSendAutomatically({
 	if (last?.role !== 'assistant') return false;
 	const parts = last.parts ?? [];
 	if (parts.length === 0) return false;
-	const lastPart = parts.at(-1) as any;
-	const isToolPart =
-		typeof lastPart?.type === 'string' &&
-		(lastPart.type.startsWith('tool-') || lastPart.type === 'dynamic-tool');
-	return (
-		isToolPart &&
-		(lastPart?.state === 'output-available' ||
-			lastPart?.state === 'approval-responded')
+
+	// Collect all tool-related parts (tool-invocation, tool-approval, dynamic-tool)
+	const toolParts = parts.filter((part: any) => {
+		const type = part?.type;
+		return (
+			typeof type === 'string' &&
+			(type.startsWith('tool-') || type === 'dynamic-tool')
+		);
+	}) as any[];
+
+	// Must have at least one tool part
+	if (toolParts.length === 0) return false;
+
+	// ALL tool parts must be in a resolved state.
+	// If ANY tool part is still pending approval or awaiting input, do NOT auto-send.
+	return toolParts.every(
+		(part) =>
+			part.state === 'output-available' || part.state === 'approval-responded',
 	);
 }
 
