@@ -68,8 +68,33 @@
 			"approved": "Ingesta de adjuntos aprobada",
 			"denied": "Ingesta de adjuntos denegada"
 		},
+		"drive_ingest_approval": {
+			"title": "Confirmar ingesta de Drive",
+			"description": "El asistente quiere ingestar archivos de Google Drive",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de Drive aprobada",
+			"denied": "Ingesta de Drive denegada"
+		},
+		"dropbox_ingest_approval": {
+			"title": "Confirmar ingesta de Dropbox",
+			"description": "El asistente quiere ingestar archivos de Dropbox",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de Dropbox aprobada",
+			"denied": "Ingesta de Dropbox denegada"
+		},
+		"onedrive_ingest_approval": {
+			"title": "Confirmar ingesta de OneDrive",
+			"description": "El asistente quiere ingestar archivos de OneDrive",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de OneDrive aprobada",
+			"denied": "Ingesta de OneDrive denegada"
+		},
 		"ingest_approval": {
-			"attachment_count": "{count} adjunto(s)"
+			"attachment_count": "{count} adjunto(s)",
+			"item_count": "{count} elemento(s) seleccionado(s)"
 		},
 		"ask_questions": {
 			"status": {
@@ -1034,7 +1059,10 @@
 			"search_error": "Error al buscar en Drive",
 			"list": "Listando carpeta de Drive...",
 			"list_success": "Carpeta de Drive listada",
-			"list_error": "Error al listar Drive"
+			"list_error": "Error al listar Drive",
+			"ingest": "Ingestando desde Google Drive...",
+			"ingest_success": "Archivos de Drive ingestados",
+			"ingest_error": "Error al ingestar archivos de Drive"
 		},
 		"outlook": {
 			"search": "Buscando en Outlook...",
@@ -1064,7 +1092,10 @@
 			"search_error": "Error al buscar en OneDrive",
 			"list": "Listando carpeta de OneDrive...",
 			"list_success": "Carpeta de OneDrive listada",
-			"list_error": "Error al listar OneDrive"
+			"list_error": "Error al listar OneDrive",
+			"ingest": "Ingestando desde OneDrive...",
+			"ingest_success": "Archivos de OneDrive ingestados",
+			"ingest_error": "Error al ingestar archivos de OneDrive"
 		},
 		"dropbox": {
 			"search": "Buscando en Dropbox...",
@@ -1072,7 +1103,10 @@
 			"search_error": "Error al buscar en Dropbox",
 			"list": "Listando carpeta de Dropbox...",
 			"list_success": "Carpeta de Dropbox listada",
-			"list_error": "Error al listar Dropbox"
+			"list_error": "Error al listar Dropbox",
+			"ingest": "Ingestando desde Dropbox...",
+			"ingest_success": "Archivos de Dropbox ingestados",
+			"ingest_error": "Error al ingestar archivos de Dropbox"
 		},
 		"calendar": {
 			"list": "Listando calendarios de Google...",

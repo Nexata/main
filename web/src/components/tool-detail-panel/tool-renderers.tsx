@@ -548,6 +548,32 @@ function GmailIngestAttachmentsRenderer({ output }: { output: any }) {
   );
 }
 
+function ProviderIngestRenderer({ output }: { output: any }) {
+  if (!output) return <EmptyOutput />;
+  return (
+    <div className="flex flex-col gap-2">
+      {output.credentialEmail && <Field label={td_email()}>{output.credentialEmail}</Field>}
+      <div className="flex items-center gap-2">
+        {output.ok > 0 && (
+          <Badge className="bg-green-500/10 text-green-600">
+            {output.ok} OK
+          </Badge>
+        )}
+        {output.unmodified > 0 && (
+          <Badge className="bg-yellow-500/10 text-yellow-600">
+            {output.unmodified} Unmodified
+          </Badge>
+        )}
+        {output.failed > 0 && (
+          <Badge className="bg-red-500/10 text-red-600">
+            {output.failed} Failed
+          </Badge>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /* -------------------------------------------------------------------------- */
 /*                           Web Search renderer                               */
 /* -------------------------------------------------------------------------- */
@@ -669,6 +695,10 @@ const TOOL_RENDERER_MAP: Record<string, React.FC<{ output: any }>> = {
   // Gmail / Outlook ingest
   GmailIngestAttachments: GmailIngestAttachmentsRenderer,
   OutlookIngestAttachments: GmailIngestAttachmentsRenderer,
+  // Drive / Dropbox / OneDrive ingest
+  DriveIngest: ProviderIngestRenderer,
+  DropboxIngest: ProviderIngestRenderer,
+  OneDriveIngest: ProviderIngestRenderer,
   // Nexata
   NexataFileSearch: NexataFileSearchRenderer,
   NexataFileRead: NexataFileReadRenderer,

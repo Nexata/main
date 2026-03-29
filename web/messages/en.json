@@ -68,8 +68,33 @@
 			"approved": "Attachment ingestion approved",
 			"denied": "Attachment ingestion denied"
 		},
+		"drive_ingest_approval": {
+			"title": "Confirm Drive ingestion",
+			"description": "The assistant wants to ingest files from Google Drive",
+			"approve": "Approve",
+			"deny": "Deny",
+			"approved": "Drive ingestion approved",
+			"denied": "Drive ingestion denied"
+		},
+		"dropbox_ingest_approval": {
+			"title": "Confirm Dropbox ingestion",
+			"description": "The assistant wants to ingest files from Dropbox",
+			"approve": "Approve",
+			"deny": "Deny",
+			"approved": "Dropbox ingestion approved",
+			"denied": "Dropbox ingestion denied"
+		},
+		"onedrive_ingest_approval": {
+			"title": "Confirm OneDrive ingestion",
+			"description": "The assistant wants to ingest files from OneDrive",
+			"approve": "Approve",
+			"deny": "Deny",
+			"approved": "OneDrive ingestion approved",
+			"denied": "OneDrive ingestion denied"
+		},
 		"ingest_approval": {
-			"attachment_count": "{count} attachment(s)"
+			"attachment_count": "{count} attachment(s)",
+			"item_count": "{count} item(s) selected"
 		},
 		"ask_questions": {
 			"status": {
@@ -1034,7 +1059,10 @@
 			"search_error": "Error searching Drive",
 			"list": "Listing Drive folder...",
 			"list_success": "Drive folder listed",
-			"list_error": "Error listing Drive"
+			"list_error": "Error listing Drive",
+			"ingest": "Ingesting from Google Drive...",
+			"ingest_success": "Drive files ingested",
+			"ingest_error": "Error ingesting Drive files"
 		},
 		"outlook": {
 			"search": "Searching Outlook...",
@@ -1064,7 +1092,10 @@
 			"search_error": "Error searching OneDrive",
 			"list": "Listing OneDrive folder...",
 			"list_success": "OneDrive folder listed",
-			"list_error": "Error listing OneDrive"
+			"list_error": "Error listing OneDrive",
+			"ingest": "Ingesting from OneDrive...",
+			"ingest_success": "OneDrive files ingested",
+			"ingest_error": "Error ingesting OneDrive files"
 		},
 		"dropbox": {
 			"search": "Searching Dropbox...",
@@ -1072,7 +1103,10 @@
 			"search_error": "Error searching Dropbox",
 			"list": "Listing Dropbox folder...",
 			"list_success": "Dropbox folder listed",
-			"list_error": "Error listing Dropbox"
+			"list_error": "Error listing Dropbox",
+			"ingest": "Ingesting from Dropbox...",
+			"ingest_success": "Dropbox files ingested",
+			"ingest_error": "Error ingesting Dropbox files"
 		},
 		"calendar": {
 			"list": "Listing Google calendars...",

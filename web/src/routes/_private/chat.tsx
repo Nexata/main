@@ -50,6 +50,9 @@ const APPROVAL_TOOLS = new Set([
 	'NexataReingest',
 	'GmailIngestAttachments',
 	'OutlookIngestAttachments',
+	'DriveIngest',
+	'DropboxIngest',
+	'OneDriveIngest',
 ]);
 
 function normalizeParts(

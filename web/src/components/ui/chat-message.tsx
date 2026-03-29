@@ -19,6 +19,7 @@ import {
   GitBranch,
   RotateCcw,
   Paperclip,
+  FolderOpen,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview, type RemoteFile } from "@/components/ui/file-preview"
@@ -99,6 +100,15 @@ import {
   'tools.dropbox.search_error' as tools_dropbox_search_error,
   'tools.dropbox.list_success' as tools_dropbox_list_success,
   'tools.dropbox.list_error' as tools_dropbox_list_error,
+  'tools.drive.ingest' as tools_drive_ingest,
+  'tools.drive.ingest_success' as tools_drive_ingest_success,
+  'tools.drive.ingest_error' as tools_drive_ingest_error,
+  'tools.one_drive.ingest' as tools_one_drive_ingest,
+  'tools.one_drive.ingest_success' as tools_one_drive_ingest_success,
+  'tools.one_drive.ingest_error' as tools_one_drive_ingest_error,
+  'tools.dropbox.ingest' as tools_dropbox_ingest,
+  'tools.dropbox.ingest_success' as tools_dropbox_ingest_success,
+  'tools.dropbox.ingest_error' as tools_dropbox_ingest_error,
   'tools.calendar.list_success' as tools_calendar_list_success,
   'tools.calendar.list_error' as tools_calendar_list_error,
   'tools.calendar.events_success' as tools_calendar_events_success,
@@ -156,6 +166,25 @@ import {
   'components.outlook_ingest_approval.deny' as components_outlook_ingest_approval_deny,
   'components.outlook_ingest_approval.approved' as components_outlook_ingest_approval_approved,
   'components.outlook_ingest_approval.denied' as components_outlook_ingest_approval_denied,
+  'components.drive_ingest_approval.title' as components_drive_ingest_approval_title,
+  'components.drive_ingest_approval.description' as components_drive_ingest_approval_description,
+  'components.drive_ingest_approval.approve' as components_drive_ingest_approval_approve,
+  'components.drive_ingest_approval.deny' as components_drive_ingest_approval_deny,
+  'components.drive_ingest_approval.approved' as components_drive_ingest_approval_approved,
+  'components.drive_ingest_approval.denied' as components_drive_ingest_approval_denied,
+  'components.dropbox_ingest_approval.title' as components_dropbox_ingest_approval_title,
+  'components.dropbox_ingest_approval.description' as components_dropbox_ingest_approval_description,
+  'components.dropbox_ingest_approval.approve' as components_dropbox_ingest_approval_approve,
+  'components.dropbox_ingest_approval.deny' as components_dropbox_ingest_approval_deny,
+  'components.dropbox_ingest_approval.approved' as components_dropbox_ingest_approval_approved,
+  'components.dropbox_ingest_approval.denied' as components_dropbox_ingest_approval_denied,
+  'components.onedrive_ingest_approval.title' as components_onedrive_ingest_approval_title,
+  'components.onedrive_ingest_approval.description' as components_onedrive_ingest_approval_description,
+  'components.onedrive_ingest_approval.approve' as components_onedrive_ingest_approval_approve,
+  'components.onedrive_ingest_approval.deny' as components_onedrive_ingest_approval_deny,
+  'components.onedrive_ingest_approval.approved' as components_onedrive_ingest_approval_approved,
+  'components.onedrive_ingest_approval.denied' as components_onedrive_ingest_approval_denied,
+  'components.ingest_approval.item_count' as components_ingest_approval_item_count,
   'components.ingest_approval.attachment_count' as components_ingest_approval_attachment_count,
   'chat.edit.button' as chat_edit_button,
   'chat.edit.save' as chat_edit_save,
@@ -606,6 +635,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                   return
                 }
 
+                if (
+                  (rawName === "DriveIngest" || rawName === "DropboxIngest" || rawName === "OneDriveIngest") &&
+                  ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
+                ) {
+                  const cfg = PROVIDER_INGEST_I18N[rawName as keyof typeof PROVIDER_INGEST_I18N]
+                  blocks.push(
+                    <ProviderIngestApprovalRenderer
+                      key={`${rawName}-approval-${index}`}
+                      part={part}
+                      isSyncing={isSyncing}
+                      icon={TOOL_ICON_MAP[rawName]!}
+                      iconAlt={cfg.alt}
+                      i18n={cfg}
+                      onRespond={(approvalId: string, approved: boolean) => {
+                        addToolApprovalResponse?.({ id: approvalId, approved })
+                      }}
+                    />
+                  )
+                  return
+                }
+
                 blocks.push(
                   <ToolRenderer
                     key={`tool-${index}`}
@@ -799,6 +849,9 @@ const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => str
   NexataListFilesOnMessage: { pending: tools_nexata_list_files_on_message,    success: tools_nexata_list_files_on_message_success,    error: tools_nexata_list_files_on_message_error },
   NexataReingest:           { pending: tools_nexata_reingest,                 success: tools_nexata_reingest_success,                 error: tools_nexata_reingest_error },
   NexataAskQuestions:       { pending: tools_nexata_ask_questions,            success: tools_nexata_ask_questions_success,            error: tools_nexata_ask_questions_error },
+  DriveIngest:              { pending: tools_drive_ingest,                    success: tools_drive_ingest_success,                    error: tools_drive_ingest_error },
+  DropboxIngest:            { pending: tools_dropbox_ingest,                  success: tools_dropbox_ingest_success,                  error: tools_dropbox_ingest_error },
+  OneDriveIngest:           { pending: tools_one_drive_ingest,                success: tools_one_drive_ingest_success,                error: tools_one_drive_ingest_error },
 }
 
 const NEXATA_TOOLS = new Set([
@@ -831,6 +884,9 @@ const TOOL_ICON_MAP: Record<string, string> = {
   OneDriveListDir:          '/datasource_icons/onedrive.png',
   DropboxSearch:            '/datasource_icons/dropbox.png',
   DropboxListDir:           '/datasource_icons/dropbox.png',
+  DriveIngest:              '/datasource_icons/gdrive.png',
+  DropboxIngest:            '/datasource_icons/dropbox.png',
+  OneDriveIngest:           '/datasource_icons/onedrive.png',
   CalendarList:             '/datasource_icons/gcalendar.png',
   CalendarEvents:           '/datasource_icons/gcalendar.png',
   CalendarRead:             '/datasource_icons/gcalendar.png',
@@ -1929,6 +1985,195 @@ function OutlookIngestApprovalRenderer({
             >
               <Check className="h-3.5 w-3.5" />
               {components_outlook_ingest_approval_approve()}
+            </Button>
+          </div>
+        )}
+      </div>
+    </motion.div>
+  )
+}
+
+// ── ProviderIngestApprovalRenderer (shared for Drive/Dropbox/OneDrive) ───────
+
+type ProviderIngestI18n = {
+  alt: string
+  title: () => string
+  description: () => string
+  approve: () => string
+  deny: () => string
+  approved: () => string
+  denied: () => string
+}
+
+const PROVIDER_INGEST_I18N = {
+  DriveIngest: {
+    alt: "Google Drive",
+    title: components_drive_ingest_approval_title,
+    description: components_drive_ingest_approval_description,
+    approve: components_drive_ingest_approval_approve,
+    deny: components_drive_ingest_approval_deny,
+    approved: components_drive_ingest_approval_approved,
+    denied: components_drive_ingest_approval_denied,
+  },
+  DropboxIngest: {
+    alt: "Dropbox",
+    title: components_dropbox_ingest_approval_title,
+    description: components_dropbox_ingest_approval_description,
+    approve: components_dropbox_ingest_approval_approve,
+    deny: components_dropbox_ingest_approval_deny,
+    approved: components_dropbox_ingest_approval_approved,
+    denied: components_dropbox_ingest_approval_denied,
+  },
+  OneDriveIngest: {
+    alt: "OneDrive",
+    title: components_onedrive_ingest_approval_title,
+    description: components_onedrive_ingest_approval_description,
+    approve: components_onedrive_ingest_approval_approve,
+    deny: components_onedrive_ingest_approval_deny,
+    approved: components_onedrive_ingest_approval_approved,
+    denied: components_onedrive_ingest_approval_denied,
+  },
+} as const satisfies Record<string, ProviderIngestI18n>
+
+function ProviderIngestApprovalRenderer({
+  part,
+  onRespond,
+  isSyncing = false,
+  icon,
+  iconAlt,
+  i18n,
+}: {
+  part: any
+  onRespond?: (approvalId: string, approved: boolean) => void
+  isSyncing?: boolean
+  icon: string
+  iconAlt: string
+  i18n: ProviderIngestI18n
+}) {
+  const input = part.input as { selection?: { id: string; isDir: boolean }[] } | undefined
+  const approvalId: string | undefined = part.approval?.id
+  const state: string | undefined = part.state
+
+  const isResponded =
+    state === "approval-responded" ||
+    state === "output-available" ||
+    state === "output-error" ||
+    state === "output-denied" ||
+    respondedApprovals.has(approvalId ?? "")
+
+  const wasApproved = isResponded
+    ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
+    : false
+
+  function handleApprove() {
+    if (!approvalId || isResponded) return
+    respondedApprovals.add(approvalId)
+    respondedApprovals.add(`approved:${approvalId}`)
+    onRespond?.(approvalId, true)
+  }
+
+  function handleDeny() {
+    if (!approvalId || isResponded) return
+    respondedApprovals.add(approvalId)
+    onRespond?.(approvalId, false)
+  }
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
+      className="w-full sm:max-w-[85%] rounded-xl border border-border/50 bg-card overflow-hidden chat-float"
+    >
+      {/* Header */}
+      <div className="relative px-4 sm:px-5 pt-4 pb-3 flex items-center gap-3 border-b border-border/40 bg-muted/30">
+        {/* top state bar */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-[2px]",
+          isResponded
+            ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
+            : "bg-amber-400/60"
+        )} />
+        <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-muted/50 border border-border/40 shrink-0">
+          <img
+            src={icon}
+            alt={iconAlt}
+            className="h-4.5 w-auto max-w-[30px] object-contain opacity-80"
+          />
+        </div>
+        <div className="flex flex-col min-w-0 flex-1">
+          <span className="text-sm font-semibold text-foreground leading-tight">
+            {i18n.title()}
+          </span>
+          <span className="text-xs text-muted-foreground leading-tight mt-0.5">
+            {i18n.description()}
+          </span>
+        </div>
+        {isResponded && (
+          <div className="flex items-center gap-1.5 shrink-0">
+            <div className={cn(
+              "flex items-center justify-center h-6 w-6 rounded-full border",
+              wasApproved
+                ? "bg-green-500/15 border-green-500/25"
+                : "bg-red-500/15 border-red-500/25"
+            )}>
+              {wasApproved
+                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+              }
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Item count */}
+      {input?.selection && input.selection.length > 0 && (
+        <div className="px-4 sm:px-5 py-3 flex items-center gap-2.5">
+          <div className={cn(
+            "flex items-center gap-2 rounded-lg border p-3 flex-1 transition-all duration-200",
+            isResponded
+              ? "border-border/30 bg-muted/20"
+              : "border-border/40 bg-background/40"
+          )}>
+            <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
+            <span className="text-sm text-foreground">
+              {components_ingest_approval_item_count({ count: input.selection.length })}
+            </span>
+          </div>
+        </div>
+      )}
+
+      {/* Footer */}
+      <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
+        {isResponded && (
+          <span className="text-xs text-muted-foreground flex items-center gap-1.5">
+            {wasApproved
+              ? i18n.approved()
+              : i18n.denied()
+            }
+          </span>
+        )}
+
+        {!isResponded && (
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleDeny}
+              disabled={isSyncing}
+              className="gap-1.5 cursor-pointer"
+            >
+              <X className="h-3.5 w-3.5" />
+              {i18n.deny()}
+            </Button>
+            <Button
+              size="sm"
+              onClick={handleApprove}
+              disabled={isSyncing}
+              className="gap-1.5 cursor-pointer"
+            >
+              <Check className="h-3.5 w-3.5" />
+              {i18n.approve()}
             </Button>
           </div>
         )}
