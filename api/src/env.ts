@@ -50,7 +50,7 @@ export const FALLBACK_BEHAVIOR: {
 
 export const MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
-	models: [deepinfra('zai-org/GLM-5')], // groq('openai/gpt-oss-120b')
+	models: [deepinfra('moonshotai/Kimi-K2.5')], // groq('openai/gpt-oss-120b')
 });
 
 export const LIGHT_MODEL = createFallback({
@@ -61,7 +61,7 @@ export const LIGHT_MODEL = createFallback({
 export const REASONING_MODEL = createFallback({
 	...FALLBACK_BEHAVIOR,
 	models: [
-		deepinfra('moonshotai/Kimi-K2.5'),
+		deepinfra('zai-org/GLM-5'),
 		groq('moonshotai/kimi-k2-instruct-0905'),
 	],
 });
