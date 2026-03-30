@@ -679,6 +679,7 @@
 				"price_per_message": "Precio por mensaje"
 			},
 			"sources": {
+				"periodic": "Periódica",
 				"plan_change": "Cambio de plan",
 				"refill": "Recarga"
 			},

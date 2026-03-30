@@ -131,6 +131,7 @@ import {
 	'admin.billing.last_refill.messages_recharged' as admin_billing_last_refill_messages_recharged,
 	'admin.billing.last_refill.price_per_message' as admin_billing_last_refill_price_per_message,
 	'admin.billing.last_refill.title' as admin_billing_last_refill_title,
+	'admin.billing.sources.periodic' as admin_billing_sources_periodic,
 	'admin.billing.sources.plan_change' as admin_billing_sources_plan_change,
 	'admin.billing.sources.refill' as admin_billing_sources_refill,
 	'admin.billing.title' as admin_billing_title,
@@ -648,6 +649,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 		});
 
 	const SOURCE_LABEL: Record<string, string> = {
+		periodic: admin_billing_sources_periodic(),
 		plan_change: admin_billing_sources_plan_change(),
 		refill: admin_billing_sources_refill(),
 	};
