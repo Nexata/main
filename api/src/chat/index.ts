@@ -236,6 +236,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 
 			const uiStream = createSyncedStream(
 				stream.toUIMessageStream({
+					sendReasoning: true,
 					generateMessageId: () => assistantMessageId,
 					messageMetadata: ({ part }) => {
 						if (part.type === 'start')
@@ -603,7 +604,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				});
 
 				const uiStream = createSyncedStream(
-					stream.toUIMessageStream(),
+					stream.toUIMessageStream({ sendReasoning: true }),
 					syncResolver,
 					doPersist,
 					{ threadId: body.threadId, source: 'chat:answer:approve' },
@@ -745,7 +746,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			// original ID → replaceMessage() is used instead of pushMessage() → no duplication.
 			// The assistantMessageId UUID is still used exclusively for DB persistence below.
 			const uiStream = createSyncedStream(
-				stream.toUIMessageStream(),
+				stream.toUIMessageStream({ sendReasoning: true }),
 				syncResolver,
 				doPersist,
 				{ threadId: body.threadId, source: 'chat:answer' },
