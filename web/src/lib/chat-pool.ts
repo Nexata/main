@@ -17,9 +17,14 @@ const keyRefs = new Map<string, { current: string }>();
 export const NEW_CHAT_KEY = '__new__';
 
 /**
- * Only auto-continue when the LAST part of the last assistant message is a
+ * Only auto-continue when the last assistant message contains a non-provider
  * tool call that has just been fully resolved (state === 'output-available')
  * or a tool approval that has been responded to (state === 'approval-responded').
+ *
+ * The AI SDK re-evaluates auto-submit after tool responses are added and again
+ * after the follow-up stream finishes, so we pair this predicate with a per-chat
+ * one-shot toolCallId guard below. That lets one continuation fire for a given
+ * resolved tool call while suppressing the duplicate terminal submit.
  *
  * Why this predicate instead of `lastAssistantMessageIsCompleteWithToolCalls`:
  * - Server-executed tools (Gmail, Drive, …) are already resolved inline by
@@ -66,16 +71,57 @@ function shouldSendAutomatically({
 	});
 }
 
+function getLatestAutoSubmittableToolCallId(
+	messages: UIMessage[],
+): string | null {
+	const last = messages.at(-1);
+	if (last?.role !== 'assistant') return null;
+
+	const parts = last.parts ?? [];
+	for (let index = parts.length - 1; index >= 0; index -= 1) {
+		const part = parts[index] as any;
+		const isToolPart =
+			typeof part?.type === 'string' &&
+			(part.type.startsWith('tool-') || part.type === 'dynamic-tool');
+		if (!isToolPart || part.providerExecuted) continue;
+		if (
+			part?.state !== 'output-available' &&
+			part?.state !== 'approval-responded'
+		) {
+			continue;
+		}
+
+		return typeof part.toolCallId === 'string' ? part.toolCallId : null;
+	}
+
+	return null;
+}
+
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 	const key = threadId ?? NEW_CHAT_KEY;
 	if (!chatPool.has(key)) {
 		const keyRef = { current: key };
+		const autoSubmitState = { lastToolCallId: null as string | null };
 		keyRefs.set(key, keyRef);
 		chatPool.set(
 			key,
 			new AIChat({
 				transport: createAuthenticatedChatTransport(),
-				sendAutomaticallyWhen: shouldSendAutomatically,
+				sendAutomaticallyWhen: ({ messages }) => {
+					if (!shouldSendAutomatically({ messages })) return false;
+
+					const toolCallId = getLatestAutoSubmittableToolCallId(messages);
+					if (!toolCallId) return false;
+					if (autoSubmitState.lastToolCallId === toolCallId) return false;
+
+					autoSubmitState.lastToolCallId = toolCallId;
+					return true;
+				},
+				onFinish: ({ isAbort, isDisconnect, isError }) => {
+					if (isAbort || isDisconnect || isError) {
+						autoSubmitState.lastToolCallId = null;
+					}
+				},
 				onData: (dataPart) => {
 					if (dataPart.type === 'data-synced') {
 						const data = dataPart.data as {
