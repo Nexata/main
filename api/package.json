@@ -8,9 +8,7 @@
 		"check": "biome check --fix --unsafe --verbose"
 	},
 	"dependencies": {
-		"@ai-sdk/deepinfra": "^2.0.41",
-		"@ai-sdk/groq": "^3.0.31",
-		"@ai-sdk/provider": "^3.0.8",
+		"@ai-sdk/togetherai": "^2.0.41",
 		"@elysiajs/cors": "^1.4.1",
 		"@elysiajs/jwt": "^1.4.1",
 		"@elysiajs/openapi": "^1.4.14",
@@ -33,7 +31,6 @@
 		"@types/turndown": "^5.0.6",
 		"@upstash/redis": "^1.37.0",
 		"ai": "^6.0.138",
-		"ai-fallback": "^2.0.0",
 		"arctic": "^3.7.0",
 		"dayjs": "^1.11.20",
 		"drizzle-orm": "^0.45.1",
