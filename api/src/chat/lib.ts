@@ -14,14 +14,7 @@ import { incrementMessageUsage } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { captureException } from '@sentry/bun';
-import {
-	createUIMessageStream,
-	generateText,
-	type ModelMessage,
-	type StreamTextTransform,
-	type TextStreamPart,
-	type ToolSet,
-} from 'ai';
+import { createUIMessageStream, generateText, type ModelMessage } from 'ai';
 import { and, asc, eq, exists, gte, inArray, lt, or } from 'drizzle-orm';
 
 const truncateTitle = (prompt: string, length = 50) =>
@@ -41,19 +34,6 @@ export async function generateThreadTitle(
 		.then((res) => truncateTitle(res.text.trim()))
 		.catch(() => truncateTitle(prompt));
 }
-
-export const redactReasoningTransform =
-	<T extends ToolSet>(): StreamTextTransform<T> =>
-	() =>
-		new TransformStream<TextStreamPart<T>, TextStreamPart<T>>({
-			transform(part, controller) {
-				if (part.type === 'reasoning-delta') {
-					controller.enqueue({ ...part, text: '' });
-				} else {
-					controller.enqueue(part);
-				}
-			},
-		});
 
 export const BUILD_SYSTEM_PROMPT = (requestInfo: object) =>
 	`

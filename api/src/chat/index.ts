@@ -8,7 +8,6 @@ import {
 	mapFinishReason,
 	type PartialMessage,
 	persistChat,
-	redactReasoningTransform,
 } from '@api/chat/lib';
 import { threadRouter } from '@api/chat/thread';
 import { getTools } from '@api/chat/tools';
@@ -191,7 +190,6 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					fileIds,
 					body.interactive ?? true,
 				),
-				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(
 					(m) =>
 						({
@@ -560,7 +558,6 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					abortSignal: request.signal,
 					stopWhen: stepCountIs(200),
 					tools: await getTools(activeUser, body.threadId, [], true),
-					experimental_transform: redactReasoningTransform(),
 					messages: threadMessages.map(
 						(m) =>
 							({
@@ -695,7 +692,6 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				abortSignal: request.signal,
 				stopWhen: stepCountIs(200),
 				tools: await getTools(activeUser, body.threadId, [], true),
-				experimental_transform: redactReasoningTransform(),
 				messages: threadMessages.map(
 					(m) =>
 						({
