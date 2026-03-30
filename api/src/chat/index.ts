@@ -260,7 +260,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 		{
 			detail: { summary: 'Chat with LLM' },
 			body: tObject({
-				prompt: t.String(),
+				prompt: t.String({ minLength: 1 }),
 				extraReason: Nullish(
 					t.Union([
 						t.Boolean({ default: false }),
