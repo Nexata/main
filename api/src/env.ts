@@ -34,7 +34,9 @@ export const db = drizzle({
 }) as NeonHttpDatabase<typeof schema>;
 
 export const MODEL = togetherai('moonshotai/Kimi-K2.5');
-export const LIGHT_MODEL = togetherai('openai/gpt-oss-20b');
+export const LIGHT_MODEL = togetherai(
+	'mistralai/Mistral-Small-24B-Instruct-2501',
+);
 export const REASONING_MODEL = togetherai('zai-org/GLM-5');
 export const VLM_MODEL = togetherai(
 	'meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8',
