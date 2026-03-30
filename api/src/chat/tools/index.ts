@@ -94,13 +94,22 @@ const toolify = <
 		toModelOutput: (op) => ({ type: 'text', value: encode(op.output) }),
 		description,
 		// @ts-expect-error
-		inputSchema: jsonSchema<Static<TInput>>(inputSchema),
+		inputSchema: jsonSchema<Static<TInput>>(inputSchema, {
+			validate: (value) => {
+				const errors = [...Value.Errors(inputSchema, value)];
+				if (errors.length)
+					return {
+						success: false,
+						error: new Error(
+							errors.map((e) => `${e.path}: ${e.message}`).join('; '),
+						),
+					};
+				return { success: true, value: Value.Cast(inputSchema, value) };
+			},
+		}),
 		// @ts-expect-error
 		execute: execute
 			? async (input: Static<TInput>) => {
-					const inputValidationErrors = [...Value.Errors(inputSchema, input)];
-					if (inputValidationErrors.length) return { inputValidationErrors };
-
 					try {
 						const ctxs = wrapper(context);
 

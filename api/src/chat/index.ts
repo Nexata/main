@@ -178,6 +178,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 32768,
+				providerOptions: {
+					togetherai: { parallel_tool_calls: false },
+				},
 				system: BUILD_SYSTEM_PROMPT({
 					...activeUser,
 					languagePreference,
@@ -552,6 +555,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				const stream = streamText({
 					model: MODEL,
 					maxOutputTokens: 32768,
+					providerOptions: {
+						togetherai: { parallel_tool_calls: false },
+					},
 					system: BUILD_SYSTEM_PROMPT({
 						...activeUser,
 						languagePreference,
@@ -686,6 +692,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const stream = streamText({
 				model: MODEL,
 				maxOutputTokens: 32768,
+				providerOptions: {
+					togetherai: { parallel_tool_calls: false },
+				},
 				system: BUILD_SYSTEM_PROMPT({
 					...activeUser,
 					languagePreference,
