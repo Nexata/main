@@ -566,31 +566,7 @@ export function createSyncedStream(
 		async execute({ writer }) {
 			writer.merge(aiUIStream);
 
-			// Race the sync resolver against a timeout. When the LLM provider
-			// stream errors mid-generation (e.g. connection drop after output has
-			// started), the AI SDK's eventProcessor.flush is skipped because the
-			// stream errored instead of closing normally. This means onFinish /
-			// onAbort / onError callbacks may never fire and syncResolver.promise
-			// would hang forever — preventing [DONE] from being sent and leaving
-			// the client in a stuck state. The timeout acts as a safety net.
-			const { messages: responseMessages, reason } = await Promise.race([
-				syncResolver.promise,
-				new Promise<never>((_, reject) =>
-					setTimeout(
-						() => reject(new Error('SyncResolver timeout')),
-						SYNC_TIMEOUT,
-					),
-				),
-			]).catch((error) => {
-				captureException(error, {
-					tags: { source: `${options.source}:syncResolver` },
-					extra: { threadId: options.threadId },
-				});
-				return {
-					messages: [] as ModelMessage[],
-					reason: FinishReason.ERROR,
-				};
-			});
+			const { messages: responseMessages, reason } = await syncResolver.promise;
 
 			try {
 				await Promise.race([
