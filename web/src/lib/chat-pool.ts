@@ -48,15 +48,19 @@ function shouldSendAutomatically({
 	const parts = last.parts ?? [];
 	if (parts.length === 0) return false;
 
-	// Scan ALL parts — not just the last — because the LLM may append a text
-	// part after the tool call (e.g. "Please fill in the form above"), pushing
-	// the tool part away from the tail position.
+	// Scan ALL parts (not just the last) because the LLM may append a text
+	// part after the tool call (e.g. "Please fill in the form above"),
+	// pushing the tool part away from the tail position.
+	//
+	// Exclude providerExecuted tools — those were resolved inline by the
+	// server during streaming and don't need a client-initiated round-trip.
 	return parts.some((p: any) => {
 		const isToolPart =
 			typeof p?.type === 'string' &&
 			(p.type.startsWith('tool-') || p.type === 'dynamic-tool');
 		return (
 			isToolPart &&
+			!p.providerExecuted &&
 			(p?.state === 'output-available' || p?.state === 'approval-responded')
 		);
 	});
