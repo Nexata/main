@@ -572,13 +572,13 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
                       key={`ask-${index}`}
                       part={part}
                       isSyncing={isSyncing}
-                      onSubmit={(toolCallId, answers) => {
-                        addToolOutput?.({
+                      onSubmit={addToolOutput ? (toolCallId, answers) => {
+                        addToolOutput({
                           toolCallId,
                           tool: rawName,
                           output: answers,
                         })
-                      }}
+                      } : undefined}
                     />
                   )
                   return
@@ -2377,7 +2377,7 @@ export function AskQuestionsRenderer({
           <Button
             size="sm"
             onClick={handleSubmit}
-            disabled={isSyncing}
+            disabled={isSyncing || !onSubmit}
             className="gap-1.5 cursor-pointer"
           >
             <Send className="h-3.5 w-3.5" />

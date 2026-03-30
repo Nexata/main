@@ -47,15 +47,19 @@ function shouldSendAutomatically({
 	if (last?.role !== 'assistant') return false;
 	const parts = last.parts ?? [];
 	if (parts.length === 0) return false;
-	const lastPart = parts.at(-1) as any;
-	const isToolPart =
-		typeof lastPart?.type === 'string' &&
-		(lastPart.type.startsWith('tool-') || lastPart.type === 'dynamic-tool');
-	return (
-		isToolPart &&
-		(lastPart?.state === 'output-available' ||
-			lastPart?.state === 'approval-responded')
-	);
+
+	// Scan ALL parts — not just the last — because the LLM may append a text
+	// part after the tool call (e.g. "Please fill in the form above"), pushing
+	// the tool part away from the tail position.
+	return parts.some((p: any) => {
+		const isToolPart =
+			typeof p?.type === 'string' &&
+			(p.type.startsWith('tool-') || p.type === 'dynamic-tool');
+		return (
+			isToolPart &&
+			(p?.state === 'output-available' || p?.state === 'approval-responded')
+		);
+	});
 }
 
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
