@@ -101,7 +101,7 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 	const key = threadId ?? NEW_CHAT_KEY;
 	if (!chatPool.has(key)) {
 		const keyRef = { current: key };
-		const autoSubmitState = { lastToolCallId: null as string | null };
+		const submittedToolCallIds = new Set<string>();
 		keyRefs.set(key, keyRef);
 		chatPool.set(
 			key,
@@ -112,14 +112,14 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 
 					const toolCallId = getLatestAutoSubmittableToolCallId(messages);
 					if (!toolCallId) return false;
-					if (autoSubmitState.lastToolCallId === toolCallId) return false;
+					if (submittedToolCallIds.has(toolCallId)) return false;
 
-					autoSubmitState.lastToolCallId = toolCallId;
+					submittedToolCallIds.add(toolCallId);
 					return true;
 				},
 				onFinish: ({ isAbort, isDisconnect, isError }) => {
 					if (isAbort || isDisconnect || isError) {
-						autoSubmitState.lastToolCallId = null;
+						submittedToolCallIds.clear();
 					}
 				},
 				onData: (dataPart) => {

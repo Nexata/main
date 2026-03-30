@@ -87,6 +87,15 @@ export function createAuthenticatedChatTransport(threadId?: string | null) {
 							},
 						});
 					}
+
+					// Auto-submit did not match any known pattern (QA or approval).
+					// Block the request to prevent a spurious /chat call with an
+					// empty prompt that would create a ghost message.
+					console.warn('[Chat Transport] Blocked unmatched auto-submit');
+					return new Response(
+						new ReadableStream({ start(c) { c.close(); } }),
+						{ status: 200, headers: { 'content-type': 'text/event-stream' } },
+					);
 				}
 
 				const prompt = isAutoSubmit

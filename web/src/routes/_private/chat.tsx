@@ -74,6 +74,10 @@ function normalizeParts(
 				const isError = mapped?.isError ?? false;
 				const pendingApproval =
 					APPROVAL_TOOLS.has(part.toolName) && output == null && !isError;
+				// Mark tool parts whose output came from the server-side
+				// toolOutputMap as providerExecuted so the auto-submit
+				// predicate never treats hydrated messages as candidates.
+				const wasServerExecuted = mapped != null;
 				return {
 					type: `tool-${part.toolName}`,
 					toolCallId: part.toolCallId,
@@ -86,6 +90,7 @@ function normalizeParts(
 								: 'input-available',
 					input: part.input ?? {},
 					output,
+					...(wasServerExecuted ? { providerExecuted: true } : {}),
 					...(pendingApproval ? { approval: { id: part.toolCallId } } : {}),
 				};
 			}
