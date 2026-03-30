@@ -199,6 +199,7 @@ export function NexataChat() {
 		removeStreamingThread,
 		addUnreadThread,
 		markThreadUnsynced,
+		markThreadSynced,
 	} = useChatUIStore();
 
 	const isNewChat =
@@ -453,15 +454,27 @@ export function NexataChat() {
 
 	useEffect(() => {
 		const threadKey = activeThreadId ?? NEW_CHAT_KEY;
-		if (chatStatus === 'streaming' || chatStatus === 'submitted') {
+		if (chatStatus === 'submitted') {
+			// Mark unsynced only at the START of a new request (status 'submitted').
+			// Doing it for 'streaming' as well caused a race: the effect for
+			// 'streaming' could fire AFTER the onData(data-synced) callback,
+			// undoing the sync when React batched renders.
 			addStreamingThread(threadKey);
 			markThreadUnsynced(threadKey);
+		}
+		if (chatStatus === 'streaming') {
+			addStreamingThread(threadKey);
 		}
 		if (chatStatus === 'error') {
 			removeStreamingThread(threadKey);
 			return;
 		}
 		if (chatStatus === 'ready') {
+			// Fallback: ensure the thread is synced when the stream completes.
+			// Normally data-synced in onData handles this, but edge cases
+			// (blocked auto-submits returning empty streams, React batching
+			// racing with onData) can leave the thread stuck as unsynced.
+			markThreadSynced(threadKey);
 			const timeout = setTimeout(() => {
 				removeStreamingThread(threadKey);
 			}, 300);
@@ -473,6 +486,7 @@ export function NexataChat() {
 		addStreamingThread,
 		removeStreamingThread,
 		markThreadUnsynced,
+		markThreadSynced,
 	]);
 
 	// ----------------------------

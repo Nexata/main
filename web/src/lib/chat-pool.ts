@@ -102,11 +102,12 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 	if (!chatPool.has(key)) {
 		const keyRef = { current: key };
 		const submittedToolCallIds = new Set<string>();
+		const answeredToolCallIds = new Set<string>();
 		keyRefs.set(key, keyRef);
 		chatPool.set(
 			key,
 			new AIChat({
-				transport: createAuthenticatedChatTransport(),
+				transport: createAuthenticatedChatTransport(null, answeredToolCallIds),
 				sendAutomaticallyWhen: ({ messages }) => {
 					if (!shouldSendAutomatically({ messages })) return false;
 
@@ -120,6 +121,7 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 				onFinish: ({ isAbort, isDisconnect, isError }) => {
 					if (isAbort || isDisconnect || isError) {
 						submittedToolCallIds.clear();
+						answeredToolCallIds.clear();
 					}
 				},
 				onData: (dataPart) => {
