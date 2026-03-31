@@ -123,7 +123,7 @@ export namespace Gmail {
 	}
 
 	export const [searchDescription, searchInput] = [
-		'Gmail tool to search for emails using Gmail query syntax.',
+		'Gmail tool to search for emails using Gmail query syntax. Prefer granular Gmail operators like from:, to:, subject:, after:, before:, has:attachment, label:, and OR instead of broad keyword-only searches. Combine query with structured fields, and use credentialEmail when the user wants only one Gmail account searched.',
 		t.Union([
 			tObject({
 				pageToken: t.String({
@@ -134,24 +134,26 @@ export namespace Gmail {
 			tObject({
 				credentialEmail: Nullish(t.String({ format: 'email' }), {
 					description:
-						'Limit the search to a specific connected Gmail account.',
+						'Limit the search to a specific connected Gmail account. Use this when the user says to search only one Gmail mailbox.',
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'Gmail search query (e.g., "from:someone@example.com is:unread"). Combines with other filters.',
+						'Gmail search query using native Gmail syntax (e.g., "from:billing@example.com after:2026/03/01 has:attachment" or "subject:(invoice OR receipt)"). Prefer precise operators over loose keywords. Combines with other filters.',
 				}),
 				q: Nullish(t.String(), {
 					description:
 						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				from: Nullish(t.String(), {
-					description: 'Filter by sender email or name',
+					description:
+						'Filter by sender email or name. Prefer this early for receipts, renewals, invoices, and ticket emails.',
 				}),
 				to: Nullish(t.String(), {
 					description: 'Filter by recipient email or name',
 				}),
 				subject: Nullish(t.String(), {
-					description: 'Filter by subject content',
+					description:
+						'Filter by subject content. Useful for narrowing noisy mailbox searches before broadening.',
 				}),
 				after: Nullish(t.String({ format: 'date' }), {
 					description: 'Messages after date (YYYY-MM-DD)',
@@ -170,7 +172,7 @@ export namespace Gmail {
 				}),
 				label: Nullish(t.String(), {
 					description:
-						'Filter by label name (e.g., "INBOX", "SENT", "IMPORTANT")',
+						'Filter by label name (e.g., "INBOX", "SENT", "IMPORTANT"). Use labels to scope searches before trying broader mailbox-wide queries.',
 				}),
 				maxResults: Nullish(t.Number({ minimum: 1, maximum: 500 }), {
 					default: 50,

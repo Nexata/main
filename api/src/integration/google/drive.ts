@@ -195,7 +195,7 @@ export namespace Drive {
 	}
 
 	export const [searchDescription, searchInput] = [
-		'Google Drive tool to search for files using Drive query syntax.',
+		'Google Drive tool to search for files using Drive query syntax. Prefer precise filters like file name, folder, type, extension, category, owner, shared status, and modified date before broad full-text search. Use credentialEmail when the user wants only one Drive account searched.',
 		t.Union([
 			tObject({
 				cursor: t.String({
@@ -206,10 +206,11 @@ export namespace Drive {
 			tObject({
 				credentialEmail: Nullish(t.String({ format: 'email' }), {
 					description:
-						'Limit the search to a specific connected Google Drive account.',
+						'Limit the search to a specific connected Google Drive account. Use this when the user says to search only one Drive.',
 				}),
 				query: Nullish(t.String(), {
-					description: 'Full-text search query for file content and metadata.',
+					description:
+						'Full-text search query for file content and metadata. Prefer pairing this with name, path, type, extension, category, or date filters instead of using broad text alone.',
 				}),
 				q: Nullish(t.String(), {
 					description:
@@ -220,7 +221,7 @@ export namespace Drive {
 				}),
 				path: Nullish(t.String(), {
 					description:
-						"Folder ID to search within. Uses 'root' for the root folder.",
+						"Folder ID to search within. Uses 'root' for the root folder. Prefer folder scoping when the user hints at where the file lives.",
 				}),
 				fileExtensions: Nullish(t.Array(t.String()), {
 					description:

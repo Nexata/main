@@ -258,7 +258,7 @@ export namespace OneDrive {
 	}
 
 	export const [searchDescription, searchInput] = [
-		'OneDrive tool to search for files across OneDrive and SharePoint using Microsoft Search API with KQL syntax.',
+		'OneDrive tool to search for files across OneDrive and SharePoint using Microsoft Search API with KQL syntax. Prefer narrow searches that combine file name, path, filetype, category, and modified date before broad text-only search. Use credentialEmail when the user wants only one OneDrive account searched.',
 		t.Union([
 			tObject({
 				cursor: t.String({
@@ -269,10 +269,11 @@ export namespace OneDrive {
 			tObject({
 				credentialEmail: Nullish(t.String({ format: 'email' }), {
 					description:
-						'Limit the search to a specific connected OneDrive account.',
+						'Limit the search to a specific connected OneDrive account. Use this when the user refers to only one OneDrive or SharePoint-connected account.',
 				}),
 				query: Nullish(t.String(), {
-					description: 'Full-text search query for file content and metadata.',
+					description:
+						'Full-text or KQL-style query for file content and metadata. Prefer combining this with name, path, filetype, or date filters instead of broad text alone.',
 				}),
 				q: Nullish(t.String(), {
 					description:
@@ -282,7 +283,8 @@ export namespace OneDrive {
 					description: 'Filter by file name.',
 				}),
 				path: Nullish(t.String(), {
-					description: 'Filter by folder path.',
+					description:
+						'Filter by folder path. Prefer path scoping when the user hints at where the file lives.',
 				}),
 				fileExtensions: Nullish(t.Array(t.String()), {
 					description:

@@ -90,7 +90,7 @@ export namespace Outlook {
 	].join(',');
 
 	export const [searchDescription, searchInput] = [
-		'Outlook tool to search for emails using Microsoft Graph. Supports KQL (Keyword Query Language) search syntax for filtering by sender, recipient, subject, date, attachments, read status, and importance.',
+		'Outlook tool to search for emails using Microsoft Graph and Outlook search syntax. Prefer narrow searches that combine sender, recipient, subject, received date range, attachment state, folder, importance, and OR clauses before broad keyword-only searches. Use credentialEmail when the user wants only one Outlook mailbox searched.',
 		t.Union([
 			tObject({
 				nextLink: t.String({
@@ -101,18 +101,19 @@ export namespace Outlook {
 			tObject({
 				credentialEmail: Nullish(t.String({ format: 'email' }), {
 					description:
-						'Limit the search to a specific connected Outlook account.',
+						'Limit the search to a specific connected Outlook account. Use this when the user refers to only one Outlook mailbox.',
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'KQL search query (e.g., "budget report", "from:someone@example.com"). Combines with other filters.',
+						'Outlook search query (e.g., "from:someone@example.com received>=2026-03-01 hasattachment:true" or "subject:(invoice OR renewal)"). Prefer structured Outlook filters over loose keywords. Combines with other filters.',
 				}),
 				q: Nullish(t.String(), {
 					description:
 						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				from: Nullish(t.String(), {
-					description: 'Filter by sender email or name',
+					description:
+						'Filter by sender email or name. Prefer this early for vendor, insurer, invoice, and ticket searches.',
 				}),
 				to: Nullish(t.String(), {
 					description: 'Filter by recipient email or name',
@@ -138,7 +139,7 @@ export namespace Outlook {
 				),
 				folder: Nullish(t.String(), {
 					description:
-						'Well-known folder name (e.g., "Inbox", "SentItems", "Drafts", "DeletedItems", "Archive", "JunkEmail")',
+						'Well-known folder name (e.g., "Inbox", "SentItems", "Drafts", "DeletedItems", "Archive", "JunkEmail"). Use this to narrow the mailbox before falling back to broader search.',
 				}),
 				maxResults: Nullish(t.Number({ minimum: 1, maximum: 1000 }), {
 					default: 50,
