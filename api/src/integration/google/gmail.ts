@@ -105,8 +105,9 @@ export namespace Gmail {
 		input: Exclude<Static<typeof searchInput>, { pageToken: string }>,
 	): string {
 		const parts: string[] = [];
+		const query = input.query ?? input.q;
 
-		if (input.query) parts.push(input.query);
+		if (query) parts.push(query);
 		if (input.from) parts.push(`from:${input.from}`);
 		if (input.to) parts.push(`to:${input.to}`);
 		if (input.subject) parts.push(`subject:${input.subject}`);
@@ -124,16 +125,24 @@ export namespace Gmail {
 	export const [searchDescription, searchInput] = [
 		'Gmail tool to search for emails using Gmail query syntax.',
 		t.Union([
-			t.Object({
+			tObject({
 				pageToken: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Gmail account.',
+				}),
 				query: Nullish(t.String(), {
 					description:
 						'Gmail search query (e.g., "from:someone@example.com is:unread"). Combines with other filters.',
+				}),
+				q: Nullish(t.String(), {
+					description:
+						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				from: Nullish(t.String(), {
 					description: 'Filter by sender email or name',
@@ -211,8 +220,7 @@ export namespace Gmail {
 					date: getHeader(headers, 'Date'),
 					snippet: detail.data.snippet ?? '',
 					isUnread: detail.data.labelIds?.includes('UNREAD') ?? false,
-					hasAttachment:
-						detail.data.payload?.parts?.some((p) => !!p.filename) ?? false,
+					hasAttachment: extractAttachments(detail.data.payload).length > 0,
 					labels: detail.data.labelIds ?? [],
 				};
 			}),

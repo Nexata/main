@@ -58,8 +58,9 @@ export namespace Outlook {
 		input: Exclude<Static<typeof searchInput>, { nextLink: string }>,
 	): string {
 		const parts: string[] = [];
+		const query = input.query ?? input.q;
 
-		if (input.query) parts.push(input.query);
+		if (query) parts.push(query);
 		if (input.from) parts.push(`from:${input.from}`);
 		if (input.to) parts.push(`to:${input.to}`);
 		if (input.subject) parts.push(`subject:${input.subject}`);
@@ -91,16 +92,24 @@ export namespace Outlook {
 	export const [searchDescription, searchInput] = [
 		'Outlook tool to search for emails using Microsoft Graph. Supports KQL (Keyword Query Language) search syntax for filtering by sender, recipient, subject, date, attachments, read status, and importance.',
 		t.Union([
-			t.Object({
+			tObject({
 				nextLink: t.String({
 					description:
 						'Continuation URL for pagination. If provided, other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Outlook account.',
+				}),
 				query: Nullish(t.String(), {
 					description:
 						'KQL search query (e.g., "budget report", "from:someone@example.com"). Combines with other filters.',
+				}),
+				q: Nullish(t.String(), {
+					description:
+						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				from: Nullish(t.String(), {
 					description: 'Filter by sender email or name',

@@ -134,8 +134,9 @@ export namespace OneDrive {
 		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = [];
+		const query = input.query ?? input.q;
 
-		if (input.query) parts.push(input.query);
+		if (query) parts.push(query);
 		if (input.name) parts.push(`filename:${input.name}`);
 		if (input.path) parts.push(`path:"${input.path}"`);
 		if (input.modifiedAfter)
@@ -259,15 +260,23 @@ export namespace OneDrive {
 	export const [searchDescription, searchInput] = [
 		'OneDrive tool to search for files across OneDrive and SharePoint using Microsoft Search API with KQL syntax.',
 		t.Union([
-			t.Object({
+			tObject({
 				cursor: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected OneDrive account.',
+				}),
 				query: Nullish(t.String(), {
 					description: 'Full-text search query for file content and metadata.',
+				}),
+				q: Nullish(t.String(), {
+					description:
+						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name.',

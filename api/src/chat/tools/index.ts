@@ -82,7 +82,7 @@ const toolify = <
 	description: string,
 	inputSchema: TInput,
 	context: TMultiContext,
-	wrapper: (ctx: TMultiContext) => TContext[] | TContext,
+	wrapper: (ctx: TMultiContext, input: Static<TInput>) => TContext[] | TContext,
 	execute:
 		| ((ctx: TContext, input: Static<TInput>) => Promise<TOutput>)
 		| undefined,
@@ -111,7 +111,7 @@ const toolify = <
 		execute: execute
 			? async (input: Static<TInput>) => {
 					try {
-						const ctxs = wrapper(context);
+						const ctxs = wrapper(context, input);
 
 						if (!Array.isArray(ctxs))
 							return mold
@@ -294,6 +294,22 @@ export const getTools = async (
 		return create(at, rt);
 	};
 
+	const byCredentialEmail = <T extends { email: string }>(
+		list: T[],
+		credentialEmail?: string | null,
+	) =>
+		credentialEmail
+			? list.filter((credential) => credential.email === credentialEmail)
+			: list;
+
+	const getCredentialEmail = (input: unknown) =>
+		typeof input === 'object' &&
+		input !== null &&
+		'credentialEmail' in input &&
+		typeof input.credentialEmail === 'string'
+			? input.credentialEmail
+			: undefined;
+
 	const dropboxCredentials = credentials.filter(
 		(c) => c.scope === OauthScope.DROPBOX,
 	);
@@ -304,7 +320,8 @@ export const getTools = async (
 				Dropbox.searchDescription,
 				Dropbox.searchInput,
 				dropboxCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, getCredentialEmail(input)),
 				async (c, input) =>
 					Dropbox.search(await freshClient(c, Dropbox.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
@@ -361,7 +378,8 @@ export const getTools = async (
 				Drive.searchDescription,
 				Drive.searchInput,
 				driveCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, getCredentialEmail(input)),
 				async (c, input) =>
 					Drive.search(await freshClient(c, Drive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
@@ -418,7 +436,8 @@ export const getTools = async (
 				Gmail.searchDescription,
 				Gmail.searchInput,
 				gmailCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, getCredentialEmail(input)),
 				async (c, input) =>
 					Gmail.search(await freshClient(c, Gmail.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
@@ -427,7 +446,8 @@ export const getTools = async (
 				Gmail.readDescription,
 				Gmail.readInput,
 				gmailCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, input.credentialEmail),
 				async (c, input) => {
 					if (input.credentialEmail && c.email !== input.credentialEmail)
 						throw httpError(
@@ -447,7 +467,8 @@ export const getTools = async (
 				Gmail.ingestAttachmentsDescription,
 				Gmail.ingestAttachmentsInput,
 				gmailCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, input.credentialEmail),
 				async (c, input) => {
 					if (input.credentialEmail && c.email !== input.credentialEmail)
 						throw httpError(
@@ -475,7 +496,8 @@ export const getTools = async (
 				Outlook.searchDescription,
 				Outlook.searchInput,
 				outlookCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, getCredentialEmail(input)),
 				async (c, input) =>
 					Outlook.search(await freshClient(c, Outlook.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
@@ -570,7 +592,8 @@ export const getTools = async (
 				OneDrive.searchDescription,
 				OneDrive.searchInput,
 				oneDriveCredentials,
-				(credentials) => credentials,
+				(credentials, input) =>
+					byCredentialEmail(credentials, getCredentialEmail(input)),
 				async (c, input) =>
 					OneDrive.search(await freshClient(c, OneDrive.fromTokens), input),
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),

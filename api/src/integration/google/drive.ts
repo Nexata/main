@@ -140,8 +140,9 @@ export namespace Drive {
 		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = ['trashed = false'];
+		const query = input.query ?? input.q;
 
-		if (input.query) parts.push(`fullText contains '${input.query}'`);
+		if (query) parts.push(`fullText contains '${query}'`);
 		if (input.name) parts.push(`name contains '${input.name}'`);
 		if (input.path) parts.push(`'${input.path}' in parents`);
 		if (input.modifiedAfter)
@@ -196,15 +197,23 @@ export namespace Drive {
 	export const [searchDescription, searchInput] = [
 		'Google Drive tool to search for files using Drive query syntax.',
 		t.Union([
-			t.Object({
+			tObject({
 				cursor: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Google Drive account.',
+				}),
 				query: Nullish(t.String(), {
 					description: 'Full-text search query for file content and metadata.',
+				}),
+				q: Nullish(t.String(), {
+					description:
+						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name (contains match).',

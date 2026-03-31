@@ -87,13 +87,17 @@ export namespace Dropbox {
 	export const [searchDescription, searchInput] = [
 		'Dropbox tool to search for files using filesSearchV2.',
 		t.Union([
-			t.Object({
+			tObject({
 				cursor: t.String({
 					description:
 						'Continuation token for the search. If provided, the search will continue from the previous page. If received, all other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Dropbox account.',
+				}),
 				query: t.String({
 					minLength: 1,
 					description:
