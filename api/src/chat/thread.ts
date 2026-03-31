@@ -11,11 +11,13 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 	.get(
 		'/:id',
 		async ({ params: { id }, query, activeUser }) => {
+			const cursor = query.cursor ? new Date(query.cursor) : null;
+
 			const messages = await getThreadMessages(id, {
 				content: 'full',
 				slug: activeUser.slug,
 				limit: query.limit,
-				cursor: query.cursor,
+				cursor,
 			});
 			const [owner] = await db
 				.select({ userId: thread.userId })
@@ -31,7 +33,7 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 			detail: { summary: 'Read thread by ID (asc)' },
 			params: tObject({ id: t.String({ format: 'uuid' }) }),
 			query: tObject({
-				cursor: Nullish(t.Date(), {
+				cursor: Nullish(t.String({ format: 'date-time' }), {
 					description:
 						'Cursor for pagination, based on createdAt prop (creation date).',
 				}),
@@ -84,8 +86,10 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 	)
 	.get(
 		'/',
-		async ({ query, activeUser }) =>
-			db
+		async ({ query, activeUser }) => {
+			const cursor = query.cursor ? new Date(query.cursor) : null;
+
+			return db
 				.select({
 					id: thread.id,
 					title: thread.title,
@@ -95,16 +99,17 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 				.where(
 					and(
 						eq(thread.userId, activeUser.id),
-						query.cursor ? lt(thread.createdAt, query.cursor) : undefined,
+						cursor ? lt(thread.createdAt, cursor) : undefined,
 						query.search ? ilike(thread.title, `%${query.search}%`) : undefined,
 					),
 				)
 				.limit(query.limit)
-				.orderBy(desc(thread.createdAt)),
+				.orderBy(desc(thread.createdAt));
+		},
 		{
 			detail: { summary: 'List threads (desc)' },
 			query: tObject({
-				cursor: Nullish(t.Date(), {
+				cursor: Nullish(t.String({ format: 'date-time' }), {
 					description:
 						'Cursor for pagination, based on createdAt prop (creation date).',
 				}),

@@ -21,7 +21,7 @@ export async function getThreadById(
 		apiClient.chat.thread[threadId]!.get({
 			$headers: headers,
 			$query: {
-				...(params?.cursor ? { cursor: new Date(params.cursor) } : {}),
+				...(params?.cursor ? { cursor: params.cursor } : {}),
 				limit: params?.limit ?? 100,
 			},
 		}),
@@ -126,7 +126,7 @@ export async function listThreads(params?: {
 		apiClient.chat.thread.get({
 			$headers: headers,
 			$query: {
-				...(params?.cursor ? { cursor: new Date(params.cursor) } : {}),
+				...(params?.cursor ? { cursor: params.cursor } : {}),
 				limit: params?.limit ?? 30,
 				...(params?.search ? { search: params.search } : {}),
 			},
