@@ -55,11 +55,11 @@ const insertFile = t.Omit(_insertFile, ['createdAt']);
 
 export namespace NexataFile {
 	export const [searchDescription, searchInput] = [
-		"Nexata tool to search for users's ingested files. This includes directly uploaded files and files vectorized from other sources (and ingested to the platform by the user).",
+		"Nexata tool to search for users's ingested files. This includes directly uploaded files and files vectorized from other sources (and ingested to the platform by the user). The query field performs semantic search over file content, not exact substring matching, so results can be conceptually relevant even when they do not share the exact words. Prefer provider-native search tools first when the user wants exact emails or exact files from a known source.",
 		t.Object({
 			query: Nullish(t.String({ minLength: 1 }), {
 				description:
-					"An optional string to apply semantic search over the file's content.",
+					"An optional string to apply semantic search over the file's content. Best for concept-level matches across ingested files rather than exact text lookup.",
 			}),
 			provider: Nullish(t.Enum(FileHost), {
 				description:
@@ -216,7 +216,7 @@ export namespace NexataFile {
 										),
 								),
 							),
-					similarity && or(gt(similarity, 0.3)),
+					similarity && gt(similarity, 0.3),
 					input.fileIds ? inArray(file.id, input.fileIds) : undefined,
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
@@ -334,7 +334,6 @@ export namespace NexataFile {
 		].join('\n'),
 		t.Object({
 			fileId: t.String({ format: 'uuid' }),
-			messageId: t.String({ format: 'uuid' }),
 			query: Nullish(t.String({ minLength: 1 }), {
 				description: 'Optional query for semantic search across chunks.',
 			}),

@@ -140,8 +140,9 @@ export namespace Drive {
 		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = ['trashed = false'];
+		const query = input.query ?? input.q;
 
-		if (input.query) parts.push(`fullText contains '${input.query}'`);
+		if (query) parts.push(`fullText contains '${query}'`);
 		if (input.name) parts.push(`name contains '${input.name}'`);
 		if (input.path) parts.push(`'${input.path}' in parents`);
 		if (input.modifiedAfter)
@@ -194,24 +195,33 @@ export namespace Drive {
 	}
 
 	export const [searchDescription, searchInput] = [
-		'Google Drive tool to search for files using Drive query syntax.',
+		'Google Drive tool to search for files using Drive query syntax. Prefer precise filters like file name, folder, type, extension, category, owner, shared status, and modified date before broad full-text search. Use credentialEmail when the user wants only one Drive account searched.',
 		t.Union([
-			t.Object({
+			tObject({
 				cursor: t.String({
 					description:
 						'Continuation token for pagination. If provided, other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Google Drive account. Use this when the user says to search only one Drive.',
+				}),
 				query: Nullish(t.String(), {
-					description: 'Full-text search query for file content and metadata.',
+					description:
+						'Full-text search query for file content and metadata. Prefer pairing this with name, path, type, extension, category, or date filters instead of using broad text alone.',
+				}),
+				q: Nullish(t.String(), {
+					description:
+						'Alias for query. Supported for compatibility with common caller usage.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name (contains match).',
 				}),
 				path: Nullish(t.String(), {
 					description:
-						"Folder ID to search within. Uses 'root' for the root folder.",
+						"Folder ID to search within. Uses 'root' for the root folder. Prefer folder scoping when the user hints at where the file lives.",
 				}),
 				fileExtensions: Nullish(t.Array(t.String()), {
 					description:

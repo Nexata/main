@@ -85,23 +85,27 @@ export namespace Dropbox {
 	}
 
 	export const [searchDescription, searchInput] = [
-		'Dropbox tool to search for files using filesSearchV2.',
+		'Dropbox tool to search for files using filesSearchV2. Prefer narrowing with path, extension, and category filters before relying on broad text alone. Use credentialEmail when the user wants only one Dropbox account searched.',
 		t.Union([
-			t.Object({
+			tObject({
 				cursor: t.String({
 					description:
 						'Continuation token for the search. If provided, the search will continue from the previous page. If received, all other params are ignored.',
 				}),
 			}),
-			t.Object({
+			tObject({
+				credentialEmail: Nullish(t.String({ format: 'email' }), {
+					description:
+						'Limit the search to a specific connected Dropbox account. Use this when the user refers to only one Dropbox.',
+				}),
 				query: t.String({
 					minLength: 1,
 					description:
-						'The string to search for. May match across multiple fields based on the request arguments.',
+						'The string to search for. Use focused file names or short identifying terms, and combine with path, extension, or category filters when possible.',
 				}),
 				path: Nullish(t.String(), {
 					description:
-						"Scopes the search to a path or folder ID in the user's Dropbox. Searches the entire Dropbox if not specified.",
+						"Scopes the search to a path or folder ID in the user's Dropbox. Searches the entire Dropbox if not specified. Prefer this when the user hints at a folder or location.",
 				}),
 				fileExtensions: Nullish(t.Array(t.String()), {
 					description: 'Restricts search to only the extensions specified.',
