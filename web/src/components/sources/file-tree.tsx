@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useBillingUsage } from "@/lib/admin";
+import { useMe } from "@/lib/user";
 import { cn } from "@/lib/utils";
 import type { SourceConfig } from "@/lib/available-sources";
 import {
@@ -136,9 +137,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
-  const { data: usage } = useBillingUsage();
+  const { data: me } = useMe();
+  const { data: usage } = useBillingUsage(me?.isAdmin);
   const storageUsed = usage?.storage?.used ?? 0;
-  const storageLimit = usage?.storage?.limit ?? 1;
+  const storageLimit = usage?.storage?.limit ?? Infinity;
 
   /* FETCH */
   async function fetchDir(folderId?: string) {

@@ -13,6 +13,7 @@ export const API_BASE_URL = import.meta.env.VITE_API_URL ?? '';
 export const apiClient = edenTreaty<App>(API_BASE_URL);
 
 let refreshPromise: Promise<string> | null = null;
+let isLoggingOut = false;
 
 export async function refreshAccessToken() {
 	if (refreshPromise) return refreshPromise;
@@ -76,7 +77,9 @@ export async function withAuthRetry<T>(
 		};
 	};
 
-	const forceLogout = async () => {
+	const forceLogout = () => {
+		if (isLoggingOut) return;
+		isLoggingOut = true;
 		clearTokens();
 		localStorage.clear();
 		sessionStorage.clear();
@@ -92,7 +95,7 @@ export async function withAuthRetry<T>(
 	try {
 		await refreshAccessToken();
 	} catch (err) {
-		await forceLogout();
+		forceLogout();
 		throw err;
 	}
 
@@ -100,7 +103,7 @@ export async function withAuthRetry<T>(
 	result = await request(refheaders);
 
 	if (result.error?.status === 401) {
-		await forceLogout();
+		forceLogout();
 		throw result.error;
 	}
 
