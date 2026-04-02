@@ -8,6 +8,13 @@ import {
 } from '@/paraglide/messages.js';
 import '../index.css';
 
+function clearPersistedStores() {
+	const storeKeys = ['chat-ui-store', 'currency-store', 'sidebar-store'];
+	for (const key of storeKeys) {
+		localStorage.removeItem(key);
+	}
+}
+
 function ErrorFallback() {
 	return (
 		<div className="flex min-h-dvh items-center justify-center">
@@ -18,7 +25,10 @@ function ErrorFallback() {
 				</p>
 				<button
 					className="mt-4 rounded bg-primary px-4 py-2 text-primary-foreground"
-					onClick={() => window.location.reload()}
+					onClick={() => {
+						clearPersistedStores();
+						window.location.reload();
+					}}
 				>
 					{error_boundary_reload()}
 				</button>
