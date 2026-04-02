@@ -12,11 +12,12 @@ export async function getBillingUsage() {
 
 export type BillingUsage = Awaited<ReturnType<typeof getBillingUsage>>;
 
-export function useBillingUsage() {
+export function useBillingUsage(enabled = true) {
 	return useQuery<BillingUsage>({
 		queryKey: ['admin', 'billing', 'usage'],
 		queryFn: getBillingUsage,
 		staleTime: 60_000,
+		enabled,
 	});
 }
 

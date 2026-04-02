@@ -6,6 +6,7 @@ import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useBillingUsage } from "@/lib/admin";
+import { useMe } from "@/lib/user";
 import { cn } from "@/lib/utils";
 import type { SourceConfig } from "@/lib/available-sources";
 import {
@@ -136,9 +137,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
-  const { data: usage } = useBillingUsage();
+  const { data: me } = useMe();
+  const { data: usage } = useBillingUsage(me?.isAdmin);
   const storageUsed = usage?.storage?.used ?? 0;
-  const storageLimit = usage?.storage?.limit ?? 1;
+  const storageLimit = usage?.storage?.limit ?? Infinity;
 
   /* FETCH */
   async function fetchDir(folderId?: string) {
@@ -555,15 +557,19 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
             <span>{formatMB(pendingIngestSize)}</span>
 
-            <Separator orientation="vertical" className="hidden sm:block" />
+            {usage && (
+              <>
+                <Separator orientation="vertical" className="hidden sm:block" />
 
-            <span className={cn(remaining < 0 && "text-destructive font-medium")}>
-              {formatMB(Math.max(remaining, 0))} {components_file_tree_remaining()}
-            </span>
-            {remaining < 0 && (
-              <span className="text-destructive text-xs font-medium">
-                {components_file_tree_storage_exceeded()}
-              </span>
+                <span className={cn(remaining < 0 && "text-destructive font-medium")}>
+                  {formatMB(Math.max(remaining, 0))} {components_file_tree_remaining()}
+                </span>
+                {remaining < 0 && (
+                  <span className="text-destructive text-xs font-medium">
+                    {components_file_tree_storage_exceeded()}
+                  </span>
+                )}
+              </>
             )}
           </div>
 
@@ -585,12 +591,12 @@ export function StorageFileTree({ credentialId, source }: Props) {
               <AsyncConfirmButton
                 size="sm"
                 onClick={handleConfirm}
-                disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || remaining < 0}
+                disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || (!!usage && remaining < 0)}
               >
                 {common_confirm()}
               </AsyncConfirmButton>
 
-              {remaining < 0 && (
+              {usage && remaining < 0 && (
                 <span className="text-[10px] text-destructive mt-1">
                   {components_file_tree_reduce_selection()}
                 </span>
