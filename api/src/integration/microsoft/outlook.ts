@@ -90,7 +90,39 @@ export namespace Outlook {
 	].join(',');
 
 	export const [searchDescription, searchInput] = [
-		'Outlook tool to search for emails using Microsoft Graph and Outlook search syntax. Prefer narrow searches that combine sender, recipient, subject, received date range, attachment state, folder, importance, and OR clauses before broad keyword-only searches. Use credentialEmail when the user wants only one Outlook mailbox searched.',
+		`Search for emails in Outlook using Microsoft Graph.
+
+		Input must be ONE of these two shapes (no extra fields allowed):
+
+		Shape A – Pagination: { "nextLink": "<continuation URL>" }
+		Use only when a previous response returned a nextLink.
+
+		Shape B – Search: Use any combination of these optional fields:
+		- query: Outlook search syntax string (e.g. "from:someone@example.com received>=2026-03-01")
+		- from: sender email or name
+		- to: recipient email or name
+		- subject: subject content
+		- after: date string YYYY-MM-DD
+		- before: date string YYYY-MM-DD
+		- hasAttachment: boolean
+		- isUnread: boolean
+		- importance: "low" | "normal" | "high"
+		- folder: "Inbox" | "SentItems" | "Drafts" | "DeletedItems" | "Archive" | "JunkEmail"
+		- maxResults: number 1-1000 (default 50)
+		- credentialEmail: limit to a specific connected Outlook account
+
+		CORRECT examples:
+		{"from":"together ai"} — search by sender
+		{"subject":"together ai"} — search by subject
+		{"query":"together ai","maxResults":20} — keyword search with limit
+		{"from":"john@example.com","after":"2026-01-01","hasAttachment":true}
+
+		WRONG (will fail validation):
+		{"search":"..."} — "search" is not a valid field
+		{"top":20} — "top" is not a valid field, use "maxResults"
+		{"filter":"..."} — "filter" is not a valid field
+
+		Prefer narrow searches using from, to, subject, after, before over broad keyword-only queries. Do NOT invent field names.`,
 		t.Union([
 			tObject({
 				nextLink: t.String({
@@ -105,45 +137,45 @@ export namespace Outlook {
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'Outlook search query (e.g., "from:someone@example.com received>=2026-03-01 hasattachment:true" or "subject:(invoice OR renewal)"). Prefer structured Outlook filters over loose keywords. Combines with other filters.',
+						'Outlook search query (e.g., "from:someone@example.com received>=2026-03-01 hasattachment:true" or "subject:(invoice OR renewal)"). Prefer structured fields (from, subject, etc.) over putting everything here. Combines with other filters.',
 				}),
 				q: Nullish(t.String(), {
 					description:
-						'Alias for query. Supported for compatibility with common caller usage.',
+						'Alias for query. Supported for compatibility.',
 				}),
 				from: Nullish(t.String(), {
 					description:
-						'Filter by sender email or name. Prefer this early for vendor, insurer, invoice, and ticket searches.',
+						'Filter by sender email or name. Prefer this for vendor, insurer, invoice, and ticket searches.',
 				}),
 				to: Nullish(t.String(), {
-					description: 'Filter by recipient email or name',
+					description: 'Filter by recipient email or name.',
 				}),
 				subject: Nullish(t.String(), {
-					description: 'Filter by subject content',
+					description: 'Filter by subject content.',
 				}),
 				after: Nullish(t.String({ format: 'date' }), {
-					description: 'Messages received after date (YYYY-MM-DD)',
+					description: 'Messages received after date (YYYY-MM-DD).',
 				}),
 				before: Nullish(t.String({ format: 'date' }), {
-					description: 'Messages received before date (YYYY-MM-DD)',
+					description: 'Messages received before date (YYYY-MM-DD).',
 				}),
 				hasAttachment: Nullish(t.Boolean(), {
-					description: 'Filter for messages with attachments',
+					description: 'Filter for messages with attachments.',
 				}),
 				isUnread: Nullish(t.Boolean(), {
-					description: 'Filter by read/unread status',
+					description: 'Filter by read/unread status.',
 				}),
 				importance: Nullish(
 					t.Union([t.Literal('low'), t.Literal('normal'), t.Literal('high')]),
-					{ description: 'Filter by importance level' },
+					{ description: 'Filter by importance level.' },
 				),
 				folder: Nullish(t.String(), {
 					description:
-						'Well-known folder name (e.g., "Inbox", "SentItems", "Drafts", "DeletedItems", "Archive", "JunkEmail"). Use this to narrow the mailbox before falling back to broader search.',
+						'Well-known folder name (e.g., "Inbox", "SentItems", "Drafts", "DeletedItems", "Archive", "JunkEmail").',
 				}),
 				maxResults: Nullish(t.Number({ minimum: 1, maximum: 1000 }), {
 					default: 50,
-					description: 'Maximum number of results (max 1000)',
+					description: 'Maximum number of results to return (1-1000, default 50). Do NOT use "top", use this field instead.',
 				}),
 			}),
 		]),
