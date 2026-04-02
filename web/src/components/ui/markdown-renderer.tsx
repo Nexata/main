@@ -97,12 +97,33 @@ const CodeBlock = ({
       : childrenTakeAllStringContents(children)
 
   const preClass = cn(
-    "overflow-x-scroll rounded-md border bg-background/50 p-4 font-mono text-sm [scrollbar-width:none]",
-    className
+    "overflow-x-auto p-5 font-mono text-sm leading-relaxed",
+    "[scrollbar-width:thin]",
+    "[&::-webkit-scrollbar]:h-1.5",
+    "[&::-webkit-scrollbar-track]:bg-transparent",
+    "[&::-webkit-scrollbar-thumb]:rounded-full",
+    "[&::-webkit-scrollbar-thumb]:bg-border/50",
   )
 
   return (
-    <div className="group/code relative mb-4">
+    <div className="group/code my-4 overflow-hidden rounded-xl border border-border/60 shadow-xs">
+      {/* Header bar */}
+      <div className="flex h-10 items-center justify-between border-b border-border/40 bg-muted/50 px-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-full bg-red-400/50 dark:bg-red-500/40" />
+            <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/50 dark:bg-yellow-500/40" />
+            <span className="h-2.5 w-2.5 rounded-full bg-green-400/50 dark:bg-green-500/40" />
+          </div>
+          <div className="h-3.5 w-px bg-border/60" />
+          <span className="select-none font-mono text-[11px] font-medium tracking-wide text-muted-foreground/70">
+            {language}
+          </span>
+        </div>
+        <CopyButton content={code} copyMessage="Copied code to clipboard" />
+      </div>
+
+      {/* Code content */}
       <Suspense
         fallback={
           <pre className={preClass} {...restProps}>
@@ -114,10 +135,6 @@ const CodeBlock = ({
           {code}
         </HighlightedPre>
       </Suspense>
-
-      <div className="invisible absolute right-2 top-2 flex space-x-1 rounded-lg p-1 opacity-0 transition-all duration-200 group-hover/code:visible group-hover/code:opacity-100">
-        <CopyButton content={code} copyMessage="Copied code to clipboard" />
-      </div>
     </div>
   )
 }
