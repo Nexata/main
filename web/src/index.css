@@ -188,3 +188,11 @@ html {
     0 4px 12px oklch(0 0 0 / 30%),
     0 0 0 1px oklch(1 0 0 / 6%);
 }
+
+/* ── Shiki syntax highlighting ──────────────────────────────────────── */
+.shiki-token {
+  color: var(--shiki-light);
+}
+.dark .shiki-token {
+  color: var(--shiki-dark);
+}

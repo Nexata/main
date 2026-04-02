@@ -5,6 +5,7 @@ import remarkMath from "remark-math"
 import rehypeKatex from "rehype-katex"
 import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
+import { Badge } from "@/components/ui/badge"
 
 interface MarkdownRendererProps {
   children: string
@@ -50,8 +51,17 @@ const HighlightedPre = React.memo(
       <pre {...props}>
         <code>
           {tokens.map((line, lineIndex) => (
-            <>
-              <span key={lineIndex}>
+            <span
+              key={lineIndex}
+              className="group/line flex items-start -ml-4 pl-4 hover:bg-[oklch(0.965_0.007_252)] dark:hover:bg-[oklch(0.20_0.022_256)] transition-colors duration-100"
+            >
+              <span
+                className="select-none w-12 shrink-0 px-4 text-right font-mono leading-relaxed text-[oklch(0.72_0.010_252)] dark:text-[oklch(0.42_0.018_256)] group-hover/line:text-[oklch(0.45_0.010_252)] dark:group-hover/line:text-[oklch(0.55_0.018_256)] transition-colors duration-100 bg-[oklch(0.975_0.005_252)] dark:bg-[oklch(0.168_0.020_256)] border-r border-[oklch(0.920_0.010_252)] dark:border-[oklch(0.24_0.018_256)] mr-4"
+                aria-hidden
+              >
+                {lineIndex + 1}
+              </span>
+              <span className="flex-1 min-w-0 pl-4 pr-5">
                 {line.map((token, tokenIndex) => {
                   const style =
                     typeof token.htmlStyle === "string"
@@ -61,7 +71,7 @@ const HighlightedPre = React.memo(
                   return (
                     <span
                       key={tokenIndex}
-                      className="text-shiki-light bg-shiki-light-bg dark:text-shiki-dark dark:bg-shiki-dark-bg"
+                      className="shiki-token"
                       style={style}
                     >
                       {token.content}
@@ -69,8 +79,7 @@ const HighlightedPre = React.memo(
                   )
                 })}
               </span>
-              {lineIndex !== tokens.length - 1 && "\n"}
-            </>
+            </span>
           ))}
         </code>
       </pre>
@@ -96,8 +105,10 @@ const CodeBlock = ({
       ? children
       : childrenTakeAllStringContents(children)
 
+  const lineCount = code.split("\n").length
+
   const preClass = cn(
-    "overflow-x-auto p-5 font-mono text-sm leading-relaxed",
+    "overflow-x-auto py-3 pl-4 font-mono text-sm leading-relaxed bg-[oklch(0.99_0.003_252)] dark:bg-[oklch(0.148_0.018_256)]",
     "[scrollbar-width:thin]",
     "[&::-webkit-scrollbar]:h-1.5",
     "[&::-webkit-scrollbar-track]:bg-transparent",
@@ -106,21 +117,32 @@ const CodeBlock = ({
   )
 
   return (
-    <div className="group/code my-4 overflow-hidden rounded-xl border border-border/60 shadow-xs">
+    <div className="group/code my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       {/* Header bar */}
-      <div className="flex h-10 items-center justify-between border-b border-border/40 bg-muted/50 px-3">
-        <div className="flex items-center gap-2.5">
+      <div className="flex h-11 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
+        <div className="flex items-center gap-3">
+          {/* Traffic lights */}
           <div className="flex items-center gap-1.5">
-            <span className="h-2.5 w-2.5 rounded-full bg-red-400/50 dark:bg-red-500/40" />
-            <span className="h-2.5 w-2.5 rounded-full bg-yellow-400/50 dark:bg-yellow-500/40" />
-            <span className="h-2.5 w-2.5 rounded-full bg-green-400/50 dark:bg-green-500/40" />
+            <span className="h-3 w-3 rounded-full bg-red-400/60 dark:bg-red-500/50 ring-1 ring-red-500/25 dark:ring-red-400/20" />
+            <span className="h-3 w-3 rounded-full bg-amber-400/60 dark:bg-amber-500/50 ring-1 ring-amber-500/25 dark:ring-amber-400/20" />
+            <span className="h-3 w-3 rounded-full bg-emerald-400/60 dark:bg-emerald-500/50 ring-1 ring-emerald-500/25 dark:ring-emerald-400/20" />
           </div>
-          <div className="h-3.5 w-px bg-border/60" />
-          <span className="select-none font-mono text-[11px] font-medium tracking-wide text-muted-foreground/70">
+          <div className="h-4 w-px bg-border/50" />
+          <Badge
+            variant="secondary"
+            className="h-5 rounded-md px-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 bg-background/50 border border-border/50 select-none"
+          >
             {language}
-          </span>
+          </Badge>
         </div>
-        <CopyButton content={code} copyMessage="Copied code to clipboard" />
+
+        <div className="flex items-center gap-2">
+          <span className="hidden select-none font-mono text-[10px] text-muted-foreground/35 sm:block">
+            {lineCount} {lineCount === 1 ? "line" : "lines"}
+          </span>
+          <div className="h-3 w-px bg-border/40" />
+          <CopyButton content={code} copyMessage="Copied code to clipboard" />
+        </div>
       </div>
 
       {/* Code content */}
