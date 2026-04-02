@@ -2195,7 +2195,12 @@ export function AskQuestionsRenderer({
 }) {
   const input = part.input as AskQuestionsInput | undefined
   const isStreaming = part.state === "input-streaming"
+  const isError = part.state === "output-error"
   const isDone = part.state === "output-available" || submittedToolCalls.has(part.toolCallId ?? "")
+
+  // Failed tool calls (validation errors, etc.) should not render at all —
+  // avoids stuck skeleton loaders when the LLM sends malformed input.
+  if (isError) return null
 
   const questions = input?.questions ?? []
 

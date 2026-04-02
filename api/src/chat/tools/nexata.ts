@@ -275,7 +275,26 @@ export namespace Nexata {
 	});
 
 	export const [askQuestionsDescription, askQuestionsInput] = [
-		"Nexata tool to ask the user one or more structured questions when clarification or additional context would improve the quality of results. Use this tool proactively whenever the user's request is vague, ambiguous, or could benefit from narrowing down — for example: which data source to search, time range, specific people or keywords, file type, or intent clarification. Prefer asking a quick structured question over making assumptions that may lead to irrelevant results. When in doubt, use this tool.",
+		`Nexata tool to ask the user one or more structured questions when clarification or additional context would improve the quality of results. Use this tool proactively whenever the user's request is vague, ambiguous, or could benefit from narrowing down — for example: which data source to search, time range, specific people or keywords, file type, or intent clarification. Prefer asking a quick structured question over making assumptions that may lead to irrelevant results. When in doubt, use this tool.
+
+Input MUST be an object with a single key "questions" containing an array of question objects. Each question object MUST have "question" (string), "type" (one of: "multiple_choice", "multi_select", "boolean", "text", "number", "date"), and optionally "recommendation" (string).
+
+Type-specific requirements:
+- "multiple_choice" and "multi_select": MUST include "data" array with at least 2 objects, each having "value" (string) and optionally "recommended" (boolean).
+- "boolean": No "data" field needed.
+- "text": Optional "data" with "placeholder" string.
+- "number": Optional "data" with "min" and/or "max" numbers.
+- "date": No "data" field needed.
+
+CORRECT example:
+{"questions":[{"question":"Which source do you want to search?","type":"multiple_choice","data":[{"value":"Gmail"},{"value":"Google Drive"},{"value":"All sources","recommended":true}]}]}
+
+WRONG (will fail validation):
+- Top-level array: [{"question":"..."}] — must be {"questions":[...]}
+- Missing "type": {"questions":[{"question":"Where?"}]}
+- Invalid type value: {"questions":[{"question":"Where?","type":"select"}]}
+- "multiple_choice" without "data": {"questions":[{"question":"Where?","type":"multiple_choice"}]}
+- "data" with fewer than 2 items: {"questions":[{"question":"Where?","type":"multiple_choice","data":[{"value":"Gmail"}]}]}`,
 		tObject({
 			questions: t.Array(
 				t.Union([
