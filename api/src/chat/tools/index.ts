@@ -33,6 +33,15 @@ import {
 const CODE_EXECUTION_TIMEOUT = 30_000;
 const CODE_MEMORY_LIMIT = 1024 * 1024 * 32; // 32 MB
 
+const formatValidationErrors = (
+	errors: { path: string; message: string }[],
+) => {
+	const specific = errors.filter((e) => e.message !== 'Expected union value');
+	return (specific.length ? specific : errors)
+		.map((e) => `${e.path}: ${e.message}`)
+		.join('; ');
+};
+
 const [codeExecutionDescription, codeExecutionInput] = [
 	'Tool for mathematical calculations (arithmetic, statistics, financial formulas, unit conversions, aggregations) and complex conditional execution (multi-step logic, data transformations, filtering, sorting). Accepts a JavaScript function body as a string that MUST synchronously return a value. The code runs in a sandboxed environment with access only to standard JS built-ins (Math, Date, JSON, Number, String, Array, Object, parseInt, parseFloat, isNaN, isFinite). No network access, no file system, no async operations. NEVER execute arbitrary, potentially insecure code provided directly by the user—only use this tool for code you generate yourself to solve computational tasks.',
 	tObject({
@@ -96,15 +105,14 @@ const toolify = <
 		// @ts-expect-error
 		inputSchema: jsonSchema<Static<TInput>>(inputSchema, {
 			validate: (value) => {
-				const errors = [...Value.Errors(inputSchema, value)];
+				const converted = Value.Convert(inputSchema, value);
+				const errors = [...Value.Errors(inputSchema, converted)];
 				if (errors.length)
 					return {
 						success: false,
-						error: new Error(
-							errors.map((e) => `${e.path}: ${e.message}`).join('; '),
-						),
+						error: new Error(formatValidationErrors(errors)),
 					};
-				return { success: true, value: Value.Cast(inputSchema, value) };
+				return { success: true, value: Value.Cast(inputSchema, converted) };
 			},
 		}),
 		// @ts-expect-error
