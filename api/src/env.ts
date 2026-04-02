@@ -33,7 +33,7 @@ export const db = drizzle({
 	logger: !IS_PRODUCTION,
 }) as NeonHttpDatabase<typeof schema>;
 
-export const MODEL = togetherai('MiniMaxAI/MiniMax-M2.5'); // moonshotai/Kimi-K2.5
+export const MODEL = togetherai('openai/gpt-oss-120b'); // moonshotai/Kimi-K2.5
 export const LIGHT_MODEL = togetherai(
 	'mistralai/Mistral-Small-24B-Instruct-2501',
 );
