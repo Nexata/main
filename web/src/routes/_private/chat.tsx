@@ -245,10 +245,17 @@ export function NexataChat() {
 		? justCreatedThreadsRef.current.has(activeThreadId)
 		: false;
 
+	// Also skip the fetch while the thread is unsynced (data-synced not yet
+	// received). Re-enabling the query before the DB persist completes would
+	// return stale data and flash an inconsistent state.
+	const isThreadUnsynced = unsyncedThreadIds.has(
+		activeThreadId ?? NEW_CHAT_KEY,
+	);
+
 	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
 		activeThreadId ?? null,
 		{ limit: MESSAGES_PAGE_SIZE },
-		{ enabled: !isActiveThreadStreaming && !isJustCreated },
+		{ enabled: !isActiveThreadStreaming && !isJustCreated && !isThreadUnsynced },
 	);
 
 	const threadMessages = threadData?.messages;
@@ -470,15 +477,19 @@ export function NexataChat() {
 			return;
 		}
 		if (chatStatus === 'ready') {
-			// Fallback: ensure the thread is synced when the stream completes.
-			// Normally data-synced in onData handles this, but edge cases
-			// (blocked auto-submits returning empty streams, React batching
-			// racing with onData) can leave the thread stuck as unsynced.
-			markThreadSynced(threadKey);
-			const timeout = setTimeout(() => {
+			const streamTimeout = setTimeout(() => {
 				removeStreamingThread(threadKey);
 			}, 300);
-			return () => clearTimeout(timeout);
+			// Fallback: ensure the thread is eventually marked synced even if
+			// the data-synced SSE event is lost. The primary path is the
+			// onData(data-synced) callback in chat-pool; this is a safety net.
+			const syncFallbackTimeout = setTimeout(() => {
+				markThreadSynced(threadKey);
+			}, 10_000);
+			return () => {
+				clearTimeout(streamTimeout);
+				clearTimeout(syncFallbackTimeout);
+			};
 		}
 	}, [
 		chatStatus,
