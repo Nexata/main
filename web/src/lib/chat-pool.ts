@@ -122,6 +122,9 @@ export function getChatInstance(threadId: string | null): AIChat<UIMessage> {
 					if (isAbort || isDisconnect || isError) {
 						submittedToolCallIds.clear();
 						answeredToolCallIds.clear();
+						// Clear unsynced state — the stream ended abnormally so the
+						// data-synced SSE event will never arrive.
+						useChatUIStore.getState().markThreadSynced(keyRef.current);
 					}
 				},
 				onData: (dataPart) => {

@@ -437,6 +437,7 @@ export function NexataChat() {
 		}
 		if (chatStatus === 'error') {
 			removeStreamingThread(threadKey);
+			markThreadSynced(threadKey);
 			return;
 		}
 		if (chatStatus === 'ready') {
@@ -445,10 +446,12 @@ export function NexataChat() {
 			}, 300);
 			// Fallback: ensure the thread is eventually marked synced even if
 			// the data-synced SSE event is lost. The primary path is the
-			// onData(data-synced) callback in chat-pool; this is a safety net.
+			// onData(data-synced) callback in chat-pool; the secondary path
+			// is the side-stream handler in chat-transport. This is a last
+			// resort safety net.
 			const syncFallbackTimeout = setTimeout(() => {
 				markThreadSynced(threadKey);
-			}, 10_000);
+			}, 5_000);
 			return () => {
 				clearTimeout(streamTimeout);
 				clearTimeout(syncFallbackTimeout);

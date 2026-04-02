@@ -4,7 +4,7 @@ import { getAccessToken } from '@/lib/auth';
 import { getFingerprint } from '@/lib/fingerprint';
 import { 'sidebar.new_chat' as sidebar_new_chat } from '@/paraglide/messages.js';
 import { useChatUIStore } from './chat.store';
-import { promoteChatInstance } from './chat-pool';
+import { promoteChatInstance, NEW_CHAT_KEY } from './chat-pool';
 
 const baseFetch = globalThis.fetch;
 
@@ -252,6 +252,15 @@ export function createAuthenticatedChatTransport(
 									if (userMessageId) {
 										store.setLastUserMessageId(userMessageId);
 									}
+								}
+
+								// Secondary sync detection — catches data-synced even if
+								// the SDK's onData callback doesn't forward it.
+								if (event.type === 'data-synced' && event.data?.success) {
+									const s = useChatUIStore.getState();
+									const tid = s.activeThreadId;
+									if (tid) s.markThreadSynced(tid);
+									s.markThreadSynced(NEW_CHAT_KEY);
 								}
 							} catch {
 								// ignore malformed chunks
