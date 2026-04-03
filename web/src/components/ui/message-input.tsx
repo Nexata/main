@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
 import { ArrowUp, Info, Loader2, Paperclip, Square, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
+import { CHAT_INPUT_MAX_CHARS, CHAT_INPUT_WARNING_THRESHOLD } from "@/lib/chat-input"
 import { cn } from "@/lib/utils"
 import { useAudioRecording } from "@/hooks/use-audio-recording"
 import { useAutosizeTextArea } from "@/hooks/use-autosize-textarea"
@@ -17,7 +18,8 @@ import {
   "common.brain" as common_brain,
   "common.attachment" as common_attachment,
   "common.brain_description" as common_brain_description,
-  "chat.drop_files" as chat_drop_files
+  "chat.drop_files" as chat_drop_files,
+  "chat.input_characters_remaining" as chat_input_characters_remaining
 } from "@/paraglide/messages.js";
 
 
@@ -67,12 +69,9 @@ export function MessageInput({
   })
 
   const {
-    isListening,
-    isSpeechSupported,
     isRecording,
     isTranscribing,
     audioStream,
-    toggleListening,
     stopRecording,
   } = useAudioRecording({
     transcribeAudio,
@@ -129,8 +128,23 @@ export function MessageInput({
     const items = event.clipboardData?.items
     if (!items) return
 
+    const files = Array.from(items)
+      .map((item) => item.getAsFile())
+      .filter((file) => file !== null)
+
+    if (props.allowAttachments && files.length > 0) {
+      addFiles(files)
+      return
+    }
+
     const text = event.clipboardData.getData("text")
-    if (text && text.length > 500 && props.allowAttachments) {
+    const target = event.currentTarget as HTMLTextAreaElement
+    const selectionStart = target.selectionStart ?? props.value.length
+    const selectionEnd = target.selectionEnd ?? props.value.length
+    const nextLength =
+      props.value.length - (selectionEnd - selectionStart) + text.length
+
+    if (text && nextLength > CHAT_INPUT_MAX_CHARS && props.allowAttachments) {
       event.preventDefault()
       const blob = new Blob([text], { type: "text/plain" })
       const file = new File([blob], "Pasted text", {
@@ -139,14 +153,6 @@ export function MessageInput({
       })
       addFiles([file])
       return
-    }
-
-    const files = Array.from(items)
-      .map((item) => item.getAsFile())
-      .filter((file) => file !== null)
-
-    if (props.allowAttachments && files.length > 0) {
-      addFiles(files)
     }
   }
 
@@ -180,7 +186,7 @@ export function MessageInput({
     onKeyDownProp?.(event)
   }
 
-  const textAreaRef = useRef<HTMLTextAreaElement>(null)
+  const textAreaRef = useRef<HTMLTextAreaElement>(null!)
   const caretRef = useRef<number | null>(null)
   const [textAreaHeight, setTextAreaHeight] = useState<number>(0)
 
@@ -202,6 +208,9 @@ export function MessageInput({
 
   const hasFiles = props.allowAttachments && props.files && props.files.length > 0
   const hasContent = props.value.length > 0
+  const remainingCharacters = CHAT_INPUT_MAX_CHARS - props.value.length
+  const shouldShowCharacterWarning =
+    props.value.length >= CHAT_INPUT_WARNING_THRESHOLD
   const expandedByText = hasContent && textAreaHeight > 40
   const isExpanded = expandedByText || hasFiles
 
@@ -350,7 +359,7 @@ export function MessageInput({
                   type="submit"
                   size="icon"
                   className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                  disabled={props.value === "" || isGenerating}
+                  disabled={(!hasContent && !hasFiles) || isGenerating}
                 >
                   <ArrowUp className="h-5 w-5" />
                 </Button>
@@ -427,6 +436,21 @@ export function MessageInput({
               )}
 
               <div className="ml-auto flex items-center gap-1">
+                {shouldShowCharacterWarning && (
+                  <span
+                    className={cn(
+                      "mr-2 text-xs",
+                      remainingCharacters > 0
+                        ? "text-muted-foreground"
+                        : "text-destructive"
+                    )}
+                  >
+                    {chat_input_characters_remaining({
+                      remaining: Math.max(remainingCharacters, 0),
+                    })}
+                  </span>
+                )}
+
                 {props.allowAttachments && (
                   <Tooltip>
                     <TooltipTrigger>
@@ -463,7 +487,7 @@ export function MessageInput({
                     type="submit"
                     size="icon"
                     className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                    disabled={props.value === "" || isGenerating}
+                    disabled={(!hasContent && !hasFiles) || isGenerating}
                   >
                     <ArrowUp className="h-5 w-5" />
                   </Button>

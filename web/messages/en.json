@@ -355,6 +355,7 @@
 		"no_results": "No users found"
 	},
 	"chat": {
+		"input_characters_remaining": "{remaining} characters remaining",
 		"meta": {
 			"title": "Nexata | Chat",
 			"thinking": "Thinking",

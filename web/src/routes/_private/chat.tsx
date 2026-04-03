@@ -14,6 +14,7 @@ import {
 	useThreadById,
 } from '@/lib/chat';
 import { useChatUIStore } from '@/lib/chat.store';
+import { CHAT_INPUT_MAX_CHARS } from '@/lib/chat-input';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
 import { extractErrorText } from '@/lib/error';
 import { useToolDetailStore } from '@/lib/tool-detail.store';
@@ -255,7 +256,9 @@ export function NexataChat() {
 	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
 		activeThreadId ?? null,
 		{ limit: MESSAGES_PAGE_SIZE },
-		{ enabled: !isActiveThreadStreaming && !isJustCreated && !isThreadUnsynced },
+		{
+			enabled: !isActiveThreadStreaming && !isJustCreated && !isThreadUnsynced,
+		},
 	);
 
 	const threadMessages = threadData?.messages;
@@ -751,7 +754,9 @@ export function NexataChat() {
 					className="flex-1 min-h-0"
 					messages={messages}
 					input={input}
-					handleInputChange={(e) => setInput(e.target.value)}
+					handleInputChange={(e) =>
+						setInput(e.target.value.slice(0, CHAT_INPUT_MAX_CHARS))
+					}
 					handleSubmit={handleSubmit}
 					stop={stop}
 					isGenerating={isSdkStreaming}

@@ -1,0 +1,2 @@
+export const CHAT_INPUT_MAX_CHARS = 20000;
+export const CHAT_INPUT_WARNING_THRESHOLD = 15000;

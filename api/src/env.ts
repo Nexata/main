@@ -38,7 +38,7 @@ export const LIGHT_MODEL = togetherai(
 	'mistralai/Mistral-Small-24B-Instruct-2501',
 );
 export const REASONING_MODEL = togetherai('zai-org/GLM-5');
-export const VLM_MODEL = togetherai('Qwen/Qwen3-VL-8B-Instruct');
+export const VLM_MODEL = togetherai('Qwen/Qwen3.5-9B');
 export const EMBEDDING_MODEL = togetherai.embeddingModel(
 	'intfloat/multilingual-e5-large-instruct',
 );
