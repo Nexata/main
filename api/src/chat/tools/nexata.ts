@@ -275,26 +275,18 @@ export namespace Nexata {
 	});
 
 	export const [askQuestionsDescription, askQuestionsInput] = [
-		`Nexata tool to ask the user one or more structured questions when clarification or additional context would improve the quality of results. Use this tool proactively whenever the user's request is vague, ambiguous, or could benefit from narrowing down — for example: which data source to search, time range, specific people or keywords, file type, or intent clarification. Prefer asking a quick structured question over making assumptions that may lead to irrelevant results. When in doubt, use this tool.
+		`Nexata tool to ask one or more structured follow-up questions when user input would materially improve the result. Use it for vague or ambiguous requests, to narrow noisy or empty searches, or when the user must choose how to continue.
 
-		Input MUST be an object with a single key "questions" containing an array of question objects. Each question object MUST have "question" (string), "type" (one of: "multiple_choice", "multi_select", "boolean", "text", "number", "date"), and optionally "recommendation" (string).
+		This tool is limited to at most 2 calls per original user message. Batch related questions into one call whenever possible, and use a second call only if one more follow-up is truly necessary.
 
-		Type-specific requirements:
-		- "multiple_choice" and "multi_select": MUST include "data" array with at least 2 objects, each having "value" (string) and optionally "recommended" (boolean).
-		- "boolean": No "data" field needed.
-		- "text": Optional "data" with "placeholder" string.
-		- "number": Optional "data" with "min" and/or "max" numbers.
-		- "date": No "data" field needed.
-
-		CORRECT example:
-		{"questions":[{"question":"Which source do you want to search?","type":"multiple_choice","data":[{"value":"Gmail"},{"value":"Google Drive"},{"value":"All sources","recommended":true}]}]}
-
-		WRONG (will fail validation):
-		- Top-level array: [{"question":"..."}] — must be {"questions":[...]}
-		- Missing "type": {"questions":[{"question":"Where?"}]}
-		- Invalid type value: {"questions":[{"question":"Where?","type":"select"}]}
-		- "multiple_choice" without "data": {"questions":[{"question":"Where?","type":"multiple_choice"}]}
-		- "data" with fewer than 2 items: {"questions":[{"question":"Where?","type":"multiple_choice","data":[{"value":"Gmail"}]}]}`,
+		Rules:
+		- Input must be an object with a single "questions" array.
+		- Each question must include "question" and "type".
+		- Supported types: "multiple_choice", "multi_select", "boolean", "text", "number", "date".
+		- "multiple_choice" and "multi_select" require a "data" array with at least 2 options.
+		- For choice questions, always include an escape option such as "I'm not sure" or "No preference".
+		- When this tool is available and you still need user input to continue the original request, use this tool instead of plain-text questions.
+		- Follow the schema exactly and retry with corrected input if validation fails.`,
 		tObject({
 			questions: t.Array(
 				t.Union([

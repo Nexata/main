@@ -176,6 +176,7 @@ export const getTools = async (
 	threadId: string | null = null,
 	fileIds: string[] | null = null,
 	interactive = true,
+	includeAskQuestions = interactive,
 ) => {
 	const credentials = await getCredentialsForUser(activeUser, 'usage');
 
@@ -275,6 +276,12 @@ export const getTools = async (
 				undefined,
 				{ needsApproval: true },
 			),
+		};
+	}
+
+	if (interactive && includeAskQuestions)
+		tools = {
+			...tools,
 			NexataAskQuestions: toolify(
 				Nexata.askQuestionsDescription,
 				Nexata.askQuestionsInput,
@@ -283,7 +290,6 @@ export const getTools = async (
 				undefined,
 			),
 		};
-	}
 
 	const freshClient = async <T>(
 		c: CachedCredential,

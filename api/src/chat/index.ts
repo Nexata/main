@@ -39,6 +39,41 @@ import {
 import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
+const countAskQuestionsSinceLastUserMessage = (
+	threadMessages: PartialMessage[],
+) => {
+	let count = 0;
+
+	for (let i = threadMessages.length - 1; i >= 0; i--) {
+		const threadMessage = threadMessages[i];
+		if (!threadMessage) continue;
+		if (threadMessage.role === 'user') break;
+
+		if (threadMessage.role !== 'assistant') continue;
+
+		const contentParts = Array.isArray(threadMessage.content)
+			? (threadMessage.content as unknown[])
+			: [];
+
+		count += contentParts.filter(
+			(
+				part,
+			): part is {
+				type: 'tool-call';
+				toolName: string;
+			} =>
+				typeof part === 'object' &&
+				part !== null &&
+				'type' in part &&
+				part.type === 'tool-call' &&
+				'toolName' in part &&
+				part.toolName === 'NexataAskQuestions',
+		).length;
+	}
+
+	return count;
+};
+
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.use(authPlugin())
 	.use(threadRouter)
@@ -182,7 +217,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					togetherai: { parallel_tool_calls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
-					...activeUser,
+					displayName: activeUser.displayName,
+					email: activeUser.email,
+					isAdmin: activeUser.isAdmin,
 					languagePreference,
 				}),
 				abortSignal: request.signal,
@@ -551,6 +588,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					});
 
 				const syncResolver = createSyncResolver();
+				const includeAskQuestions =
+					countAskQuestionsSinceLastUserMessage(threadMessages) < 2;
 
 				const stream = streamText({
 					model: MODEL,
@@ -559,12 +598,20 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						togetherai: { parallel_tool_calls: false },
 					},
 					system: BUILD_SYSTEM_PROMPT({
-						...activeUser,
+						displayName: activeUser.displayName,
+						email: activeUser.email,
+						isAdmin: activeUser.isAdmin,
 						languagePreference,
 					}),
 					abortSignal: request.signal,
 					stopWhen: stepCountIs(200),
-					tools: await getTools(activeUser, body.threadId, [], true),
+					tools: await getTools(
+						activeUser,
+						body.threadId,
+						[],
+						true,
+						includeAskQuestions,
+					),
 					messages: threadMessages.map(
 						(m) =>
 							({
@@ -688,6 +735,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				});
 
 			const syncResolver = createSyncResolver();
+			const includeAskQuestions =
+				countAskQuestionsSinceLastUserMessage(threadMessages) < 2;
 
 			const stream = streamText({
 				model: MODEL,
@@ -696,12 +745,20 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					togetherai: { parallel_tool_calls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
-					...activeUser,
+					displayName: activeUser.displayName,
+					email: activeUser.email,
+					isAdmin: activeUser.isAdmin,
 					languagePreference,
 				}),
 				abortSignal: request.signal,
 				stopWhen: stepCountIs(200),
-				tools: await getTools(activeUser, body.threadId, [], true),
+				tools: await getTools(
+					activeUser,
+					body.threadId,
+					[],
+					true,
+					includeAskQuestions,
+				),
 				messages: threadMessages.map(
 					(m) =>
 						({

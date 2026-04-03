@@ -26,7 +26,7 @@ export const PLANS: Record<
 > = {
 	[Plan.FREE]: {
 		baseBill: 0,
-		messageLimit: 20,
+		messageLimit: 12,
 		storageLimit: 10,
 		embedLimit: 10 * 250_000,
 		hasApiAccess: false,

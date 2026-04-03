@@ -140,8 +140,7 @@ export namespace Outlook {
 						'Outlook search query (e.g., "from:someone@example.com received>=2026-03-01 hasattachment:true" or "subject:(invoice OR renewal)"). Prefer structured fields (from, subject, etc.) over putting everything here. Combines with other filters.',
 				}),
 				q: Nullish(t.String(), {
-					description:
-						'Alias for query. Supported for compatibility.',
+					description: 'Alias for query. Supported for compatibility.',
 				}),
 				from: Nullish(t.String(), {
 					description:
@@ -175,7 +174,8 @@ export namespace Outlook {
 				}),
 				maxResults: Nullish(t.Number({ minimum: 1, maximum: 1000 }), {
 					default: 50,
-					description: 'Maximum number of results to return (1-1000, default 50). Do NOT use "top", use this field instead.',
+					description:
+						'Maximum number of results to return (1-1000, default 50). Do NOT use "top", use this field instead.',
 				}),
 			}),
 		]),
