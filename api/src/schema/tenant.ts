@@ -26,14 +26,14 @@ export const PLANS: Record<
 > = {
 	[Plan.FREE]: {
 		baseBill: 0,
-		messageLimit: 12,
+		messageLimit: 10,
 		storageLimit: 10,
 		embedLimit: 10 * 250_000,
 		hasApiAccess: false,
 	},
 	[Plan.PERSONAL]: {
 		baseBill: 20,
-		messageLimit: 150,
+		messageLimit: 125,
 		storageLimit: 1 * 1024,
 		embedLimit: 1000 * 250_000,
 		hasApiAccess: false,
@@ -42,7 +42,7 @@ export const PLANS: Record<
 		baseBill: 100,
 		messageLimit: 1000,
 		storageLimit: 10 * 1024,
-		embedLimit: 10 * 1000 * 250_000,
+		embedLimit: 5 * 1000 * 250_000,
 		hasApiAccess: true,
 	},
 	[Plan.PAY_AS_YOU_GO]: {
