@@ -20,6 +20,7 @@ import {
   RotateCcw,
   Paperclip,
   FolderOpen,
+  Brain,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview, type RemoteFile } from "@/components/ui/file-preview"
@@ -196,6 +197,7 @@ import {
   'chat.retry.button' as chat_retry_button,
   'chat.tool_detail.view_details' as td_view_details,
   'chat.tool_detail.hide_details' as td_hide_details,
+  'common.brain' as common_brain,
 } from '@/paraglide/messages.js';
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
@@ -306,12 +308,20 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     onEdit?.(message.id, editText.trim())
   }, [dontShowAgain, message.id, editText, onEdit])
 
+  const meta = typeof message.metadata === "object" && message.metadata
+    ? (message.metadata as Record<string, unknown>)
+    : undefined
+
   const createdAt =
-    typeof message.metadata === "object" &&
-    message.metadata &&
-    "createdAt" in message.metadata
-      ? new Date((message.metadata as Record<string, unknown>).createdAt as string)
-      : undefined
+    message.createdAt instanceof Date
+      ? message.createdAt
+      : typeof message.createdAt === "string"
+        ? new Date(message.createdAt)
+        : meta?.createdAt
+          ? new Date(meta.createdAt as string)
+          : undefined
+
+  const extraReason = !!meta?.extraReason
 
   const formattedTime = createdAt?.toLocaleTimeString("en-US", {
     hour: "2-digit",
@@ -743,10 +753,27 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </>
       )}
 
-      {showTimeStamp && createdAt && (
-        <time className="text-xs opacity-50">
-          {formattedTime}
-        </time>
+      {(showTimeStamp && createdAt || extraReason) && (
+        <div className={cn(
+          "flex items-center gap-1.5 text-xs text-muted-foreground/60 select-none",
+          isUser ? "justify-end" : "justify-start"
+        )}>
+          {extraReason && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex items-center gap-1 rounded-full bg-pink-500/10 border border-pink-500/20 px-1.5 py-0.5 text-[11px] text-pink-500 dark:text-pink-400">
+                  <Brain className="h-3 w-3" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                {common_brain()}
+              </TooltipContent>
+            </Tooltip>
+          )}
+          {showTimeStamp && createdAt && (
+            <time>{formattedTime}</time>
+          )}
+        </div>
       )}
     </div>
   )
