@@ -61,6 +61,14 @@ const GOOGLE_WORKSPACE_MIME_TYPES = {
 const FILE_FIELDS =
 	'id, name, mimeType, size, modifiedTime, webViewLink, parents';
 
+function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
+	const unique = new Map<string, { isDir: boolean; id: string }>();
+
+	for (const item of selection) unique.set(`${item.isDir}:${item.id}`, item);
+
+	return [...unique.values()];
+}
+
 export namespace Drive {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
@@ -715,7 +723,9 @@ export namespace Drive {
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
-		const sorted = selection.sort(({ isDir }) => (isDir ? -1 : 1));
+		const sorted = dedupeSelection(selection).sort(({ isDir }) =>
+			isDir ? -1 : 1,
+		);
 
 		const results = { ok: 0, unmodified: 0, failed: 0 };
 

@@ -36,6 +36,14 @@ import { and, eq, notInArray } from 'drizzle-orm';
 import { Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
 
+function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
+	const unique = new Map<string, { isDir: boolean; id: string }>();
+
+	for (const item of selection) unique.set(`${item.isDir}:${item.id}`, item);
+
+	return [...unique.values()];
+}
+
 export namespace Dropbox {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
@@ -466,7 +474,9 @@ export namespace Dropbox {
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
-		const sorted = selection.sort(({ isDir }) => (isDir ? -1 : 1));
+		const sorted = dedupeSelection(selection).sort(({ isDir }) =>
+			isDir ? -1 : 1,
+		);
 
 		const results = { ok: 0, unmodified: 0, failed: 0 };
 

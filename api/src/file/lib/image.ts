@@ -9,6 +9,13 @@ import { generateText, jsonSchema, Output } from 'ai';
 import { type Static, t } from 'elysia';
 import sharp from 'sharp';
 
+export class InvalidRawImageError extends Error {
+	constructor(message: string) {
+		super(message);
+		this.name = 'InvalidRawImageError';
+	}
+}
+
 export function isRelevantImage(width: number, height: number) {
 	if (!width || !height) return false;
 
@@ -18,6 +25,31 @@ export function isRelevantImage(width: number, height: number) {
 	const isExtremeRatio = ratio > 3 || ratio < 0.33;
 
 	return !isTooSmall && !isExtremeRatio;
+}
+
+function fileLikeToUint8Array(f: FileLike): Uint8Array {
+	if (f instanceof Uint8Array) return f;
+	if (ArrayBuffer.isView(f))
+		return new Uint8Array(f.buffer, f.byteOffset, f.byteLength);
+	return new Uint8Array(f);
+}
+
+function validateRawImage(
+	f: FileLike,
+	raw: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
+): Uint8Array {
+	if (!raw.width || !raw.height || !raw.channels)
+		throw new InvalidRawImageError('Missing raw image metadata');
+
+	const bytes = fileLikeToUint8Array(f);
+	const expectedLength = raw.width * raw.height * raw.channels;
+
+	if (bytes.byteLength !== expectedLength)
+		throw new InvalidRawImageError(
+			`Raw image byte length mismatch: expected ${expectedLength}, got ${bytes.byteLength}`,
+		);
+
+	return bytes;
 }
 
 const imageToTextOutput = tObject({
@@ -47,7 +79,7 @@ export async function imgToChunks(
 	raw?: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
 ): Promise<ToStringChunksResult> {
 	const image = raw
-		? await sharp(f, {
+		? await sharp(validateRawImage(f, raw), {
 				raw: {
 					width: raw.width!,
 					height: raw.height!,
@@ -56,7 +88,7 @@ export async function imgToChunks(
 			})
 				.png()
 				.toBuffer()
-		: new Uint8Array(f);
+		: fileLikeToUint8Array(f);
 
 	const res = await generateText({
 		model: VLM_MODEL,

@@ -23,6 +23,17 @@ const SYNC_FAIL_CACHE_KEY = (userId: string) => `sync-fail-notified:${userId}`;
 
 const SYNC_FAIL_COOLDOWN = 23 * 60 * 60;
 
+function dedupeSyncItems<
+	T extends { provider: FileHost; isDir: boolean; externalId: string },
+>(items: T[]) {
+	const unique = new Map<string, T>();
+
+	for (const item of items)
+		unique.set(`${item.provider}:${item.isDir}:${item.externalId}`, item);
+
+	return [...unique.values()];
+}
+
 export const filesRouter = new Elysia({ prefix: '/files' }).put(
 	'/sync',
 	async ({ body }) => {
@@ -132,8 +143,15 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 				})),
 			);
 
+		const dedupedItemsToSync = dedupeSyncItems(
+			itemsToSync.filter(
+				(item): item is (typeof itemsToSync)[number] & { externalId: string } =>
+					typeof item.externalId === 'string',
+			),
+		);
+
 		const results = await Promise.allSettled(
-			itemsToSync.map((item) =>
+			dedupedItemsToSync.map((item) =>
 				providerIngestors[item.provider]!(
 					item.userId,
 					item.slug,
@@ -164,7 +182,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 
 		for (let i = 0; i < results.length; i++) {
 			const result = results[i]!;
-			const item = itemsToSync[i]!;
+			const item = dedupedItemsToSync[i]!;
 			const isFailed =
 				result.status === 'rejected' ||
 				(result.status === 'fulfilled' && result.value === 'FAILED') ||

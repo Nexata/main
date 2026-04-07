@@ -88,6 +88,14 @@ function isMsaSearchError(error: unknown): boolean {
 	return false;
 }
 
+function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
+	const unique = new Map<string, { isDir: boolean; id: string }>();
+
+	for (const item of selection) unique.set(`${item.isDir}:${item.id}`, item);
+
+	return [...unique.values()];
+}
+
 export namespace OneDrive {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
@@ -724,7 +732,9 @@ export namespace OneDrive {
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
 	) {
-		const sorted = selection.sort(({ isDir }) => (isDir ? -1 : 1));
+		const sorted = dedupeSelection(selection).sort(({ isDir }) =>
+			isDir ? -1 : 1,
+		);
 
 		const results = { ok: 0, unmodified: 0, failed: 0 };
 
