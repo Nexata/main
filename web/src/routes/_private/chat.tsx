@@ -171,7 +171,7 @@ function hydrateThreadMessages(
 			id: m.id,
 			role: m.role,
 			createdAt: m.createdAt,
-			metadata: { hydrated: true },
+			metadata: { hydrated: true, createdAt: m.createdAt, extraReason: m.extraReason },
 			parts: [
 				...(m.files ?? [])
 					.filter((f) => f.id)
@@ -660,6 +660,14 @@ export function NexataChat() {
 			cancelEditing();
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
+			const originalMsg = messages.find((m) => m.id === messageId);
+			const originalExtraReason =
+				typeof originalMsg?.metadata === 'object' &&
+				originalMsg.metadata &&
+				'extraReason' in originalMsg.metadata
+					? !!(originalMsg.metadata as Record<string, unknown>).extraReason
+					: false;
+
 			await sendMessage(
 				{ text: newText, files: undefined, messageId },
 				{
@@ -667,7 +675,7 @@ export function NexataChat() {
 						threadId: activeThreadId ?? null,
 						editedMessageId: messageId,
 						languagePreference: me?.language ?? null,
-						extraReason: false,
+						extraReason: originalExtraReason,
 					},
 				},
 			);
@@ -678,6 +686,7 @@ export function NexataChat() {
 			activeThreadId,
 			sendMessage,
 			me?.language,
+			messages,
 		],
 	);
 
@@ -697,6 +706,13 @@ export function NexataChat() {
 				.join('');
 			if (!text.trim()) return;
 
+			const originalExtraReason =
+				typeof msg.metadata === 'object' &&
+				msg.metadata &&
+				'extraReason' in msg.metadata
+					? !!(msg.metadata as Record<string, unknown>).extraReason
+					: false;
+
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 			await sendMessage(
@@ -706,7 +722,7 @@ export function NexataChat() {
 						threadId: activeThreadId ?? null,
 						editedMessageId: messageId,
 						languagePreference: me?.language ?? null,
-						extraReason: false,
+						extraReason: originalExtraReason,
 					},
 				},
 			);
