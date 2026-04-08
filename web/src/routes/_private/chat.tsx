@@ -563,7 +563,14 @@ export function NexataChat() {
 	// ----------------------------
 
 	const [input, setInput] = useState('');
-	const [extraReason, setExtraReason] = useState(false);
+	const [extraReason, setExtraReason] = useState(() => {
+		try { return localStorage.getItem('nexata-extra-reason') === 'true'; } catch { return false; }
+	});
+
+	const setExtraReasonPersisted = useCallback((value: boolean) => {
+		setExtraReason(value);
+		try { localStorage.setItem('nexata-extra-reason', String(value)); } catch {}
+	}, []);
 
 	const handleSubmit = async (
 		event?: { preventDefault?: () => void },
@@ -580,7 +587,6 @@ export function NexataChat() {
 
 		setInput('');
 		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
-		setExtraReason(false);
 
 		await sendMessage(
 			{ text, files: files?.length ? files : undefined },
@@ -655,18 +661,13 @@ export function NexataChat() {
 
 	const cancelEditing = useChatUIStore((s) => s.cancelEditing);
 
+	const extraReasonRef = useRef(extraReason);
+	extraReasonRef.current = extraReason;
+
 	const handleEditMessage = useCallback(
 		async (messageId: string, newText: string) => {
 			cancelEditing();
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
-
-			const originalMsg = messages.find((m) => m.id === messageId);
-			const originalExtraReason =
-				typeof originalMsg?.metadata === 'object' &&
-				originalMsg.metadata &&
-				'extraReason' in originalMsg.metadata
-					? !!(originalMsg.metadata as Record<string, unknown>).extraReason
-					: false;
 
 			await sendMessage(
 				{ text: newText, files: undefined, messageId },
@@ -675,7 +676,7 @@ export function NexataChat() {
 						threadId: activeThreadId ?? null,
 						editedMessageId: messageId,
 						languagePreference: me?.language ?? null,
-						extraReason: originalExtraReason,
+						extraReason: extraReasonRef.current,
 					},
 				},
 			);
@@ -686,7 +687,6 @@ export function NexataChat() {
 			activeThreadId,
 			sendMessage,
 			me?.language,
-			messages,
 		],
 	);
 
@@ -706,13 +706,6 @@ export function NexataChat() {
 				.join('');
 			if (!text.trim()) return;
 
-			const originalExtraReason =
-				typeof msg.metadata === 'object' &&
-				msg.metadata &&
-				'extraReason' in msg.metadata
-					? !!(msg.metadata as Record<string, unknown>).extraReason
-					: false;
-
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 			await sendMessage(
@@ -722,7 +715,7 @@ export function NexataChat() {
 						threadId: activeThreadId ?? null,
 						editedMessageId: messageId,
 						languagePreference: me?.language ?? null,
-						extraReason: originalExtraReason,
+						extraReason: extraReasonRef.current,
 					},
 				},
 			);
@@ -780,7 +773,7 @@ export function NexataChat() {
 					isNewChat={isNewChat}
 					welcomeLabel={welcomeText}
 					isUserLoading={isMeLoading}
-					setExtraReason={setExtraReason}
+					setExtraReason={setExtraReasonPersisted}
 					addToolOutput={isReadOnly ? undefined : addToolOutput}
 					addToolApprovalResponse={
 						isReadOnly ? undefined : addToolApprovalResponse

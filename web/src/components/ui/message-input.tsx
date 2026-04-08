@@ -63,7 +63,9 @@ export function MessageInput({
   const [isDragging, setIsDragging] = useState(false)
   const [showInterruptPrompt, setShowInterruptPrompt] = useState(false)
   const resolvedPlaceholder = placeholder ?? common_ask_nexy()
-  const [brainMode, setBrainMode] = useState(false)
+  const [brainMode, setBrainMode] = useState(() => {
+    try { return localStorage.getItem('nexata-extra-reason') === 'true' } catch { return false }
+  })
   const [dismissedWarning, setDismissedWarning] = useState<boolean>(() => {
     try { return localStorage.getItem('nexata-brain-warning-dismissed') === 'true' } catch { return false }
   })
