@@ -44,7 +44,6 @@ import {
 	ilike,
 	inArray,
 	isNotNull,
-	lt,
 	or,
 	sql,
 } from 'drizzle-orm';
@@ -55,81 +54,6 @@ const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
 
 export namespace NexataFile {
-	async function getExistingFileForIngest(
-		data: Partial<Static<typeof insertFile>> & {
-			userId: string;
-			slug: string;
-			modifiedAt?: Date;
-		},
-	) {
-		if (!data.provider || data.provider === FileHost.NEXATA || !data.externalId)
-			return null;
-
-		return (
-			await db
-				.select({ id: file.id, modifiedAt: file.modifiedAt })
-				.from(file)
-				.where(
-					and(
-						eq(file.provider, data.provider),
-						eq(file.externalId, data.externalId),
-					),
-				)
-		).at(0);
-	}
-
-	async function upsertFileForIngest(
-		data: Partial<Static<typeof insertFile>> & {
-			userId: string;
-			slug: string;
-			modifiedAt?: Date;
-		},
-		f: File,
-	): Promise<string> {
-		const existing = await getExistingFileForIngest(data);
-
-		if (existing && data.modifiedAt && existing.modifiedAt >= data.modifiedAt)
-			return existing.id;
-
-		const values = {
-			...data,
-			name: data.name ?? f.name,
-			type: data.type ?? f.type,
-		};
-
-		if (!data.provider || data.provider === FileHost.NEXATA) {
-			return (
-				await db.insert(file).values(values).returning({ id: file.id })
-			).at(0)!.id;
-		}
-
-		return (
-			await db
-				.insert(file)
-				.values(values)
-				.onConflictDoUpdate({
-					target: [file.provider, file.externalId],
-					targetWhere: sql`${file.externalId} is not null`,
-					set: {
-						userId: values.userId,
-						messageId: values.messageId,
-						externalDirId: values.externalDirId,
-						credentialId: values.credentialId,
-						autoSync: values.autoSync,
-						url: values.url,
-						name: values.name,
-						type: values.type,
-						metadata: values.metadata,
-						modifiedAt: values.modifiedAt,
-					},
-					setWhere: data.modifiedAt
-						? lt(file.modifiedAt, data.modifiedAt)
-						: undefined,
-				})
-				.returning({ id: file.id })
-		).at(0)!.id;
-	}
-
 	export const [searchDescription, searchInput] = [
 		"Nexata tool to search for users's ingested files. This includes directly uploaded files and files vectorized from other sources (and ingested to the platform by the user). The query field performs semantic search over file content, not exact substring matching, so results can be conceptually relevant even when they do not share the exact words. Prefer provider-native search tools first when the user wants exact emails or exact files from a known source.",
 		t.Object({
@@ -321,11 +245,27 @@ export namespace NexataFile {
 	): Promise<string> {
 		data.id = data.id ?? crypto.randomUUID();
 
-		const existing = await getExistingFileForIngest(data);
-		if (existing && data.modifiedAt && existing.modifiedAt >= data.modifiedAt)
-			return 'UNMODIFIED';
+		if (data.provider && data.provider !== FileHost.NEXATA && data.externalId) {
+			const existing = (
+				await db
+					.select({ id: file.id, modifiedAt: file.modifiedAt })
+					.from(file)
+					.where(
+						and(
+							eq(file.provider, data.provider),
+							eq(file.externalId, data.externalId),
+						),
+					)
+			).at(0);
 
-		if (existing) data.id = existing.id;
+			if (existing) {
+				if (data.modifiedAt && existing.modifiedAt >= data.modifiedAt)
+					return 'UNMODIFIED';
+
+				await db.delete(file).where(eq(file.id, existing.id));
+				data.id = existing.id;
+			}
+		}
 
 		try {
 			const result = await toStringChunks(
@@ -346,18 +286,16 @@ export namespace NexataFile {
 				(chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) *
 					STORAGE_OVERHEAD_MULTIPLIER) /
 				(1024 * 1024);
-			const fileId = await upsertFileForIngest(data, f);
-
-			if (data.id !== fileId) {
-				data.id = fileId;
-				for (const chunkItem of chunks) chunkItem.fileId = fileId;
-			}
 
 			await Promise.all([
 				incrementStorageUsage(data.slug, storageDeltaMB),
 				incrementEmbedUsage(data.slug, totalEmbedTokens),
 				db.batch([
-					db.delete(chunk).where(eq(chunk.fileId, fileId)),
+					db.insert(file).values({
+						...data,
+						name: data.name ?? f.name,
+						type: data.type ?? f.type,
+					}),
 					db.insert(billableEvent).values({
 						type: BillableEventType.EMBED,
 						consumption: totalEmbedTokens.toString(),

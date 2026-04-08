@@ -30,24 +30,19 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	for (const [id, data] of images)
 		promises.push(
 			(async () => {
-				const imgTag = `<img src="${id}">`;
-				let meta: Awaited<ReturnType<typeof sharp.prototype.metadata>>;
-				let imgResult: ToStringChunksResult;
-
-				try {
-					meta = await sharp(data).metadata();
-				} catch {
-					return (html = html.replace(imgTag, ''));
-				}
+				const [meta, imgTag] = [
+					await sharp(data).metadata(),
+					`<img src="${id}">`,
+				];
 
 				if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0))
 					return (html = html.replace(imgTag, ''));
 
-				try {
-					imgResult = await imgToChunks(new Uint8Array(data));
-				} catch {
-					return (html = html.replace(imgTag, ''));
-				}
+				const imgResult = await imgToChunks(new Uint8Array(data), {
+					width: meta.width,
+					height: meta.height,
+					channels: meta.channels ?? 3,
+				});
 
 				usage += imgResult.tokenUsage ?? 0;
 
