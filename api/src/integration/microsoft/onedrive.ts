@@ -29,14 +29,13 @@ import {
 	getTokensForUser,
 	userHasCredential,
 } from '@api/utils/credential';
-import { log } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { refreshMicrosoftTokens } from '@api/utils/token-refresh';
 import { Nullish, tObject } from '@api/utils/type';
 import type { Client } from '@microsoft/microsoft-graph-client';
 import type { DriveItem } from '@microsoft/microsoft-graph-types';
 import { captureException } from '@sentry/bun';
-import { and, eq, inArray, notInArray } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
 
 const ITEM_SELECT = [
@@ -79,17 +78,6 @@ function childrenApiPath(compoundId: string | null): string {
 	const { driveId, itemId } = parseCompoundId(compoundId);
 	if (driveId) return `/drives/${driveId}/items/${itemId}/children`;
 	return `/me/drive/items/${itemId}/children`;
-}
-
-function deltaApiPath(compoundId: string | null): string {
-	if (!compoundId) return '/me/drive/root/delta';
-	const { driveId, itemId } = parseCompoundId(compoundId);
-	if (driveId) return `/drives/${driveId}/items/${itemId}/delta`;
-	return `/me/drive/items/${itemId}/delta`;
-}
-
-function elapsedMs(startedAt: number): number {
-	return Date.now() - startedAt;
 }
 
 function isMsaSearchError(error: unknown): boolean {
@@ -472,58 +460,6 @@ export namespace OneDrive {
 		client: Client,
 		folderId: string | null,
 	): Promise<NexataListDirEntry[]> {
-		const startedAt = Date.now();
-
-		try {
-			const entries: NexataListDirEntry[] = [];
-			let nextLink: string | undefined;
-			const firstResponse: {
-				value?: (DriveItem & { deleted?: object })[];
-				'@odata.nextLink'?: string;
-			} = await client
-				.api(deltaApiPath(folderId))
-				.select(ITEM_SELECT)
-				.top(200)
-				.header('deltaExcludeParent', 'true')
-				.get();
-
-			nextLink = firstResponse['@odata.nextLink'];
-			for (const item of firstResponse.value ?? []) {
-				if (item.deleted) continue;
-				entries.push(mapDriveItemToEntry(item));
-			}
-
-			while (nextLink) {
-				const response: {
-					value?: (DriveItem & { deleted?: object })[];
-					'@odata.nextLink'?: string;
-				} = await client.api(nextLink).get();
-
-				for (const item of response.value ?? []) {
-					if (item.deleted) continue;
-					entries.push(mapDriveItemToEntry(item));
-				}
-
-				nextLink = response['@odata.nextLink'];
-			}
-
-			log('debug', {
-				event: 'onedrive_list_all_files_delta',
-				folderId,
-				entryCount: entries.length,
-				durationMs: elapsedMs(startedAt),
-			});
-
-			return entries;
-		} catch (error) {
-			log('warn', {
-				event: 'onedrive_list_all_files_delta_fallback',
-				folderId,
-				durationMs: elapsedMs(startedAt),
-				error: error instanceof Error ? error.message : 'UNKNOWN',
-			});
-		}
-
 		const allEntries: NexataListDirEntry[] = [];
 		let nextLink: string | undefined;
 
@@ -550,13 +486,6 @@ export namespace OneDrive {
 			allEntries.push(...subEntries);
 		}
 
-		log('debug', {
-			event: 'onedrive_list_all_files_recursive',
-			folderId,
-			entryCount: allEntries.length,
-			durationMs: elapsedMs(startedAt),
-		});
-
 		return allEntries;
 	}
 
@@ -570,7 +499,6 @@ export namespace OneDrive {
 		path: string;
 		modifiedAt: Date;
 	}> {
-		const startedAt = Date.now();
 		const apiPath = itemApiPath(compoundId);
 
 		const item: DriveItem & { '@microsoft.graph.downloadUrl'?: string } =
@@ -585,7 +513,6 @@ export namespace OneDrive {
 		let fileContent: ArrayBuffer;
 
 		const downloadUrl = item['@microsoft.graph.downloadUrl'];
-		const downloadStartedAt = Date.now();
 		if (downloadUrl) {
 			const response = await fetch(downloadUrl);
 			if (!response.ok)
@@ -604,15 +531,6 @@ export namespace OneDrive {
 
 		if (mimeType === 'unsupported')
 			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
-
-		log('debug', {
-			event: 'onedrive_download_file',
-			compoundId,
-			mimeType,
-			sizeBytes: fileContent.byteLength,
-			metadataAndRequestMs: elapsedMs(startedAt),
-			downloadMs: elapsedMs(downloadStartedAt),
-		});
 
 		return {
 			file: new File([fileContent], name, { type: mimeType }),
@@ -634,9 +552,7 @@ export namespace OneDrive {
 		externalDirId?: string,
 	): Promise<string> {
 		try {
-			const downloadStartedAt = Date.now();
 			const downloaded = await downloadFile(client, entry.id);
-			const downloadMs = elapsedMs(downloadStartedAt);
 
 			const result = await NexataFile.ingest(
 				{
@@ -651,7 +567,6 @@ export namespace OneDrive {
 					name: downloaded.name,
 					type: downloaded.file.type,
 					modifiedAt: downloaded.modifiedAt,
-					metadata: { downloadMs },
 				},
 				downloaded.file,
 			);
@@ -717,7 +632,6 @@ export namespace OneDrive {
 		credentialId: string,
 		dirEntry: NexataListDirEntry,
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
-		const startedAt = Date.now();
 		const stats = { ok: 0, unmodified: 0, failed: 0 };
 
 		const existing = (
@@ -755,32 +669,10 @@ export namespace OneDrive {
 				ErrorCode.EXTERNAL_DIR_FAILED,
 			);
 
-		const listedAt = Date.now();
 		const allEntries = await listAllFiles(client, dirEntry.id);
 		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
 		const currentExternalIds = fileEntries.map((e) => e.id);
-		const existingFilesStartedAt = Date.now();
-		const existingFiles = currentExternalIds.length
-			? await db
-					.select({
-						externalId: file.externalId,
-						modifiedAt: file.modifiedAt,
-					})
-					.from(file)
-					.where(
-						and(
-							eq(file.provider, FileHost.ONE_DRIVE),
-							inArray(file.externalId, currentExternalIds),
-						),
-					)
-			: [];
-		const existingFilesByExternalId = new Map(
-			existingFiles
-				.filter((existing) => existing.externalId)
-				.map((existing) => [existing.externalId!, existing.modifiedAt]),
-		);
 
-		const cleanupStartedAt = Date.now();
 		if (existing && currentExternalIds.length)
 			await db
 				.delete(file)
@@ -792,30 +684,8 @@ export namespace OneDrive {
 					),
 				);
 
-		let skippedBeforeDownload = 0;
-
 		for (const entry of fileEntries) {
-			const existingModifiedAt = existingFilesByExternalId.get(entry.id);
-			if (
-				existingModifiedAt &&
-				entry.updatedAt &&
-				existingModifiedAt >= entry.updatedAt
-			) {
-				stats.unmodified++;
-				skippedBeforeDownload++;
-				continue;
-			}
-
-			const limitCheckStartedAt = Date.now();
 			const blockReason = await checkTenantCanIngest(slug);
-			log('debug', {
-				event: 'onedrive_ingest_limit_check',
-				slug,
-				externalId: entry.id,
-				durationMs: elapsedMs(limitCheckStartedAt),
-				blocked: Boolean(blockReason),
-			});
-
 			if (blockReason) {
 				stats.failed +=
 					fileEntries.length - stats.ok - stats.unmodified - stats.failed;
@@ -840,18 +710,6 @@ export namespace OneDrive {
 				stats.failed++;
 			}
 		}
-
-		log('debug', {
-			event: 'onedrive_ingest_directory',
-			dirExternalId: dirEntry.id,
-			fileCount: fileEntries.length,
-			skippedBeforeDownload,
-			listDurationMs: elapsedMs(listedAt),
-			existingMetadataDurationMs: elapsedMs(existingFilesStartedAt),
-			cleanupDurationMs: elapsedMs(cleanupStartedAt),
-			totalDurationMs: elapsedMs(startedAt),
-			stats,
-		});
 
 		return stats;
 	}

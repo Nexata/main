@@ -528,9 +528,7 @@ export namespace Drive {
 		externalDirId?: string,
 	): Promise<string> {
 		try {
-			const downloadStartedAt = Date.now();
 			const downloaded = await downloadFile(drv, entry.id);
-			const downloadMs = Date.now() - downloadStartedAt;
 
 			const result = await NexataFile.ingest(
 				{
@@ -545,7 +543,6 @@ export namespace Drive {
 					name: downloaded.name,
 					type: downloaded.file.type,
 					modifiedAt: downloaded.modifiedAt,
-					metadata: { downloadMs },
 				},
 				downloaded.file,
 			);

@@ -55,10 +55,6 @@ const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
 
 export namespace NexataFile {
-	function elapsedMs(startedAt: number): number {
-		return Date.now() - startedAt;
-	}
-
 	async function getExistingFileForIngest(
 		data: Partial<Static<typeof insertFile>> & {
 			userId: string;
@@ -323,59 +319,40 @@ export namespace NexataFile {
 		},
 		f: File,
 	): Promise<string> {
-		const startedAt = Date.now();
 		data.id = data.id ?? crypto.randomUUID();
 
-		const existingLookupStartedAt = Date.now();
 		const existing = await getExistingFileForIngest(data);
-		const existingLookupMs = elapsedMs(existingLookupStartedAt);
 		if (existing && data.modifiedAt && existing.modifiedAt >= data.modifiedAt)
 			return 'UNMODIFIED';
 
 		if (existing) data.id = existing.id;
 
 		try {
-			const toStringStartedAt = Date.now();
 			const result = await toStringChunks(
 				await f.arrayBuffer(),
 				data.type ?? f.type,
 			);
-			const toStringMs = elapsedMs(toStringStartedAt);
 
-			// Merge parser metadata (e.g. pageCount) into file metadata
-			if (result.metadata)
-				data.metadata = { ...(data.metadata as object), ...result.metadata };
-
-			const embeddingStartedAt = Date.now();
 			const [chunks, embeddingUsage] = await stringToChunks(
 				data.id,
 				result.chunks,
 			);
-			const embeddingMs = elapsedMs(embeddingStartedAt);
 
-			const uploadStartedAt = Date.now();
 			if (!data.provider || data.provider === FileHost.NEXATA)
 				data.url = await uploadFile(data.slug, data.id, f);
-			const uploadMs =
-				!data.provider || data.provider === FileHost.NEXATA
-					? elapsedMs(uploadStartedAt)
-					: 0;
 
 			const totalEmbedTokens = (result.tokenUsage ?? 0) + embeddingUsage;
 			const storageDeltaMB =
 				(chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) *
 					STORAGE_OVERHEAD_MULTIPLIER) /
 				(1024 * 1024);
-			const upsertStartedAt = Date.now();
 			const fileId = await upsertFileForIngest(data, f);
-			const upsertMs = elapsedMs(upsertStartedAt);
 
 			if (data.id !== fileId) {
 				data.id = fileId;
 				for (const chunkItem of chunks) chunkItem.fileId = fileId;
 			}
 
-			const writeStartedAt = Date.now();
 			await Promise.all([
 				incrementStorageUsage(data.slug, storageDeltaMB),
 				incrementEmbedUsage(data.slug, totalEmbedTokens),
@@ -390,30 +367,6 @@ export namespace NexataFile {
 					...(chunks.length ? [db.insert(chunk).values(chunks)] : []),
 				]),
 			]);
-			const writeMs = elapsedMs(writeStartedAt);
-
-			const timing = {
-				existingLookupMs,
-				toStringMs,
-				embeddingMs,
-				uploadMs,
-				upsertMs,
-				writeMs,
-				totalDurationMs: elapsedMs(startedAt),
-			};
-			data.metadata = {
-				...(data.metadata as object),
-				chunkCount: chunks.length,
-				tokenUsage: result.tokenUsage ?? 0,
-				embeddingUsage,
-				storageDeltaMB,
-				timing,
-			};
-
-			await db
-				.update(file)
-				.set({ metadata: data.metadata })
-				.where(eq(file.id, fileId));
 
 			return 'OK';
 		} catch (error) {
