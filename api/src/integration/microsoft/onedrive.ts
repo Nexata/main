@@ -108,17 +108,11 @@ export namespace OneDrive {
 			adminExpected,
 		);
 
-		return fromTokens(at, rt, {
-			credentialId,
-			slug: activeUser.slug,
-		});
+		return fromTokens(at, rt);
 	};
 
-	export const fromTokens = (
-		accessToken: string,
-		refreshToken: string,
-		context?: { credentialId: string; slug: string },
-	) => Microsoft.fromTokens(accessToken, refreshToken, context);
+	export const fromTokens = (accessToken: string, refreshToken: string) =>
+		Microsoft.fromTokens(accessToken, refreshToken);
 
 	export enum FileCategory {
 		IMAGE = 'image',
@@ -855,7 +849,7 @@ export namespace OneDrive {
 			return 'FAILED';
 		}
 
-		const client = fromTokens(at, rt, { credentialId, slug });
+		const client = fromTokens(at, rt);
 		const results = await ingest(client, userId, slug, credentialId, selection);
 
 		return !results.failed && results.ok
