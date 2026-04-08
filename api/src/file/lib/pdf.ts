@@ -1,3 +1,4 @@
+import { pathToFileURL } from 'node:url';
 import {
 	InvalidRawImageError,
 	imgToChunks,
@@ -14,11 +15,15 @@ import {
 	extractImages,
 	extractText,
 	getDocumentProxy,
+	getResolvedPDFJS,
 } from 'unpdf';
 
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 const RENDER_SCALE = 2;
+const PDFJS_DIST_ROOT = '/app/node_modules/pdfjs-dist';
+const PDFJS_WORKER_PATH = `${PDFJS_DIST_ROOT}/build/pdf.worker.mjs`;
+const PDFJS_WASM_PATH = `${PDFJS_DIST_ROOT}/wasm/`;
 
 let pdfJsConfigured: Promise<void> | undefined;
 
@@ -32,6 +37,9 @@ async function ensurePdfJsConfigured(): Promise<void> {
 		);
 
 	await pdfJsConfigured;
+
+	const pdfjs = await getResolvedPDFJS();
+	pdfjs.GlobalWorkerOptions.workerSrc = pathToFileURL(PDFJS_WORKER_PATH).href;
 }
 
 class CanvasFactory {
@@ -121,6 +129,8 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	const pdf = await getDocumentProxy(f, {
 		// biome-ignore lint/suspicious/noExplicitAny: unpdf expects class constructor as Object
 		CanvasFactory: CanvasFactory as any,
+		useWorkerFetch: false,
+		wasmUrl: pathToFileURL(PDFJS_WASM_PATH).href,
 	});
 	const { text, totalPages } = await extractText(pdf);
 

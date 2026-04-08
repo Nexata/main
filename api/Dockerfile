@@ -8,6 +8,7 @@ RUN bun install
 COPY ./src ./src
 RUN bun build \
 	--compile \
+	--external pdfjs-dist \
 	--external sharp \
 	--external file-type \
 	--minify \

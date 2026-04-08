@@ -74,14 +74,17 @@ async function nodeToMarkdown(
 			if (!image) return [node.text ?? '---', 0];
 
 			const imgBuffer = Buffer.from(image.data, 'base64');
-			const meta = await sharp(imgBuffer).metadata();
-			if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0)) return ['', 0];
+			let meta: Awaited<ReturnType<typeof sharp.prototype.metadata>>;
+			let imgResult: ToStringChunksResult;
 
-			const imgResult = await imgToChunks(imgBuffer, {
-				width: meta.width,
-				height: meta.height,
-				channels: meta.channels ?? 3,
-			});
+			try {
+				meta = await sharp(imgBuffer).metadata();
+				if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0)) return ['', 0];
+
+				imgResult = await imgToChunks(imgBuffer);
+			} catch {
+				return ['', 0];
+			}
 
 			if (!imgResult.chunks.length) return ['', 0];
 
