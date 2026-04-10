@@ -510,7 +510,7 @@
 			},
 			"table": {
 				"name": "Name",
-				"owner": "Owner",
+				"ingested_by": "Ingested by",
 				"provider": "Provider",
 				"type": "Type",
 				"ingested": "Ingested",
@@ -525,6 +525,7 @@
 			"tooltip": {
 				"reingest": "Re-ingest file",
 				"delete": "Delete file",
+				"credential_owner": "Credential owner",
 				"autosync_on": "Auto-sync enabled",
 				"autosync_off": "Auto-sync disabled",
 				"autosync_unavailable": "Not available for local files"
