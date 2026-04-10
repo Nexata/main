@@ -8,6 +8,7 @@ import {
 	ExternalLink,
 	FileText,
 	FolderSync,
+	Info,
 	RefreshCcw,
 	Search,
 	Settings as SettingsIcon,
@@ -170,7 +171,7 @@ import {
 	'settings.files.table.auto_sync' as settings_files_table_auto_sync,
 	'settings.files.table.ingested' as settings_files_table_ingested,
 	'settings.files.table.name' as settings_files_table_name,
-	'settings.files.table.owner' as settings_files_table_owner,
+	'settings.files.table.ingested_by' as settings_files_table_ingested_by,
 	'settings.files.table.provider' as settings_files_table_provider,
 	'settings.files.table.type' as settings_files_table_type,
 	'settings.files.table.updated_at' as settings_files_table_updated_at,
@@ -196,6 +197,7 @@ import {
 	'settings.files.tooltip.autosync_off' as settings_files_tooltip_autosync_off,
 	'settings.files.tooltip.autosync_on' as settings_files_tooltip_autosync_on,
 	'settings.files.tooltip.autosync_unavailable' as settings_files_tooltip_autosync_unavailable,
+	'settings.files.tooltip.credential_owner' as settings_files_tooltip_credential_owner,
 	'settings.files.tooltip.delete' as settings_files_tooltip_delete,
 	'settings.files.tooltip.reingest' as settings_files_tooltip_reingest,
 	'settings.files.user.system' as settings_files_user_system,
@@ -1400,7 +1402,7 @@ export function FilesManagementSection() {
 									{settings_files_table_name()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
-									{settings_files_table_owner()}
+									{settings_files_table_ingested_by()}
 								</TableHead>
 								<TableHead className="font-semibold text-xs uppercase tracking-wider">
 									{settings_files_table_provider()}
@@ -1458,29 +1460,55 @@ export function FilesManagementSection() {
 											/>
 										</TableCell>
 										<TableCell>
-											<div className="flex items-center gap-2 min-w-0">
-												<div className="rounded-md bg-muted p-1.5 shrink-0">
-													<FileText className="w-3.5 h-3.5 text-muted-foreground" />
-												</div>
-												{file.url ? (
-													<a
-														href={file.url}
-														target="_blank"
-														rel="noopener noreferrer"
-														className="text-sm font-medium truncate max-w-[180px] hover:underline"
-													>
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<div className="flex items-center gap-2 min-w-0 cursor-default">
+															<div className="rounded-md bg-muted p-1.5 shrink-0">
+																<FileText className="w-3.5 h-3.5 text-muted-foreground" />
+															</div>
+															{file.url ? (
+																<a
+																	href={file.url}
+																	target="_blank"
+																	rel="noopener noreferrer"
+																	className="text-sm font-medium truncate max-w-[180px] hover:underline"
+																>
+																	{file.name}
+																	<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
+																</a>
+															) : (
+																<span className="text-sm font-medium truncate max-w-[180px]">
+																	{file.name}
+																</span>
+															)}
+														</div>
+													</TooltipTrigger>
+													<TooltipContent>
 														{file.name}
-														<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
-													</a>
-												) : (
-													<span className="text-sm font-medium truncate max-w-[180px]">
-														{file.name}
-													</span>
-												)}
-											</div>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
 										</TableCell>
 										<TableCell>
-											<UserMini user={file.ownedBy} />
+											<div className="flex items-center gap-2 min-w-0">
+												<UserMini user={file.ownedBy} />
+												{file.credential && (
+													<TooltipProvider>
+														<Tooltip>
+															<TooltipTrigger asChild>
+																<Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 cursor-help" />
+															</TooltipTrigger>
+															<TooltipContent>
+																<div className="text-center">
+																	<p className="font-bold text-xs">{settings_files_tooltip_credential_owner()}</p>
+																	<p className="text-xs">{file.credential.email}</p>
+																</div>
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												)}
+											</div>
 										</TableCell>
 										<TableCell>
 											<ProviderBadge provider={file.provider} />
