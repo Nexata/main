@@ -755,7 +755,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </>
       )}
 
-      {(showTimeStamp && formattedDateTime || extraReason) && (
+      {isLastInGroup && (showTimeStamp && formattedDateTime || extraReason) && (
         <div className={cn(
           "flex items-center gap-1.5 text-xs text-muted-foreground/60 select-none",
           isUser ? "justify-end" : "justify-start"
