@@ -19,6 +19,7 @@ type ChatUIState = {
 	editingMessageId: string | null;
 	editingMessageText: string;
 	lastUserMessageId: string | null;
+	extraReasonMessageIds: Set<string>;
 	setActiveThreadId: (id: string | null) => void;
 	upsertOptimisticThread: (thread: OptimisticThread) => void;
 	removeOptimisticThread: (threadId: string) => void;
@@ -33,6 +34,7 @@ type ChatUIState = {
 	startEditing: (messageId: string, text: string) => void;
 	cancelEditing: () => void;
 	setLastUserMessageId: (id: string | null) => void;
+	addExtraReasonMessageId: (id: string) => void;
 };
 
 export const useChatUIStore = create<ChatUIState>()(
@@ -47,6 +49,7 @@ export const useChatUIStore = create<ChatUIState>()(
 			editingMessageId: null,
 			editingMessageText: '',
 			lastUserMessageId: null,
+			extraReasonMessageIds: new Set<string>(),
 			startNewChat: () => set({ activeThreadId: null, viewStatus: 'new' }),
 			hydrateChat: (threadId) =>
 				set((state) => {
@@ -119,6 +122,12 @@ export const useChatUIStore = create<ChatUIState>()(
 			cancelEditing: () =>
 				set({ editingMessageId: null, editingMessageText: '' }),
 			setLastUserMessageId: (id) => set({ lastUserMessageId: id }),
+			addExtraReasonMessageId: (id) =>
+				set((state) => {
+					const next = new Set(state.extraReasonMessageIds);
+					next.add(id);
+					return { extraReasonMessageIds: next };
+				}),
 		}),
 		{
 			name: 'chat-ui-store',

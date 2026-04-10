@@ -234,6 +234,7 @@ export function createAuthenticatedChatTransport(
 										threadId: newThreadId,
 										threadTitle,
 										userMessageId,
+										extraReason,
 									} = event.messageMetadata;
 									const store = useChatUIStore.getState();
 
@@ -251,6 +252,9 @@ export function createAuthenticatedChatTransport(
 
 									if (userMessageId) {
 										store.setLastUserMessageId(userMessageId);
+										if (extraReason) {
+											store.addExtraReasonMessageId(userMessageId);
+										}
 									}
 								}
 
