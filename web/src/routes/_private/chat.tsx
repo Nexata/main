@@ -475,6 +475,10 @@ export function NexataChat() {
 
 	const lastUserMessageId = useChatUIStore((s) => s.lastUserMessageId);
 	const setLastUserMessageId = useChatUIStore((s) => s.setLastUserMessageId);
+	const addExtraReasonMessageId = useChatUIStore(
+		(s) => s.addExtraReasonMessageId,
+	);
+	const pendingExtraReasonRef = useRef(false);
 
 	useEffect(() => {
 		if (!lastUserMessageId) return;
@@ -485,13 +489,22 @@ export function NexataChat() {
 			return;
 		}
 
+		// If the previous send was with extraReason, track BOTH the old temp ID
+		// and the real server-assigned ID so the indicator shows immediately.
+		if (pendingExtraReasonRef.current) {
+			addExtraReasonMessageId(lastUserMessageId);
+			// Also keep the temp ID in case the UI renders before this effect
+			addExtraReasonMessageId(lastUserMsg.id);
+			pendingExtraReasonRef.current = false;
+		}
+
 		setMessages(
 			messages.map((m) =>
 				m.id === lastUserMsg.id ? { ...m, id: lastUserMessageId } : m,
 			),
 		);
 		setLastUserMessageId(null);
-	}, [lastUserMessageId, messages, setMessages, setLastUserMessageId]);
+	}, [lastUserMessageId, messages, setMessages, setLastUserMessageId, addExtraReasonMessageId]);
 
 	// ----------------------------
 	// Background stream monitor
@@ -588,6 +601,10 @@ export function NexataChat() {
 		setInput('');
 		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
+		if (reasoning) {
+			pendingExtraReasonRef.current = true;
+		}
+
 		await sendMessage(
 			{ text, files: files?.length ? files : undefined },
 			{
@@ -669,6 +686,10 @@ export function NexataChat() {
 			cancelEditing();
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
+			if (extraReasonRef.current) {
+				pendingExtraReasonRef.current = true;
+			}
+
 			await sendMessage(
 				{ text: newText, files: undefined, messageId },
 				{
@@ -707,6 +728,10 @@ export function NexataChat() {
 			if (!text.trim()) return;
 
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
+
+			if (extraReasonRef.current) {
+				pendingExtraReasonRef.current = true;
+			}
 
 			await sendMessage(
 				{ text, files: undefined, messageId },

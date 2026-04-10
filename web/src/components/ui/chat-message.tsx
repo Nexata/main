@@ -321,12 +321,14 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
           ? new Date(meta.createdAt as string)
           : undefined
 
-  const extraReason = !!meta?.extraReason
+  const extraReasonFromStore = useChatUIStore(
+    (s) => s.extraReasonMessageIds.has(message.id)
+  )
+  const extraReason = !!meta?.extraReason || extraReasonFromStore
 
-  const formattedTime = createdAt?.toLocaleTimeString("en-US", {
-    hour: "2-digit",
-    minute: "2-digit",
-  })
+  const formattedDateTime = createdAt
+    ? `${createdAt.toLocaleDateString(undefined, { month: "short", day: "numeric" })} ${createdAt.toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}`
+    : undefined
 
   // Helper para FilePreview
   function filePartToPreviewData(part: Record<string, unknown>): File | RemoteFile {
@@ -753,7 +755,7 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
         </>
       )}
 
-      {(showTimeStamp && createdAt || extraReason) && (
+      {(showTimeStamp && formattedDateTime || extraReason) && (
         <div className={cn(
           "flex items-center gap-1.5 text-xs text-muted-foreground/60 select-none",
           isUser ? "justify-end" : "justify-start"
@@ -770,8 +772,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
               </TooltipContent>
             </Tooltip>
           )}
-          {showTimeStamp && createdAt && (
-            <time>{formattedTime}</time>
+          {showTimeStamp && formattedDateTime && (
+            <time>{formattedDateTime}</time>
           )}
         </div>
       )}
