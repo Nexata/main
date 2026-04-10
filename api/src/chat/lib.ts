@@ -255,6 +255,7 @@ export async function persistChat(params: {
 	fileIds?: string[];
 	userMessageId?: string;
 	assistantMessageId?: string;
+	extraReason?: boolean;
 }) {
 	const {
 		threadId,
@@ -269,6 +270,7 @@ export async function persistChat(params: {
 		fileIds,
 		userMessageId,
 		assistantMessageId,
+		extraReason = false,
 	} = params;
 
 	if (editedMessage)
@@ -324,6 +326,7 @@ export async function persistChat(params: {
 		threadId,
 		role: m.role as MessageRole,
 		content: m.content,
+		extraReason: m.role === 'assistant' ? extraReason : false,
 		finishReason:
 			m.role === 'assistant' || m.role === 'tool' ? reason : undefined,
 		createdAt: new Date(baseDate.getTime() + i),

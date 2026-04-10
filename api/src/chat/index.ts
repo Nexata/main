@@ -205,6 +205,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					fileIds: fileIds.length ? fileIds : undefined,
 					userMessageId: userMessage.id,
 					assistantMessageId,
+					extraReason: body.extraReason ?? false,
 				});
 
 			// Final streaming
