@@ -1,4 +1,8 @@
-import { imgToChunks, isRelevantImage } from '@api/file/lib/image';
+import {
+	imgToChunks,
+	isIgnorableImageProcessingError,
+	isRelevantImage,
+} from '@api/file/lib/image';
 import {
 	type FileLike,
 	mdSplitter,
@@ -38,11 +42,15 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0))
 					return (html = html.replace(imgTag, ''));
 
-				const imgResult = await imgToChunks(new Uint8Array(data), {
-					width: meta.width,
-					height: meta.height,
-					channels: meta.channels ?? 3,
-				});
+				let imgResult: ToStringChunksResult;
+				try {
+					imgResult = await imgToChunks(data);
+				} catch (error) {
+					if (isIgnorableImageProcessingError(error))
+						return (html = html.replace(imgTag, ''));
+
+					throw error;
+				}
 
 				usage += imgResult.tokenUsage ?? 0;
 

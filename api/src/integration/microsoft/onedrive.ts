@@ -1,7 +1,7 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { getMimeTypeFromExt } from '@api/file/lib/types';
+import { getMimeTypeFromExt, SupportedMime } from '@api/file/lib/types';
 import {
 	getIngestedDirIds,
 	getIngestedFileIds,
@@ -37,6 +37,7 @@ import type { DriveItem } from '@microsoft/microsoft-graph-types';
 import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
+import { fileTypeFromBuffer } from 'file-type';
 
 const ITEM_SELECT = [
 	'id',
@@ -94,6 +95,40 @@ function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
 	for (const item of selection) unique.set(`${item.isDir}:${item.id}`, item);
 
 	return [...unique.values()];
+}
+
+function isSupportedMimeType(type: string | null | undefined): type is string {
+	return (
+		!!type &&
+		Object.values(SupportedMime).some((mime) =>
+			type.startsWith(mime.toLowerCase()),
+		)
+	);
+}
+
+async function resolveMimeType(
+	name: string,
+	fileContent: ArrayBuffer,
+	providerMime?: string | null,
+): Promise<string> {
+	const extensionMime = getMimeTypeFromExt(name);
+
+	if (isSupportedMimeType(providerMime)) return providerMime;
+	if (extensionMime !== 'unsupported') return extensionMime;
+
+	const sniffedType = await fileTypeFromBuffer(new Uint8Array(fileContent));
+	if (isSupportedMimeType(sniffedType?.mime)) return sniffedType.mime;
+
+	return providerMime ?? extensionMime;
+}
+
+function shouldCaptureIngestError(error: unknown): boolean {
+	if (!(error instanceof Error)) return true;
+
+	return ![
+		ErrorCode.UNSUPPORTED_MIME_TYPE,
+		ErrorCode.UNSUPPORTED_FILE_TYPE,
+	].some((code) => error.message.includes(code));
 }
 
 export namespace OneDrive {
@@ -521,9 +556,13 @@ export namespace OneDrive {
 				stream as unknown as ReadableStream,
 			).arrayBuffer();
 		}
-		const mimeType = item.file?.mimeType ?? getMimeTypeFromExt(name);
+		const mimeType = await resolveMimeType(
+			name,
+			fileContent,
+			item.file?.mimeType,
+		);
 
-		if (mimeType === 'unsupported')
+		if (!isSupportedMimeType(mimeType))
 			throw httpError(HttpCode.CONFLICT, ErrorCode.UNSUPPORTED_FILE_TYPE);
 
 		return {
@@ -567,10 +606,11 @@ export namespace OneDrive {
 
 			return result;
 		} catch (error) {
-			captureException(error, {
-				tags: { source: 'OneDrive.ingestFile' },
-				extra: { userId, entry },
-			});
+			if (shouldCaptureIngestError(error))
+				captureException(error, {
+					tags: { source: 'OneDrive.ingestFile' },
+					extra: { userId, entry },
+				});
 
 			await db.insert(trace).values({
 				userId,

@@ -16,6 +16,21 @@ export class InvalidRawImageError extends Error {
 	}
 }
 
+function getErrorMessage(error: unknown): string {
+	return error instanceof Error ? error.message : '';
+}
+
+export function isIgnorableImageProcessingError(error: unknown): boolean {
+	const message = getErrorMessage(error);
+
+	return (
+		message.includes('No output generated') ||
+		message.includes('Service unavailable') ||
+		message.includes('UNSUPPORTED_MIME_TYPE') ||
+		message.includes('UNSUPPORTED_FILE_TYPE')
+	);
+}
+
 export function isRelevantImage(width: number, height: number) {
 	if (!width || !height) return false;
 

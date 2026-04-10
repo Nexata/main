@@ -52,6 +52,21 @@ import { Elysia, type Static, t } from 'elysia';
 
 const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
+const CHUNK_INSERT_BATCH_SIZE = 25;
+
+function shouldCaptureIngestError(error: unknown): boolean {
+	if (!(error instanceof Error)) return true;
+
+	return ![
+		ErrorCode.UNSUPPORTED_MIME_TYPE,
+		ErrorCode.UNSUPPORTED_FILE_TYPE,
+	].some((code) => error.message.includes(code));
+}
+
+async function insertChunkBatches(chunks: (typeof chunk.$inferInsert)[]) {
+	for (let i = 0; i < chunks.length; i += CHUNK_INSERT_BATCH_SIZE)
+		await db.insert(chunk).values(chunks.slice(i, i + CHUNK_INSERT_BATCH_SIZE));
+}
 
 export namespace NexataFile {
 	export const [searchDescription, searchInput] = [
@@ -287,31 +302,34 @@ export namespace NexataFile {
 					STORAGE_OVERHEAD_MULTIPLIER) /
 				(1024 * 1024);
 
+			await db.insert(file).values({
+				...data,
+				name: data.name ?? f.name,
+				type: data.type ?? f.type,
+			});
+
+			if (chunks.length) await insertChunkBatches(chunks);
+
 			await Promise.all([
 				incrementStorageUsage(data.slug, storageDeltaMB),
 				incrementEmbedUsage(data.slug, totalEmbedTokens),
-				db.batch([
-					db.insert(file).values({
-						...data,
-						name: data.name ?? f.name,
-						type: data.type ?? f.type,
-					}),
-					db.insert(billableEvent).values({
-						type: BillableEventType.EMBED,
-						consumption: totalEmbedTokens.toString(),
-						userId: data.userId,
-						slug: data.slug,
-					}),
-					...(chunks.length ? [db.insert(chunk).values(chunks)] : []),
-				]),
+				db.insert(billableEvent).values({
+					type: BillableEventType.EMBED,
+					consumption: totalEmbedTokens.toString(),
+					userId: data.userId,
+					slug: data.slug,
+				}),
 			]);
 
 			return 'OK';
 		} catch (error) {
-			captureException(error, {
-				tags: { source: 'NexataFile.ingest' },
-				extra: { ...data },
-			});
+			await db.delete(file).where(eq(file.id, data.id));
+
+			if (shouldCaptureIngestError(error))
+				captureException(error, {
+					tags: { source: 'NexataFile.ingest' },
+					extra: { ...data },
+				});
 
 			await db.insert(trace).values({
 				userId: data.userId,

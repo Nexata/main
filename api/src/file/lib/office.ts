@@ -1,4 +1,8 @@
-import { imgToChunks, isRelevantImage } from '@api/file/lib/image';
+import {
+	imgToChunks,
+	isIgnorableImageProcessingError,
+	isRelevantImage,
+} from '@api/file/lib/image';
 import {
 	type FileLike,
 	mdSplitter,
@@ -77,11 +81,15 @@ async function nodeToMarkdown(
 			const meta = await sharp(imgBuffer).metadata();
 			if (!isRelevantImage(meta.width ?? 0, meta.height ?? 0)) return ['', 0];
 
-			const imgResult = await imgToChunks(imgBuffer, {
-				width: meta.width,
-				height: meta.height,
-				channels: meta.channels ?? 3,
-			});
+			let imgResult: ToStringChunksResult;
+			try {
+				imgResult = await imgToChunks(imgBuffer);
+			} catch (error) {
+				if (isIgnorableImageProcessingError(error))
+					return [node.text ?? '---', 0];
+
+				throw error;
+			}
 
 			if (!imgResult.chunks.length) return ['', 0];
 

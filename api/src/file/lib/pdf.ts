@@ -1,6 +1,7 @@
 import {
 	InvalidRawImageError,
 	imgToChunks,
+	isIgnorableImageProcessingError,
 	isRelevantImage,
 } from '@api/file/lib/image';
 import {
@@ -9,30 +10,11 @@ import {
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
 import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
-import {
-	definePDFJSModule,
-	extractImages,
-	extractText,
-	getDocumentProxy,
-} from 'unpdf';
+import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 const RENDER_SCALE = 2;
-
-let pdfJsConfigured: Promise<void> | undefined;
-
-async function ensurePdfJsConfigured(): Promise<void> {
-	if (!pdfJsConfigured)
-		pdfJsConfigured = definePDFJSModule(() => import('pdfjs-dist')).catch(
-			(error) => {
-				pdfJsConfigured = undefined;
-				throw error;
-			},
-		);
-
-	await pdfJsConfigured;
-}
 
 class CanvasFactory {
 	create(width: number, height: number) {
@@ -116,8 +98,6 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	const chunks: ToStringChunksResult['chunks'] = [];
 	let usage = 0;
 
-	await ensurePdfJsConfigured();
-
 	const pdf = await getDocumentProxy(f, {
 		// biome-ignore lint/suspicious/noExplicitAny: unpdf expects class constructor as Object
 		CanvasFactory: CanvasFactory as any,
@@ -162,6 +142,8 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 						continue;
 					}
 
+					if (isIgnorableImageProcessingError(error)) continue;
+
 					const message = error instanceof Error ? error.message : '';
 					if (
 						message.includes('OpenJPEG failed to initialize') ||
@@ -176,6 +158,8 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				}
 			}
 		} catch (error) {
+			if (isIgnorableImageProcessingError(error)) continue;
+
 			const message = error instanceof Error ? error.message : '';
 			if (
 				message.includes('OpenJPEG failed to initialize') ||
