@@ -131,6 +131,7 @@ function SkeletonRow() {
 
 export function StorageFileTree({ credentialId, source }: Props) {
   const [entries, setEntries] = useState<Entry[]>([]);
+  const [loadedEntries, setLoadedEntries] = useState<Entry[]>([]);
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: components_file_tree_root() }]);
   const [historyIndex, setHistoryIndex] = useState(0);
@@ -144,6 +145,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const current = history[historyIndex];
   const isSearching = debouncedSearch.length > 0;
+  const usesLocalSearch = source.searchMode === "local";
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
@@ -151,6 +153,13 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const { data: usage } = useBillingUsage(me?.isAdmin);
   const storageUsed = usage?.storage?.used ?? 0;
   const storageLimit = usage?.storage?.limit ?? Infinity;
+
+  function filterEntries(items: Entry[], query?: string) {
+    const needle = query?.trim().toLowerCase();
+    if (!needle) return items;
+
+    return items.filter((entry) => entry.name.toLowerCase().includes(needle));
+  }
 
   /* FETCH */
   async function fetchEntries(folderId?: string, query?: string) {
@@ -162,15 +171,16 @@ export function StorageFileTree({ credentialId, source }: Props) {
     try {
       let cursor: string | null = null;
       let all: Entry[] = [];
+      const remoteQuery = usesLocalSearch ? undefined : query;
 
       do {
-        const res: EntryResult | null = query && source.searchFiles
+        const res: EntryResult | null = remoteQuery && source.searchFiles
           ? await source.searchFiles(
               credentialId,
               cursor
                 ? { pageToken: cursor }
                 : {
-                    query,
+                    query: remoteQuery,
                     ...(folderId === "root" ? {} : { path: folderId }),
                   }
             )
@@ -191,7 +201,8 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
       if (requestId !== requestIdRef.current) return;
 
-      setEntries(all);
+      setLoadedEntries(all);
+      setEntries(filterEntries(all, query));
 
       setIngestedMap(prev => {
         const merged = new Map(prev);
@@ -226,8 +237,18 @@ export function StorageFileTree({ credentialId, source }: Props) {
   }, [search]);
 
   useEffect(() => {
+    if (usesLocalSearch) {
+      fetchEntries(current?.id);
+      return;
+    }
+
     fetchEntries(current?.id, debouncedSearch || undefined);
-  }, [current?.id, debouncedSearch]);
+  }, [current?.id, debouncedSearch, usesLocalSearch]);
+
+  useEffect(() => {
+    if (!usesLocalSearch) return;
+    setEntries(filterEntries(loadedEntries, debouncedSearch || undefined));
+  }, [debouncedSearch, loadedEntries, usesLocalSearch]);
 
   /* NAVIGATION */
   function enterFolder(entry: Entry) {
