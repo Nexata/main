@@ -165,11 +165,12 @@ export function getPlanLabel(plan: TenantPlan) {
 	return labels[plan];
 }
 
-export function getPlanDescription(plan: Exclude<TenantPlan, 'free'>) {
+export function getPlanDescription(plan: TenantPlan) {
 	const locale = getLocale();
 	const descriptions =
 		locale === 'es'
 			? {
+					free: 'Para explorar Nexata con límites iniciales y sin acceso a API.',
 					personal:
 						'Ideal para profesionales independientes y equipos pequeños.',
 					team: 'Diseñado para equipos que ya necesitan colaboración y acceso a API.',
@@ -181,6 +182,7 @@ export function getPlanDescription(plan: Exclude<TenantPlan, 'free'>) {
 						'Base mensual con límites abiertos y un esquema flexible para necesidades especiales.',
 				}
 			: {
+					free: 'For exploring Nexata with starter limits and no API access.',
 					personal: 'Great for individual professionals and small teams.',
 					team: 'Built for teams that already need collaboration and API access.',
 					business:
@@ -195,7 +197,7 @@ export function getPlanDescription(plan: Exclude<TenantPlan, 'free'>) {
 }
 
 export function getPlanPrice(
-	plan: Exclude<TenantPlan, 'free'>,
+	plan: TenantPlan,
 	formatAmount: (usd: number) => string,
 ) {
 	const period =
@@ -210,7 +212,7 @@ export function getPlanPrice(
 	return `${formatAmount(PLAN_CONFIG[plan].baseBill)} / ${period}`;
 }
 
-export function getPlanFeatures(plan: Exclude<TenantPlan, 'free'>) {
+export function getPlanFeatures(plan: TenantPlan) {
 	const locale = getLocale();
 	const config = PLAN_CONFIG[plan];
 	const features = [

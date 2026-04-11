@@ -148,13 +148,29 @@ export namespace Drive {
 		return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 	}
 
+	function looksLikeDriveQuery(value: string): boolean {
+		return /\b(?:and|or|not|contains|in|has)\b|!=|<=|>=|=|<|>|\b(?:name|fullText|mimeType|modifiedTime|parents|owners|sharedWithMe|starred|trashed|fileExtension)\b/.test(
+			value,
+		);
+	}
+
 	function buildSearchQuery(
 		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = ['trashed = false'];
-		const rawQuery = input.query ?? input.q;
+		const rawQuery =
+			input.q ??
+			(input.query && looksLikeDriveQuery(input.query)
+				? input.query
+				: undefined);
+		const plainQuery =
+			input.q || !input.query || looksLikeDriveQuery(input.query)
+				? undefined
+				: input.query;
 
 		if (rawQuery) parts.push(`(${rawQuery})`);
+		if (plainQuery)
+			parts.push(`fullText contains '${escapeDriveQueryLiteral(plainQuery)}'`);
 		if (input.name)
 			parts.push(`name contains '${escapeDriveQueryLiteral(input.name)}'`);
 		if (input.path)
@@ -225,11 +241,11 @@ export namespace Drive {
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'Raw Google Drive files.list q fragment. Pass native Drive query syntax here and combine it with structured filters when needed.',
+						'Plain text search by default. If you pass a full Google Drive files.list q fragment, it will also be honored. Combine with structured filters when needed.',
 				}),
 				q: Nullish(t.String(), {
 					description:
-						'Alias for query. Pass raw Google Drive files.list q syntax here for compatibility with callers that use q.',
+						'Explicit raw Google Drive files.list q fragment. Use this when you want provider-native query syntax without plain-text wrapping.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name (contains match).',

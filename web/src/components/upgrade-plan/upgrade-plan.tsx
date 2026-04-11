@@ -10,6 +10,7 @@ import { useBillingUsage, useSetBillingPlan, useUsdArsQuote } from "@/lib/admin"
 import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
 import {
   PLAN_CONFIG,
+  PLAN_ORDER,
   UPGRADE_MODAL_PLANS,
   comparePlans,
   formatStorageLimit,
@@ -47,7 +48,7 @@ type UpgradePlanModalProps = {
   onPlanUpgraded?: (billId: string) => void;
 };
 
-type PaidPlan = Exclude<TenantPlan, "free">;
+type ModalMode = "upgrade" | "downgrade";
 
 export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: UpgradePlanModalProps) {
   const { data: tenant } = useMyTenant();
@@ -62,12 +63,14 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
 
   const [selectedPlan, setSelectedPlan] = useState<TenantPlan | null>(null);
   const [ack, setAck] = useState(false);
+  const [mode, setMode] = useState<ModalMode>("upgrade");
   const warningRef = useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     if (!open) {
       setSelectedPlan(null);
       setAck(false);
+      setMode("upgrade");
     }
   }, [open]);
 
@@ -98,24 +101,39 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
     return usage.storage.used > targetLimit;
   }, [selectedPlan, isDowngrade, usage]);
 
-  const visiblePlans = useMemo<PaidPlan[]>(() => {
+  const hasDowngrades = useMemo(() => {
+    if (!currentPlan || currentPlan === "free") return false;
+
+    return comparePlans(currentPlan, "free") > 0;
+  }, [currentPlan]);
+
+  const visiblePlans = useMemo<TenantPlan[]>(() => {
     if (!currentPlan) return UPGRADE_MODAL_PLANS;
 
-    return [...UPGRADE_MODAL_PLANS].sort((a, b) => {
-      const aDistance = Math.abs(comparePlans(currentPlan, a));
-      const bDistance = Math.abs(comparePlans(currentPlan, b));
+    if (mode === "upgrade") {
+      return [
+        currentPlan,
+        ...UPGRADE_MODAL_PLANS.filter((plan) => isUpgradePlan(currentPlan, plan)),
+      ];
+    }
 
-      if (a === currentPlan) return -1;
-      if (b === currentPlan) return 1;
-      if (aDistance !== bDistance) return aDistance - bDistance;
-
-      return comparePlans(a, b);
-    });
-  }, [currentPlan]);
+    return [
+      currentPlan,
+      ...PLAN_ORDER.filter(
+        (plan) => plan !== currentPlan && isDowngradePlan(currentPlan, plan),
+      ),
+    ];
+  }, [currentPlan, mode]);
 
   const select = (plan: TenantPlan) => {
     if (!currentPlan || plan === currentPlan || !PLAN_CONFIG[plan].isSelfServe) return;
     setSelectedPlan(plan);
+    setAck(false);
+  };
+
+  const switchMode = (nextMode: ModalMode) => {
+    setMode(nextMode);
+    setSelectedPlan(null);
     setAck(false);
   };
 
@@ -255,7 +273,21 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
                 {components_upgrade_plan_modal_subtitle()}
               </p>
             </div>
-            <CurrencyToggle className="mt-0.5" />
+            <div className="flex items-center gap-2 self-start">
+              {currentPlan && hasDowngrades && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="cursor-pointer"
+                  onClick={() => switchMode(mode === "upgrade" ? "downgrade" : "upgrade")}
+                >
+                  {mode === "upgrade"
+                    ? components_upgrade_plan_modal_downgrade_button()
+                    : components_upgrade_plan_modal_upgrade_button()}
+                </Button>
+              )}
+              <CurrencyToggle className="mt-0.5" />
+            </div>
           </div>
         </DialogHeader>
 
@@ -265,7 +297,8 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
           {visiblePlans.map((plan) => {
             const config = PLAN_CONFIG[plan];
             const isCurrent = plan === currentPlan;
-            const isUpgradeTarget = currentPlan ? isUpgradePlan(currentPlan, plan) : false;
+            const isUpgradeTarget =
+              mode === "upgrade" && currentPlan ? isUpgradePlan(currentPlan, plan) : false;
             const emphasis = isCurrent
               ? "current"
               : isUpgradeTarget
