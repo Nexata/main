@@ -144,15 +144,21 @@ export namespace Drive {
 		return conditions.length ? `(${conditions.join(' or ')})` : '';
 	}
 
+	function escapeDriveQueryLiteral(value: string): string {
+		return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+	}
+
 	function buildSearchQuery(
 		input: Exclude<Static<typeof searchInput>, { cursor: string }>,
 	): string {
 		const parts: string[] = ['trashed = false'];
-		const query = input.query ?? input.q;
+		const rawQuery = input.query ?? input.q;
 
-		if (query) parts.push(`fullText contains '${query}'`);
-		if (input.name) parts.push(`name contains '${input.name}'`);
-		if (input.path) parts.push(`'${input.path}' in parents`);
+		if (rawQuery) parts.push(`(${rawQuery})`);
+		if (input.name)
+			parts.push(`name contains '${escapeDriveQueryLiteral(input.name)}'`);
+		if (input.path)
+			parts.push(`'${escapeDriveQueryLiteral(input.path)}' in parents`);
 		if (input.modifiedAfter)
 			parts.push(`modifiedTime > '${input.modifiedAfter}'`);
 		if (input.modifiedBefore)
@@ -167,7 +173,8 @@ export namespace Drive {
 		}
 		if (input.fileExtensions?.length) {
 			const extConditions = input.fileExtensions.map(
-				(ext) => `fileExtension = '${ext.replace(/^\./, '')}'`,
+				(ext) =>
+					`fileExtension = '${escapeDriveQueryLiteral(ext.replace(/^\./, ''))}'`,
 			);
 			parts.push(`(${extConditions.join(' or ')})`);
 		}
@@ -218,11 +225,11 @@ export namespace Drive {
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'Full-text search query for file content and metadata. Prefer pairing this with name, path, type, extension, category, or date filters instead of using broad text alone.',
+						'Raw Google Drive files.list q fragment. Pass native Drive query syntax here and combine it with structured filters when needed.',
 				}),
 				q: Nullish(t.String(), {
 					description:
-						'Alias for query. Supported for compatibility with common caller usage.',
+						'Alias for query. Pass raw Google Drive files.list q syntax here for compatibility with callers that use q.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name (contains match).',

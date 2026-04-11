@@ -1,0 +1,1 @@
+ALTER TYPE "public"."plan" ADD VALUE 'enterprise' BEFORE 'pay_as_you_go';

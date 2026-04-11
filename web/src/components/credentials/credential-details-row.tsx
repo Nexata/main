@@ -153,13 +153,13 @@ export function CredentialDetailsRow({
         </div>
 
         {/* Actions */}
-        <div className="flex items-center gap-1 self-end sm:self-auto">
+        <div className="flex w-full flex-wrap items-center justify-end gap-1 gap-y-2 self-stretch sm:w-auto sm:flex-nowrap sm:self-auto">
           {/* Global toggle */}
           {canManage && (
             <Tooltip>
               <TooltipTrigger
                 className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-all duration-200 outline-none cursor-pointer",
+                  "flex shrink-0 items-center gap-1.5 rounded-md px-2.5 py-1 text-xs font-medium outline-none transition-all duration-200 cursor-pointer",
                   credential.isGlobal
                     ? "bg-blue-50 text-blue-600 shadow-sm dark:bg-blue-950/40 dark:text-blue-400"
                     : "bg-muted text-muted-foreground hover:text-foreground",

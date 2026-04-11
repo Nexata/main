@@ -224,36 +224,39 @@
 			"upgrade_button": "Upgrade Plan",
 			"downgrade_button": "Downgrade Plan",
 			"contact": "Contact us",
+			"period": {
+				"month": "month",
+				"base_month": "base month"
+			},
+			"features": {
+				"messages": "{value} messages per month",
+				"messages_unlimited": "Unlimited messages per month",
+				"storage": "{value} of storage",
+				"storage_unlimited": "Unlimited storage",
+				"embeddings": "{value} tokens for embeddings / month",
+				"embeddings_unlimited": "Unlimited embeddings per month",
+				"api_access": "API access included"
+			},
 			"plans": {
 				"personal": {
 					"title": "Personal",
-					"price": "month",
-					"description": "Perfect for individual use or small teams.",
-					"features": {
-						"messages": "150 messages per month",
-						"storage": "1024 MB of storage",
-						"embeddings": "375M tokens for embeddings / month"
-					}
+					"description": "Great for individual professionals and small teams."
+				},
+				"team": {
+					"title": "Team",
+					"description": "Built for teams that already need collaboration and API access."
 				},
 				"business": {
 					"title": "Business",
-					"price": "month",
-					"description": "Designed for teams and intensive usage.",
-					"features": {
-						"messages": "1000 messages per month",
-						"storage": "10 GB of storage",
-						"embeddings": "3750M tokens for embeddings / month"
-					}
+					"description": "Designed for higher-volume operations and multi-team workflows."
 				},
-				"custom": {
-					"title": "Custom plan",
-					"price": "Custom pricing",
-					"description": "Advanced solutions for specific needs.",
-					"features": {
-						"custom_plans": "Fully customized plans",
-						"external_integrations": "External provider integrations",
-						"data_sources": "Connection to private data sources"
-					}
+				"enterprise": {
+					"title": "Enterprise",
+					"description": "For organizations that need scale, governance, and intensive usage."
+				},
+				"pay_as_you_go": {
+					"title": "Pay as you go",
+					"description": "Monthly base pricing with open limits and flexible billing for specialized needs."
 				}
 			},
 			"warnings": {
@@ -649,7 +652,9 @@
 			"plans": {
 				"free": "Free",
 				"personal": "Personal",
+				"team": "Team",
 				"business": "Business",
+				"enterprise": "Enterprise",
 				"pay_as_you_go": "Pay as you go"
 			}
 		},

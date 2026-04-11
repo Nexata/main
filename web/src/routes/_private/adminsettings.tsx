@@ -9,15 +9,11 @@ import {
 	CalendarRange,
 	CheckCircle2,
 	CreditCard,
-	Crown,
-	Diamond,
 	Filter,
-	Gem,
 	Loader2,
 	MessageSquarePlus,
 	Pencil,
 	Settings,
-	Sparkles,
 	Trash,
 	TrendingUp,
 } from 'lucide-react';
@@ -94,7 +90,8 @@ import {
 	useCurrencyStore,
 } from '@/lib/currency.store';
 import { extractErrorText } from '@/lib/error';
-import { type Language, type Plan, useMyTenant } from '@/lib/user';
+import { PLAN_CONFIG, type TenantPlan, getPlanLabel } from '@/lib/tenant-plan';
+import { type Language, useMyTenant } from '@/lib/user';
 import {
 	'admin.billing.batch.detail_months' as admin_billing_batch_detail_months,
 	'admin.billing.batch.detail_months_no_discount' as admin_billing_batch_detail_months_no_discount,
@@ -144,10 +141,6 @@ import {
 	'admin.company_overview.embeddings_balance_info' as admin_company_overview_embeddings_balance_info,
 	'admin.company_overview.message_balance' as admin_company_overview_message_balance,
 	'admin.company_overview.message_balance_info' as admin_company_overview_message_balance_info,
-	'admin.company_overview.plans.business' as admin_company_overview_plans_business,
-	'admin.company_overview.plans.free' as admin_company_overview_plans_free,
-	'admin.company_overview.plans.pay_as_you_go' as admin_company_overview_plans_pay_as_you_go,
-	'admin.company_overview.plans.personal' as admin_company_overview_plans_personal,
 	'admin.company_overview.storage_balance' as admin_company_overview_storage_balance,
 	'admin.company_overview.storage_balance_info' as admin_company_overview_storage_balance_info,
 	'admin.company_overview.tenant_logo' as admin_company_overview_tenant_logo,
@@ -317,36 +310,13 @@ function CompanyOverviewSection() {
 		}
 	}, [myTenant]);
 
-	const PLAN_UI: Record<
-		Plan,
-		{
-			label: string;
-			color: string;
-			Icon: React.ComponentType<any>;
-		}
-	> = {
-		free: {
-			label: admin_company_overview_plans_free(),
-			color: 'bg-emerald-500/10 text-emerald-600',
-			Icon: Sparkles,
-		},
-		personal: {
-			label: admin_company_overview_plans_personal(),
-			color: 'bg-amber-500/10 text-amber-600',
-			Icon: Gem,
-		},
-		business: {
-			label: admin_company_overview_plans_business(),
-			color: 'bg-primary/10 text-primary',
-			Icon: Crown,
-		},
-		pay_as_you_go: {
-			label: admin_company_overview_plans_pay_as_you_go(),
-			color: 'bg-violet-500/10 text-violet-600',
-			Icon: Diamond,
-		},
-	};
-	const planUI = myTenant ? PLAN_UI[myTenant.plan] : null;
+	const planUI = myTenant
+		? {
+				label: getPlanLabel(myTenant.plan),
+				color: PLAN_CONFIG[myTenant.plan].badgeClassName,
+				Icon: PLAN_CONFIG[myTenant.plan].Icon,
+			}
+		: null;
 	const isPayAsYouGo = myTenant?.plan === 'pay_as_you_go';
 
 	return (
@@ -648,18 +618,19 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 			year: 'numeric',
 		});
 
+	const toDateString = (date: string | Date) =>
+		typeof date === 'string' ? date : date.toISOString();
+
 	const SOURCE_LABEL: Record<string, string> = {
 		periodic: admin_billing_sources_periodic(),
 		plan_change: admin_billing_sources_plan_change(),
 		refill: admin_billing_sources_refill(),
 	};
 
-	const PLAN_COLOR: Record<string, string> = {
-		free: 'bg-emerald-500/10 text-emerald-600',
-		personal: 'bg-amber-500/10 text-amber-600',
-		business: 'bg-primary/10 text-primary',
-		pay_as_you_go: 'bg-violet-500/10 text-violet-600',
-	};
+	const getBillPlanBadge = (plan: TenantPlan) => ({
+		className: PLAN_CONFIG[plan].badgeClassName,
+		label: getPlanLabel(plan),
+	});
 
 	const AnimatedAmount = ({ value }: { value: string }) => (
 		<AnimatePresence mode="wait">
@@ -777,23 +748,29 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 										<AnimatedAmount value={formatAmount(lastBill.amount)} />
 									</span>
 									<span className="text-xs text-muted-foreground">
-										{formatDate(lastBill.createdAt)}
+										{formatDate(toDateString(lastBill.createdAt))}
 									</span>
 								</div>
 
 								<Separator />
 
 								<div className="space-y-1.5 text-sm">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">
-											{admin_billing_last_bill_plan_label()}
-										</span>
-										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastBill.plan] ?? 'bg-muted text-muted-foreground'}`}
-										>
-											{lastBill.plan}
-										</span>
-									</div>
+									{(() => {
+										const badge = getBillPlanBadge(lastBill.plan as TenantPlan);
+
+										return (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">
+													{admin_billing_last_bill_plan_label()}
+												</span>
+												<span
+													className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+												>
+													{badge.label}
+												</span>
+											</div>
+										);
+									})()}
 									<div className="flex justify-between">
 										<span className="text-muted-foreground">
 											{admin_billing_last_bill_source_label()}
@@ -819,7 +796,9 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											<p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">
 												{admin_billing_last_bill_detail_title()}
 											</p>
-											{'baseBill' in lastBill.details ? (
+											{typeof lastBill.details === 'object' &&
+											lastBill.details !== null &&
+											'baseBill' in lastBill.details ? (
 												<div className="flex justify-between">
 													<span>{admin_billing_last_bill_detail_base()}</span>
 													<span className="text-foreground font-medium overflow-hidden">
@@ -855,7 +834,9 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 													</span>
 												</div>
 											) : null}
-											{'message' in lastBill.details &&
+											{typeof lastBill.details === 'object' &&
+											lastBill.details !== null &&
+											'message' in lastBill.details &&
 											lastBill.plan === 'pay_as_you_go' ? (
 												<div className="flex justify-between">
 													<span>
@@ -870,7 +851,9 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 													</span>
 												</div>
 											) : null}
-											{'storage' in lastBill.details &&
+											{typeof lastBill.details === 'object' &&
+											lastBill.details !== null &&
+											'storage' in lastBill.details &&
 											lastBill.plan === 'pay_as_you_go' ? (
 												<div className="flex justify-between">
 													<span>
@@ -966,23 +949,31 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 										/>
 									</span>
 									<span className="text-xs text-muted-foreground">
-										{formatDate(lastRefillBill.createdAt)}
+										{formatDate(toDateString(lastRefillBill.createdAt))}
 									</span>
 								</div>
 
 								<Separator />
 
 								<div className="space-y-1.5 text-sm">
-									<div className="flex justify-between">
-										<span className="text-muted-foreground">
-											{admin_billing_last_bill_plan_label()}
-										</span>
-										<span
-											className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[lastRefillBill.plan] ?? 'bg-muted text-muted-foreground'}`}
-										>
-											{lastRefillBill.plan}
-										</span>
-									</div>
+									{(() => {
+										const badge = getBillPlanBadge(
+											lastRefillBill.plan as TenantPlan,
+										);
+
+										return (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">
+													{admin_billing_last_bill_plan_label()}
+												</span>
+												<span
+													className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
+												>
+													{badge.label}
+												</span>
+											</div>
+										);
+									})()}
 									<div className="flex justify-between">
 										<span className="text-muted-foreground">
 											{admin_billing_last_bill_source_label()}
@@ -1001,30 +992,34 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											<p className="font-medium text-foreground text-xs uppercase tracking-wide mb-1">
 												{admin_billing_last_bill_detail_title()}
 											</p>
-											{'messages' in lastRefillBill.details && (
-												<div className="flex justify-between">
-													<span>
-														{admin_billing_last_refill_messages_recharged()}
-													</span>
-													<span className="text-foreground font-medium tabular-nums">
-														{(lastRefillBill.details as any).messages}
-													</span>
-												</div>
-											)}
-											{'perMessage' in lastRefillBill.details && (
-												<div className="flex justify-between">
-													<span>
-														{admin_billing_last_refill_price_per_message()}
-													</span>
-													<span className="text-foreground font-medium overflow-hidden">
-														<AnimatedAmount
-															value={formatAmount(
-																(lastRefillBill.details as any).perMessage,
-															)}
-														/>
-													</span>
-												</div>
-											)}
+											{typeof lastRefillBill.details === 'object' &&
+												lastRefillBill.details !== null &&
+												'messages' in lastRefillBill.details && (
+													<div className="flex justify-between">
+														<span>
+															{admin_billing_last_refill_messages_recharged()}
+														</span>
+														<span className="text-foreground font-medium tabular-nums">
+															{(lastRefillBill.details as any).messages}
+														</span>
+													</div>
+												)}
+											{typeof lastRefillBill.details === 'object' &&
+												lastRefillBill.details !== null &&
+												'perMessage' in lastRefillBill.details && (
+													<div className="flex justify-between">
+														<span>
+															{admin_billing_last_refill_price_per_message()}
+														</span>
+														<span className="text-foreground font-medium overflow-hidden">
+															<AnimatedAmount
+																value={formatAmount(
+																	(lastRefillBill.details as any).perMessage,
+																)}
+															/>
+														</span>
+													</div>
+												)}
 										</div>
 									</>
 								) : null}
@@ -1128,11 +1123,12 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											return '—';
 										})();
 										const isRefill = bill.source === 'refill';
+										const badge = getBillPlanBadge(bill.plan as TenantPlan);
 
 										return (
 											<TableRow key={bill.id}>
 												<TableCell className="text-sm tabular-nums">
-													{formatDate(bill.createdAt)}
+													{formatDate(toDateString(bill.createdAt))}
 												</TableCell>
 
 												<TableCell>
@@ -1143,9 +1139,9 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 
 												<TableCell>
 													<span
-														className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium capitalize ${PLAN_COLOR[bill.plan] ?? 'bg-muted text-muted-foreground'}`}
+														className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${badge.className}`}
 													>
-														{bill.plan}
+														{badge.label}
 													</span>
 												</TableCell>
 
@@ -1254,7 +1250,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 													if (!last) return;
 													setBillsCursorStack((prev) => {
 														const copy = [...prev];
-														copy[billsPage] = last.createdAt;
+														copy[billsPage] = toDateString(last.createdAt);
 														return copy;
 													});
 													setBillsPage((p) => p + 1);

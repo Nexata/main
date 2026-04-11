@@ -35,9 +35,12 @@ import {
 	type ModelMessage,
 	stepCountIs,
 	streamText,
+	type ToolSet,
 } from 'ai';
 import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+
+const MAX_WEB_SEARCHES_PER_MESSAGE = 3;
 
 const countAskQuestionsSinceLastUserMessage = (
 	threadMessages: PartialMessage[],
@@ -72,6 +75,23 @@ const countAskQuestionsSinceLastUserMessage = (
 	}
 
 	return count;
+};
+
+const getActiveToolsForStep = (
+	tools: ToolSet,
+	steps: { toolCalls: { toolName: string }[] }[],
+) => {
+	const webSearchCount = steps.reduce(
+		(count, step) =>
+			count +
+			step.toolCalls.filter((toolCall) => toolCall.toolName === 'webSearch')
+				.length,
+		0,
+	);
+
+	return webSearchCount >= MAX_WEB_SEARCHES_PER_MESSAGE
+		? Object.keys(tools).filter((toolName) => toolName !== 'webSearch')
+		: undefined;
 };
 
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
@@ -211,6 +231,13 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			// Final streaming
 			const syncResolver = createSyncResolver();
 
+			const tools = await getTools(
+				activeUser,
+				body.threadId,
+				fileIds,
+				body.interactive ?? true,
+			);
+
 			const stream = streamText({
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 16384,
@@ -225,12 +252,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				abortSignal: request.signal,
 				stopWhen: stepCountIs(200),
-				tools: await getTools(
-					activeUser,
-					body.threadId,
-					fileIds,
-					body.interactive ?? true,
-				),
+				tools,
+				prepareStep: async ({ steps }) => ({
+					activeTools: getActiveToolsForStep(tools, steps),
+				}),
 				messages: threadMessages.map(
 					(m) =>
 						({
@@ -466,7 +491,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								OneDriveIngest: {
 									scope: OauthScope.ONE_DRIVE,
 									fromTokens: OneDrive.fromTokens,
-									execute: async (client, au, input, credentialId) => {
+									execute: async (_client, au, input, credentialId) => {
 										const blockReason = await checkTenantCanIngest(au.slug);
 										if (blockReason)
 											throw httpError(
@@ -477,12 +502,12 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 												au.language,
 											);
 										return OneDrive.ingest(
-											client,
 											au.id,
 											au.slug,
 											credentialId,
 											(input as { selection: { isDir: boolean; id: string }[] })
 												.selection,
+											au.language,
 										);
 									},
 								},
@@ -592,6 +617,14 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				const includeAskQuestions =
 					countAskQuestionsSinceLastUserMessage(threadMessages) < 2;
 
+				const tools = await getTools(
+					activeUser,
+					body.threadId,
+					[],
+					true,
+					includeAskQuestions,
+				);
+
 				const stream = streamText({
 					model: MODEL,
 					maxOutputTokens: 16384,
@@ -606,13 +639,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					}),
 					abortSignal: request.signal,
 					stopWhen: stepCountIs(200),
-					tools: await getTools(
-						activeUser,
-						body.threadId,
-						[],
-						true,
-						includeAskQuestions,
-					),
+					tools,
+					prepareStep: async ({ steps }) => ({
+						activeTools: getActiveToolsForStep(tools, steps),
+					}),
 					messages: threadMessages.map(
 						(m) =>
 							({
@@ -739,6 +769,14 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const includeAskQuestions =
 				countAskQuestionsSinceLastUserMessage(threadMessages) < 2;
 
+			const tools = await getTools(
+				activeUser,
+				body.threadId,
+				[],
+				true,
+				includeAskQuestions,
+			);
+
 			const stream = streamText({
 				model: MODEL,
 				maxOutputTokens: 16384,
@@ -753,13 +791,10 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				abortSignal: request.signal,
 				stopWhen: stepCountIs(200),
-				tools: await getTools(
-					activeUser,
-					body.threadId,
-					[],
-					true,
-					includeAskQuestions,
-				),
+				tools,
+				prepareStep: async ({ steps }) => ({
+					activeTools: getActiveToolsForStep(tools, steps),
+				}),
 				messages: threadMessages.map(
 					(m) =>
 						({

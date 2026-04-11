@@ -131,6 +131,77 @@ function shouldCaptureIngestError(error: unknown): boolean {
 	].some((code) => error.message.includes(code));
 }
 
+function isMicrosoftAuthError(error: unknown): boolean {
+	if (!(error instanceof Error)) return false;
+
+	const message = error.message.toLowerCase();
+
+	return [
+		'idx14100',
+		'jwt is not well formed',
+		'compact serialization format',
+		'invalidauthenticationtoken',
+		'access token',
+	].some((part) => message.includes(part));
+}
+
+async function getFreshIngestClient(
+	credentialId: string,
+	slug: string,
+	language?: Language,
+): Promise<Client> {
+	const tokens = (
+		await db
+			.select({
+				accessToken: credential.accessToken,
+				refreshToken: credential.refreshToken,
+				accessTokenExpiresAt: credential.accessTokenExpiresAt,
+			})
+			.from(credential)
+			.where(
+				and(
+					eq(credential.id, credentialId),
+					eq(credential.provider, OauthProvider.MICROSOFT),
+					eq(credential.scope, OauthScope.ONE_DRIVE),
+				),
+			)
+	).at(0);
+
+	if (!tokens)
+		throw httpError(HttpCode.NOT_FOUND, ErrorCode.CREDENTIAL_LOST, language);
+
+	const { at, rt } = await ensureFreshTokens(
+		credentialId,
+		OauthProvider.MICROSOFT,
+		tokens.accessToken,
+		tokens.refreshToken,
+		tokens.accessTokenExpiresAt,
+		slug,
+		language,
+	);
+
+	return OneDrive.fromTokens(at, rt);
+}
+
+async function withFreshIngestClient<T>(
+	credentialId: string,
+	slug: string,
+	action: (client: Client) => Promise<T>,
+	language?: Language,
+): Promise<T> {
+	try {
+		return await action(
+			await getFreshIngestClient(credentialId, slug, language),
+		);
+	} catch (error) {
+		if (!isMicrosoftAuthError(error)) throw error;
+
+		await refreshMicrosoftTokens(credentialId, { slug, language });
+
+		return action(await getFreshIngestClient(credentialId, slug, language));
+	}
+}
+
 export namespace OneDrive {
 	export const fromRequest = async (
 		activeUser: ActiveUser,
@@ -201,6 +272,10 @@ export namespace OneDrive {
 		return parts.join(' ') || '*';
 	}
 
+	function escapeGraphFunctionLiteral(value: string): string {
+		return value.replace(/'/g, "''");
+	}
+
 	function mapDriveItemToEntry(item: DriveItem): NexataListDirEntry {
 		const isFolder = !!item.folder;
 		const ext = isFolder
@@ -259,14 +334,15 @@ export namespace OneDrive {
 		}
 
 		const queryParts: string[] = [];
-		if (input.query) queryParts.push(input.query);
+		const query = input.query ?? input.q;
+		if (query) queryParts.push(query);
 		if (input.name) queryParts.push(input.name);
 		const queryText = queryParts.join(' ') || '*';
 		const top = input.maxResults ?? 100;
 
 		const basePath = input.path
-			? `${itemApiPath(input.path)}/search(q='${encodeURIComponent(queryText)}')`
-			: `/me/drive/root/search(q='${encodeURIComponent(queryText)}')`;
+			? `${itemApiPath(input.path)}/search(q='${escapeGraphFunctionLiteral(queryText)}')`
+			: `/me/drive/root/search(q='${escapeGraphFunctionLiteral(queryText)}')`;
 
 		const response: { value?: DriveItem[]; '@odata.nextLink'?: string } =
 			await client.api(basePath).select(ITEM_SELECT).top(top).get();
@@ -316,11 +392,11 @@ export namespace OneDrive {
 				}),
 				query: Nullish(t.String(), {
 					description:
-						'Full-text or KQL-style query for file content and metadata. Prefer combining this with name, path, filetype, or date filters instead of broad text alone.',
+						'Raw Microsoft Search query text for OneDrive and SharePoint. Pass provider-native search terms or KQL here and combine it with structured filters when needed.',
 				}),
 				q: Nullish(t.String(), {
 					description:
-						'Alias for query. Supported for compatibility with common caller usage.',
+						'Alias for query. Pass raw Microsoft Search query text here for compatibility with callers that use q.',
 				}),
 				name: Nullish(t.String(), {
 					description: 'Filter by file name.',
@@ -458,7 +534,7 @@ export namespace OneDrive {
 
 		if (input.recursive) {
 			const folderId = input.path ?? null;
-			const allEntries = await listAllFiles(client, folderId);
+			const allEntries = await listAllFilesFromClient(client, folderId);
 			return {
 				cursor: null,
 				entries: await enrichEntries(allEntries),
@@ -485,7 +561,7 @@ export namespace OneDrive {
 		};
 	}
 
-	async function listAllFiles(
+	async function listAllFilesFromClient(
 		client: Client,
 		folderId: string | null,
 	): Promise<NexataListDirEntry[]> {
@@ -511,7 +587,58 @@ export namespace OneDrive {
 
 		const folders = allEntries.filter((e) => e.ext === 'dir');
 		for (const folder of folders) {
-			const subEntries = await listAllFiles(client, folder.id);
+			const subEntries = await listAllFilesFromClient(client, folder.id);
+			allEntries.push(...subEntries);
+		}
+
+		return allEntries;
+	}
+
+	async function listAllFiles(
+		credentialId: string,
+		slug: string,
+		folderId: string | null,
+		language?: Language,
+	): Promise<NexataListDirEntry[]> {
+		const allEntries: NexataListDirEntry[] = [];
+		let nextLink: string | undefined;
+
+		const apiPath = childrenApiPath(folderId);
+
+		const first: { value?: DriveItem[]; '@odata.nextLink'?: string } =
+			await withFreshIngestClient(
+				credentialId,
+				slug,
+				(client) => client.api(apiPath).select(ITEM_SELECT).top(200).get(),
+				language,
+			);
+
+		const items = (first.value ?? []).map(mapDriveItemToEntry);
+		allEntries.push(...items);
+		nextLink = first['@odata.nextLink'];
+
+		while (nextLink) {
+			const currentLink = nextLink;
+			const page: { value?: DriveItem[]; '@odata.nextLink'?: string } =
+				await withFreshIngestClient(
+					credentialId,
+					slug,
+					(client) => client.api(currentLink).get(),
+					language,
+				);
+			const pageItems = (page.value ?? []).map(mapDriveItemToEntry);
+			allEntries.push(...pageItems);
+			nextLink = page['@odata.nextLink'];
+		}
+
+		const folders = allEntries.filter((e) => e.ext === 'dir');
+		for (const folder of folders) {
+			const subEntries = await listAllFiles(
+				credentialId,
+				slug,
+				folder.id,
+				language,
+			);
 			allEntries.push(...subEntries);
 		}
 
@@ -519,8 +646,10 @@ export namespace OneDrive {
 	}
 
 	export async function downloadFile(
-		client: Client,
+		credentialId: string,
+		slug: string,
 		compoundId: string,
+		language?: Language,
 	): Promise<{
 		file: File;
 		id: string;
@@ -531,10 +660,16 @@ export namespace OneDrive {
 		const apiPath = itemApiPath(compoundId);
 
 		const item: DriveItem & { '@microsoft.graph.downloadUrl'?: string } =
-			await client
-				.api(apiPath)
-				.select(`${ITEM_SELECT},@microsoft.graph.downloadUrl`)
-				.get();
+			await withFreshIngestClient(
+				credentialId,
+				slug,
+				(client) =>
+					client
+						.api(apiPath)
+						.select(`${ITEM_SELECT},@microsoft.graph.downloadUrl`)
+						.get(),
+				language,
+			);
 
 		const name = item.name;
 		if (!name) throw httpError(HttpCode.CONFLICT, ErrorCode.NO_FILE_NAME);
@@ -549,9 +684,12 @@ export namespace OneDrive {
 			fileContent = await response.arrayBuffer();
 		} else {
 			// Fallback: /content returns a 302 redirect to a pre-authenticated download URL
-			const stream: NodeJS.ReadableStream = await client
-				.api(`${apiPath}/content`)
-				.getStream();
+			const stream: NodeJS.ReadableStream = await withFreshIngestClient(
+				credentialId,
+				slug,
+				(client) => client.api(`${apiPath}/content`).getStream(),
+				language,
+			);
 			fileContent = await new Response(
 				stream as unknown as ReadableStream,
 			).arrayBuffer();
@@ -577,15 +715,20 @@ export namespace OneDrive {
 	}
 
 	async function ingestFile(
-		client: Client,
 		userId: string,
 		slug: string,
 		credentialId: string,
 		entry: NexataListDirEntry,
 		externalDirId?: string,
+		language?: Language,
 	): Promise<string> {
 		try {
-			const downloaded = await downloadFile(client, entry.id);
+			const downloaded = await downloadFile(
+				credentialId,
+				slug,
+				entry.id,
+				language,
+			);
 
 			const result = await NexataFile.ingest(
 				{
@@ -628,14 +771,22 @@ export namespace OneDrive {
 	}
 
 	async function getDirInfo(
-		client: Client,
+		credentialId: string,
+		slug: string,
 		compoundId: string,
+		language?: Language,
 	): Promise<NexataListDirEntry> {
 		const apiPath = itemApiPath(compoundId);
-		const item: DriveItem = await client
-			.api(apiPath)
-			.select('id,name,webUrl,lastModifiedDateTime,parentReference,folder')
-			.get();
+		const item: DriveItem = await withFreshIngestClient(
+			credentialId,
+			slug,
+			(client) =>
+				client
+					.api(apiPath)
+					.select('id,name,webUrl,lastModifiedDateTime,parentReference,folder')
+					.get(),
+			language,
+		);
 
 		return {
 			id: makeCompoundId(item),
@@ -650,21 +801,28 @@ export namespace OneDrive {
 	}
 
 	async function getFileInfo(
-		client: Client,
+		credentialId: string,
+		slug: string,
 		compoundId: string,
+		language?: Language,
 	): Promise<NexataListDirEntry> {
 		const apiPath = itemApiPath(compoundId);
-		const item: DriveItem = await client.api(apiPath).select(ITEM_SELECT).get();
+		const item: DriveItem = await withFreshIngestClient(
+			credentialId,
+			slug,
+			(client) => client.api(apiPath).select(ITEM_SELECT).get(),
+			language,
+		);
 
 		return mapDriveItemToEntry(item);
 	}
 
 	async function ingestDirectory(
-		client: Client,
 		userId: string,
 		slug: string,
 		credentialId: string,
 		dirEntry: NexataListDirEntry,
+		language?: Language,
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
 		const stats = { ok: 0, unmodified: 0, failed: 0 };
 
@@ -703,7 +861,12 @@ export namespace OneDrive {
 				ErrorCode.EXTERNAL_DIR_FAILED,
 			);
 
-		const allEntries = await listAllFiles(client, dirEntry.id);
+		const allEntries = await listAllFiles(
+			credentialId,
+			slug,
+			dirEntry.id,
+			language,
+		);
 		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
 		const currentExternalIds = fileEntries.map((e) => e.id);
 
@@ -728,12 +891,12 @@ export namespace OneDrive {
 
 			try {
 				const result = await ingestFile(
-					client,
 					userId,
 					slug,
 					credentialId,
 					entry,
 					dirId,
+					language,
 				);
 				stats[result.toLowerCase() as keyof typeof stats]++;
 			} catch (error) {
@@ -766,11 +929,11 @@ export namespace OneDrive {
 	];
 
 	export async function ingest(
-		client: Client,
 		userId: string,
 		slug: string,
 		credentialId: string,
 		selection: { isDir: boolean; id: string }[],
+		language?: Language,
 	) {
 		const sorted = dedupeSelection(selection).sort(({ isDir }) =>
 			isDir ? -1 : 1,
@@ -780,13 +943,13 @@ export namespace OneDrive {
 
 		for (const item of sorted) {
 			if (item.isDir) {
-				const dirInfo = await getDirInfo(client, item.id);
+				const dirInfo = await getDirInfo(credentialId, slug, item.id, language);
 				const stats = await ingestDirectory(
-					client,
 					userId,
 					slug,
 					credentialId,
 					dirInfo,
+					language,
 				);
 				results.ok += stats.ok;
 				results.unmodified += stats.unmodified;
@@ -797,13 +960,19 @@ export namespace OneDrive {
 					results.failed++;
 					continue;
 				}
-				const fileInfo = await getFileInfo(client, item.id);
+				const fileInfo = await getFileInfo(
+					credentialId,
+					slug,
+					item.id,
+					language,
+				);
 				const result = await ingestFile(
-					client,
 					userId,
 					slug,
 					credentialId,
 					fileInfo,
+					undefined,
+					language,
 				);
 				results[result.toLowerCase() as keyof typeof results]++;
 			}
@@ -856,17 +1025,15 @@ export namespace OneDrive {
 			return 'FAILED';
 		}
 
-		let at: string;
-		let rt: string;
 		try {
-			({ at, rt } = await ensureFreshTokens(
+			await ensureFreshTokens(
 				credentialId,
 				OauthProvider.MICROSOFT,
 				tokens.accessToken,
 				tokens.refreshToken,
 				tokens.accessTokenExpiresAt,
 				slug,
-			));
+			);
 		} catch (error) {
 			captureException(error, {
 				tags: { source: 'OneDrive.ingestFromCredential' },
@@ -889,8 +1056,7 @@ export namespace OneDrive {
 			return 'FAILED';
 		}
 
-		const client = fromTokens(at, rt);
-		const results = await ingest(client, userId, slug, credentialId, selection);
+		const results = await ingest(userId, slug, credentialId, selection);
 
 		return !results.failed && results.ok
 			? 'OK'
@@ -1004,11 +1170,11 @@ export const oneDriveRouter = new Elysia({ prefix: '/onedrive' })
 			}
 
 			return OneDrive.ingest(
-				await OneDrive.fromRequest(activeUser, body.credentialId, true),
 				activeUser.id,
 				activeUser.slug,
 				body.credentialId,
 				body.selection,
+				activeUser.language as Language,
 			);
 		},
 		{
@@ -1051,11 +1217,11 @@ export const oneDriveRouter = new Elysia({ prefix: '/onedrive' })
 			);
 
 			return OneDrive.ingest(
-				await OneDrive.fromRequest(activeUser, body.credentialId, true),
 				activeUser.id,
 				activeUser.slug,
 				body.credentialId,
 				resolved,
+				activeUser.language as Language,
 			);
 		},
 		{

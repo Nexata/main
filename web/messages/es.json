@@ -224,36 +224,39 @@
 			"upgrade_button": "Actualizar Plan",
 			"downgrade_button": "Degradar Plan",
 			"contact": "Contactanos",
+			"period": {
+				"month": "mes",
+				"base_month": "mes base"
+			},
+			"features": {
+				"messages": "{value} mensajes por mes",
+				"messages_unlimited": "Mensajes ilimitados por mes",
+				"storage": "{value} de almacenamiento",
+				"storage_unlimited": "Almacenamiento ilimitado",
+				"embeddings": "{value} tokens para embeddings / mes",
+				"embeddings_unlimited": "Embeddings ilimitados por mes",
+				"api_access": "Acceso a API incluido"
+			},
 			"plans": {
 				"personal": {
 					"title": "Personal",
-					"price": "mes",
-					"description": "Ideal para uso individual o pequeños equipos.",
-					"features": {
-						"messages": "150 mensajes por mes",
-						"storage": "1024 MB de almacenamiento",
-						"embeddings": "375M de tokens para embeddings / mes"
-					}
+					"description": "Ideal para profesionales independientes y equipos pequeños."
+				},
+				"team": {
+					"title": "Team",
+					"description": "Diseñado para equipos que ya necesitan colaboración y acceso a API."
 				},
 				"business": {
 					"title": "Business",
-					"price": "mes",
-					"description": "Pensado para equipos y uso intensivo.",
-					"features": {
-						"messages": "1000 mensajes por mes",
-						"storage": "10 GB de almacenamiento",
-						"embeddings": "3750M de tokens para embeddings / mes"
-					}
+					"description": "Pensado para operaciones con alto volumen y múltiples flujos de trabajo."
 				},
-				"custom": {
-					"title": "Plan personalizado",
-					"price": "A medida",
-					"description": "Soluciones avanzadas para necesidades específicas.",
-					"features": {
-						"custom_plans": "Planes totalmente personalizados",
-						"external_integrations": "Integraciones con proveedores externos",
-						"data_sources": "Conexión a fuentes de datos propias"
-					}
+				"enterprise": {
+					"title": "Enterprise",
+					"description": "Para compañías con necesidades de escala, gobernanza y uso intensivo."
+				},
+				"pay_as_you_go": {
+					"title": "Pago por uso",
+					"description": "Base mensual con límites abiertos y un esquema flexible para necesidades especiales."
 				}
 			},
 			"warnings": {
@@ -649,7 +652,9 @@
 			"plans": {
 				"free": "Gratis",
 				"personal": "Personal",
+				"team": "Team",
 				"business": "Business",
+				"enterprise": "Enterprise",
 				"pay_as_you_go": "Pago por uso"
 			}
 		},

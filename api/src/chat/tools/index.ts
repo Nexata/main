@@ -642,11 +642,11 @@ export const getTools = async (
 							activeUser.language,
 						);
 					return OneDrive.ingest(
-						await freshClient(c, OneDrive.fromTokens),
 						activeUser.id,
 						activeUser.slug,
 						c.id,
 						input.selection,
+						activeUser.language,
 					);
 				},
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),

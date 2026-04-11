@@ -10,7 +10,9 @@ import {
 export enum Plan {
 	FREE = 'free',
 	PERSONAL = 'personal',
+	TEAM = 'team',
 	BUSINESS = 'business',
+	ENTERPRISE = 'enterprise',
 	PAY_AS_YOU_GO = 'pay_as_you_go',
 }
 
@@ -35,18 +37,32 @@ export const PLANS: Record<
 		baseBill: 20,
 		messageLimit: 125,
 		storageLimit: 1 * 1024,
-		embedLimit: 1000 * 250_000,
+		embedLimit: 1024 * 250_000,
 		hasApiAccess: false,
 	},
-	[Plan.BUSINESS]: {
+	[Plan.TEAM]: {
 		baseBill: 100,
-		messageLimit: 1000,
+		messageLimit: 750,
 		storageLimit: 10 * 1024,
 		embedLimit: 5 * 1000 * 250_000,
 		hasApiAccess: true,
 	},
-	[Plan.PAY_AS_YOU_GO]: {
+	[Plan.BUSINESS]: {
 		baseBill: 200,
+		messageLimit: 1500,
+		storageLimit: 50 * 1024,
+		embedLimit: 15 * 1000 * 250_000,
+		hasApiAccess: true,
+	},
+	[Plan.ENTERPRISE]: {
+		baseBill: 500,
+		messageLimit: 5000,
+		storageLimit: 175 * 1024,
+		embedLimit: 50 * 1000 * 250_000,
+		hasApiAccess: true,
+	},
+	[Plan.PAY_AS_YOU_GO]: {
+		baseBill: 600,
 		messageLimit: null,
 		storageLimit: null,
 		embedLimit: null,
