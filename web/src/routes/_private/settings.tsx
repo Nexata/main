@@ -1,3 +1,4 @@
+import { useQueryClient } from '@tanstack/react-query';
 import { createFileRoute, useNavigate } from '@tanstack/react-router';
 import { format } from 'date-fns';
 import {
@@ -1484,9 +1485,7 @@ export function FilesManagementSection() {
 															)}
 														</div>
 													</TooltipTrigger>
-													<TooltipContent>
-														{file.name}
-													</TooltipContent>
+													<TooltipContent>{file.name}</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
 										</TableCell>
@@ -1501,8 +1500,12 @@ export function FilesManagementSection() {
 															</TooltipTrigger>
 															<TooltipContent>
 																<div className="text-center">
-																	<p className="font-bold text-xs">{settings_files_tooltip_credential_owner()}</p>
-																	<p className="text-xs">{file.credential.email}</p>
+																	<p className="font-bold text-xs">
+																		{settings_files_tooltip_credential_owner()}
+																	</p>
+																	<p className="text-xs">
+																		{file.credential.email}
+																	</p>
 																</div>
 															</TooltipContent>
 														</Tooltip>
@@ -1695,6 +1698,7 @@ export function ExternalDirsSection() {
 	const [deleteDialog, setDeleteDialog] = useState<DirDeleteDialogState>({
 		open: false,
 	});
+	const queryClient = useQueryClient();
 
 	const { data: dirs = [], isLoading, refetch } = useExternalDirs(filters);
 
@@ -1760,6 +1764,7 @@ export function ExternalDirsSection() {
 			setSelected(new Set());
 			setDeleteDialog({ open: false });
 			refetch();
+			await queryClient.invalidateQueries({ queryKey: ['platform-files'] });
 			infoToast.success(toastId, {
 				title: settings_dirs_toast_delete_success(),
 				description: settings_dirs_toast_delete_success_desc({ label }),

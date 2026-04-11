@@ -10,9 +10,13 @@ import {
 	ingestFromDropbox,
 	ingestFromOneDrive,
 	type ListDriveDirInput,
+	type SearchDirInput,
 	listDriveDir,
 	listDropboxDir,
 	listOneDriveDir,
+	searchDriveDir,
+	searchDropboxDir,
+	searchOneDriveDir,
 } from './file';
 
 type OauthProvider = `${CredentialItem['provider']}`;
@@ -36,6 +40,7 @@ export type SourceConfig = {
 		credentialId: string,
 		input?: ListDriveDirInput,
 	) => Promise<any>;
+	searchFiles?: (credentialId: string, input: SearchDirInput) => Promise<any>;
 	ingest?: (payload: IngestPayload) => Promise<IngestResult>;
 };
 
@@ -98,6 +103,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		connect: () => getGoogleCredentialUrl('drive'),
 		kind: 'storage',
 		getFileTree: (credentialId, input) => listDriveDir(credentialId, input),
+		searchFiles: (credentialId, input) => searchDriveDir(credentialId, input),
 		ingest: ingestFromDrive,
 	},
 	{
@@ -109,6 +115,7 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		connect: () => getDropboxCredentialUrl(),
 		kind: 'storage',
 		getFileTree: (credentialId, input) => listDropboxDir(credentialId, input),
+		searchFiles: (credentialId, input) => searchDropboxDir(credentialId, input),
 		ingest: ingestFromDropbox,
 	},
 	{
@@ -120,6 +127,8 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		connect: async () => getMicrosoftCredentialUrl('onedrive'),
 		kind: 'storage',
 		getFileTree: (credentialId, input) => listOneDriveDir(credentialId, input),
+		searchFiles: (credentialId, input) =>
+			searchOneDriveDir(credentialId, input),
 		ingest: ingestFromOneDrive,
 	},
 ];

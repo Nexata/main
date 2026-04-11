@@ -1,9 +1,10 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { useBillingUsage } from "@/lib/admin";
 import { useMe } from "@/lib/user";
@@ -23,7 +24,9 @@ import {
   ChevronRight,
   ChevronLeft,
   AlertTriangle,
-  Inbox
+  Inbox,
+  Search,
+  X,
 } from "lucide-react";
 import {
   "components.file_tree.disclaimer_title" as components_file_tree_disclaimer_title,
@@ -47,6 +50,8 @@ import {
   "components.file_tree.toast_error_title" as components_file_tree_toast_error_title,
   "components.file_tree.toast_error_all_failed" as components_file_tree_toast_error_all_failed,
   "components.file_tree.unsupported_extension" as components_file_tree_unsupported_extension,
+  "settings.files.filters.search_placeholder" as settings_files_filters_search_placeholder,
+  "settings.files.pagination.no_results" as settings_files_pagination_no_results,
   "common.cancel" as common_cancel,
   "common.confirm" as common_confirm
 } from "@/paraglide/messages.js";
@@ -75,6 +80,7 @@ type Entry = {
 };
 
 type Crumb = { id: string; name: string };
+type EntryResult = { entries?: Entry[]; cursor?: string | null };
 
 /* =========================
    SUPPORTED EXTENSIONS
@@ -128,12 +134,16 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const [loading, setLoading] = useState(false);
   const [history, setHistory] = useState<Crumb[]>([{ id: "root", name: components_file_tree_root() }]);
   const [historyIndex, setHistoryIndex] = useState(0);
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
   const [ingestedMap, setIngestedMap] = useState<Map<string, string>>(new Map());
   const [selectedForIngest, setSelectedForIngest] = useState<Map<string, Entry>>(new Map());
   const [markedForDelete, setMarkedForDelete] = useState<Map<string, string>>(new Map());
+  const requestIdRef = useRef(0);
 
   const current = history[historyIndex];
+  const isSearching = debouncedSearch.length > 0;
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
@@ -143,9 +153,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const storageLimit = usage?.storage?.limit ?? Infinity;
 
   /* FETCH */
-  async function fetchDir(folderId?: string) {
-    if (!folderId || !source.getFileTree || !credentialId) return;
+  async function fetchEntries(folderId?: string, query?: string) {
+    if (!folderId || !credentialId) return;
 
+    const requestId = ++requestIdRef.current;
     setLoading(true);
 
     try {
@@ -153,14 +164,32 @@ export function StorageFileTree({ credentialId, source }: Props) {
       let all: Entry[] = [];
 
       do {
-        const input = cursor
-          ? { pageToken: cursor }
-          : folderId === "root" ? {} : { path: folderId };
-        const res = await source.getFileTree(credentialId, input as any);
+        const res: EntryResult | null = query && source.searchFiles
+          ? await source.searchFiles(
+              credentialId,
+              cursor
+                ? { pageToken: cursor }
+                : {
+                    query,
+                    ...(folderId === "root" ? {} : { path: folderId }),
+                  }
+            )
+          : source.getFileTree
+            ? await source.getFileTree(
+                credentialId,
+                cursor
+                  ? { pageToken: cursor }
+                  : folderId === "root" ? {} : { path: folderId }
+              )
+            : null;
+
+        if (!res) return;
 
         all = [...all, ...(res.entries ?? [])];
         cursor = res.cursor ?? null;
       } while (cursor);
+
+      if (requestId !== requestIdRef.current) return;
 
       setEntries(all);
 
@@ -182,13 +211,23 @@ export function StorageFileTree({ credentialId, source }: Props) {
       });
 
     } finally {
-      setLoading(false);
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+      }
     }
   }
 
   useEffect(() => {
-    fetchDir(current?.id);
-  }, [current?.id]);
+    const t = setTimeout(() => {
+      setDebouncedSearch(search.trim());
+    }, 300);
+
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
+    fetchEntries(current?.id, debouncedSearch || undefined);
+  }, [current?.id, debouncedSearch]);
 
   /* NAVIGATION */
   function enterFolder(entry: Entry) {
@@ -367,7 +406,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
       setSelectedForIngest(new Map());
       setMarkedForDelete(new Map());
 
-      await fetchDir(current?.id);
+      await fetchEntries(current?.id, debouncedSearch || undefined);
       await queryClient.invalidateQueries({ queryKey: ["platform-files"] });
 
     } catch (err) {
@@ -395,55 +434,75 @@ export function StorageFileTree({ credentialId, source }: Props) {
       <div className="border rounded-md overflow-hidden">
 
         {/* NAV HEADER */}
-        <div className="flex items-center justify-between px-3 h-11 bg-muted border-b gap-2">
-          {/* Flechas + breadcrumb */}
-          <div className="flex items-center gap-1 min-w-0 flex-1">
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goBack}>
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+        <div className="bg-muted border-b px-3 py-2 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            {/* Flechas + breadcrumb */}
+            <div className="flex items-center gap-1 min-w-0 flex-1 overflow-hidden">
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goBack}>
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
 
-            <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goForward}>
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <Button variant="ghost" size="icon" className="h-6 w-6 shrink-0" onClick={goForward}>
+                <ChevronRight className="h-4 w-4" />
+              </Button>
 
-            <div className="flex items-center gap-1 text-[11px] overflow-x-auto scrollbar-none">
-              {history.map((crumb, i) => (
-                <div key={crumb.id} className="flex items-center gap-1 shrink-0">
-                  {i > 0 && <span className="text-muted-foreground">/</span>}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => jumpTo(i)}
-                    className={cn(
-                      "px-1 text-[11px]",
-                      i === historyIndex ? "font-medium text-foreground" : "text-muted-foreground"
-                    )}
-                  >
-                    {crumb.name}
-                  </Button>
-                </div>
-              ))}
+              <div className="flex items-center gap-1 text-[11px] overflow-x-auto scrollbar-none min-w-0">
+                {history.map((crumb, i) => (
+                  <div key={crumb.id} className="flex items-center gap-1 shrink-0">
+                    {i > 0 && <span className="text-muted-foreground">/</span>}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => jumpTo(i)}
+                      className={cn(
+                        "px-1 text-[11px]",
+                        i === historyIndex ? "font-medium text-foreground" : "text-muted-foreground"
+                      )}
+                    >
+                      {crumb.name}
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Select all */}
+            <div className="flex items-center gap-2 text-[11px] shrink-0">
+              <Checkbox
+                checked={
+                  entries.filter(file => isExtSupported(file.ext)).length > 0 &&
+                  entries.filter(file => isExtSupported(file.ext)).every(file =>
+                    ingestedMap.has(file.id)
+                      ? !markedForDelete.has(file.id)
+                      : selectedForIngest.has(file.id)
+                  )
+                }
+                onCheckedChange={toggleAll}
+              />
+              <span className="text-muted-foreground hidden sm:inline">{components_file_tree_select_all()}</span>
             </div>
           </div>
 
-          {/* Select all */}
-          <div className="flex items-center gap-2 text-[11px] shrink-0">
-            <Checkbox
-              checked={
-                entries.filter(file => isExtSupported(file.ext)).length > 0 &&
-                entries.filter(file => isExtSupported(file.ext)).every(file =>
-                  ingestedMap.has(file.id)
-                    ? !markedForDelete.has(file.id)
-                    : selectedForIngest.has(file.id)
-                )
-              }
-              onCheckedChange={toggleAll}
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
+            <Input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder={settings_files_filters_search_placeholder()}
+              className="h-8 bg-background pl-8 pr-8 text-sm"
             />
-            <span className="text-muted-foreground hidden sm:inline">{components_file_tree_select_all()}</span>
+
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
           </div>
         </div>
-
-        <Separator />
 
         {/* FILE LIST */}
         <ScrollArea className="h-72">
@@ -463,7 +522,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
               <div className="space-y-1">
                 <p className="font-medium text-foreground">
-                  {components_file_tree_empty_title()}
+                  {isSearching ? settings_files_pagination_no_results() : components_file_tree_empty_title()}
                 </p>
                 <p className="text-xs">
                   {components_file_tree_empty_description()}

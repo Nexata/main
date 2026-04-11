@@ -27,6 +27,18 @@ type ListDirParamsInput = {
 
 export type ListDriveDirInput = ListDirPageTokenInput | ListDirParamsInput;
 
+type SearchDirPageTokenInput = {
+	pageToken: string;
+};
+
+type SearchDirParamsInput = {
+	query: string;
+	path?: string;
+	maxResults?: number;
+};
+
+export type SearchDirInput = SearchDirPageTokenInput | SearchDirParamsInput;
+
 function normalizeDirInput(input?: ListDriveDirInput):
 	| { cursor: string }
 	| {
@@ -50,6 +62,31 @@ function normalizeDirInput(input?: ListDriveDirInput):
 	if (input.path !== undefined) clean.path = input.path;
 	if (input.recursive !== undefined) clean.recursive = input.recursive;
 	if (input.limit !== undefined) clean.limit = input.limit;
+
+	return clean;
+}
+
+function normalizeSearchInput(input: SearchDirInput):
+	| { cursor: string }
+	| {
+			query: string;
+			path?: string;
+			maxResults?: number;
+	  } {
+	if ('pageToken' in input) {
+		return { cursor: input.pageToken };
+	}
+
+	const clean: {
+		query: string;
+		path?: string;
+		maxResults?: number;
+	} = {
+		query: input.query,
+	};
+
+	if (input.path !== undefined) clean.path = input.path;
+	if (input.maxResults !== undefined) clean.maxResults = input.maxResults;
 
 	return clean;
 }
@@ -84,6 +121,20 @@ export function useDropboxDir(
 		queryFn: () => listDropboxDir(credentialId!, input),
 		enabled: !!credentialId,
 	});
+}
+
+export async function searchDropboxDir(
+	credentialId: string,
+	input: SearchDirInput,
+) {
+	const query = normalizeSearchInput(input);
+
+	return withAuthRetry((headers) =>
+		apiClient.integration.dropbox.search[credentialId]!.get({
+			$headers: headers,
+			$query: query,
+		}),
+	);
 }
 
 // Ingest
@@ -139,6 +190,20 @@ export function useDriveDir(credentialId?: string, input?: ListDriveDirInput) {
 		queryFn: () => listDriveDir(credentialId!, input),
 		enabled: !!credentialId,
 	});
+}
+
+export async function searchDriveDir(
+	credentialId: string,
+	input: SearchDirInput,
+) {
+	const query = normalizeSearchInput(input);
+
+	return withAuthRetry((headers) =>
+		apiClient.integration.google.drive.search[credentialId]!.get({
+			$headers: headers,
+			$query: query,
+		}),
+	);
 }
 
 // Ingest
@@ -197,6 +262,20 @@ export function useOneDriveDir(
 		queryFn: () => listOneDriveDir(credentialId!, input),
 		enabled: !!credentialId,
 	});
+}
+
+export async function searchOneDriveDir(
+	credentialId: string,
+	input: SearchDirInput,
+) {
+	const query = normalizeSearchInput(input);
+
+	return withAuthRetry((headers) =>
+		apiClient.integration.microsoft.onedrive.search[credentialId]!.get({
+			$headers: headers,
+			$query: query,
+		}),
+	);
 }
 
 // Ingest
