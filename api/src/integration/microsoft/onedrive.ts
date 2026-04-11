@@ -437,6 +437,11 @@ export namespace OneDrive {
 			let queryString = '*';
 
 			if ('cursor' in input) {
+				// Graph fallback pagination returns a nextLink URL, not the JSON cursor
+				// used by Microsoft Search. Treat it as an opaque token and delegate.
+				if (/^https?:\/\//.test(input.cursor))
+					return driveItemSearch(client, input);
+
 				const parsed = JSON.parse(input.cursor) as {
 					from: number;
 					size: number;
