@@ -295,6 +295,9 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
           {visiblePlans.map((plan) => {
+            const isLastOddCard =
+              visiblePlans.length % 2 === 1 &&
+              visiblePlans[visiblePlans.length - 1] === plan;
             const config = PLAN_CONFIG[plan];
             const isCurrent = plan === currentPlan;
             const isUpgradeTarget =
@@ -322,6 +325,7 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
                 features={getPlanFeatures(plan)}
                 action={buildPlanButton(plan, emphasis === "upgrade" ? "upgrade" : "downgrade")}
                 emphasis={emphasis}
+                className={isLastOddCard ? "xl:col-span-2" : undefined}
               />
             );
           })}
@@ -462,6 +466,7 @@ function PlanCard({
   features,
   action,
   emphasis,
+  className,
 }: {
   icon: React.ReactNode;
   title: string;
@@ -470,6 +475,7 @@ function PlanCard({
   features: string[];
   action: React.ReactNode;
   emphasis: "current" | "upgrade" | "downgrade";
+  className?: string;
 }) {
   const cardClassName =
     emphasis === "upgrade"
@@ -483,6 +489,7 @@ function PlanCard({
       className={`
         relative flex flex-col justify-between rounded-xl border p-5 transition-colors
         ${cardClassName}
+        ${className ?? ""}
       `}
     >
       <div>
