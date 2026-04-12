@@ -416,7 +416,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
               : { width: { type: "spring", stiffness: 300, damping: 30 } }
         }
       >
-      <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-lg rounded-r-2xl pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]">
+      <div className="flex flex-col justify-between h-full p-4 bg-sidebar text-sidebar-foreground border-r border-sidebar-border shadow-lg rounded-r-2xl pt-[calc(1rem+env(safe-area-inset-top))] pb-[calc(1rem+env(safe-area-inset-bottom))]" data-tour="sidebar">
           {/* Header */}
           <div className="mb-3 pb-3 min-h-12 flex items-center w-full justify-between border-b border-sidebar-border">
             {!effectiveCollapsed && (
@@ -462,6 +462,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
             ) : (
               <motion.button
                 onClick={toggleCollapsed}
+                data-tour="sidebar-toggle"
                 className="w-10 h-10 rounded-lg flex items-center justify-center hover:bg-[var(--sidebar-primary)/20] cursor-pointer transition-colors"
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
@@ -534,7 +535,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
           {/* Lista de chats */}
           {!effectiveCollapsed && (
-            <div className="flex-1 min-h-0 mb-4">
+            <div className="flex-1 min-h-0 mb-4" data-tour="sidebar-threads">
               {threadsLoading && (
                 <div className="flex flex-col gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -732,6 +733,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                     ? "flex-col items-center gap-1.5"
                     : "flex-row items-center gap-1.5"
                 )}
+                data-tour="sidebar-buttons"
               >
 
                 {/* Theme */}
@@ -760,7 +762,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                 </div>
 
                 {/* Settings */}
-                <div className={cn(effectiveCollapsed ? "" : "flex-1")}>
+                <div className={cn(effectiveCollapsed ? "" : "flex-1")} data-tour="settings-button">
                   <Tooltip>
                     <TooltipTrigger className={cn(effectiveCollapsed ? "" : "w-full block")}>
                       <Button
@@ -808,7 +810,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                 </div>
               </motion.div>
 
-              <div className="mt-4">
+              <div className="mt-4" data-tour="user-section">
                 <UserSection
                   me={me ?? null}
                   collapsed={effectiveCollapsed}

@@ -374,7 +374,7 @@ export function DataSourcesSection({
 	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="settings-sources">
 			<CardContent className="p-6 space-y-4">
 				<div>
 					<h2 className="text-lg font-semibold">{settings_sources_title()}</h2>
@@ -445,7 +445,7 @@ export function StorageSection({
 	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="settings-storage">
 			<CardContent className="p-6 space-y-4">
 				<div>
 					<h2 className="text-lg font-semibold">{settings_storage_title()}</h2>
@@ -1080,7 +1080,7 @@ export function FilesManagementSection() {
 				});
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="settings-files">
 			<CardContent className="p-6 space-y-5">
 				{/* Header */}
 				<div>
@@ -1811,7 +1811,7 @@ export function ExternalDirsSection() {
 		));
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="settings-external-dirs">
 			<CardContent className="p-6 space-y-5">
 				{/* Header */}
 				<div>
