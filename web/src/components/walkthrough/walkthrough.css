@@ -13,8 +13,6 @@
   padding: 24px 28px;
   max-width: 380px;
   font-family: "Noto Sans", sans-serif;
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
   animation: nexata-tour-fade-in 0.25s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
