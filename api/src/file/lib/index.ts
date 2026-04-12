@@ -14,7 +14,12 @@ import {
 import { docToChunks } from '@api/file/lib/word';
 import type { chunk, Language } from '@api/schema';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { withRetry } from '@api/utils/retry';
 import { embedMany } from 'ai';
+import pLimit from 'p-limit';
+
+const EMBED_BATCH_SIZE = 200;
+const EMBED_CONCURRENCY = 2;
 
 const MIME_HANDLERS: Record<
 	SupportedMime,
@@ -81,18 +86,57 @@ export async function stringToChunks(
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
 	if (!chunks.length) return [[], 0];
 
-	const res = await embedMany({
-		model: EMBEDDING_MODEL,
-		values: chunks.map((c) => c.text),
-	});
+	const values = chunks.map((c) => c.text);
+
+	if (values.length <= EMBED_BATCH_SIZE) {
+		const res = await withRetry(() =>
+			embedMany({
+				model: EMBEDDING_MODEL,
+				values,
+			}),
+		);
+		return [
+			chunks.map(({ text, metadata }, i) => ({
+				fileId,
+				text,
+				metadata,
+				order: i + 1,
+				embedding: res.embeddings[i]!,
+			})),
+			res.usage.tokens,
+		];
+	}
+
+	const batches: string[][] = [];
+	for (let i = 0; i < values.length; i += EMBED_BATCH_SIZE)
+		batches.push(values.slice(i, i + EMBED_BATCH_SIZE));
+
+	const limit = pLimit(EMBED_CONCURRENCY);
+	const batchResults = await Promise.all(
+		batches.map((batch) =>
+			limit(() =>
+				withRetry(() =>
+					embedMany({ model: EMBEDDING_MODEL, values: batch }),
+				),
+			),
+		),
+	);
+
+	const allEmbeddings: number[][] = [];
+	let totalTokens = 0;
+	for (const res of batchResults) {
+		allEmbeddings.push(...res.embeddings);
+		totalTokens += res.usage.tokens;
+	}
+
 	return [
 		chunks.map(({ text, metadata }, i) => ({
 			fileId,
 			text,
 			metadata,
 			order: i + 1,
-			embedding: res.embeddings[i]!,
+			embedding: allEmbeddings[i]!,
 		})),
-		res.usage.tokens,
+		totalTokens,
 	];
 }

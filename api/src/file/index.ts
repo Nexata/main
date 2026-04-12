@@ -53,7 +53,7 @@ import { Elysia, type Static, t } from 'elysia';
 const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
 const CHUNK_INSERT_BATCH_SIZE = 25;
-const CHUNK_INSERT_CONCURRENCY = 3;
+const CHUNK_INSERT_CONCURRENCY = 5;
 
 function shouldCaptureIngestError(error: unknown): boolean {
 	if (!(error instanceof Error)) return true;

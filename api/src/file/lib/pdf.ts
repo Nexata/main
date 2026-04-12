@@ -10,11 +10,13 @@ import {
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
 import { createCanvas, DOMMatrix, ImageData, Path2D } from '@napi-rs/canvas';
+import pLimit from 'p-limit';
 import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 const RENDER_SCALE = 2;
+const PAGE_CONCURRENCY = 3;
 
 class CanvasFactory {
 	create(width: number, height: number) {
@@ -95,86 +97,108 @@ async function renderPageFallback(
 }
 
 export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
-	const chunks: ToStringChunksResult['chunks'] = [];
-	let usage = 0;
-
 	const pdf = await getDocumentProxy(f, {
 		// biome-ignore lint/suspicious/noExplicitAny: unpdf expects class constructor as Object
 		CanvasFactory: CanvasFactory as any,
 	});
 	const { text, totalPages } = await extractText(pdf);
 
-	for (let i = 0; i < totalPages; i++) {
-		const pageNumber = i + 1;
-		const pageText = text[i];
-		let hasText = false;
-		let hasImages = false;
-		let shouldRenderPageFallback = false;
+	const limit = pLimit(PAGE_CONCURRENCY);
 
-		if (pageText) {
-			hasText = true;
-			const pageChunks = await splitter.splitText(pageText);
-			chunks.push(
-				...pageChunks.map((text) => ({
-					text,
-					metadata: { pageNumber },
-				})),
-			);
-		}
+	const pageResults = await Promise.all(
+		Array.from({ length: totalPages }, (_, i) =>
+			limit(async () => {
+				const pageNumber = i + 1;
+				const pageText = text[i];
+				const pageChunks: ToStringChunksResult['chunks'] = [];
+				let pageUsage = 0;
+				let hasText = false;
+				let hasImages = false;
+				let shouldRenderPageFallback = false;
 
-		try {
-			for (const img of await extractImages(pdf, pageNumber)) {
-				if (!isRelevantImage(img.width, img.height)) continue;
+				if (pageText) {
+					hasText = true;
+					const textChunks = await splitter.splitText(pageText);
+					pageChunks.push(
+						...textChunks.map((text) => ({
+							text,
+							metadata: { pageNumber },
+						})),
+					);
+				}
 
 				try {
-					const imgResult = await imgToChunks(img.data, {
-						width: img.width,
-						height: img.height,
-						channels: img.channels,
-					});
+					for (const img of await extractImages(pdf, pageNumber)) {
+						if (!isRelevantImage(img.width, img.height)) continue;
 
-					hasImages = hasImages || imgResult.chunks.length > 0;
-					addPageChunks(chunks, pageNumber, imgResult);
-					usage += imgResult.tokenUsage ?? 0;
+						try {
+							const imgResult = await imgToChunks(img.data, {
+								width: img.width,
+								height: img.height,
+								channels: img.channels,
+							});
+
+							hasImages = hasImages || imgResult.chunks.length > 0;
+							addPageChunks(pageChunks, pageNumber, imgResult);
+							pageUsage += imgResult.tokenUsage ?? 0;
+						} catch (error) {
+							if (error instanceof InvalidRawImageError) {
+								shouldRenderPageFallback = true;
+								continue;
+							}
+
+							if (isIgnorableImageProcessingError(error)) continue;
+
+							const message =
+								error instanceof Error ? error.message : '';
+							if (
+								message.includes('OpenJPEG failed to initialize') ||
+								message.includes('Unable to decode image') ||
+								message.includes('JpxError')
+							) {
+								shouldRenderPageFallback = true;
+								continue;
+							}
+
+							throw error;
+						}
+					}
 				} catch (error) {
-					if (error instanceof InvalidRawImageError) {
-						shouldRenderPageFallback = true;
-						continue;
+					if (!isIgnorableImageProcessingError(error)) {
+						const message =
+							error instanceof Error ? error.message : '';
+						if (
+							message.includes('OpenJPEG failed to initialize') ||
+							message.includes('Unable to decode image') ||
+							message.includes('JpxError') ||
+							message.includes(
+								"Requesting object that isn't resolved yet",
+							)
+						) {
+							shouldRenderPageFallback = true;
+						} else {
+							throw error;
+						}
 					}
-
-					if (isIgnorableImageProcessingError(error)) continue;
-
-					const message = error instanceof Error ? error.message : '';
-					if (
-						message.includes('OpenJPEG failed to initialize') ||
-						message.includes('Unable to decode image') ||
-						message.includes('JpxError')
-					) {
-						shouldRenderPageFallback = true;
-						continue;
-					}
-
-					throw error;
 				}
-			}
-		} catch (error) {
-			if (isIgnorableImageProcessingError(error)) continue;
 
-			const message = error instanceof Error ? error.message : '';
-			if (
-				message.includes('OpenJPEG failed to initialize') ||
-				message.includes('Unable to decode image') ||
-				message.includes('JpxError') ||
-				message.includes("Requesting object that isn't resolved yet")
-			) {
-				shouldRenderPageFallback = true;
-			} else {
-				throw error;
-			}
-		}
+				if (shouldRenderPageFallback || (!hasText && !hasImages))
+					pageUsage += await renderPageFallback(
+						pdf,
+						pageNumber,
+						pageChunks,
+					);
 
-		if (shouldRenderPageFallback || (!hasText && !hasImages))
-			usage += await renderPageFallback(pdf, pageNumber, chunks);
+				return { chunks: pageChunks, usage: pageUsage };
+			}),
+		),
+	);
+
+	const chunks: ToStringChunksResult['chunks'] = [];
+	let usage = 0;
+	for (const page of pageResults) {
+		chunks.push(...page.chunks);
+		usage += page.usage;
 	}
 
 	return { metadata: { pageCount: totalPages }, chunks, tokenUsage: usage };

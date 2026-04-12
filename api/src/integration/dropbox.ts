@@ -48,8 +48,8 @@ import { Dropbox as DropboxClient } from 'dropbox';
 import { Elysia, type Static, t } from 'elysia';
 import pLimit from 'p-limit';
 
-const INGEST_CONCURRENCY = 5;
-const RECHECK_INTERVAL = 20;
+const INGEST_CONCURRENCY = 8;
+const RECHECK_INTERVAL = 50;
 
 function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
 	const unique = new Map<string, { isDir: boolean; id: string }>();

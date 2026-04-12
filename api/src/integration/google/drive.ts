@@ -48,9 +48,9 @@ import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
 import pLimit from 'p-limit';
 
-const INGEST_CONCURRENCY = 5;
-const DIR_LIST_CONCURRENCY = 3;
-const RECHECK_INTERVAL = 20;
+const INGEST_CONCURRENCY = 8;
+const DIR_LIST_CONCURRENCY = 5;
+const RECHECK_INTERVAL = 50;
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 

@@ -53,9 +53,9 @@ import { Elysia, type Static, t } from 'elysia';
 import { fileTypeFromBuffer } from 'file-type';
 import pLimit from 'p-limit';
 
-const INGEST_CONCURRENCY = 5;
-const DIR_LIST_CONCURRENCY = 3;
-const RECHECK_INTERVAL = 20;
+const INGEST_CONCURRENCY = 8;
+const DIR_LIST_CONCURRENCY = 5;
+const RECHECK_INTERVAL = 50;
 
 const ITEM_SELECT = [
 	'id',
