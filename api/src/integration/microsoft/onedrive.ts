@@ -1,7 +1,12 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { getMimeTypeFromExt, SupportedMime } from '@api/file/lib/types';
+import {
+	getFileCategory,
+	getMimeTypeFromExt,
+	isSupportedExt,
+	SupportedMime,
+} from '@api/file/lib/types';
 import {
 	getIngestedDirIds,
 	getIngestedFileIds,
@@ -23,7 +28,15 @@ import {
 	trace,
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
-import { checkTenantCanIngest } from '@api/utils/billing';
+import {
+	type BatchCapacityResult,
+	checkBatchCapacity,
+	checkTenantCanIngest,
+	clearIngestStopFlag,
+	type FileEstimate,
+	isIngestStopped,
+	setIngestStopFlag,
+} from '@api/utils/billing';
 import {
 	ensureFreshTokens,
 	getTokensForUser,
@@ -38,6 +51,11 @@ import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
 import { fileTypeFromBuffer } from 'file-type';
+import pLimit from 'p-limit';
+
+const INGEST_CONCURRENCY = 5;
+const DIR_LIST_CONCURRENCY = 3;
+const RECHECK_INTERVAL = 20;
 
 const ITEM_SELECT = [
 	'id',
@@ -591,10 +609,13 @@ export namespace OneDrive {
 		}
 
 		const folders = allEntries.filter((e) => e.ext === 'dir');
-		for (const folder of folders) {
-			const subEntries = await listAllFilesFromClient(client, folder.id);
-			allEntries.push(...subEntries);
-		}
+		const dirLimit = pLimit(DIR_LIST_CONCURRENCY);
+		const subResults = await Promise.all(
+			folders.map((folder) =>
+				dirLimit(() => listAllFilesFromClient(client, folder.id)),
+			),
+		);
+		for (const sub of subResults) allEntries.push(...sub);
 
 		return allEntries;
 	}
@@ -637,15 +658,15 @@ export namespace OneDrive {
 		}
 
 		const folders = allEntries.filter((e) => e.ext === 'dir');
-		for (const folder of folders) {
-			const subEntries = await listAllFiles(
-				credentialId,
-				slug,
-				folder.id,
-				language,
-			);
-			allEntries.push(...subEntries);
-		}
+		const dirLimit = pLimit(DIR_LIST_CONCURRENCY);
+		const subResults = await Promise.all(
+			folders.map((folder) =>
+				dirLimit(() =>
+					listAllFiles(credentialId, slug, folder.id, language),
+				),
+			),
+		);
+		for (const sub of subResults) allEntries.push(...sub);
 
 		return allEntries;
 	}
@@ -872,7 +893,9 @@ export namespace OneDrive {
 			dirEntry.id,
 			language,
 		);
-		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
+		const fileEntries = allEntries.filter(
+			(e) => e.ext !== 'dir' && isSupportedExt(e.name),
+		);
 		const currentExternalIds = fileEntries.map((e) => e.id);
 
 		if (existing && currentExternalIds.length)
@@ -886,30 +909,64 @@ export namespace OneDrive {
 					),
 				);
 
-		for (const entry of fileEntries) {
-			const blockReason = await checkTenantCanIngest(slug);
-			if (blockReason) {
-				stats.failed +=
-					fileEntries.length - stats.ok - stats.unmodified - stats.failed;
-				break;
-			}
+		// Pre-check batch capacity before starting parallel ingestion
+		const estimates: FileEstimate[] = fileEntries.map((e) => ({
+			sizeBytes: (e.size ?? 0) * 1024 * 1024, // size is in MB
+			category: getFileCategory(e.name),
+		}));
 
-			try {
-				const result = await ingestFile(
-					userId,
-					slug,
-					credentialId,
-					entry,
-					dirId,
-					language,
-				);
-				stats[result.toLowerCase() as keyof typeof stats]++;
-			} catch (error) {
-				captureException(error, {
-					tags: { source: 'OneDrive.ingestDirectory' },
-					extra: { userId, entry },
-				});
+		const capacity = await checkBatchCapacity(slug, estimates);
+		if (!capacity.canProceed) {
+			stats.failed += fileEntries.length;
+			return stats;
+		}
+
+		const entriesToProcess =
+			capacity.maxFiles !== null
+				? fileEntries.slice(0, capacity.maxFiles)
+				: fileEntries;
+
+		if (capacity.maxFiles !== null)
+			stats.failed += fileEntries.length - capacity.maxFiles;
+
+		// Clear any previous stop flag and process in parallel
+		await clearIngestStopFlag(slug);
+		const limit = pLimit(INGEST_CONCURRENCY);
+		let processedCount = 0;
+
+		const results = await Promise.allSettled(
+			entriesToProcess.map((entry) =>
+				limit(async () => {
+					// Check stop flag (set by another worker if limits hit)
+					if (await isIngestStopped(slug)) return 'FAILED';
+
+					// Periodic re-check of actual limits
+					if (++processedCount % RECHECK_INTERVAL === 0) {
+						const blockReason = await checkTenantCanIngest(slug);
+						if (blockReason) {
+							await setIngestStopFlag(slug);
+							return 'FAILED';
+						}
+					}
+
+					return ingestFile(
+						userId,
+						slug,
+						credentialId,
+						entry,
+						dirId,
+						language,
+					);
+				}),
+			),
+		);
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
 				stats.failed++;
+			} else {
+				const key = result.value.toLowerCase() as keyof typeof stats;
+				stats[key]++;
 			}
 		}
 
@@ -946,40 +1003,60 @@ export namespace OneDrive {
 
 		const results = { ok: 0, unmodified: 0, failed: 0 };
 
-		for (const item of sorted) {
-			if (item.isDir) {
-				const dirInfo = await getDirInfo(credentialId, slug, item.id, language);
-				const stats = await ingestDirectory(
-					userId,
-					slug,
-					credentialId,
-					dirInfo,
-					language,
-				);
-				results.ok += stats.ok;
-				results.unmodified += stats.unmodified;
-				results.failed += stats.failed;
+		const limit = pLimit(INGEST_CONCURRENCY);
+
+		const taskResults = await Promise.allSettled(
+			sorted.map((item) =>
+				limit(async () => {
+					if (item.isDir) {
+						const dirInfo = await getDirInfo(
+							credentialId,
+							slug,
+							item.id,
+							language,
+						);
+						return ingestDirectory(
+							userId,
+							slug,
+							credentialId,
+							dirInfo,
+							language,
+						);
+					}
+
+					const blockReason = await checkTenantCanIngest(slug);
+					if (blockReason) return { ok: 0, unmodified: 0, failed: 1 };
+
+					const fileInfo = await getFileInfo(
+						credentialId,
+						slug,
+						item.id,
+						language,
+					);
+					const result = await ingestFile(
+						userId,
+						slug,
+						credentialId,
+						fileInfo,
+						undefined,
+						language,
+					);
+					return {
+						ok: result === 'OK' ? 1 : 0,
+						unmodified: result === 'UNMODIFIED' ? 1 : 0,
+						failed: result !== 'OK' && result !== 'UNMODIFIED' ? 1 : 0,
+					};
+				}),
+			),
+		);
+
+		for (const r of taskResults) {
+			if (r.status === 'fulfilled') {
+				results.ok += r.value.ok;
+				results.unmodified += r.value.unmodified;
+				results.failed += r.value.failed;
 			} else {
-				const blockReason = await checkTenantCanIngest(slug);
-				if (blockReason) {
-					results.failed++;
-					continue;
-				}
-				const fileInfo = await getFileInfo(
-					credentialId,
-					slug,
-					item.id,
-					language,
-				);
-				const result = await ingestFile(
-					userId,
-					slug,
-					credentialId,
-					fileInfo,
-					undefined,
-					language,
-				);
-				results[result.toLowerCase() as keyof typeof results]++;
+				results.failed++;
 			}
 		}
 

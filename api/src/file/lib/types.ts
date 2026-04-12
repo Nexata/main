@@ -94,6 +94,87 @@ export function getMimeTypeFromExt(filename: string): string {
 	return EXT_TO_MIME[ext] ?? 'unsupported';
 }
 
+export function isSupportedExt(filename: string): boolean {
+	const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+	return ext in EXT_TO_MIME;
+}
+
+export enum FileCategory {
+	TEXT = 'TEXT',
+	PDF = 'PDF',
+	DOCUMENT = 'DOCUMENT',
+	SPREADSHEET = 'SPREADSHEET',
+	IMAGE = 'IMAGE',
+	UNSUPPORTED = 'UNSUPPORTED',
+}
+
+const EXT_TO_CATEGORY: Record<string, FileCategory> = {
+	txt: FileCategory.TEXT,
+	md: FileCategory.TEXT,
+	csv: FileCategory.TEXT,
+	tsv: FileCategory.TEXT,
+	html: FileCategory.TEXT,
+	htm: FileCategory.TEXT,
+	xml: FileCategory.TEXT,
+	yaml: FileCategory.TEXT,
+	yml: FileCategory.TEXT,
+	json: FileCategory.TEXT,
+	py: FileCategory.TEXT,
+	rs: FileCategory.TEXT,
+	go: FileCategory.TEXT,
+	rb: FileCategory.TEXT,
+	java: FileCategory.TEXT,
+	kt: FileCategory.TEXT,
+	swift: FileCategory.TEXT,
+	c: FileCategory.TEXT,
+	cpp: FileCategory.TEXT,
+	h: FileCategory.TEXT,
+	hpp: FileCategory.TEXT,
+	cs: FileCategory.TEXT,
+	ts: FileCategory.TEXT,
+	js: FileCategory.TEXT,
+	tsx: FileCategory.TEXT,
+	jsx: FileCategory.TEXT,
+	vue: FileCategory.TEXT,
+	svelte: FileCategory.TEXT,
+	sql: FileCategory.TEXT,
+	sh: FileCategory.TEXT,
+	bash: FileCategory.TEXT,
+	zsh: FileCategory.TEXT,
+	ps1: FileCategory.TEXT,
+	toml: FileCategory.TEXT,
+	ini: FileCategory.TEXT,
+	cfg: FileCategory.TEXT,
+	env: FileCategory.TEXT,
+	log: FileCategory.TEXT,
+	css: FileCategory.TEXT,
+	scss: FileCategory.TEXT,
+	less: FileCategory.TEXT,
+	graphql: FileCategory.TEXT,
+	pdf: FileCategory.PDF,
+	docx: FileCategory.DOCUMENT,
+	doc: FileCategory.DOCUMENT,
+	rtf: FileCategory.DOCUMENT,
+	odt: FileCategory.DOCUMENT,
+	pptx: FileCategory.DOCUMENT,
+	ppt: FileCategory.DOCUMENT,
+	odp: FileCategory.DOCUMENT,
+	xlsx: FileCategory.SPREADSHEET,
+	xls: FileCategory.SPREADSHEET,
+	ods: FileCategory.SPREADSHEET,
+	png: FileCategory.IMAGE,
+	jpg: FileCategory.IMAGE,
+	jpeg: FileCategory.IMAGE,
+	gif: FileCategory.IMAGE,
+	webp: FileCategory.IMAGE,
+	svg: FileCategory.IMAGE,
+};
+
+export function getFileCategory(filename: string): FileCategory {
+	const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+	return EXT_TO_CATEGORY[ext] ?? FileCategory.UNSUPPORTED;
+}
+
 export type FileLike =
 	| ArrayBuffer
 	| Int8Array
