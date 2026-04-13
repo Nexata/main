@@ -256,6 +256,7 @@ export function MessageInput({
 
       <motion.div
         layout
+        data-tour="chat-input"
         animate={{ borderRadius: isExpanded ? 20 : 999 }}
         transition={{
           layout: {
@@ -283,6 +284,7 @@ export function MessageInput({
                   type="button"
                   size="icon"
                   variant="ghost"
+                  data-tour="brain-button"
                   className={cn(
                     "h-8 w-8 rounded-full cursor-pointer transition-colors",
                     brainMode
@@ -332,6 +334,7 @@ export function MessageInput({
                       type="button"
                       size="icon"
                       variant="ghost"
+                      data-tour="attachment-button"
                       className="h-8 w-8 rounded-full cursor-pointer"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={async () => {

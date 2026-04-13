@@ -18,10 +18,12 @@ import { Nullish } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
+import pLimit from 'p-limit';
 
 const SYNC_FAIL_CACHE_KEY = (userId: string) => `sync-fail-notified:${userId}`;
 
 const SYNC_FAIL_COOLDOWN = 23 * 60 * 60;
+const SYNC_CONCURRENCY = 10;
 
 function dedupeSyncItems<
 	T extends { provider: FileHost; isDir: boolean; externalId: string },
@@ -150,18 +152,21 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			),
 		);
 
+		const syncLimit = pLimit(SYNC_CONCURRENCY);
 		const results = await Promise.allSettled(
 			dedupedItemsToSync.map((item) =>
-				providerIngestors[item.provider]!(
-					item.userId,
-					item.slug,
-					item.isDir ? item.credentialId : item.credentialId!,
-					[
-						{
-							isDir: item.isDir,
-							id: item.isDir ? item.externalId : item.externalId!,
-						},
-					],
+				syncLimit(() =>
+					providerIngestors[item.provider]!(
+						item.userId,
+						item.slug,
+						item.isDir ? item.credentialId : item.credentialId!,
+						[
+							{
+								isDir: item.isDir,
+								id: item.isDir ? item.externalId : item.externalId!,
+							},
+						],
+					),
 				),
 			),
 		);

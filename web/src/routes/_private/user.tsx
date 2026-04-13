@@ -385,7 +385,7 @@ export default function ProfilePage() {
 
 			<Separator />
 
-			<Card className="bg-sidebar">
+			<Card className="bg-sidebar" data-tour="user-profile-card">
 				<CardContent className="p-6 space-y-6">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
 						<div className="flex items-center gap-5">
@@ -522,7 +522,7 @@ export default function ProfilePage() {
 
 					<Separator />
 
-					<div className="space-y-4">
+					<div className="space-y-4" data-tour="user-devices">
 						<div>
 							<h2 className="text-lg font-semibold">
 								{profile_devices_title()}
@@ -616,7 +616,7 @@ export default function ProfilePage() {
 				</CardContent>
 			</Card>
 
-			<Card className="bg-sidebar">
+			<Card className="bg-sidebar" data-tour="user-api-keys">
 				<CardContent className="p-6 space-y-6">
 					<div className="space-y-3">
 						<div>

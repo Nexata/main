@@ -320,7 +320,7 @@ function CompanyOverviewSection() {
 	const isPayAsYouGo = myTenant?.plan === 'pay_as_you_go';
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="admin-overview">
 			<CardContent className="p-4 sm:p-6 space-y-6">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
@@ -703,7 +703,7 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 	);
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="admin-billing">
 			<CardContent className="p-6 space-y-6">
 				{/* Header */}
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
@@ -1480,7 +1480,7 @@ function TraceEventsSection() {
 	const showEmpty = !isLoading && events.length === 0;
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="admin-traces">
 			<CardContent className="p-6 space-y-4">
 				<div>
 					<h2 className="text-lg font-semibold">{traces_title()}</h2>
@@ -1785,7 +1785,7 @@ function UsersSection() {
 	}
 
 	return (
-		<Card className="bg-sidebar">
+		<Card className="bg-sidebar" data-tour="admin-users">
 			<CardContent className="p-6 space-y-6">
 				{/* Header */}
 				<div>

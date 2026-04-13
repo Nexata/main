@@ -8,6 +8,7 @@ import { tObject } from '@api/utils/type';
 import { generateText, jsonSchema, Output } from 'ai';
 import { type Static, t } from 'elysia';
 import sharp from 'sharp';
+import { withRetry } from '@api/utils/retry';
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {
@@ -105,24 +106,26 @@ export async function imgToChunks(
 				.toBuffer()
 		: fileLikeToUint8Array(f);
 
-	const res = await generateText({
-		model: VLM_MODEL,
-		output: Output.object({
-			schema: jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
+	const res = await withRetry(() =>
+		generateText({
+			model: VLM_MODEL,
+			output: Output.object({
+				schema: jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
+			}),
+			system:
+				'You are an AI assistant for image processing inside a RAG system. Expected response type: ' +
+				JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties),
+			prompt: [
+				{
+					role: 'user',
+					content: [
+						{ type: 'text', text: 'Assess for the following image.' },
+						{ type: 'image', image },
+					],
+				},
+			],
 		}),
-		system:
-			'You are an AI assistant for image processing inside a RAG system. Expected response type: ' +
-			JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties),
-		prompt: [
-			{
-				role: 'user',
-				content: [
-					{ type: 'text', text: 'Assess for the following image.' },
-					{ type: 'image', image },
-				],
-			},
-		],
-	});
+	);
 
 	const chunks: ToStringChunksResult['chunks'] = [];
 	const usage = res.totalUsage.totalTokens ?? res.usage.totalTokens ?? 0;

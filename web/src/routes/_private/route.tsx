@@ -12,12 +12,13 @@ import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
 import ToolDetailPanel, {
 	MobileToolDetailPanel,
 } from '@/components/tool-detail-panel/tool-detail-panel';
+import { WalkthroughProvider } from '@/components/walkthrough/walkthrough-provider';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
 import { useSidebarStore } from '@/lib/sidebar.store';
 import { useToolDetailStore } from '@/lib/tool-detail.store';
-import { useMyTenant } from '@/lib/user';
+import { useMe, useMyTenant } from '@/lib/user';
 
 export const Route = createFileRoute('/_private')({
 	beforeLoad: () => {
@@ -40,6 +41,7 @@ function PrivateLayout() {
 		toggle: toggleMobileSidebar,
 	} = useMobileSidebarStore();
 	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
+	const { data: me } = useMe();
 
 	// CTRL+B / CMD+B to toggle sidebar (desktop only)
 	useEffect(() => {
@@ -182,6 +184,14 @@ function PrivateLayout() {
 			{/* Tool detail panel */}
 			{!isMobile && <ToolDetailPanel />}
 			{isMobile && <MobileToolDetailPanel />}
+
+			{/* Walkthrough tour — only on desktop, runs once */}
+			{!isMobile && (
+				<WalkthroughProvider
+					isAdmin={me?.isAdmin ?? false}
+					isReady={!!me && !tenantLoading}
+				/>
+			)}
 		</div>
 	);
 }

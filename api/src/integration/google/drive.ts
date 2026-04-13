@@ -1,7 +1,11 @@
 import { authPlugin } from '@api/auth';
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { getMimeTypeFromExt } from '@api/file/lib/types';
+import {
+	getFileCategory,
+	getMimeTypeFromExt,
+	isSupportedExt,
+} from '@api/file/lib/types';
 import { Google } from '@api/integration/google/lib';
 import {
 	getIngestedDirIds,
@@ -24,8 +28,13 @@ import {
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
+	checkBatchCapacity,
 	checkTenantCanIngest,
+	clearIngestStopFlag,
+	type FileEstimate,
 	invalidateStorageUsage,
+	isIngestStopped,
+	setIngestStopFlag,
 } from '@api/utils/billing';
 import {
 	ensureFreshTokens,
@@ -38,6 +47,11 @@ import { drive, type drive_v3 } from '@googleapis/drive';
 import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
+import pLimit from 'p-limit';
+
+const INGEST_CONCURRENCY = 8;
+const DIR_LIST_CONCURRENCY = 5;
+const RECHECK_INTERVAL = 50;
 
 const FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 
@@ -469,10 +483,11 @@ export namespace Drive {
 			allEntries.push(...entries);
 
 			const folders = entries.filter((e) => e.ext === 'dir');
-			for (const folder of folders) {
-				const subEntries = await listAllFiles(drv, folder.id);
-				allEntries.push(...subEntries);
-			}
+			const dirLimit = pLimit(DIR_LIST_CONCURRENCY);
+			const subResults = await Promise.all(
+				folders.map((folder) => dirLimit(() => listAllFiles(drv, folder.id))),
+			);
+			for (const sub of subResults) allEntries.push(...sub);
 
 			pageToken = res.data.nextPageToken ?? undefined;
 		} while (pageToken);
@@ -681,7 +696,9 @@ export namespace Drive {
 			);
 
 		const allEntries = await listAllFiles(drv, dirEntry.id);
-		const fileEntries = allEntries.filter((e) => e.ext !== 'dir');
+		const fileEntries = allEntries.filter(
+			(e) => e.ext !== 'dir' && isSupportedExt(e.name),
+		);
 		const currentExternalIds = fileEntries.map((e) => e.id);
 
 		if (existing && currentExternalIds.length)
@@ -701,30 +718,53 @@ export namespace Drive {
 			)
 				await invalidateStorageUsage(slug);
 
-		for (const entry of fileEntries) {
-			const blockReason = await checkTenantCanIngest(slug);
-			if (blockReason) {
-				stats.failed +=
-					fileEntries.length - stats.ok - stats.unmodified - stats.failed;
-				break;
-			}
+		const estimates: FileEstimate[] = fileEntries.map((e) => ({
+			sizeBytes: (e.size ?? 0) * 1024 * 1024,
+			category: getFileCategory(e.name),
+		}));
 
-			try {
-				const result = await ingestFile(
-					drv,
-					userId,
-					slug,
-					credentialId,
-					entry,
-					dirId,
-				);
-				stats[result.toLowerCase() as keyof typeof stats]++;
-			} catch (error) {
-				captureException(error, {
-					tags: { source: 'Drive.ingestDirectory' },
-					extra: { userId, entry },
-				});
+		const capacity = await checkBatchCapacity(slug, estimates);
+		if (!capacity.canProceed) {
+			stats.failed += fileEntries.length;
+			return stats;
+		}
+
+		const entriesToProcess =
+			capacity.maxFiles !== null
+				? fileEntries.slice(0, capacity.maxFiles)
+				: fileEntries;
+
+		if (capacity.maxFiles !== null)
+			stats.failed += fileEntries.length - capacity.maxFiles;
+
+		await clearIngestStopFlag(slug);
+		const limit = pLimit(INGEST_CONCURRENCY);
+		let processedCount = 0;
+
+		const results = await Promise.allSettled(
+			entriesToProcess.map((entry) =>
+				limit(async () => {
+					if (await isIngestStopped(slug)) return 'FAILED';
+
+					if (++processedCount % RECHECK_INTERVAL === 0) {
+						const blockReason = await checkTenantCanIngest(slug);
+						if (blockReason) {
+							await setIngestStopFlag(slug);
+							return 'FAILED';
+						}
+					}
+
+					return ingestFile(drv, userId, slug, credentialId, entry, dirId);
+				}),
+			),
+		);
+
+		for (const result of results) {
+			if (result.status === 'rejected') {
 				stats.failed++;
+			} else {
+				const key = result.value.toLowerCase() as keyof typeof stats;
+				stats[key]++;
 			}
 		}
 
@@ -761,34 +801,43 @@ export namespace Drive {
 
 		const results = { ok: 0, unmodified: 0, failed: 0 };
 
-		for (const item of sorted) {
-			if (item.isDir) {
-				const dirInfo = await getDirInfo(drv, item.id);
-				const stats = await ingestDirectory(
-					drv,
-					userId,
-					slug,
-					credentialId,
-					dirInfo,
-				);
-				results.ok += stats.ok;
-				results.unmodified += stats.unmodified;
-				results.failed += stats.failed;
+		const limit = pLimit(INGEST_CONCURRENCY);
+
+		const taskResults = await Promise.allSettled(
+			sorted.map((item) =>
+				limit(async () => {
+					if (item.isDir) {
+						const dirInfo = await getDirInfo(drv, item.id);
+						return ingestDirectory(drv, userId, slug, credentialId, dirInfo);
+					}
+
+					const blockReason = await checkTenantCanIngest(slug);
+					if (blockReason) return { ok: 0, unmodified: 0, failed: 1 };
+
+					const fileInfo = await getFileInfo(drv, item.id);
+					const result = await ingestFile(
+						drv,
+						userId,
+						slug,
+						credentialId,
+						fileInfo,
+					);
+					return {
+						ok: result === 'OK' ? 1 : 0,
+						unmodified: result === 'UNMODIFIED' ? 1 : 0,
+						failed: result !== 'OK' && result !== 'UNMODIFIED' ? 1 : 0,
+					};
+				}),
+			),
+		);
+
+		for (const r of taskResults) {
+			if (r.status === 'fulfilled') {
+				results.ok += r.value.ok;
+				results.unmodified += r.value.unmodified;
+				results.failed += r.value.failed;
 			} else {
-				const blockReason = await checkTenantCanIngest(slug);
-				if (blockReason) {
-					results.failed++;
-					continue;
-				}
-				const fileInfo = await getFileInfo(drv, item.id);
-				const result = await ingestFile(
-					drv,
-					userId,
-					slug,
-					credentialId,
-					fileInfo,
-				);
-				results[result.toLowerCase() as keyof typeof results]++;
+				results.failed++;
 			}
 		}
 

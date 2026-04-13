@@ -1,4 +1,5 @@
-import { cache, db } from '@api/env';
+import { cache, db, EMBEDDING_SIZE } from '@api/env';
+import { FileCategory } from '@api/file/lib/types';
 import { locales } from '@api/locales';
 import {
 	BillableEventType,
@@ -413,16 +414,21 @@ export async function checkTenantCanIngest(
 	const plan = await getTenantPlan(slug);
 	const limits = PLANS[plan];
 
-	if (limits.storageLimit !== null) {
-		const storageUsage = await getStorageUsage(slug);
-		if (storageUsage >= limits.storageLimit)
-			return ErrorCode.STORAGE_LIMIT_REACHED;
-	}
+	const needsStorageCheck = limits.storageLimit !== null;
+	const needsEmbedCheck = limits.embedLimit !== null;
 
-	if (limits.embedLimit !== null) {
-		const embedUsage = await getEmbedUsage(slug);
-		if (embedUsage >= limits.embedLimit) return ErrorCode.EMBED_LIMIT_REACHED;
-	}
+	if (!needsStorageCheck && !needsEmbedCheck) return null;
+
+	const [storageUsage, embedUsage] = await Promise.all([
+		needsStorageCheck ? getStorageUsage(slug) : 0,
+		needsEmbedCheck ? getEmbedUsage(slug) : 0,
+	]);
+
+	if (needsStorageCheck && storageUsage >= limits.storageLimit!)
+		return ErrorCode.STORAGE_LIMIT_REACHED;
+
+	if (needsEmbedCheck && embedUsage >= limits.embedLimit!)
+		return ErrorCode.EMBED_LIMIT_REACHED;
 
 	return null;
 }
@@ -621,4 +627,196 @@ export async function getTenantsDueForBilling(): Promise<
 			),
 		)
 		.groupBy(tenant.slug);
+}
+
+// ---------------------------------------------------------------------------
+// Batch ingestion: estimation, capacity pre-check, and stop-flag helpers
+// ---------------------------------------------------------------------------
+
+const INGEST_STOP_KEY = (slug: string) => `ingest:${slug}:stopped`;
+const INGEST_STOP_TTL = 60 * 60; // 1 hour
+
+export type FileEstimate = { sizeBytes: number; category: FileCategory };
+
+export type BatchEstimate = {
+	estimatedStorageMB: number;
+	estimatedEmbedTokens: number;
+};
+
+/**
+ * Conservative heuristic to estimate resource consumption for a batch of files
+ * **before** downloading or processing them. Intentionally over-estimates to
+ * prevent exceeding tenant limits during parallel ingestion.
+ */
+export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
+	let estimatedStorageMB = 0;
+	let estimatedEmbedTokens = 0;
+
+	for (const { sizeBytes, category } of files) {
+		switch (category) {
+			case FileCategory.TEXT: {
+				const chunks = Math.ceil(sizeBytes / EMBEDDING_SIZE);
+				estimatedStorageMB +=
+					(chunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedEmbedTokens += chunks * 250;
+				break;
+			}
+			case FileCategory.PDF: {
+				const textChunks = Math.ceil((sizeBytes * 0.3) / EMBEDDING_SIZE);
+				const estimatedImages = Math.max(1, Math.floor(sizeBytes / 500_000));
+				estimatedStorageMB +=
+					(textChunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				// 2 chunks per image (description + OCR)
+				estimatedStorageMB +=
+					(estimatedImages *
+						2 *
+						(EMBEDDING_SIZE + 4096) *
+						STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedEmbedTokens +=
+					textChunks * 250 + estimatedImages * 40_000;
+				break;
+			}
+			case FileCategory.DOCUMENT: {
+				const docChunks = Math.ceil((sizeBytes * 0.2) / EMBEDDING_SIZE);
+				const docImages = Math.max(1, Math.floor(sizeBytes / 500_000));
+				estimatedStorageMB +=
+					(docChunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedStorageMB +=
+					(docImages *
+						2 *
+						(EMBEDDING_SIZE + 4096) *
+						STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedEmbedTokens +=
+					docChunks * 250 + docImages * 40_000;
+				break;
+			}
+			case FileCategory.SPREADSHEET: {
+				const sheetChunks = Math.ceil((sizeBytes * 0.5) / EMBEDDING_SIZE);
+				estimatedStorageMB +=
+					(sheetChunks *
+						(EMBEDDING_SIZE + 4096) *
+						STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedEmbedTokens += sheetChunks * 250;
+				break;
+			}
+			case FileCategory.IMAGE: {
+				// 2 chunks (description + OCR), VLM token cost
+				estimatedStorageMB +=
+					(2 * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(1024 * 1024);
+				estimatedEmbedTokens += 40_000;
+				break;
+			}
+			case FileCategory.UNSUPPORTED:
+				break;
+		}
+	}
+
+	return { estimatedStorageMB, estimatedEmbedTokens };
+}
+
+export type BatchCapacityResult = {
+	canProceed: boolean;
+	maxFiles: number | null;
+	reason?: ErrorCode;
+};
+
+/**
+ * Pre-checks whether a tenant has enough capacity for a batch of files.
+ * If the full batch exceeds limits, calculates how many files (cheapest first)
+ * can fit within remaining capacity.
+ */
+export async function checkBatchCapacity(
+	slug: string,
+	files: FileEstimate[],
+): Promise<BatchCapacityResult> {
+	const blockReason = await checkTenantCanIngest(slug);
+	if (blockReason)
+		return { canProceed: false, maxFiles: 0, reason: blockReason };
+
+	const plan = await getTenantPlan(slug);
+	const limits = PLANS[plan];
+
+	// Unlimited plans can always proceed
+	if (limits.storageLimit === null && limits.embedLimit === null)
+		return { canProceed: true, maxFiles: null };
+
+	const [storageUsage, embedUsage] = await Promise.all([
+		limits.storageLimit !== null ? getStorageUsage(slug) : 0,
+		limits.embedLimit !== null ? getEmbedUsage(slug) : 0,
+	]);
+
+	const remainingStorageMB =
+		limits.storageLimit !== null ? limits.storageLimit - storageUsage : Infinity;
+	const remainingEmbedTokens =
+		limits.embedLimit !== null ? limits.embedLimit - embedUsage : Infinity;
+
+	const fullEstimate = estimateBatchResources(files);
+
+	if (
+		fullEstimate.estimatedStorageMB <= remainingStorageMB &&
+		fullEstimate.estimatedEmbedTokens <= remainingEmbedTokens
+	)
+		return { canProceed: true, maxFiles: null };
+
+	// Calculate per-file estimates and sort by cost (cheapest first)
+	const perFile = files
+		.map((f, i) => ({ ...estimateBatchResources([f]), index: i }))
+		.sort((a, b) => a.estimatedEmbedTokens - b.estimatedEmbedTokens);
+
+	let accStorage = 0;
+	let accEmbed = 0;
+	let maxFiles = 0;
+
+	for (const est of perFile) {
+		const nextStorage = accStorage + est.estimatedStorageMB;
+		const nextEmbed = accEmbed + est.estimatedEmbedTokens;
+
+		if (nextStorage > remainingStorageMB || nextEmbed > remainingEmbedTokens)
+			break;
+
+		accStorage = nextStorage;
+		accEmbed = nextEmbed;
+		maxFiles++;
+	}
+
+	if (maxFiles === 0)
+		return {
+			canProceed: false,
+			maxFiles: 0,
+			reason:
+				remainingStorageMB <= 0
+					? ErrorCode.STORAGE_LIMIT_REACHED
+					: ErrorCode.EMBED_LIMIT_REACHED,
+		};
+
+	return { canProceed: true, maxFiles };
+}
+
+/**
+ * Sets a stop flag in Redis to signal parallel workers to stop ingesting
+ * for a given tenant.
+ */
+export async function setIngestStopFlag(slug: string): Promise<void> {
+	await cache.set(INGEST_STOP_KEY(slug), true, { ex: INGEST_STOP_TTL });
+}
+
+/**
+ * Checks whether the ingest stop flag is set for a given tenant.
+ */
+export async function isIngestStopped(slug: string): Promise<boolean> {
+	return Boolean(await cache.get(INGEST_STOP_KEY(slug)));
+}
+
+/**
+ * Clears the ingest stop flag for a tenant (called when batch starts).
+ */
+export async function clearIngestStopFlag(slug: string): Promise<void> {
+	await cache.del(INGEST_STOP_KEY(slug));
 }
