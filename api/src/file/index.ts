@@ -23,6 +23,7 @@ import {
 	checkTenantCanIngest,
 	incrementEmbedUsage,
 	incrementStorageUsage,
+	invalidateStorageUsage,
 	STORAGE_OVERHEAD_MULTIPLIER,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -278,6 +279,7 @@ export namespace NexataFile {
 					return 'UNMODIFIED';
 
 				await db.delete(file).where(eq(file.id, existing.id));
+				await invalidateStorageUsage(data.slug);
 				data.id = existing.id;
 			}
 		}
@@ -323,7 +325,12 @@ export namespace NexataFile {
 
 			return 'OK';
 		} catch (error) {
-			await db.delete(file).where(eq(file.id, data.id));
+			const deleted = await db
+				.delete(file)
+				.where(eq(file.id, data.id))
+				.returning({ id: file.id });
+
+			if (deleted.length) await invalidateStorageUsage(data.slug);
 
 			if (shouldCaptureIngestError(error))
 				captureException(error, {
@@ -743,6 +750,8 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					.map((f) => s3.delete(`t/${activeUser.slug}/f/${f.id}`)),
 			);
 
+			if (deleted.length) await invalidateStorageUsage(activeUser.slug);
+
 			return deleted;
 		},
 		{
@@ -752,8 +761,8 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	)
 	.delete(
 		'/dir/:id',
-		async ({ params: { id }, activeUser }) =>
-			db
+		async ({ params: { id }, activeUser }) => {
+			const deleted = await db
 				.delete(externalDir)
 				.where(
 					and(
@@ -806,7 +815,12 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 								),
 					),
 				)
-				.returning({ id: externalDir.id }),
+				.returning({ id: externalDir.id });
+
+			if (deleted.length) await invalidateStorageUsage(activeUser.slug);
+
+			return deleted;
+		},
 		{
 			detail: { summary: 'Delete external directory' },
 			params: tObject({ id: t.String({ format: 'uuid' }) }),

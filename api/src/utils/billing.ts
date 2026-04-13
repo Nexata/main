@@ -201,6 +201,10 @@ export async function incrementStorageUsage(
 	checkAndNotifyLimits(slug, 'storage');
 }
 
+export async function invalidateStorageUsage(slug: string): Promise<void> {
+	await cache.del(STORAGE_KEY(slug));
+}
+
 export async function incrementEmbedUsage(
 	slug: string,
 	deltaTokens: number,

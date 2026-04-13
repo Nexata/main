@@ -21,7 +21,10 @@ import {
 	trace,
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
-import { checkTenantCanIngest } from '@api/utils/billing';
+import {
+	checkTenantCanIngest,
+	invalidateStorageUsage,
+} from '@api/utils/billing';
 import {
 	ensureFreshTokens,
 	getTokensForUser,
@@ -409,15 +412,21 @@ export namespace Dropbox {
 		const currentExternalIds = fileEntries.map((e) => e.id);
 
 		if (existing && currentExternalIds.length)
-			await db
-				.delete(file)
-				.where(
-					and(
-						eq(file.externalDirId, dirId),
-						eq(file.provider, FileHost.DROPBOX),
-						notInArray(file.externalId, currentExternalIds),
-					),
-				);
+			if (
+				(
+					await db
+						.delete(file)
+						.where(
+							and(
+								eq(file.externalDirId, dirId),
+								eq(file.provider, FileHost.DROPBOX),
+								notInArray(file.externalId, currentExternalIds),
+							),
+						)
+						.returning({ id: file.id })
+				).length
+			)
+				await invalidateStorageUsage(slug);
 
 		for (const entry of fileEntries) {
 			const blockReason = await checkTenantCanIngest(slug);

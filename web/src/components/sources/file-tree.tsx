@@ -1,13 +1,11 @@
 import { useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
-import { useBillingUsage } from "@/lib/admin";
-import { useMe } from "@/lib/user";
 import { cn } from "@/lib/utils";
 import type { SourceConfig } from "@/lib/available-sources";
 import {
@@ -38,9 +36,6 @@ import {
   "components.file_tree.empty_description" as components_file_tree_empty_description,
   "components.file_tree.updated" as components_file_tree_updated,
   "components.file_tree.selected" as components_file_tree_selected,
-  "components.file_tree.remaining" as components_file_tree_remaining,
-  "components.file_tree.storage_exceeded" as components_file_tree_storage_exceeded,
-  "components.file_tree.reduce_selection" as components_file_tree_reduce_selection,
   "components.file_tree.toast_loading_title" as components_file_tree_toast_loading_title,
   "components.file_tree.toast_loading_description" as components_file_tree_toast_loading_description,
   "components.file_tree.toast_success_title" as components_file_tree_toast_success_title,
@@ -149,10 +144,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
-  const { data: me } = useMe();
-  const { data: usage } = useBillingUsage(me?.isAdmin);
-  const storageUsed = usage?.storage?.used ?? 0;
-  const storageLimit = usage?.storage?.limit ?? Infinity;
 
   function filterEntries(items: Entry[], query?: string) {
     const needle = query?.trim().toLowerCase();
@@ -355,11 +346,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   /* STORAGE */
   const pendingIngestCount = selectedForIngest.size;
-  const pendingIngestSize = useMemo(
-    () => Array.from(selectedForIngest.values()).reduce((s, f) => s + (f.size ?? 0), 0),
-    [selectedForIngest]
-  );
-  const remaining = storageLimit - (storageUsed + pendingIngestSize);
 
   const formatMB = (n: number) => `${n.toFixed(2)} MB`;
   const formatDate = (d: string) => new Date(d).toLocaleDateString();
@@ -632,25 +618,6 @@ export function StorageFileTree({ credentialId, source }: Props) {
               </span>{" "}
               {components_file_tree_selected()}
             </span>
-
-            <Separator orientation="vertical" className="hidden sm:block" />
-
-            <span>{formatMB(pendingIngestSize)}</span>
-
-            {usage && (
-              <>
-                <Separator orientation="vertical" className="hidden sm:block" />
-
-                <span className={cn(remaining < 0 && "text-destructive font-medium")}>
-                  {formatMB(Math.max(remaining, 0))} {components_file_tree_remaining()}
-                </span>
-                {remaining < 0 && (
-                  <span className="text-destructive text-xs font-medium">
-                    {components_file_tree_storage_exceeded()}
-                  </span>
-                )}
-              </>
-            )}
           </div>
 
           {/* Actions row */}
@@ -671,16 +638,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
               <AsyncConfirmButton
                 size="sm"
                 onClick={handleConfirm}
-                disabled={(selectedForIngest.size === 0 && markedForDelete.size === 0) || (!!usage && remaining < 0)}
+                disabled={selectedForIngest.size === 0 && markedForDelete.size === 0}
               >
                 {common_confirm()}
               </AsyncConfirmButton>
-
-              {usage && remaining < 0 && (
-                <span className="text-[10px] text-destructive mt-1">
-                  {components_file_tree_reduce_selection()}
-                </span>
-              )}
             </div>
           </div>
         </div>
