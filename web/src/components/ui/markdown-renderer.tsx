@@ -6,6 +6,8 @@ import rehypeKatex from "rehype-katex"
 import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
 import { Badge } from "@/components/ui/badge"
+import { DirectoryTree, isDirectoryTree } from "@/components/ui/directory-tree"
+import { TimelineChart, isTimeline } from "@/components/ui/timeline-chart"
 
 interface MarkdownRendererProps {
   children: string
@@ -199,6 +201,23 @@ const COMPONENTS = {
   blockquote: withClass("blockquote", "border-l-2 border-primary pl-4"),
   code: ({ children, className, node, ...rest }: any) => {
     const match = /language-(\w+)/.exec(className || "")
+
+    // Extract text content for auto-detection
+    const textContent =
+      typeof children === "string"
+        ? children
+        : childrenTakeAllStringContents(children)
+
+    // Auto-detect timeline (check first, more specific pattern)
+    if (!match && textContent && isTimeline(textContent)) {
+      return <TimelineChart content={textContent} />
+    }
+
+    // Auto-detect directory tree
+    if (!match && textContent && isDirectoryTree(textContent)) {
+      return <DirectoryTree content={textContent} />
+    }
+
     return match ? (
       <CodeBlock className={className} language={match[1]} {...rest}>
         {children}
@@ -246,12 +265,30 @@ const COMPONENTS = {
     "td",
     "px-4 py-3 [&[align=center]]:text-center [&[align=right]]:text-right"
   ),
-  p: ({ node, ...props }: any) => (
-    <p
-      className="whitespace-pre-wrap animate-in fade-in-0 duration-800"
-      {...props}
-    />
-  ),
+  p: ({ node, children, ...props }: any) => {
+    // Check if paragraph contains tree/timeline text (plain text without code fences)
+    const textContent =
+      typeof children === "string"
+        ? children
+        : childrenTakeAllStringContents({ props: { children } })
+
+    if (textContent && isTimeline(textContent)) {
+      return <TimelineChart content={textContent} />
+    }
+
+    if (textContent && isDirectoryTree(textContent)) {
+      return <DirectoryTree content={textContent} />
+    }
+
+    return (
+      <p
+        className="whitespace-pre-wrap animate-in fade-in-0 duration-800"
+        {...props}
+      >
+        {children}
+      </p>
+    )
+  },
   hr: withClass("hr", "border-foreground/20"),
 }
 
