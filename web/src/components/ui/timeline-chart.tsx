@@ -25,19 +25,19 @@ type TimelineChartProps = {
   content: string;
 };
 
-// ─── Color palette ───────────────────────────────────────────────────
+// ─── Color palette (theme-aware) ─────────────────────────────────────
 
 const BAR_COLORS = [
-  { bg: "bg-blue-500/75 dark:bg-blue-400/70", border: "border-blue-600/30 dark:border-blue-300/30" },
-  { bg: "bg-emerald-500/75 dark:bg-emerald-400/70", border: "border-emerald-600/30 dark:border-emerald-300/30" },
-  { bg: "bg-violet-500/75 dark:bg-violet-400/70", border: "border-violet-600/30 dark:border-violet-300/30" },
-  { bg: "bg-amber-500/75 dark:bg-amber-400/70", border: "border-amber-600/30 dark:border-amber-300/30" },
-  { bg: "bg-rose-500/75 dark:bg-rose-400/70", border: "border-rose-600/30 dark:border-rose-300/30" },
-  { bg: "bg-cyan-500/75 dark:bg-cyan-400/70", border: "border-cyan-600/30 dark:border-cyan-300/30" },
-  { bg: "bg-orange-500/75 dark:bg-orange-400/70", border: "border-orange-600/30 dark:border-orange-300/30" },
-  { bg: "bg-pink-500/75 dark:bg-pink-400/70", border: "border-pink-600/30 dark:border-pink-300/30" },
-  { bg: "bg-teal-500/75 dark:bg-teal-400/70", border: "border-teal-600/30 dark:border-teal-300/30" },
-  { bg: "bg-indigo-500/75 dark:bg-indigo-400/70", border: "border-indigo-600/30 dark:border-indigo-300/30" },
+  { bg: "bg-blue-500/80 dark:bg-blue-400/70", text: "text-blue-50 dark:text-blue-950", dot: "bg-blue-500 dark:bg-blue-400" },
+  { bg: "bg-emerald-500/80 dark:bg-emerald-400/70", text: "text-emerald-50 dark:text-emerald-950", dot: "bg-emerald-500 dark:bg-emerald-400" },
+  { bg: "bg-violet-500/80 dark:bg-violet-400/70", text: "text-violet-50 dark:text-violet-950", dot: "bg-violet-500 dark:bg-violet-400" },
+  { bg: "bg-amber-500/80 dark:bg-amber-400/70", text: "text-amber-50 dark:text-amber-950", dot: "bg-amber-500 dark:bg-amber-400" },
+  { bg: "bg-rose-500/80 dark:bg-rose-400/70", text: "text-rose-50 dark:text-rose-950", dot: "bg-rose-500 dark:bg-rose-400" },
+  { bg: "bg-cyan-500/80 dark:bg-cyan-400/70", text: "text-cyan-50 dark:text-cyan-950", dot: "bg-cyan-500 dark:bg-cyan-400" },
+  { bg: "bg-orange-500/80 dark:bg-orange-400/70", text: "text-orange-50 dark:text-orange-950", dot: "bg-orange-500 dark:bg-orange-400" },
+  { bg: "bg-pink-500/80 dark:bg-pink-400/70", text: "text-pink-50 dark:text-pink-950", dot: "bg-pink-500 dark:bg-pink-400" },
+  { bg: "bg-teal-500/80 dark:bg-teal-400/70", text: "text-teal-50 dark:text-teal-950", dot: "bg-teal-500 dark:bg-teal-400" },
+  { bg: "bg-indigo-500/80 dark:bg-indigo-400/70", text: "text-indigo-50 dark:text-indigo-950", dot: "bg-indigo-500 dark:bg-indigo-400" },
 ];
 
 // ─── Detection ───────────────────────────────────────────────────────
@@ -46,7 +46,6 @@ export function isTimeline(text: string): boolean {
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length < 3) return false;
 
-  // Must have a header line with multiple years (4-digit numbers)
   const yearLineRegex = /\b(19|20)\d{2}\b/g;
   let hasYearHeader = false;
   let hasBarLines = false;
@@ -56,7 +55,6 @@ export function isTimeline(text: string): boolean {
     if (yearMatches && yearMatches.length >= 2) {
       hasYearHeader = true;
     }
-    // Bar patterns: ├─────┤ or ├─────┼─────┤ followed by text
     if (/[├┤┼─]{3,}/.test(line) && /[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(line)) {
       hasBarLines = true;
     }
@@ -70,7 +68,7 @@ export function isTimeline(text: string): boolean {
 function parseTimeline(text: string): TimelineData {
   const lines = text.split("\n");
 
-  // Step 1: Find the year header line
+  // Step 1: Find the year header line and extract year positions
   const yearLineRegex = /\b((?:19|20)\d{2})\b/g;
   let years: number[] = [];
   let yearPositions: { year: number; pos: number }[] = [];
@@ -94,46 +92,72 @@ function parseTimeline(text: string): TimelineData {
   const minYear = Math.min(...years);
   const maxYear = Math.max(...years);
 
+  // Compute the average character distance per year from the header
+  const charPerYear =
+    yearPositions.length >= 2
+      ? (yearPositions[yearPositions.length - 1]!.pos - yearPositions[0]!.pos) /
+        (yearPositions[yearPositions.length - 1]!.year - yearPositions[0]!.year)
+      : 6; // fallback
+
   // Step 2: Parse entry lines
-  // Each entry line has a bar pattern (├─...┤ or ├─...┼─...┤) followed by label text
   const entries: TimelineEntry[] = [];
 
   for (const line of lines) {
-    // Skip lines that don't have bar patterns
     if (!/├/.test(line)) continue;
 
-    // Find the bar start (├) and bar end (┤ or last ─ before text, or ┼── pattern)
     const barStartIdx = line.indexOf("├");
-    // Find where the bar ends - look for the label text after the bar
-    const labelMatch = line.match(/[┤├─┼]+\s*(?:──\s+)?([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9_].+)$/);
 
+    // Extract label text after the bar
+    const labelMatch = line.match(
+      /[┤├─┼]+\s*(?:──\s+)?([a-zA-ZáéíóúñÁÉÍÓÚÑ0-9_].+)$/
+    );
     if (!labelMatch) continue;
 
     const labelText = labelMatch[1]!.trim();
 
-    // Find the visual start and end positions of the bar
-    // The bar starts at ├ and extends through ─ and ┼ characters
-    const barEndIdx = barStartIdx + line.slice(barStartIdx).search(/[^\s├─┼┤│]/) - 1;
-    const actualBarEnd = barEndIdx > barStartIdx ? barEndIdx : line.indexOf(labelText) - 1;
-
-    // Map positions to years using the year header positions
-    const startYear = positionToYear(barStartIdx, yearPositions, minYear, maxYear);
-    let endYear = positionToYear(Math.max(actualBarEnd, barStartIdx + 1), yearPositions, minYear, maxYear);
-
-    // Parse duration and ongoing status from the label
+    // Parse ongoing status
     const ongoing = /vigente|continuo|actual|presente/i.test(labelText);
+
+    // Parse duration from label: e.g., "(6 años, continuo)", "(1 año)", "(3 años, vigente)"
     const durationMatch = labelText.match(/\((.+?)\)/);
     const duration = durationMatch ? durationMatch[1]! : "";
 
-    // Extract clean name (without duration info)
+    // Extract the numeric year count from the duration string
+    const yearCountMatch = duration.match(/(\d+)\s*a[ñn]os?/i);
+    let durationYears = yearCountMatch ? parseInt(yearCountMatch[1]!, 10) : 0;
+
+    // Extract clean name
     const name = labelText.replace(/\s*\(.+?\)\s*$/, "").trim();
 
-    // If the bar extends to the last year column or beyond, and is marked ongoing
+    // Determine startYear from bar position relative to year header positions
+    const startYear = positionToYear(barStartIdx, yearPositions, charPerYear, minYear, maxYear);
+
+    // Determine endYear
+    let endYear: number;
+
+    if (durationYears > 0) {
+      // Use explicit duration from the label
+      endYear = startYear + durationYears;
+    } else {
+      // Count bar segments: each ┼ is a year boundary crossing
+      const barSection = line.slice(barStartIdx);
+      // Find where the bar ends (first letter/space before label text)
+      const barEndSearch = barSection.search(/[a-zA-ZáéíóúñÁÉÍÓÚÑ]/);
+      const barPart = barEndSearch > 0 ? barSection.slice(0, barEndSearch) : barSection;
+
+      // Count ┼ separators within the bar — each represents crossing a year boundary
+      const crossings = (barPart.match(/┼/g) || []).length;
+      // The bar spans crossings + 1 years (├ to first ┼ is year 1, each ┼ adds 1)
+      const segmentYears = crossings + 1;
+      endYear = startYear + segmentYears;
+    }
+
+    // Ongoing entries extend to at least maxYear + 1
     if (ongoing && endYear < maxYear + 1) {
       endYear = maxYear + 1;
     }
 
-    // Ensure minimum 1 year span
+    // Clamp minimum span
     if (endYear <= startYear) {
       endYear = startYear + 1;
     }
@@ -153,33 +177,34 @@ function parseTimeline(text: string): TimelineData {
 function positionToYear(
   pos: number,
   yearPositions: { year: number; pos: number }[],
+  charPerYear: number,
   minYear: number,
-  _maxYear: number,
+  maxYear: number,
 ): number {
   if (yearPositions.length < 2) return minYear;
 
   // Find the two surrounding year markers
-  let before = yearPositions[0]!;
-  let after = yearPositions[yearPositions.length - 1]!;
-
   for (let i = 0; i < yearPositions.length - 1; i++) {
     const curr = yearPositions[i]!;
     const next = yearPositions[i + 1]!;
     if (pos >= curr.pos && pos <= next.pos) {
-      before = curr;
-      after = next;
-      break;
+      // Linear interpolation between these two markers
+      const ratio = (pos - curr.pos) / (next.pos - curr.pos);
+      return Math.round(curr.year + ratio * (next.year - curr.year));
     }
   }
 
-  // If before the first marker
-  if (pos <= before.pos) return before.year;
-  // If after the last marker
-  if (pos >= after.pos) return after.year;
+  // Before the first marker
+  const first = yearPositions[0]!;
+  if (pos < first.pos) {
+    const yearsBack = (first.pos - pos) / charPerYear;
+    return Math.max(minYear, Math.round(first.year - yearsBack));
+  }
 
-  // Linear interpolation
-  const ratio = (pos - before.pos) / (after.pos - before.pos);
-  return before.year + ratio * (after.year - before.year);
+  // After the last marker
+  const last = yearPositions[yearPositions.length - 1]!;
+  const yearsForward = (pos - last.pos) / charPerYear;
+  return Math.min(maxYear + 1, Math.round(last.year + yearsForward));
 }
 
 // ─── Main Component ──────────────────────────────────────────────────
@@ -190,12 +215,12 @@ export function TimelineChart({ content }: TimelineChartProps) {
   if (data.years.length === 0 || data.entries.length === 0) return null;
 
   const minYear = Math.min(...data.years);
-  const maxYear = Math.max(...data.years) + 1; // Add 1 for ongoing items
+  const maxYear = Math.max(...data.years) + 1; // +1 for ongoing items
   const totalSpan = maxYear - minYear;
 
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-      {/* Header */}
+      {/* Header bar */}
       <div className="flex h-11 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
         <div className="flex items-center gap-2.5">
           <svg
@@ -221,106 +246,185 @@ export function TimelineChart({ content }: TimelineChartProps) {
         </span>
       </div>
 
-      {/* Timeline content */}
-      <div className="px-4 py-4 overflow-x-auto [scrollbar-width:thin]">
-        {/* Year headers */}
-        <div className="relative mb-3 ml-[140px]">
-          <div className="flex justify-between">
-            {data.years.map((year) => (
-              <span
-                key={year}
-                className="text-xs font-mono text-muted-foreground/60 text-center"
-                style={{
-                  position: "absolute",
-                  left: `${((year - minYear) / totalSpan) * 100}%`,
-                  transform: "translateX(-50%)",
-                }}
-              >
-                {year}
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {/* Year grid lines + entries */}
-        <div className="relative ml-[140px] mt-6">
-          {/* Vertical grid lines */}
-          <div className="absolute inset-0 pointer-events-none">
-            {data.years.map((year) => (
-              <div
-                key={year}
-                className="absolute top-0 bottom-0 w-px bg-border/30"
-                style={{
-                  left: `${((year - minYear) / totalSpan) * 100}%`,
-                }}
-              />
-            ))}
+      {/* ── Desktop view (sm+) ──────────────────────────────────── */}
+      <div className="hidden sm:block px-4 pt-4 pb-3 overflow-x-auto [scrollbar-width:thin]">
+        <div className="min-w-0">
+          {/* Year axis */}
+          <div className="flex mb-1 pl-[var(--label-w)]" style={{ "--label-w": "130px" } as React.CSSProperties}>
+            <div className="relative flex-1 h-6">
+              {data.years.map((year) => {
+                const pct = ((year - minYear) / totalSpan) * 100;
+                return (
+                  <span
+                    key={year}
+                    className="absolute text-[11px] font-mono text-muted-foreground/60 -translate-x-1/2 select-none"
+                    style={{ left: `${pct}%` }}
+                  >
+                    {year}
+                  </span>
+                );
+              })}
+            </div>
           </div>
 
-          {/* Entry rows */}
-          <div className="space-y-1.5 relative">
+          {/* Entries */}
+          <div className="flex flex-col gap-1">
             {data.entries.map((entry, i) => {
               const color = BAR_COLORS[i % BAR_COLORS.length]!;
-              const startPct =
-                ((entry.startYear - minYear) / totalSpan) * 100;
-              const widthPct =
-                ((entry.endYear - entry.startYear) / totalSpan) * 100;
+              const startPct = ((entry.startYear - minYear) / totalSpan) * 100;
+              const widthPct = ((entry.endYear - entry.startYear) / totalSpan) * 100;
 
               return (
-                <div key={`${entry.name}-${i}`} className="flex items-center h-8">
-                  {/* Label (positioned to the left) */}
-                  <div
-                    className="absolute right-full mr-3 w-[128px] text-right shrink-0"
-                  >
-                    <span className="text-xs text-foreground/70 truncate block">
+                <div
+                  key={`${entry.name}-${i}`}
+                  className="flex items-center gap-3 h-7"
+                  style={{ "--label-w": "130px" } as React.CSSProperties}
+                >
+                  {/* Label */}
+                  <div className="w-[var(--label-w)] shrink-0 text-right pr-1">
+                    <span className="text-xs text-foreground/70 truncate block leading-tight">
                       {entry.name}
                     </span>
                   </div>
 
-                  {/* Bar */}
-                  <Tooltip>
-                    <TooltipTrigger
-                      render={
+                  {/* Bar area */}
+                  <div className="relative flex-1 h-full">
+                    {/* Vertical gridlines */}
+                    {data.years.map((year) => {
+                      const pct = ((year - minYear) / totalSpan) * 100;
+                      return (
                         <div
-                          className={cn(
-                            "absolute h-6 rounded-md border transition-all duration-150 hover:brightness-110 hover:shadow-sm cursor-default",
-                            color.bg,
-                            color.border,
-                            entry.ongoing &&
-                              "rounded-r-none border-r-0"
-                          )}
-                          style={{
-                            left: `${startPct}%`,
-                            width: `${Math.max(widthPct, 2)}%`,
-                          }}
+                          key={year}
+                          className="absolute top-0 bottom-0 w-px bg-border/25"
+                          style={{ left: `${pct}%` }}
                         />
-                      }
-                    >
-                      {/* Inner label for wider bars */}
-                      {widthPct > 15 && (
-                        <span className="absolute inset-0 flex items-center px-2 text-[10px] font-medium text-white dark:text-white/90 truncate">
-                          {entry.name}
-                        </span>
-                      )}
-                      {/* Ongoing indicator */}
-                      {entry.ongoing && (
-                        <span className="absolute right-0 top-0 bottom-0 w-4 bg-gradient-to-r from-transparent to-muted/60" />
-                      )}
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <div className="text-center">
-                        <div className="font-medium">{entry.name}</div>
-                        <div className="text-[10px] opacity-80">
-                          {entry.startYear}–{entry.ongoing ? "presente" : entry.endYear}
-                          {entry.duration && ` · ${entry.duration}`}
+                      );
+                    })}
+
+                    {/* Bar */}
+                    <Tooltip>
+                      <TooltipTrigger
+                        render={
+                          <div
+                            className={cn(
+                              "absolute top-0.5 bottom-0.5 rounded-md transition-colors duration-150 hover:brightness-110 cursor-default",
+                              color.bg,
+                              entry.ongoing && "rounded-r-none",
+                            )}
+                            style={{
+                              left: `${startPct}%`,
+                              width: `${Math.max(widthPct, 1.5)}%`,
+                            }}
+                          />
+                        }
+                      >
+                        {/* Inner label for wide bars */}
+                        {widthPct > 18 && (
+                          <span className={cn(
+                            "absolute inset-0 flex items-center px-2 text-[10px] font-medium truncate pointer-events-none",
+                            color.text,
+                          )}>
+                            {entry.name}
+                          </span>
+                        )}
+                        {/* Ongoing fade */}
+                        {entry.ongoing && (
+                          <span className="absolute right-0 top-0 bottom-0 w-5 rounded-r bg-gradient-to-r from-transparent to-card pointer-events-none" />
+                        )}
+                      </TooltipTrigger>
+                      <TooltipContent side="top">
+                        <div className="text-center">
+                          <div className="font-medium">{entry.name}</div>
+                          <div className="text-[10px] opacity-80">
+                            {entry.startYear}–
+                            {entry.ongoing ? "presente" : entry.endYear}
+                            {entry.duration && ` · ${entry.duration}`}
+                          </div>
                         </div>
-                      </div>
-                    </TooltipContent>
-                  </Tooltip>
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
                 </div>
               );
             })}
           </div>
+        </div>
+      </div>
+
+      {/* ── Mobile view (<sm) ───────────────────────────────────── */}
+      <div className="sm:hidden px-3 pt-3 pb-2">
+        {/* Compact year axis */}
+        <div className="relative h-5 mb-2">
+          {data.years.filter((_, idx, arr) => {
+            // On mobile show fewer labels: first, last, and every other
+            if (idx === 0 || idx === arr.length - 1) return true;
+            return arr.length <= 4 || idx % 2 === 0;
+          }).map((year) => {
+            const pct = ((year - minYear) / totalSpan) * 100;
+            return (
+              <span
+                key={year}
+                className="absolute text-[10px] font-mono text-muted-foreground/50 -translate-x-1/2 select-none"
+                style={{ left: `${pct}%` }}
+              >
+                {year}
+              </span>
+            );
+          })}
+        </div>
+
+        {/* Entries stacked */}
+        <div className="flex flex-col gap-2">
+          {data.entries.map((entry, i) => {
+            const color = BAR_COLORS[i % BAR_COLORS.length]!;
+            const startPct = ((entry.startYear - minYear) / totalSpan) * 100;
+            const widthPct = ((entry.endYear - entry.startYear) / totalSpan) * 100;
+
+            return (
+              <div key={`${entry.name}-${i}`}>
+                {/* Label row */}
+                <div className="flex items-center gap-1.5 mb-0.5">
+                  <span className={cn("size-2 rounded-full shrink-0", color.dot)} />
+                  <span className="text-xs text-foreground/80 truncate leading-tight">
+                    {entry.name}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground/50 ml-auto shrink-0 whitespace-nowrap">
+                    {entry.startYear}–{entry.ongoing ? "presente" : entry.endYear}
+                  </span>
+                </div>
+                {/* Bar */}
+                <div className="relative h-5 rounded-md bg-muted/30">
+                  {/* Gridlines */}
+                  {data.years.map((year) => {
+                    const pct = ((year - minYear) / totalSpan) * 100;
+                    return (
+                      <div
+                        key={year}
+                        className="absolute top-0 bottom-0 w-px bg-border/20"
+                        style={{ left: `${pct}%` }}
+                      />
+                    );
+                  })}
+                  {/* Bar fill */}
+                  <div
+                    className={cn(
+                      "absolute top-0 bottom-0 rounded-md transition-colors duration-150",
+                      color.bg,
+                      entry.ongoing && "rounded-r-none",
+                    )}
+                    style={{
+                      left: `${startPct}%`,
+                      width: `${Math.max(widthPct, 2)}%`,
+                    }}
+                  >
+                    {entry.ongoing && (
+                      <span className="absolute right-0 top-0 bottom-0 w-4 rounded-r bg-gradient-to-r from-transparent to-muted/30 pointer-events-none" />
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

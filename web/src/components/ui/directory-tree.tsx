@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useEffect, useMemo, createContext, useContext } from "react";
 import {
   Folder,
   FolderOpen,
@@ -8,9 +8,16 @@ import {
   Presentation,
   FileImage,
   ChevronRight,
-  ChevronDown,
+  ChevronsUpDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  Collapsible,
+  CollapsibleTrigger,
+  CollapsibleContent,
+} from "@/components/ui/collapsible";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
 import {
   Tooltip,
   TooltipTrigger,
@@ -33,77 +40,131 @@ type DirectoryTreeProps = {
 
 // ─── Detection ───────────────────────────────────────────────────────
 
-const TREE_CHARS = /[├└│─┼┤┐┘┌┬]/;
-
+/**
+ * Detects whether a block of text is a directory tree by looking for
+ * Unicode box-drawing branch characters (├ and └).
+ */
 export function isDirectoryTree(text: string): boolean {
   const lines = text.split("\n").filter((l) => l.trim().length > 0);
   if (lines.length < 2) return false;
 
-  let treeLineCount = 0;
+  let branchLineCount = 0;
   for (const line of lines) {
-    if (TREE_CHARS.test(line)) treeLineCount++;
+    if (line.includes("\u251C") || line.includes("\u2514")) {
+      branchLineCount++;
+    }
   }
 
-  return treeLineCount >= 2 && treeLineCount / lines.length > 0.3;
+  return branchLineCount >= 2;
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────
 
+/**
+ * Finds the position of the first branch character (├ or └) in a line.
+ * Returns -1 if no branch character is found (root line).
+ */
+function findBranchPosition(line: string): number {
+  for (let i = 0; i < line.length; i++) {
+    if (line[i] === "\u251C" || line[i] === "\u2514") return i;
+  }
+  return -1;
+}
+
+/**
+ * Parses the raw name extracted from a tree line, determining whether
+ * it's a directory or file, and extracting any annotation.
+ *
+ * Rules:
+ * - `Name/` → directory "Name"
+ * - `Name/ (annotation text)` → directory "Name" with annotation
+ * - `Name (something)/` → directory "Name (something)" (parens are part of name)
+ * - `file.ext` → file "file.ext"
+ */
+function parseNameAndAnnotation(rawName: string): {
+  name: string;
+  isDirectory: boolean;
+  annotation: string | undefined;
+} {
+  // Pattern: "DirName/ (annotation text)"
+  // The slash must come before the annotation parentheses
+  const annotatedDirMatch = rawName.match(/^(.+\/)\s+\((.+)\)$/);
+  if (annotatedDirMatch && annotatedDirMatch[1] && annotatedDirMatch[2]) {
+    return {
+      name: annotatedDirMatch[1].slice(0, -1),
+      isDirectory: true,
+      annotation: annotatedDirMatch[2],
+    };
+  }
+
+  // Plain directory: ends with /
+  if (rawName.endsWith("/")) {
+    return { name: rawName.slice(0, -1), isDirectory: true, annotation: undefined };
+  }
+
+  // File (no trailing slash)
+  return { name: rawName, isDirectory: false, annotation: undefined };
+}
+
+/**
+ * Parses a directory-tree text block into a nested TreeNode structure.
+ *
+ * Uses character positions to determine depth: each indentation level
+ * in standard `tree` output is 4 characters wide (`│   ` or `    `).
+ * Root lines (no branch chars) are depth 0, and lines with branches
+ * get depth = (prefix_length / 4) + 1.
+ */
 function parseDirectoryTree(text: string): TreeNode[] {
   const lines = text.split("\n");
   const roots: TreeNode[] = [];
-  const stack: { node: TreeNode; indent: number }[] = [];
+  const stack: { node: TreeNode; depth: number }[] = [];
 
   for (const rawLine of lines) {
     if (rawLine.trim().length === 0) continue;
 
-    // Measure the visual indent: count leading chars that are tree-drawing or spaces
-    const treePrefix = rawLine.match(/^([\s│├└─┼┤┐┘┌┬]*)/)?.[0] ?? "";
-    // The indent level is roughly the number of "│" or tree branch chars
-    // Each level typically has "│   " (4 chars) or "├── " / "└── " patterns
-    const indentLevel = computeIndentLevel(treePrefix);
+    const branchPos = findBranchPosition(rawLine);
+    let depth: number;
+    let rawName: string;
 
-    // Extract the actual name from the line
-    const nameMatch = rawLine.match(/[├└│─┼┤]\s*(.+)$/);
-    let name: string;
+    if (branchPos === -1) {
+      // Root line (no branch characters)
+      rawName = rawLine.trim();
+      depth = 0;
 
-    if (nameMatch && nameMatch[1]) {
-      name = nameMatch[1].trim();
+      // Skip purely decorative lines (only box-drawing chars and spaces)
+      if (/^[\u2500\u2502\u251C\u2514\u253C\u2524\u2510\u2518\u250C\u252C\s]+$/.test(rawName)) {
+        continue;
+      }
     } else {
-      // Root line (no tree chars at the start of meaningful content)
-      name = rawLine.trim();
-      // Skip lines that are purely decorative
-      if (/^[─│├└┼┤\s]+$/.test(name)) continue;
+      // Calculate depth from the prefix width before the branch char
+      const prefix = rawLine.substring(0, branchPos);
+      depth = Math.round(prefix.length / 4) + 1;
+
+      // Skip past ── and spaces after the branch character to reach the name
+      let nameStart = branchPos + 1;
+      while (
+        nameStart < rawLine.length &&
+        (rawLine[nameStart] === "\u2500" || rawLine[nameStart] === " ")
+      ) {
+        nameStart++;
+      }
+      rawName = rawLine.substring(nameStart).trim();
     }
 
-    // Remove trailing "/" for directory detection, but note it
-    const isDirectory = name.endsWith("/");
-    if (isDirectory) {
-      name = name.slice(0, -1);
-    }
+    if (!rawName) continue;
 
-    // Extract annotation in parentheses
-    let annotation: string | undefined;
-    const annotationMatch = name.match(/^(.+?)\s+\((.+)\)$/);
-    if (annotationMatch && annotationMatch[1] && annotationMatch[2]) {
-      name = annotationMatch[1];
-      annotation = annotationMatch[2];
-    }
-
-    // Check if it has children (will be overridden if children appear later)
-    const hasTreeCharsOnly = /^[─│├└┼┤\s]+$/.test(rawLine.trim());
-    if (hasTreeCharsOnly) continue;
+    const { name, isDirectory, annotation } = parseNameAndAnnotation(rawName);
 
     const node: TreeNode = {
       name,
       annotation,
-      isDirectory: isDirectory || false,
+      isDirectory,
       children: [],
-      depth: indentLevel,
+      depth,
     };
 
-    // Pop from stack until we find the parent
-    while (stack.length > 0 && stack[stack.length - 1]!.indent >= indentLevel) {
+    // Pop stack until we find the parent (a node with strictly lesser depth)
+    while (stack.length > 0 && stack[stack.length - 1]!.depth >= depth) {
       stack.pop();
     }
 
@@ -112,46 +173,28 @@ function parseDirectoryTree(text: string): TreeNode[] {
     } else {
       const parent = stack[stack.length - 1]!.node;
       parent.children.push(node);
-      // Parent has children, so mark as directory
       parent.isDirectory = true;
     }
 
-    stack.push({ node, indent: indentLevel });
+    stack.push({ node, depth });
   }
 
   return roots;
 }
 
-function computeIndentLevel(prefix: string): number {
-  // Count how many "sections" of tree structure exist
-  // Each level typically has patterns like "│   " or "    " (4 chars per level)
-  let level = 0;
-  let i = 0;
-  while (i < prefix.length) {
-    const ch = prefix[i];
-    if (ch === "├" || ch === "└") {
-      // This marks the current item's branch; stop counting
-      break;
-    } else if (ch === "│") {
-      level++;
-      // Skip the spaces after │
-      i++;
-      while (i < prefix.length && prefix[i] === " ") i++;
-      continue;
-    } else if (ch === " ") {
-      // Count groups of spaces (typically 4) as a level
-      let spaces = 0;
-      while (i < prefix.length && prefix[i] === " ") {
-        spaces++;
-        i++;
-      }
-      if (spaces >= 2) level++;
-      continue;
-    }
-    i++;
-  }
-  return level;
-}
+// ─── Expand/Collapse Context ─────────────────────────────────────────
+
+type TreeControlContextValue = {
+  /** Incremented to signal "expand all" */
+  expandSignal: number;
+  /** Incremented to signal "collapse all" */
+  collapseSignal: number;
+};
+
+const TreeControlContext = createContext<TreeControlContextValue>({
+  expandSignal: 0,
+  collapseSignal: 0,
+});
 
 // ─── File type icons ─────────────────────────────────────────────────
 
@@ -159,191 +202,163 @@ function getFileIcon(name: string) {
   const ext = name.split(".").pop()?.toLowerCase();
   switch (ext) {
     case "pdf":
-      return <FileText className="size-4 text-red-500/80 dark:text-red-400/80 shrink-0" />;
+      return <FileText className="size-3.5 sm:size-4 text-red-500/80 dark:text-red-400/80 shrink-0" />;
     case "doc":
     case "docx":
-      return <FileText className="size-4 text-blue-500/80 dark:text-blue-400/80 shrink-0" />;
+      return <FileText className="size-3.5 sm:size-4 text-blue-500/80 dark:text-blue-400/80 shrink-0" />;
     case "xls":
     case "xlsx":
-      return <FileSpreadsheet className="size-4 text-emerald-500/80 dark:text-emerald-400/80 shrink-0" />;
+      return <FileSpreadsheet className="size-3.5 sm:size-4 text-emerald-500/80 dark:text-emerald-400/80 shrink-0" />;
     case "ppt":
     case "pptx":
-      return <Presentation className="size-4 text-orange-500/80 dark:text-orange-400/80 shrink-0" />;
+      return <Presentation className="size-3.5 sm:size-4 text-orange-500/80 dark:text-orange-400/80 shrink-0" />;
     case "png":
     case "jpg":
     case "jpeg":
     case "gif":
     case "svg":
     case "webp":
-      return <FileImage className="size-4 text-violet-500/80 dark:text-violet-400/80 shrink-0" />;
+      return <FileImage className="size-3.5 sm:size-4 text-violet-500/80 dark:text-violet-400/80 shrink-0" />;
     default:
-      return <File className="size-4 text-muted-foreground/60 shrink-0" />;
+      return <File className="size-3.5 sm:size-4 text-muted-foreground/60 shrink-0" />;
   }
 }
 
 // ─── Tree Node Component ─────────────────────────────────────────────
 
-function TreeNodeItem({
-  node,
-  depth,
-}: {
-  node: TreeNode;
-  depth: number;
-}) {
-  const [isOpen, setIsOpen] = useState(true);
+function TreeNodeItem({ node, depth }: { node: TreeNode; depth: number }) {
+  const [isOpen, setIsOpen] = useState(depth < 2);
+  const { expandSignal, collapseSignal } = useContext(TreeControlContext);
 
-  const toggle = useCallback(() => {
-    if (node.isDirectory) setIsOpen((prev) => !prev);
-  }, [node.isDirectory]);
+  // React to expand/collapse all signals
+  useEffect(() => {
+    if (expandSignal > 0 && node.isDirectory) setIsOpen(true);
+  }, [expandSignal, node.isDirectory]);
+
+  useEffect(() => {
+    if (collapseSignal > 0 && node.isDirectory) setIsOpen(false);
+  }, [collapseSignal, node.isDirectory]);
 
   const hasChildren = node.children.length > 0;
 
-  return (
-    <div className="select-none">
+  if (!node.isDirectory) {
+    // File node — non-interactive row
+    return (
       <div
         className={cn(
-          "flex items-center gap-1.5 py-[3px] px-2 rounded-md transition-colors duration-100 group/node",
-          node.isDirectory
-            ? "cursor-pointer hover:bg-muted/60"
-            : "hover:bg-muted/30"
+          "flex items-center gap-1.5 py-1 sm:py-[3px] rounded-md transition-colors duration-100",
+          "hover:bg-muted/30",
+          depth > 0 && "ml-3 sm:ml-4",
         )}
-        onClick={toggle}
-        role={node.isDirectory ? "button" : undefined}
-        aria-expanded={node.isDirectory ? isOpen : undefined}
       >
-        {/* Indent guides */}
+        {/* Indent spacer */}
         {depth > 0 && (
           <span
             className="shrink-0"
-            style={{ width: `${(depth - 1) * 20}px` }}
+            style={{ width: `${(depth - 1) * 16}px` }}
           />
         )}
 
-        {/* Expand/collapse chevron or spacer */}
-        {node.isDirectory ? (
-          <span className="shrink-0 text-muted-foreground/50">
-            {isOpen ? (
-              <ChevronDown className="size-3.5" />
-            ) : (
-              <ChevronRight className="size-3.5" />
-            )}
-          </span>
-        ) : (
-          <span className="shrink-0 w-3.5" />
-        )}
+        {/* Spacer where chevron would be */}
+        <span className="shrink-0 w-3.5" />
 
         {/* Icon */}
-        {node.isDirectory ? (
-          isOpen ? (
-            <FolderOpen className="size-4 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
-          ) : (
-            <Folder className="size-4 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
-          )
-        ) : (
-          getFileIcon(node.name)
-        )}
+        {getFileIcon(node.name)}
 
         {/* Name */}
-        <span
-          className={cn(
-            "text-sm truncate",
-            node.isDirectory
-              ? "font-medium text-foreground/90"
-              : "text-foreground/75"
-          )}
-        >
+        <span className="text-xs sm:text-sm text-foreground/75 truncate min-w-0">
           {node.name}
-          {node.isDirectory && "/"}
         </span>
-
-        {/* Annotation */}
-        {node.annotation && (
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <span className="text-xs text-muted-foreground/50 truncate ml-1 font-normal" />
-              }
-            >
-              ({node.annotation})
-            </TooltipTrigger>
-            <TooltipContent>{node.annotation}</TooltipContent>
-          </Tooltip>
-        )}
-
-        {/* Child count badge for collapsed directories */}
-        {node.isDirectory && !isOpen && hasChildren && (
-          <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded">
-            {node.children.length}
-          </span>
-        )}
       </div>
+    );
+  }
 
-      {/* Children */}
-      {node.isDirectory && isOpen && hasChildren && (
-        <div
+  // Directory node — collapsible
+  return (
+    <Collapsible open={isOpen} onOpenChange={setIsOpen}>
+      <div
+        className={cn(
+          depth > 0 && "ml-3 sm:ml-4",
+          depth > 0 && "border-l border-border/40",
+        )}
+      >
+        <CollapsibleTrigger
           className={cn(
-            depth > 0 && "ml-[10px] border-l border-border/40"
+            "flex items-center gap-1.5 w-full py-1 sm:py-[3px] px-1.5 sm:px-2 rounded-md transition-colors duration-100 select-none",
+            "cursor-pointer hover:bg-muted/60",
+            "group/node",
           )}
         >
-          {node.children.map((child, i) => (
-            <TreeNodeItem
-              key={`${child.name}-${i}`}
-              node={child}
-              depth={depth + 1}
+          {/* Indent spacer */}
+          {depth > 0 && (
+            <span
+              className="shrink-0"
+              style={{ width: `${(depth - 1) * 16}px` }}
             />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
+          )}
 
-// ─── Main Component ──────────────────────────────────────────────────
+          {/* Chevron */}
+          <ChevronRight
+            className={cn(
+              "size-3 sm:size-3.5 shrink-0 text-muted-foreground/50 transition-transform duration-200",
+              isOpen && "rotate-90",
+            )}
+          />
 
-export function DirectoryTree({ content }: DirectoryTreeProps) {
-  const tree = useMemo(() => parseDirectoryTree(content), [content]);
+          {/* Folder icon */}
+          {isOpen ? (
+            <FolderOpen className="size-3.5 sm:size-4 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
+          ) : (
+            <Folder className="size-3.5 sm:size-4 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
+          )}
 
-  if (tree.length === 0) return null;
-
-  const firstNode = tree[0]!;
-  const isSingleRoot = tree.length === 1 && firstNode.isDirectory;
-  const rootName = isSingleRoot ? firstNode.name : undefined;
-  const displayNodes = isSingleRoot ? firstNode.children : tree;
-  const rootNode = isSingleRoot ? firstNode : undefined;
-
-  return (
-    <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
-      {/* Header */}
-      <div className="flex h-11 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
-        <div className="flex items-center gap-2.5">
-          <FolderOpen className="size-4 text-amber-500/80 dark:text-amber-400/80" />
-          <span className="text-sm font-medium text-foreground/80">
-            {rootName ?? "Directory"}
+          {/* Name */}
+          <span className="text-xs sm:text-sm font-medium text-foreground/90 truncate min-w-0 text-left">
+            {node.name}/
           </span>
-          {rootNode?.annotation && (
-            <span className="text-xs text-muted-foreground/50">
-              ({rootNode.annotation})
+
+          {/* Annotation */}
+          {node.annotation && (
+            <span className="hidden sm:inline text-xs text-muted-foreground/50 truncate ml-0.5 font-normal">
+              ({node.annotation})
             </span>
           )}
-        </div>
-        <span className="text-[10px] font-mono text-muted-foreground/35 select-none">
-          {countItems(tree)} items
-        </span>
-      </div>
 
-      {/* Tree content */}
-      <div className="py-2 px-1 overflow-x-auto max-h-[500px] overflow-y-auto [scrollbar-width:thin]">
-        {displayNodes.map((node, i) => (
-          <TreeNodeItem
-            key={`${node.name}-${i}`}
-            node={node}
-            depth={0}
-          />
-        ))}
+          {/* Child count badge when collapsed */}
+          {!isOpen && hasChildren && (
+            <span className="ml-auto text-[10px] font-mono text-muted-foreground/40 bg-muted/50 px-1.5 py-0.5 rounded shrink-0">
+              {node.children.length}
+            </span>
+          )}
+        </CollapsibleTrigger>
+
+        {/* Mobile-only annotation tooltip (visible on small screens where inline annotation is hidden) */}
+        {node.annotation && (
+          <span className="sm:hidden text-[10px] text-muted-foreground/40 pl-8 -mt-0.5 mb-0.5 block truncate">
+            ({node.annotation})
+          </span>
+        )}
+
+        {/* Children */}
+        <CollapsibleContent>
+          {hasChildren && (
+            <div className="pl-1">
+              {node.children.map((child, i) => (
+                <TreeNodeItem
+                  key={`${child.name}-${i}`}
+                  node={child}
+                  depth={depth + 1}
+                />
+              ))}
+            </div>
+          )}
+        </CollapsibleContent>
       </div>
-    </div>
+    </Collapsible>
   );
 }
+
+// ─── Utilities ───────────────────────────────────────────────────────
 
 function countItems(nodes: TreeNode[]): number {
   let count = 0;
@@ -354,4 +369,134 @@ function countItems(nodes: TreeNode[]): number {
     }
   }
   return count;
+}
+
+function countDirectories(nodes: TreeNode[]): number {
+  let count = 0;
+  for (const node of nodes) {
+    if (node.isDirectory) count++;
+    if (node.children.length > 0) {
+      count += countDirectories(node.children);
+    }
+  }
+  return count;
+}
+
+function countFiles(nodes: TreeNode[]): number {
+  let count = 0;
+  for (const node of nodes) {
+    if (!node.isDirectory) count++;
+    if (node.children.length > 0) {
+      count += countFiles(node.children);
+    }
+  }
+  return count;
+}
+
+// ─── Main Component ──────────────────────────────────────────────────
+
+export function DirectoryTree({ content }: DirectoryTreeProps) {
+  const tree = useMemo(() => parseDirectoryTree(content), [content]);
+  const [expandSignal, setExpandSignal] = useState(0);
+  const [collapseSignal, setCollapseSignal] = useState(0);
+
+  if (tree.length === 0) return null;
+
+  const firstNode = tree[0]!;
+  const isSingleRoot = tree.length === 1 && firstNode.isDirectory;
+  const rootName = isSingleRoot ? firstNode.name : undefined;
+  const displayNodes = isSingleRoot ? firstNode.children : tree;
+  const rootNode = isSingleRoot ? firstNode : undefined;
+
+  const totalItems = countItems(tree);
+  const dirCount = countDirectories(displayNodes);
+  const fileCount = countFiles(displayNodes);
+
+  const hasFolders = dirCount > 0;
+
+  return (
+    <TreeControlContext.Provider value={{ expandSignal, collapseSignal }}>
+      <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
+        {/* Header */}
+        <div className="flex h-11 items-center justify-between border-b border-border/40 bg-muted/30 px-3 sm:px-4 gap-2">
+          <div className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+            <FolderOpen className="size-4 text-amber-500/80 dark:text-amber-400/80 shrink-0" />
+            <span className="text-sm font-medium text-foreground/80 truncate">
+              {rootName ?? "Directory"}
+            </span>
+            {rootNode?.annotation && (
+              <Tooltip>
+                <TooltipTrigger
+                  render={
+                    <span className="hidden sm:inline text-xs text-muted-foreground/50 truncate" />
+                  }
+                >
+                  ({rootNode.annotation})
+                </TooltipTrigger>
+                <TooltipContent>{rootNode.annotation}</TooltipContent>
+              </Tooltip>
+            )}
+          </div>
+
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+            {/* Summary */}
+            <span className="hidden sm:block text-[10px] font-mono text-muted-foreground/35 select-none">
+              {dirCount > 0 && `${dirCount} dir${dirCount !== 1 ? "s" : ""}`}
+              {dirCount > 0 && fileCount > 0 && ", "}
+              {fileCount > 0 && `${fileCount} file${fileCount !== 1 ? "s" : ""}`}
+              {dirCount === 0 && fileCount === 0 && `${totalItems} items`}
+            </span>
+
+            {/* Mobile summary */}
+            <span className="sm:hidden text-[10px] font-mono text-muted-foreground/35 select-none">
+              {totalItems}
+            </span>
+
+            {/* Expand/Collapse toggle */}
+            {hasFolders && (
+              <>
+                <div className="h-3 w-px bg-border/40" />
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        variant="ghost"
+                        size="icon-xs"
+                        onClick={() => {
+                          // Toggle: if we last expanded, now collapse, and vice versa
+                          if (expandSignal > collapseSignal) {
+                            setCollapseSignal((s) => s + 1);
+                          } else {
+                            setExpandSignal((s) => s + 1);
+                          }
+                        }}
+                      />
+                    }
+                  >
+                    <ChevronsUpDown className="size-3 text-muted-foreground/50" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {expandSignal > collapseSignal ? "Collapse all" : "Expand all"}
+                  </TooltipContent>
+                </Tooltip>
+              </>
+            )}
+          </div>
+        </div>
+
+        {/* Tree content */}
+        <ScrollArea className="max-h-[420px]">
+          <div className="py-2 px-1 sm:px-1.5">
+            {displayNodes.map((node, i) => (
+              <TreeNodeItem
+                key={`${node.name}-${i}`}
+                node={node}
+                depth={0}
+              />
+            ))}
+          </div>
+        </ScrollArea>
+      </div>
+    </TreeControlContext.Provider>
+  );
 }

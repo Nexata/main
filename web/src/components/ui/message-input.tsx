@@ -314,7 +314,7 @@ export function MessageInput({
               onKeyDown={onKeyDown}
               className={cn(
                 "flex-1 resize-none bg-transparent border-none outline-none",
-                "text-sm leading-5",
+                "text-sm leading-5 max-sm:text-[16px]",
                 "h-9 py-2",
                 "overflow-y-auto scrollbar-thin",
                 "placeholder:text-muted-foreground",
@@ -384,7 +384,7 @@ export function MessageInput({
               onKeyDown={onKeyDown}
               className={cn(
                 "w-full resize-none bg-transparent border-none outline-none",
-                "text-sm leading-tight",
+                "text-sm leading-tight max-sm:text-[16px]",
                 "py-2 px-4",
                 "min-h-0",
                 "overflow-y-auto scrollbar-thin",
