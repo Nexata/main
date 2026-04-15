@@ -81,10 +81,12 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	await Promise.all(promises);
 
 	const markdown = new TurndownService().turndown(html);
-	const markdownChunks = await mdSplitter.splitText(markdown);
-	textChunks.push(
-		...markdownChunks.map((text) => ({ text, metadata: { source: 'text' } })),
-	);
+	if (typeof markdown === 'string' && markdown.trim()) {
+		const markdownChunks = await mdSplitter.splitText(markdown);
+		textChunks.push(
+			...markdownChunks.map((text) => ({ text, metadata: { source: 'text' } })),
+		);
+	}
 
 	return {
 		metadata: { imageCount: images.size },

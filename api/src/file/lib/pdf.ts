@@ -116,7 +116,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				let hasImages = false;
 				let shouldRenderPageFallback = false;
 
-				if (pageText) {
+				if (pageText && typeof pageText === 'string') {
 					hasText = true;
 					const textChunks = await splitter.splitText(pageText);
 					pageChunks.push(

@@ -43,8 +43,9 @@ export const EMBEDDING_MODEL = togetherai.embeddingModel(
 	'intfloat/multilingual-e5-large-instruct',
 );
 export const EMBEDDING_DIMENSIONS = 1024;
-export const EMBEDDING_SIZE = 768;
-export const EMBEDDING_OVERLAP = 94;
+export const EMBEDDING_SIZE = 500;
+export const EMBEDDING_OVERLAP = 62;
+export const EMBEDDING_DB_MAX = 768;
 
 export const SMTP = createTransport({
 	host: requireEnv('SMTP_HOST'),

@@ -1,4 +1,4 @@
-import { EMBEDDING_MODEL } from '@api/env';
+import { EMBEDDING_DB_MAX, EMBEDDING_MODEL } from '@api/env';
 import { csvToChunks } from '@api/file/lib/csv';
 import { excelToChunks } from '@api/file/lib/excel';
 import { htmlToChunks } from '@api/file/lib/html';
@@ -84,9 +84,18 @@ export async function stringToChunks(
 	fileId: string,
 	chunks: ToStringChunksResult['chunks'],
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
-	if (!chunks.length) return [[], 0];
+	// Filter non-string/empty chunks and truncate to DB column limit
+	const validChunks = chunks
+		.filter((c) => typeof c.text === 'string' && c.text.trim().length > 0)
+		.map((c) =>
+			c.text.length > EMBEDDING_DB_MAX
+				? { ...c, text: c.text.slice(0, EMBEDDING_DB_MAX) }
+				: c,
+		);
 
-	const values = chunks.map((c) => c.text);
+	if (!validChunks.length) return [[], 0];
+
+	const values = validChunks.map((c) => c.text);
 
 	if (values.length <= EMBED_BATCH_SIZE) {
 		const res = await withRetry(() =>
@@ -96,7 +105,7 @@ export async function stringToChunks(
 			}),
 		);
 		return [
-			chunks.map(({ text, metadata }, i) => ({
+			validChunks.map(({ text, metadata }, i) => ({
 				fileId,
 				text,
 				metadata,
@@ -130,7 +139,7 @@ export async function stringToChunks(
 	}
 
 	return [
-		chunks.map(({ text, metadata }, i) => ({
+		validChunks.map(({ text, metadata }, i) => ({
 			fileId,
 			text,
 			metadata,
