@@ -171,7 +171,11 @@ function hydrateThreadMessages(
 			id: m.id,
 			role: m.role,
 			createdAt: m.createdAt,
-			metadata: { hydrated: true, createdAt: m.createdAt, extraReason: m.extraReason },
+			metadata: {
+				hydrated: true,
+				createdAt: m.createdAt,
+				extraReason: m.extraReason,
+			},
 			parts: [
 				...(m.files ?? [])
 					.filter((f) => f.id)
@@ -504,7 +508,13 @@ export function NexataChat() {
 			),
 		);
 		setLastUserMessageId(null);
-	}, [lastUserMessageId, messages, setMessages, setLastUserMessageId, addExtraReasonMessageId]);
+	}, [
+		lastUserMessageId,
+		messages,
+		setMessages,
+		setLastUserMessageId,
+		addExtraReasonMessageId,
+	]);
 
 	// ----------------------------
 	// Background stream monitor
@@ -577,12 +587,19 @@ export function NexataChat() {
 
 	const [input, setInput] = useState('');
 	const [extraReason, setExtraReason] = useState(() => {
-		try { return localStorage.getItem('nexata-extra-reason') === 'true'; } catch { return false; }
+		try {
+			const stored = localStorage.getItem('nexata-extra-reason');
+			return stored === null ? true : stored === 'true';
+		} catch {
+			return true;
+		}
 	});
 
 	const setExtraReasonPersisted = useCallback((value: boolean) => {
 		setExtraReason(value);
-		try { localStorage.setItem('nexata-extra-reason', String(value)); } catch {}
+		try {
+			localStorage.setItem('nexata-extra-reason', String(value));
+		} catch {}
 	}, []);
 
 	const handleSubmit = async (

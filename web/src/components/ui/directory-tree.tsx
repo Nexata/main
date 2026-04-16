@@ -519,7 +519,7 @@ export function DirectoryTree({ content }: DirectoryTreeProps) {
         </div>
 
         {/* Tree content */}
-        <ScrollArea className="max-h-[420px]">
+        <ScrollArea className="max-h-[420px] overflow-hidden">
           <div className="py-2 px-1 sm:px-1.5">
             {displayNodes.map((node, i) => (
               <TreeNodeItem
