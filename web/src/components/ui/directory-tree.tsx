@@ -16,7 +16,6 @@ import {
   CollapsibleTrigger,
   CollapsibleContent,
 } from "@/components/ui/collapsible";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -519,17 +518,15 @@ export function DirectoryTree({ content }: DirectoryTreeProps) {
         </div>
 
         {/* Tree content */}
-        <ScrollArea className="max-h-[420px] overflow-hidden">
-          <div className="py-2 px-1 sm:px-1.5">
-            {displayNodes.map((node, i) => (
-              <TreeNodeItem
-                key={`${node.name}-${i}`}
-                node={node}
-                depth={0}
-              />
-            ))}
-          </div>
-        </ScrollArea>
+        <div className="max-h-[420px] overflow-y-auto py-2 px-1 sm:px-1.5">
+          {displayNodes.map((node, i) => (
+            <TreeNodeItem
+              key={`${node.name}-${i}`}
+              node={node}
+              depth={0}
+            />
+          ))}
+        </div>
       </div>
     </TreeControlContext.Provider>
   );
