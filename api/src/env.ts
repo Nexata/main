@@ -33,12 +33,12 @@ export const db = drizzle({
 	logger: !IS_PRODUCTION,
 }) as NeonHttpDatabase<typeof schema>;
 
-export const MODEL = togetherai('MiniMaxAI/MiniMax-M2.7');
+export const MODEL = togetherai('google/gemma-4-31B-it'); // Qwen/Qwen3.5-397B-A17B
 export const LIGHT_MODEL = togetherai(
 	'mistralai/Mistral-Small-24B-Instruct-2501',
 );
-export const REASONING_MODEL = togetherai('Qwen/Qwen3.5-397B-A17B');
-export const VLM_MODEL = togetherai('Qwen/Qwen3.5-9B');
+export const REASONING_MODEL = togetherai('zai-org/GLM-5.1');
+export const VLM_MODEL = togetherai('Qwen/Qwen3.5-9B'); // google/gemma-4-31B-it
 export const EMBEDDING_MODEL = togetherai.embeddingModel(
 	'intfloat/multilingual-e5-large-instruct',
 );
