@@ -51,6 +51,7 @@ export function isDirectoryTree(text: string): boolean {
   let branchLineCount = 0;
   let fileSystemLineCount = 0;
   let branchFileSystemLineCount = 0;
+  let treeLikeLineCount = 0;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -62,9 +63,17 @@ export function isDirectoryTree(text: string): boolean {
       /\/$/.test(rawName) ||
       /\/\s+\(.+\)$/.test(rawName) ||
       /\.[a-zA-Z0-9]{1,8}(?:\s|$)/.test(rawName);
+    const looksLikeTreeLine =
+      hasBranch ||
+      (!/^(#{1,6}\s|[-*+]\s|\|.+\|$|>\s)/.test(trimmedLine) &&
+        looksLikeFileSystem);
 
     if (hasBranch) {
       branchLineCount++;
+    }
+
+    if (looksLikeTreeLine) {
+      treeLikeLineCount++;
     }
 
     if (looksLikeFileSystem) {
@@ -75,7 +84,12 @@ export function isDirectoryTree(text: string): boolean {
     }
   }
 
-  return branchLineCount >= 2 && fileSystemLineCount >= 2 && branchFileSystemLineCount >= 1;
+  return (
+    branchLineCount >= 2 &&
+    fileSystemLineCount >= 2 &&
+    branchFileSystemLineCount >= 1 &&
+    treeLikeLineCount >= Math.max(2, Math.ceil(lines.length * 0.6))
+  );
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────

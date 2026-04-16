@@ -240,16 +240,25 @@ function renderMarkdownSegment(content: string, key: string) {
 function segmentMarkdownContent(text: string): MarkdownSegment[] {
   const lines = text.split("\n")
   const segments: MarkdownSegment[] = []
-  let buffer: string[] = []
-  let inFence = false
+  let plainBuffer: string[] = []
+  let fenceBuffer: string[] | null = null
 
-  const flushBuffer = () => {
-    if (buffer.length === 0) {
+  const flushPlainBuffer = () => {
+    if (plainBuffer.length === 0) {
       return
     }
 
-    segments.push(...splitPlainTextSegments(buffer.join("\n")))
-    buffer = []
+    segments.push(...splitPlainTextSegments(plainBuffer.join("\n")))
+    plainBuffer = []
+  }
+
+  const flushFenceBuffer = () => {
+    if (!fenceBuffer || fenceBuffer.length === 0) {
+      return
+    }
+
+    segments.push(classifyFenceSegment(fenceBuffer))
+    fenceBuffer = null
   }
 
   for (const line of lines) {
@@ -257,59 +266,112 @@ function segmentMarkdownContent(text: string): MarkdownSegment[] {
     const isFenceLine = /^```/.test(trimmedLine)
 
     if (isFenceLine) {
-      buffer.push(line)
-      inFence = !inFence
+      if (fenceBuffer) {
+        fenceBuffer.push(line)
+        flushFenceBuffer()
+        continue
+      }
+
+      flushPlainBuffer()
+      fenceBuffer = [line]
       continue
     }
 
-    if (inFence) {
-      buffer.push(line)
+    if (fenceBuffer) {
+      fenceBuffer.push(line)
       continue
     }
 
     if (/^[-_]{8,}\s*$/.test(trimmedLine)) {
-      flushBuffer()
+      flushPlainBuffer()
       segments.push({ type: "markdown", content: line })
       continue
     }
 
-    buffer.push(line)
+    plainBuffer.push(line)
   }
 
-  flushBuffer()
+  flushPlainBuffer()
+  flushFenceBuffer()
 
   return mergeMarkdownSegments(segments)
 }
 
 function splitPlainTextSegments(text: string): MarkdownSegment[] {
-  const normalizedText = text.trim()
+  const lines = text.split("\n")
+  const segments: MarkdownSegment[] = []
+  let blockBuffer: string[] = []
+  let blankBuffer: string[] = []
 
-  if (!normalizedText) {
-    return []
+  const flushBlockBuffer = () => {
+    if (blockBuffer.length === 0) {
+      return
+    }
+
+    segments.push(classifyWholeBlock(blockBuffer.join("\n")))
+    blockBuffer = []
   }
 
-  const directType = getStructuredBlockType(normalizedText)
+  const flushBlankBuffer = () => {
+    if (blankBuffer.length === 0) {
+      return
+    }
 
-  if (directType) {
-    return [{ type: directType, content: normalizedText }]
+    segments.push({ type: "markdown", content: blankBuffer.join("\n") })
+    blankBuffer = []
   }
 
-  const lines = normalizedText.split("\n")
+  for (const line of lines) {
+    const trimmedLine = line.trim()
 
-  for (let startIndex = 1; startIndex < lines.length; startIndex++) {
-    const prefix = lines.slice(0, startIndex).join("\n").trim()
-    const suffix = lines.slice(startIndex).join("\n").trim()
-    const suffixType = getStructuredBlockType(suffix)
-
-    if (!suffixType) {
+    if (!trimmedLine) {
+      flushBlockBuffer()
+      blankBuffer.push(line)
       continue
     }
 
-    const prefixSegments = prefix ? splitPlainTextSegments(prefix) : []
-    return [...prefixSegments, { type: suffixType, content: suffix }]
+    flushBlankBuffer()
+    blockBuffer.push(line)
   }
 
-  return [{ type: "markdown", content: normalizedText }]
+  flushBlockBuffer()
+  flushBlankBuffer()
+
+  return mergeMarkdownSegments(segments)
+}
+
+function classifyFenceSegment(lines: string[]): MarkdownSegment {
+  if (lines.length < 2) {
+    return { type: "markdown", content: lines.join("\n") }
+  }
+
+  const fenceContent = lines.slice(1, -1).join("\n")
+  const structuredBlockType = getStructuredBlockType(fenceContent)
+
+  if (structuredBlockType) {
+    return {
+      type: structuredBlockType,
+      content: fenceContent.trim(),
+    }
+  }
+
+  return { type: "markdown", content: lines.join("\n") }
+}
+
+function classifyWholeBlock(text: string): MarkdownSegment {
+  const normalizedText = text.trim()
+
+  if (!normalizedText) {
+    return { type: "markdown", content: text }
+  }
+
+  const structuredBlockType = getStructuredBlockType(normalizedText)
+
+  if (structuredBlockType) {
+    return { type: structuredBlockType, content: normalizedText }
+  }
+
+  return { type: "markdown", content: text }
 }
 
 function mergeMarkdownSegments(segments: MarkdownSegment[]): MarkdownSegment[] {

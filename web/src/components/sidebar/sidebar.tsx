@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   Pencil,
@@ -161,10 +161,16 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   const threads = threadsData?.pages.flat() ?? [];
 
   // Add new Thread Title
-  const mergedThreads = [
-    ...Object.values(optimisticThreads),
-    ...threads,
-  ].filter((t, index, self) => index === self.findIndex((x) => x.id === t.id));
+  const mergedThreads = useMemo(() => {
+    const uniqueThreads = [
+      ...Object.values(optimisticThreads),
+      ...threads,
+    ].filter((t, index, self) => index === self.findIndex((x) => x.id === t.id));
+
+    return uniqueThreads.sort(
+      (a, b) => getThreadSortTimestamp(b) - getThreadSortTimestamp(a)
+    );
+  }, [optimisticThreads, threads]);
 
   useEffect(() => {
     if (!threads.length) return;
@@ -535,7 +541,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
           {/* Lista de chats */}
           {!effectiveCollapsed && (
-            <div className="flex-1 min-h-0 mb-4" data-tour="sidebar-threads">
+            <div className="flex-1 min-h-0 mb-4 overflow-x-hidden" data-tour="sidebar-threads">
               {threadsLoading && (
                 <div className="flex flex-col gap-2">
                   {Array.from({ length: 5 }).map((_, i) => (
@@ -578,7 +584,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                     if (hasNextPage && !isFetchingNextPage) fetchNextPage();
                   }}
                   overscan={200}
-                  className="scrollbar-thin"
+                  className="scrollbar-thin overflow-x-hidden"
                   style={{ height: '100%' }}
                   itemContent={(index, chat) => {
                     const isSelected = chat.id !== null && selectedThreadIds.has(chat.id);
@@ -896,10 +902,10 @@ function ThreadTitle({
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger>
-          <div className="flex items-center gap-2 min-w-0 cursor-pointer">
+        <TooltipTrigger asChild>
+          <div className="flex min-w-0 flex-1 items-center gap-2 overflow-hidden cursor-pointer">
 
-            <span className="truncate">
+            <span className="min-w-0 flex-1 truncate">
               {visibleText}
             </span>
 
@@ -928,4 +934,26 @@ function ThreadTitle({
       </Tooltip>
     </TooltipProvider>
   );
+}
+
+function getThreadSortTimestamp(
+  thread: { createdAt?: Date | string; insertedAt?: number }
+) {
+  if (typeof thread.insertedAt === 'number') {
+    return thread.insertedAt;
+  }
+
+  if (thread.createdAt instanceof Date) {
+    return thread.createdAt.getTime();
+  }
+
+  if (typeof thread.createdAt === 'string') {
+    const parsedTime = new Date(thread.createdAt).getTime();
+
+    if (!Number.isNaN(parsedTime)) {
+      return parsedTime;
+    }
+  }
+
+  return 0;
 }

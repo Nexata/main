@@ -293,6 +293,7 @@ export function createAuthenticatedChatTransport(
 											id: newThreadId,
 											title: threadTitle ?? sidebar_new_chat(),
 											isTyping: true,
+											insertedAt: Date.now(),
 										});
 									}
 

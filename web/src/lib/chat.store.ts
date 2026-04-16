@@ -5,6 +5,7 @@ export type OptimisticThread = {
 	id: string;
 	title: string;
 	isTyping: boolean;
+	insertedAt: number;
 };
 
 export type ChatViewStatus = 'idle' | 'new';
