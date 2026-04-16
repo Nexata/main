@@ -29,7 +29,6 @@ import {
 } from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
-	type BatchCapacityResult,
 	checkBatchCapacity,
 	checkTenantCanIngest,
 	clearIngestStopFlag,

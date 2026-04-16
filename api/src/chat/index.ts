@@ -77,6 +77,80 @@ const countAskQuestionsSinceLastUserMessage = (
 	return count;
 };
 
+type ToolCallPart = {
+	type: 'tool-call';
+	toolCallId: string;
+	toolName: string;
+	input?: Record<string, unknown>;
+};
+
+const isToolCallPart = (part: unknown): part is ToolCallPart =>
+	typeof part === 'object' &&
+	part !== null &&
+	'type' in part &&
+	part.type === 'tool-call' &&
+	'toolCallId' in part &&
+	typeof part.toolCallId === 'string' &&
+	'toolName' in part &&
+	typeof part.toolName === 'string';
+
+const getToolCallParts = (contentParts: unknown[]) =>
+	contentParts.filter(isToolCallPart);
+
+const captureParallelToolCallTurn = (
+	source: string,
+	threadId: string,
+	toolCalls: Pick<ToolCallPart, 'toolCallId' | 'toolName'>[],
+) => {
+	if (toolCalls.length <= 1) return;
+
+	captureException(
+		new Error('Multiple tool calls in a single assistant turn'),
+		{
+			tags: { source },
+			extra: {
+				threadId,
+				toolCalls,
+			},
+		},
+	);
+};
+
+const captureAmbiguousToolCallAnswer = (
+	source: string,
+	threadId: string,
+	toolCalls: Pick<ToolCallPart, 'toolCallId' | 'toolName'>[],
+	requestedToolCallId?: string | null,
+) =>
+	captureException(new Error('Ambiguous tool call answer'), {
+		tags: { source },
+		extra: {
+			threadId,
+			requestedToolCallId,
+			toolCalls,
+		},
+	});
+
+const captureParallelToolCallsInResponse = (
+	source: string,
+	threadId: string,
+	responseMessages: ModelMessage[],
+) => {
+	for (const responseMessage of responseMessages) {
+		if (
+			responseMessage.role !== 'assistant' ||
+			!Array.isArray(responseMessage.content)
+		)
+			continue;
+
+		captureParallelToolCallTurn(
+			source,
+			threadId,
+			getToolCallParts(responseMessage.content as unknown[]),
+		);
+	}
+};
+
 const getActiveToolsForStep = (
 	tools: ToolSet,
 	steps: { toolCalls: { toolName: string }[] }[],
@@ -242,7 +316,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 16384,
 				providerOptions: {
-					togetherai: { parallel_tool_calls: false },
+					togetherai: { parallelToolCalls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
 					displayName: activeUser.displayName,
@@ -267,6 +341,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					finishReason: aiFinishReason,
 					response: { messages: responseMessages },
 				}) => {
+					captureParallelToolCallsInResponse(
+						'chat:onFinish:parallel-tools',
+						threadId,
+						responseMessages,
+					);
 					syncResolver.resolve({
 						messages: responseMessages,
 						reason: mapFinishReason(aiFinishReason),
@@ -383,32 +462,45 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			const contentParts = (
 				Array.isArray(lastMessage.content) ? lastMessage.content : []
 			) as unknown[];
+			const toolCallParts = getToolCallParts(contentParts);
+
+			captureParallelToolCallTurn(
+				'chat:answer:last-message:parallel-tools',
+				body.threadId,
+				toolCallParts,
+			);
 
 			// ===== Tool approval (NexataReingest, GmailIngestAttachments, etc.) =====
 			const isApproval = body.approved != null;
 
 			if (isApproval) {
-				const approvalPart = [...contentParts].reverse().find(
-					(
-						part,
-					): part is {
-						type: 'tool-call';
-						toolCallId: string;
-						toolName: string;
-						input: Record<string, unknown>;
-					} =>
-						typeof part === 'object' &&
-						part !== null &&
-						'type' in part &&
-						part.type === 'tool-call',
-				);
+				const approvalCandidates = body.toolCallId
+					? toolCallParts.filter((part) => part.toolCallId === body.toolCallId)
+					: toolCallParts;
 
-				if (!approvalPart)
+				if (!approvalCandidates.length)
 					throw httpError(
 						HttpCode.BAD_REQUEST,
 						ErrorCode.TOOL_CALL_NOT_FOUND,
 						activeUser.language,
 					);
+
+				if (approvalCandidates.length !== 1) {
+					captureAmbiguousToolCallAnswer(
+						'chat:answer:approve:ambiguous-tool-call',
+						body.threadId,
+						approvalCandidates,
+						body.toolCallId,
+					);
+					throw httpError(
+						HttpCode.BAD_REQUEST,
+						ErrorCode.TOOL_CALL_NOT_FOUND,
+						activeUser.language,
+					);
+				}
+
+				const approvalPart = approvalCandidates[0]!;
+				const approvalInput = approvalPart.input ?? {};
 
 				let toolOutput: unknown;
 				if (body.approved) {
@@ -528,8 +620,8 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							const cred = credentials.find(
 								(c): c is CachedCredential =>
 									c.scope === handler.scope &&
-									(!approvalPart.input.credentialEmail ||
-										c.email === approvalPart.input.credentialEmail),
+									(!approvalInput.credentialEmail ||
+										c.email === approvalInput.credentialEmail),
 							);
 
 							if (!cred)
@@ -552,7 +644,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							toolOutput = await handler.execute(
 								handler.fromTokens(at, rt) as never,
 								activeUser,
-								approvalPart.input as never,
+								approvalInput as never,
 								cred.id,
 							);
 						}
@@ -629,7 +721,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					model: MODEL,
 					maxOutputTokens: 16384,
 					providerOptions: {
-						togetherai: { parallel_tool_calls: false },
+						togetherai: { parallelToolCalls: false },
 					},
 					system: BUILD_SYSTEM_PROMPT({
 						displayName: activeUser.displayName,
@@ -654,6 +746,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 						finishReason: aiFinishReason,
 						response: { messages: responseMessages },
 					}) => {
+						captureParallelToolCallsInResponse(
+							'chat:answer:approve:onFinish:parallel-tools',
+							body.threadId,
+							responseMessages,
+						);
 						syncResolver.resolve({
 							messages: responseMessages,
 							reason: mapFinishReason(aiFinishReason),
@@ -702,28 +799,34 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			}
 
 			// ===== NexataAskQuestions answer =====
-			const toolCallPart = contentParts.find(
-				(
-					part,
-				): part is {
-					type: 'tool-call';
-					toolCallId: string;
-					toolName: string;
-				} =>
-					typeof part === 'object' &&
-					part !== null &&
-					'type' in part &&
-					part.type === 'tool-call' &&
-					'toolName' in part &&
-					part.toolName === 'NexataAskQuestions',
+			const askQuestionCandidates = toolCallParts.filter(
+				(part) =>
+					part.toolName === 'NexataAskQuestions' &&
+					(!body.toolCallId || part.toolCallId === body.toolCallId),
 			);
 
-			if (!toolCallPart)
+			if (!askQuestionCandidates.length)
 				throw httpError(
 					HttpCode.BAD_REQUEST,
 					ErrorCode.TOOL_CALL_NOT_FOUND,
 					activeUser.language,
 				);
+
+			if (askQuestionCandidates.length !== 1) {
+				captureAmbiguousToolCallAnswer(
+					'chat:answer:qa:ambiguous-tool-call',
+					body.threadId,
+					askQuestionCandidates,
+					body.toolCallId,
+				);
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.TOOL_CALL_NOT_FOUND,
+					activeUser.language,
+				);
+			}
+
+			const toolCallPart = askQuestionCandidates[0]!;
 
 			// Append the tool result to the message history
 			// Extra `result` field stores raw answers for frontend hydration
@@ -781,7 +884,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				model: MODEL,
 				maxOutputTokens: 16384,
 				providerOptions: {
-					togetherai: { parallel_tool_calls: false },
+					togetherai: { parallelToolCalls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
 					displayName: activeUser.displayName,
@@ -806,6 +909,11 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					finishReason: aiFinishReason,
 					response: { messages: responseMessages },
 				}) => {
+					captureParallelToolCallsInResponse(
+						'chat:answer:onFinish:parallel-tools',
+						body.threadId,
+						responseMessages,
+					);
 					syncResolver.resolve({
 						messages: responseMessages,
 						reason: mapFinishReason(aiFinishReason),
@@ -877,7 +985,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				}),
 				toolCallId: Nullish(t.String(), {
 					description:
-						'The tool call ID for the approval. Optional — the last tool-call part is used if omitted.',
+						'The tool call ID being answered. Optional only when the assistant turn contains exactly one tool call.',
 				}),
 				approved: Nullish(t.Boolean(), {
 					description: 'Whether the approval-requiring tool call was approved.',

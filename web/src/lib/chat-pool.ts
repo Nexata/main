@@ -43,15 +43,11 @@ export const NEW_CHAT_KEY = '__new__';
  * output state), triggering an unwanted /chat request that made the model
  * repeat the same tool call → visible duplication in the UI.
  */
-function shouldSendAutomatically({
-	messages,
-}: {
-	messages: UIMessage[];
-}): boolean {
+function getAutoSubmittableParts(messages: UIMessage[]): any[] {
 	const last = messages.at(-1);
-	if (last?.role !== 'assistant') return false;
+	if (last?.role !== 'assistant') return [];
 	const parts = last.parts ?? [];
-	if (parts.length === 0) return false;
+	if (parts.length === 0) return [];
 
 	// Scan ALL parts (not just the last) because the LLM may append a text
 	// part after the tool call (e.g. "Please fill in the form above"),
@@ -59,7 +55,7 @@ function shouldSendAutomatically({
 	//
 	// Exclude providerExecuted tools — those were resolved inline by the
 	// server during streaming and don't need a client-initiated round-trip.
-	return parts.some((p: any) => {
+	return parts.filter((p: any) => {
 		const isToolPart =
 			typeof p?.type === 'string' &&
 			(p.type.startsWith('tool-') || p.type === 'dynamic-tool');
@@ -71,30 +67,30 @@ function shouldSendAutomatically({
 	});
 }
 
+function shouldSendAutomatically({
+	messages,
+}: {
+	messages: UIMessage[];
+}): boolean {
+	const eligibleParts = getAutoSubmittableParts(messages);
+	if (eligibleParts.length > 1) {
+		console.warn(
+			'[Chat Pool] Blocked auto-submit for assistant turn with multiple resolved tool parts',
+			eligibleParts.map((part: any) => part.toolCallId),
+		);
+	}
+
+	return eligibleParts.length === 1;
+}
+
 function getLatestAutoSubmittableToolCallId(
 	messages: UIMessage[],
 ): string | null {
-	const last = messages.at(-1);
-	if (last?.role !== 'assistant') return null;
+	const eligibleParts = getAutoSubmittableParts(messages);
+	if (eligibleParts.length !== 1) return null;
 
-	const parts = last.parts ?? [];
-	for (let index = parts.length - 1; index >= 0; index -= 1) {
-		const part = parts[index] as any;
-		const isToolPart =
-			typeof part?.type === 'string' &&
-			(part.type.startsWith('tool-') || part.type === 'dynamic-tool');
-		if (!isToolPart || part.providerExecuted) continue;
-		if (
-			part?.state !== 'output-available' &&
-			part?.state !== 'approval-responded'
-		) {
-			continue;
-		}
-
-		return typeof part.toolCallId === 'string' ? part.toolCallId : null;
-	}
-
-	return null;
+	const [part] = eligibleParts;
+	return typeof part.toolCallId === 'string' ? part.toolCallId : null;
 }
 
 export function getChatInstance(threadId: string | null): AIChat<UIMessage> {

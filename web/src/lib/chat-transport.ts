@@ -32,27 +32,63 @@ export function createAuthenticatedChatTransport(
 				const originalPayload = JSON.parse(init.body as string);
 				const lastMessage = originalPayload.messages?.at(-1);
 				const isAutoSubmit = lastMessage?.role === 'assistant';
+				const autoSubmitCandidates = isAutoSubmit
+					? (lastMessage?.parts?.filter(
+							(p: any) =>
+								((p.type === 'tool-NexataAskQuestions' ||
+									(p.type === 'dynamic-tool' &&
+										p.toolName === 'NexataAskQuestions')) &&
+									p.state === 'output-available' &&
+									p.output != null) ||
+								((p.type?.startsWith('tool-') || p.type === 'dynamic-tool') &&
+									p.state === 'approval-responded' &&
+									p.approval != null),
+						) ?? [])
+					: [];
 
 				// ===== NexataAskQuestions → /chat/answer =====
 				if (isAutoSubmit) {
-					const askQuestionsPart = lastMessage?.parts
-						?.filter(
-							(p: any) =>
-								(p.type === 'tool-NexataAskQuestions' ||
-									(p.type === 'dynamic-tool' &&
-										p.toolName === 'NexataAskQuestions')) &&
-								p.state === 'output-available' &&
-								p.output != null,
-						)
-						.at(-1);
+					if (autoSubmitCandidates.length > 1) {
+						console.warn(
+							'[Chat Transport] Blocked auto-submit for assistant turn with multiple resolved tool parts',
+							autoSubmitCandidates.map((part: any) => part.toolCallId),
+						);
+						return new Response(
+							new ReadableStream({
+								start(c) {
+									c.close();
+								},
+							}),
+							{ status: 200, headers: { 'content-type': 'text/event-stream' } },
+						);
+					}
+
+					const askQuestionsPart = autoSubmitCandidates.find(
+						(part: any) =>
+							(part.type === 'tool-NexataAskQuestions' ||
+								(part.type === 'dynamic-tool' &&
+									part.toolName === 'NexataAskQuestions')) &&
+							part.state === 'output-available' &&
+							part.output != null,
+					);
 
 					if (askQuestionsPart) {
 						const tcId = askQuestionsPart.toolCallId as string | undefined;
 						if (tcId && answeredToolCallIds?.has(tcId)) {
-							console.warn('[Chat Transport] Blocked duplicate QA answer', tcId);
+							console.warn(
+								'[Chat Transport] Blocked duplicate QA answer',
+								tcId,
+							);
 							return new Response(
-								new ReadableStream({ start(c) { c.close(); } }),
-								{ status: 200, headers: { 'content-type': 'text/event-stream' } },
+								new ReadableStream({
+									start(c) {
+										c.close();
+									},
+								}),
+								{
+									status: 200,
+									headers: { 'content-type': 'text/event-stream' },
+								},
 							);
 						}
 						if (tcId) answeredToolCallIds?.add(tcId);
@@ -74,22 +110,30 @@ export function createAuthenticatedChatTransport(
 					}
 
 					// ===== Tool approval (generic) → /chat/answer =====
-					const approvalPart = lastMessage?.parts
-						?.filter(
-							(p: any) =>
-								(p.type?.startsWith('tool-') || p.type === 'dynamic-tool') &&
-								p.state === 'approval-responded' &&
-								p.approval != null,
-						)
-						.at(-1);
+					const approvalPart = autoSubmitCandidates.find(
+						(p: any) =>
+							(p.type?.startsWith('tool-') || p.type === 'dynamic-tool') &&
+							p.state === 'approval-responded' &&
+							p.approval != null,
+					);
 
 					if (approvalPart) {
 						const tcId = approvalPart.toolCallId as string | undefined;
 						if (tcId && answeredToolCallIds?.has(tcId)) {
-							console.warn('[Chat Transport] Blocked duplicate approval answer', tcId);
+							console.warn(
+								'[Chat Transport] Blocked duplicate approval answer',
+								tcId,
+							);
 							return new Response(
-								new ReadableStream({ start(c) { c.close(); } }),
-								{ status: 200, headers: { 'content-type': 'text/event-stream' } },
+								new ReadableStream({
+									start(c) {
+										c.close();
+									},
+								}),
+								{
+									status: 200,
+									headers: { 'content-type': 'text/event-stream' },
+								},
 							);
 						}
 						if (tcId) answeredToolCallIds?.add(tcId);
@@ -116,7 +160,11 @@ export function createAuthenticatedChatTransport(
 					// empty prompt that would create a ghost message.
 					console.warn('[Chat Transport] Blocked unmatched auto-submit');
 					return new Response(
-						new ReadableStream({ start(c) { c.close(); } }),
+						new ReadableStream({
+							start(c) {
+								c.close();
+							},
+						}),
 						{ status: 200, headers: { 'content-type': 'text/event-stream' } },
 					);
 				}
@@ -153,7 +201,7 @@ export function createAuthenticatedChatTransport(
 					editedMessageId: originalPayload.editedMessageId ?? null,
 					languagePreference: originalPayload.languagePreference ?? null,
 					files: hasFiles ? fileParts : null,
-					...(isAutoSubmit && { messages: originalPayload.messages }),
+					...(isAutoSubmit ? { messages: originalPayload.messages } : {}),
 				});
 
 				if (hasFiles) {

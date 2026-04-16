@@ -149,8 +149,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 
 							if (isIgnorableImageProcessingError(error)) continue;
 
-							const message =
-								error instanceof Error ? error.message : '';
+							const message = error instanceof Error ? error.message : '';
 							if (
 								message.includes('OpenJPEG failed to initialize') ||
 								message.includes('Unable to decode image') ||
@@ -165,15 +164,12 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 					}
 				} catch (error) {
 					if (!isIgnorableImageProcessingError(error)) {
-						const message =
-							error instanceof Error ? error.message : '';
+						const message = error instanceof Error ? error.message : '';
 						if (
 							message.includes('OpenJPEG failed to initialize') ||
 							message.includes('Unable to decode image') ||
 							message.includes('JpxError') ||
-							message.includes(
-								"Requesting object that isn't resolved yet",
-							)
+							message.includes("Requesting object that isn't resolved yet")
 						) {
 							shouldRenderPageFallback = true;
 						} else {
@@ -183,11 +179,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				}
 
 				if (shouldRenderPageFallback || (!hasText && !hasImages))
-					pageUsage += await renderPageFallback(
-						pdf,
-						pageNumber,
-						pageChunks,
-					);
+					pageUsage += await renderPageFallback(pdf, pageNumber, pageChunks);
 
 				return { chunks: pageChunks, usage: pageUsage };
 			}),

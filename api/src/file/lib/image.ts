@@ -4,11 +4,11 @@ import {
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { withRetry } from '@api/utils/retry';
 import { tObject } from '@api/utils/type';
 import { generateText, jsonSchema, Output } from 'ai';
 import { type Static, t } from 'elysia';
 import sharp from 'sharp';
-import { withRetry } from '@api/utils/retry';
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {

@@ -1,4 +1,4 @@
-import React, { Suspense } from "react"
+import React, { Suspense, useMemo } from "react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
@@ -14,15 +14,21 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ children }: MarkdownRendererProps) {
+  const segments = useMemo(() => segmentMarkdownContent(children), [children])
+
   return (
     <div className="space-y-3">
-      <Markdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        components={COMPONENTS}
-      >
-        {children}
-      </Markdown>
+      {segments.map((segment, index) => {
+        if (segment.type === "markdown") {
+          return renderMarkdownSegment(segment.content, `markdown-${index}`)
+        }
+
+        return renderStructuredBlock(
+          segment.type,
+          segment.content,
+          `structured-${index}`
+        )
+      })}
     </div>
   )
 }
@@ -183,6 +189,149 @@ function childrenTakeAllStringContents(element: any): string {
   return ""
 }
 
+type StructuredBlockType = "directory-tree" | "timeline"
+
+type MarkdownSegment =
+  | { type: "markdown"; content: string }
+  | { type: StructuredBlockType; content: string }
+
+function getStructuredBlockType(text: string): StructuredBlockType | null {
+  const normalizedText = text.trim()
+
+  if (!normalizedText) {
+    return null
+  }
+
+  const isTree = isDirectoryTree(normalizedText)
+  const isTimelineBlock = isTimeline(normalizedText)
+
+  if (isTree === isTimelineBlock) {
+    return null
+  }
+
+  return isTree ? "directory-tree" : "timeline"
+}
+
+function renderStructuredBlock(
+  type: StructuredBlockType,
+  content: string,
+  key: string
+) {
+  if (type === "directory-tree") {
+    return <DirectoryTree key={key} content={content} />
+  }
+
+  return <TimelineChart key={key} content={content} />
+}
+
+function renderMarkdownSegment(content: string, key: string) {
+  return (
+    <Markdown
+      key={key}
+      remarkPlugins={[remarkGfm, remarkMath]}
+      rehypePlugins={[rehypeKatex]}
+      components={COMPONENTS}
+    >
+      {content}
+    </Markdown>
+  )
+}
+
+function segmentMarkdownContent(text: string): MarkdownSegment[] {
+  const lines = text.split("\n")
+  const segments: MarkdownSegment[] = []
+  let buffer: string[] = []
+  let inFence = false
+
+  const flushBuffer = () => {
+    if (buffer.length === 0) {
+      return
+    }
+
+    segments.push(...splitPlainTextSegments(buffer.join("\n")))
+    buffer = []
+  }
+
+  for (const line of lines) {
+    const trimmedLine = line.trim()
+    const isFenceLine = /^```/.test(trimmedLine)
+
+    if (isFenceLine) {
+      buffer.push(line)
+      inFence = !inFence
+      continue
+    }
+
+    if (inFence) {
+      buffer.push(line)
+      continue
+    }
+
+    if (/^[-_]{8,}\s*$/.test(trimmedLine)) {
+      flushBuffer()
+      segments.push({ type: "markdown", content: line })
+      continue
+    }
+
+    buffer.push(line)
+  }
+
+  flushBuffer()
+
+  return mergeMarkdownSegments(segments)
+}
+
+function splitPlainTextSegments(text: string): MarkdownSegment[] {
+  const normalizedText = text.trim()
+
+  if (!normalizedText) {
+    return []
+  }
+
+  const directType = getStructuredBlockType(normalizedText)
+
+  if (directType) {
+    return [{ type: directType, content: normalizedText }]
+  }
+
+  const lines = normalizedText.split("\n")
+
+  for (let startIndex = 1; startIndex < lines.length; startIndex++) {
+    const prefix = lines.slice(0, startIndex).join("\n").trim()
+    const suffix = lines.slice(startIndex).join("\n").trim()
+    const suffixType = getStructuredBlockType(suffix)
+
+    if (!suffixType) {
+      continue
+    }
+
+    const prefixSegments = prefix ? splitPlainTextSegments(prefix) : []
+    return [...prefixSegments, { type: suffixType, content: suffix }]
+  }
+
+  return [{ type: "markdown", content: normalizedText }]
+}
+
+function mergeMarkdownSegments(segments: MarkdownSegment[]): MarkdownSegment[] {
+  const merged: MarkdownSegment[] = []
+
+  for (const segment of segments) {
+    const previousSegment = merged[merged.length - 1]
+
+    if (
+      segment.type === "markdown" &&
+      previousSegment?.type === "markdown"
+    ) {
+      previousSegment.content = `${previousSegment.content}\n${segment.content}`
+      continue
+    }
+
+    merged.push(segment)
+  }
+
+  return merged
+}
+
 const COMPONENTS = {
   h1: withClass("h1", "text-2xl font-semibold"),
   h2: withClass("h2", "font-semibold text-xl"),
@@ -208,14 +357,12 @@ const COMPONENTS = {
         ? children
         : childrenTakeAllStringContents(children)
 
-    // Auto-detect timeline (check first, more specific pattern)
-    if (!match && textContent && isTimeline(textContent)) {
-      return <TimelineChart content={textContent} />
-    }
+    const structuredBlockType = !match
+      ? getStructuredBlockType(textContent)
+      : null
 
-    // Auto-detect directory tree
-    if (!match && textContent && isDirectoryTree(textContent)) {
-      return <DirectoryTree content={textContent} />
+    if (structuredBlockType) {
+      return renderStructuredBlock(structuredBlockType, textContent, "code-block")
     }
 
     return match ? (
@@ -272,12 +419,10 @@ const COMPONENTS = {
         ? children
         : childrenTakeAllStringContents({ props: { children } })
 
-    if (textContent && isTimeline(textContent)) {
-      return <TimelineChart content={textContent} />
-    }
+    const structuredBlockType = getStructuredBlockType(textContent)
 
-    if (textContent && isDirectoryTree(textContent)) {
-      return <DirectoryTree content={textContent} />
+    if (structuredBlockType) {
+      return renderStructuredBlock(structuredBlockType, textContent, "paragraph-block")
     }
 
     return (
@@ -292,11 +437,11 @@ const COMPONENTS = {
   hr: withClass("hr", "border-foreground/20"),
 }
 
-function withClass(Tag: keyof JSX.IntrinsicElements, classes: string) {
+function withClass(Tag: keyof React.JSX.IntrinsicElements, classes: string) {
   const Component = ({ node, ...props }: any) => (
     <Tag className={classes} {...props} />
   )
-  Component.displayName = Tag
+  Component.displayName = String(Tag)
   return Component
 }
 

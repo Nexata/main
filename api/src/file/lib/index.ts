@@ -124,9 +124,7 @@ export async function stringToChunks(
 	const batchResults = await Promise.all(
 		batches.map((batch) =>
 			limit(() =>
-				withRetry(() =>
-					embedMany({ model: EMBEDDING_MODEL, values: batch }),
-				),
+				withRetry(() => embedMany({ model: EMBEDDING_MODEL, values: batch })),
 			),
 		),
 	);

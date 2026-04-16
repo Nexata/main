@@ -49,13 +49,33 @@ export function isDirectoryTree(text: string): boolean {
   if (lines.length < 2) return false;
 
   let branchLineCount = 0;
+  let fileSystemLineCount = 0;
+  let branchFileSystemLineCount = 0;
+
   for (const line of lines) {
-    if (line.includes("\u251C") || line.includes("\u2514")) {
+    const trimmedLine = line.trim();
+    const hasBranch = trimmedLine.includes("\u251C") || trimmedLine.includes("\u2514");
+    const rawName = hasBranch
+      ? trimmedLine.replace(/^[\u2502\s]*[\u251C\u2514][\u2500\s]*/, "").trim()
+      : trimmedLine;
+    const looksLikeFileSystem =
+      /\/$/.test(rawName) ||
+      /\/\s+\(.+\)$/.test(rawName) ||
+      /\.[a-zA-Z0-9]{1,8}(?:\s|$)/.test(rawName);
+
+    if (hasBranch) {
       branchLineCount++;
+    }
+
+    if (looksLikeFileSystem) {
+      fileSystemLineCount++;
+      if (hasBranch) {
+        branchFileSystemLineCount++;
+      }
     }
   }
 
-  return branchLineCount >= 2;
+  return branchLineCount >= 2 && fileSystemLineCount >= 2 && branchFileSystemLineCount >= 1;
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────

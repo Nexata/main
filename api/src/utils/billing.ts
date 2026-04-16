@@ -675,8 +675,7 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 						(EMBEDDING_SIZE + 4096) *
 						STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
-				estimatedEmbedTokens +=
-					textChunks * 250 + estimatedImages * 40_000;
+				estimatedEmbedTokens += textChunks * 250 + estimatedImages * 40_000;
 				break;
 			}
 			case FileCategory.DOCUMENT: {
@@ -691,8 +690,7 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 						(EMBEDDING_SIZE + 4096) *
 						STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
-				estimatedEmbedTokens +=
-					docChunks * 250 + docImages * 40_000;
+				estimatedEmbedTokens += docChunks * 250 + docImages * 40_000;
 				break;
 			}
 			case FileCategory.SPREADSHEET: {
@@ -753,7 +751,9 @@ export async function checkBatchCapacity(
 	]);
 
 	const remainingStorageMB =
-		limits.storageLimit !== null ? limits.storageLimit - storageUsage : Infinity;
+		limits.storageLimit !== null
+			? limits.storageLimit - storageUsage
+			: Infinity;
 	const remainingEmbedTokens =
 		limits.embedLimit !== null ? limits.embedLimit - embedUsage : Infinity;
 

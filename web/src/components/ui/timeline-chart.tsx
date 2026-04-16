@@ -48,19 +48,30 @@ export function isTimeline(text: string): boolean {
 
   const yearLineRegex = /\b(19|20)\d{2}\b/g;
   let hasYearHeader = false;
-  let hasBarLines = false;
+  let hasAxisLine = false;
+  let hasEntryLine = false;
+  let hasDurationHint = false;
 
   for (const line of lines) {
     const yearMatches = line.match(yearLineRegex);
     if (yearMatches && yearMatches.length >= 2) {
       hasYearHeader = true;
     }
-    if (/[├┤┼─]{3,}/.test(line) && /[a-zA-ZáéíóúñÁÉÍÓÚÑ]/.test(line)) {
-      hasBarLines = true;
+
+    if (/[│┼─]{5,}/.test(line)) {
+      hasAxisLine = true;
+    }
+
+    if (/├[─┼]*[┤┼][─┼]*\s*(?:──\s+)?[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9_]/.test(line)) {
+      hasEntryLine = true;
+    }
+
+    if (/\((?:[^)]*a[ñn]os?[^)]*|[^)]*(vigente|continuo|actual|presente)[^)]*)\)/i.test(line)) {
+      hasDurationHint = true;
     }
   }
 
-  return hasYearHeader && hasBarLines;
+  return hasYearHeader && hasEntryLine && (hasAxisLine || hasDurationHint);
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────
