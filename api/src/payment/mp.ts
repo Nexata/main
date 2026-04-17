@@ -101,9 +101,10 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 	.post(
 		'/callback',
 		async ({ query, body, headers }) => {
-			const dataId = query['data.id'];
-			const type = query.type ?? body.type;
+			const dataId = query['data.id'] ?? query.id;
+			const type = query.type ?? body?.type ?? query.topic;
 
+			if (type === 'merchant_order') return;
 			if (type !== 'payment' && type !== 'order') return;
 
 			const xSignature = headers['x-signature'];
@@ -122,7 +123,9 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 			if (hmac !== parts.v1)
 				throw httpError(HttpCode.UNAUTHORIZED, ErrorCode.INVALID_CREDENTIALS);
 
-			const paymentId = body.data?.id ?? dataId;
+			const paymentId = body?.data?.id ?? dataId;
+			if (!paymentId)
+				throw httpError(HttpCode.BAD_REQUEST, ErrorCode.EXTERNAL_ERROR);
 			const paymentService = new Payment(MP_CLIENT(paymentId));
 			const payment = await paymentService.get({ id: paymentId });
 
@@ -215,20 +218,27 @@ export const mpRouter = new Elysia({ prefix: '/mp' })
 		},
 		{
 			detail: { summary: 'Mercado pago callback', hide: true },
-			query: tObject({ 'data.id': t.String(), type: Nullish(t.String()) }),
+			query: tObject({
+				'data.id': Nullish(t.String()),
+				type: Nullish(t.String()),
+				id: Nullish(t.String()),
+				topic: Nullish(t.String()),
+			}),
 			headers: tObject({
 				'x-signature': Nullish(t.String()),
 				'x-request-id': Nullish(t.String()),
 			}),
-			body: t.Object({
-				action: t.String(),
-				api_version: t.String(),
-				data: t.Object({ id: t.String() }),
-				date_created: t.String(),
-				id: t.Union([t.String(), t.Number()]),
-				live_mode: t.Boolean(),
-				type: t.String(),
-				user_id: t.Union([t.String(), t.Number()]),
-			}),
+			body: t.Optional(
+				t.Object({
+					action: t.Optional(t.String()),
+					api_version: t.Optional(t.String()),
+					data: t.Optional(t.Object({ id: t.String() })),
+					date_created: t.Optional(t.String()),
+					id: t.Optional(t.Union([t.String(), t.Number()])),
+					live_mode: t.Optional(t.Boolean()),
+					type: t.Optional(t.String()),
+					user_id: t.Optional(t.Union([t.String(), t.Number()])),
+				}),
+			),
 		},
 	);
