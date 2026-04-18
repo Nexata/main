@@ -348,7 +348,6 @@ export namespace Dropbox {
 					externalDirId,
 					externalId: downloaded.id,
 					credentialId,
-					autoSync: true,
 					url: entry.url,
 					name: downloaded.name,
 					type: downloaded.file.type,
@@ -411,7 +410,6 @@ export namespace Dropbox {
 						name: dirEntry.name,
 						provider: FileHost.DROPBOX,
 						url: dirEntry.url,
-						autoSync: true,
 						modifiedAt: dirEntry.updatedAt ?? new Date(),
 					})
 					.returning({ id: externalDir.id })

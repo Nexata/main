@@ -764,7 +764,6 @@ export namespace OneDrive {
 					externalDirId,
 					externalId: downloaded.id,
 					credentialId,
-					autoSync: true,
 					url: entry.url,
 					name: downloaded.name,
 					type: downloaded.file.type,
@@ -875,7 +874,6 @@ export namespace OneDrive {
 						name: dirEntry.name,
 						provider: FileHost.ONE_DRIVE,
 						url: dirEntry.url,
-						autoSync: true,
 						modifiedAt: dirEntry.updatedAt ?? new Date(),
 					})
 					.returning({ id: externalDir.id })

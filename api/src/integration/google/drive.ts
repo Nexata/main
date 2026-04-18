@@ -581,7 +581,6 @@ export namespace Drive {
 					externalDirId,
 					externalId: downloaded.id,
 					credentialId,
-					autoSync: true,
 					url: entry.url,
 					name: downloaded.name,
 					type: downloaded.file.type,
@@ -685,7 +684,6 @@ export namespace Drive {
 						name: dirEntry.name,
 						provider: FileHost.DRIVE,
 						url: dirEntry.url,
-						autoSync: true,
 						modifiedAt: dirEntry.updatedAt ?? new Date(),
 					})
 					.returning({ id: externalDir.id })
