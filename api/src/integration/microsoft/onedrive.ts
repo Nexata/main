@@ -10,7 +10,9 @@ import {
 import {
 	getIngestedDirIds,
 	getIngestedFileIds,
+	type IngestResult,
 	type IngestSelection,
+	isFileUnmodified,
 	type NexataListDir,
 	type NexataListDirEntry,
 	resolveNexataSelection,
@@ -1030,6 +1032,14 @@ export namespace OneDrive {
 						item.id,
 						language,
 					);
+					if (
+						await isFileUnmodified(
+							FileHost.ONE_DRIVE,
+							item.id,
+							fileInfo.updatedAt,
+						)
+					)
+						return { ok: 0, unmodified: 1, failed: 0 };
 					const result = await ingestFile(
 						userId,
 						slug,
@@ -1065,7 +1075,13 @@ export namespace OneDrive {
 		slug: string,
 		credentialId: string,
 		selection: IngestSelection[],
-	): Promise<string> {
+	): Promise<IngestResult> {
+		const failedResult: IngestResult = {
+			ok: 0,
+			unmodified: 0,
+			failed: selection.length || 1,
+		};
+
 		const tokens = (
 			await db
 				.select({
@@ -1101,7 +1117,7 @@ export namespace OneDrive {
 						},
 					})),
 				);
-			return 'FAILED';
+			return failedResult;
 		}
 
 		try {
@@ -1132,18 +1148,10 @@ export namespace OneDrive {
 						},
 					})),
 				);
-			return 'FAILED';
+			return failedResult;
 		}
 
-		const results = await ingest(userId, slug, credentialId, selection);
-
-		return !results.failed && results.ok
-			? 'OK'
-			: results.ok && results.failed
-				? 'PARTIAL'
-				: results.failed
-					? 'FAILED'
-					: 'UNMODIFIED';
+		return ingest(userId, slug, credentialId, selection);
 	}
 
 	export async function refreshTokens(

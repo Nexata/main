@@ -1,5 +1,5 @@
 import { cache, db } from '@api/env';
-import { providerIngestors } from '@api/integration/lib';
+import { type IngestResult, providerIngestors } from '@api/integration/lib';
 import {
 	credential,
 	externalDir,
@@ -7,15 +7,11 @@ import {
 	file,
 	type Language,
 	PROVIDER_LABELS,
-	TraceType,
-	trace,
 	user,
 } from '@api/schema';
-import { ensureFreshTokens } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
 import { sendTemplateMail, Template } from '@api/utils/mail';
 import { Nullish } from '@api/utils/type';
-import { captureException } from '@sentry/bun';
 import { and, eq, inArray, isNull, ne } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import pLimit from 'p-limit';
@@ -25,15 +21,53 @@ const SYNC_FAIL_CACHE_KEY = (userId: string) => `sync-fail-notified:${userId}`;
 const SYNC_FAIL_COOLDOWN = 23 * 60 * 60;
 const SYNC_CONCURRENCY = 10;
 
-function dedupeSyncItems<
-	T extends { provider: FileHost; isDir: boolean; externalId: string },
->(items: T[]) {
-	const unique = new Map<string, T>();
+type SyncItem = {
+	externalId: string;
+	credentialId: string;
+	provider: FileHost;
+	name: string;
+	userId: string;
+	slug: string;
+	isDir: boolean;
+};
+
+function dedupeSyncItems(items: SyncItem[]) {
+	const unique = new Map<string, SyncItem>();
 
 	for (const item of items)
 		unique.set(`${item.provider}:${item.isDir}:${item.externalId}`, item);
 
 	return [...unique.values()];
+}
+
+type SyncGroup = {
+	provider: FileHost;
+	userId: string;
+	slug: string;
+	credentialId: string;
+	items: SyncItem[];
+};
+
+function groupByCredential(items: SyncItem[]): SyncGroup[] {
+	const groups = new Map<string, SyncGroup>();
+
+	for (const item of items) {
+		const key = `${item.provider}:${item.userId}:${item.credentialId}`;
+		let group = groups.get(key);
+		if (!group) {
+			group = {
+				provider: item.provider,
+				userId: item.userId,
+				slug: item.slug,
+				credentialId: item.credentialId,
+				items: [],
+			};
+			groups.set(key, group);
+		}
+		group.items.push(item);
+	}
+
+	return [...groups.values()];
 }
 
 export const filesRouter = new Elysia({ prefix: '/files' }).put(
@@ -80,127 +114,97 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 			...filesToSync.map((f) => ({ ...f, isDir: false as const })),
 		];
 
-		const uniqueCredentialIds = [
-			...new Set(allItems.map((item) => item.credentialId).filter(Boolean)),
-		] as string[];
-
-		const failedCredentialIds = new Set<string>();
-
-		if (uniqueCredentialIds.length) {
-			const credentialRows = await db
-				.select({
-					id: credential.id,
-					provider: credential.provider,
-					accessToken: credential.accessToken,
-					refreshToken: credential.refreshToken,
-					accessTokenExpiresAt: credential.accessTokenExpiresAt,
-					slug: user.slug,
-				})
-				.from(credential)
-				.innerJoin(user, eq(user.id, credential.userId))
-				.where(inArray(credential.id, uniqueCredentialIds));
-
-			await Promise.allSettled(
-				credentialRows.map(async (cred) => {
-					try {
-						await ensureFreshTokens(
-							cred.id,
-							cred.provider,
-							cred.accessToken,
-							cred.refreshToken,
-							cred.accessTokenExpiresAt,
-							cred.slug,
-						);
-					} catch (error) {
-						captureException(error, {
-							tags: { source: 'sync.ensureFreshTokens' },
-							extra: { credentialId: cred.id },
-						});
-						failedCredentialIds.add(cred.id);
-					}
-				}),
-			);
-		}
-
-		const itemsToSync: typeof allItems = [];
-		const failedItems: typeof allItems = [];
-
-		for (const item of allItems) {
-			if (item.credentialId && failedCredentialIds.has(item.credentialId))
-				failedItems.push(item);
-			else itemsToSync.push(item);
-		}
-
-		if (failedItems.length)
-			await db.insert(trace).values(
-				failedItems.map((item) => ({
+		const dedupedItems = dedupeSyncItems(
+			allItems
+				.filter(
+					(item) =>
+						typeof item.externalId === 'string' &&
+						typeof item.credentialId === 'string',
+				)
+				.map((item) => ({
+					externalId: item.externalId as string,
+					credentialId: item.credentialId as string,
+					provider: item.provider,
+					name: item.name,
 					userId: item.userId,
-					type: TraceType.INGEST_FAILED,
-					metadata: {
-						provider: item.provider,
-						externalId: item.isDir ? item.externalId : item.externalId!,
-						name: item.name,
-						error: 'TOKEN_REFRESH_FAILED',
-					},
+					slug: item.slug,
+					isDir: item.isDir,
 				})),
-			);
-
-		const dedupedItemsToSync = dedupeSyncItems(
-			itemsToSync.filter(
-				(item): item is (typeof itemsToSync)[number] & { externalId: string } =>
-					typeof item.externalId === 'string',
-			),
 		);
+
+		const groups = groupByCredential(dedupedItems);
 
 		const syncLimit = pLimit(SYNC_CONCURRENCY);
-		const results = await Promise.allSettled(
-			dedupedItemsToSync.map((item) =>
-				syncLimit(() =>
-					providerIngestors[item.provider]!(
-						item.userId,
-						item.slug,
-						item.isDir ? item.credentialId : item.credentialId!,
-						[
-							{
-								isDir: item.isDir,
-								id: item.isDir ? item.externalId : item.externalId!,
-							},
-						],
-					),
-				),
+		const groupResults = await Promise.allSettled(
+			groups.map((group) =>
+				syncLimit(() => {
+					const ingestor = providerIngestors[group.provider];
+					if (!ingestor)
+						return Promise.resolve<IngestResult>({
+							ok: 0,
+							unmodified: 0,
+							failed: group.items.length,
+						});
+
+					return ingestor(
+						group.userId,
+						group.slug,
+						group.credentialId,
+						group.items.map((item) => ({
+							isDir: item.isDir,
+							id: item.externalId,
+						})),
+					);
+				}),
 			),
 		);
 
+		const totals = { ok: 0, unmodified: 0, failed: 0, partial: 0 };
 		const failedByUser = new Map<
 			string,
 			{ name: string; provider: string }[]
 		>();
 
-		for (const item of failedItems) {
-			const existing = failedByUser.get(item.userId) ?? [];
-			existing.push({
-				name: item.name,
-				provider: PROVIDER_LABELS[item.provider] ?? item.provider,
-			});
-			failedByUser.set(item.userId, existing);
-		}
+		for (let i = 0; i < groupResults.length; i++) {
+			const result = groupResults[i]!;
+			const group = groups[i]!;
 
-		for (let i = 0; i < results.length; i++) {
-			const result = results[i]!;
-			const item = dedupedItemsToSync[i]!;
-			const isFailed =
-				result.status === 'rejected' ||
-				(result.status === 'fulfilled' && result.value === 'FAILED') ||
-				(result.status === 'fulfilled' && result.value === 'PARTIAL');
+			if (result.status === 'rejected') {
+				totals.failed += group.items.length;
+				const existing = failedByUser.get(group.userId) ?? [];
+				for (const item of group.items)
+					existing.push({
+						name: item.name,
+						provider: PROVIDER_LABELS[item.provider] ?? item.provider,
+					});
+				failedByUser.set(group.userId, existing);
+				continue;
+			}
 
-			if (!isFailed) continue;
+			const r = result.value;
+			totals.ok += r.ok;
+			totals.unmodified += r.unmodified;
+			totals.failed += r.failed;
 
-			const existing = failedByUser.get(item.userId) ?? [];
-			existing.push({
-				name: item.name,
-				provider: PROVIDER_LABELS[item.provider] ?? item.provider,
-			});
-			failedByUser.set(item.userId, existing);
+			if (r.failed) {
+				const existing = failedByUser.get(group.userId) ?? [];
+				// When failures < total items, we can't know which specific items failed
+				// at the provider level, so we report the group's provider generically
+				const providerLabel = PROVIDER_LABELS[group.provider] ?? group.provider;
+				if (r.failed >= group.items.length) {
+					// All items failed — report each by name
+					for (const item of group.items)
+						existing.push({ name: item.name, provider: providerLabel });
+				} else {
+					// Partial failure — report count generically
+					for (let j = 0; j < r.failed; j++)
+						existing.push({
+							name: `${providerLabel} file`,
+							provider: providerLabel,
+						});
+				}
+				failedByUser.set(group.userId, existing);
+			}
 		}
 
 		if (failedByUser.size) {
@@ -252,22 +256,11 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 		}
 
 		return {
-			total: results.length + failedItems.length,
-			synced: results.filter(
-				(r) => r.status === 'fulfilled' && r.value === 'OK',
-			).length,
-			unmodified: results.filter(
-				(r) => r.status === 'fulfilled' && r.value === 'UNMODIFIED',
-			).length,
-			partial: results.filter(
-				(r) => r.status === 'fulfilled' && r.value === 'PARTIAL',
-			).length,
-			failed:
-				results.filter(
-					(r) =>
-						r.status === 'rejected' ||
-						(r.status === 'fulfilled' && r.value === 'FAILED'),
-				).length + failedItems.length,
+			total: totals.ok + totals.unmodified + totals.failed,
+			synced: totals.ok,
+			unmodified: totals.unmodified,
+			partial: totals.partial,
+			failed: totals.failed,
 		};
 	},
 	{

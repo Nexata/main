@@ -10,7 +10,9 @@ import { Google } from '@api/integration/google/lib';
 import {
 	getIngestedDirIds,
 	getIngestedFileIds,
+	type IngestResult,
 	type IngestSelection,
+	isFileUnmodified,
 	type NexataListDir,
 	type NexataListDirEntry,
 	resolveNexataSelection,
@@ -815,6 +817,10 @@ export namespace Drive {
 					if (blockReason) return { ok: 0, unmodified: 0, failed: 1 };
 
 					const fileInfo = await getFileInfo(drv, item.id);
+					if (
+						await isFileUnmodified(FileHost.DRIVE, item.id, fileInfo.updatedAt)
+					)
+						return { ok: 0, unmodified: 1, failed: 0 };
 					const result = await ingestFile(
 						drv,
 						userId,
@@ -849,7 +855,13 @@ export namespace Drive {
 		slug: string,
 		credentialId: string,
 		selection: IngestSelection[],
-	): Promise<string> {
+	): Promise<IngestResult> {
+		const failedResult: IngestResult = {
+			ok: 0,
+			unmodified: 0,
+			failed: selection.length || 1,
+		};
+
 		const tokens = (
 			await db
 				.select({
@@ -885,7 +897,7 @@ export namespace Drive {
 						},
 					})),
 				);
-			return 'FAILED';
+			return failedResult;
 		}
 
 		let at: string;
@@ -918,19 +930,11 @@ export namespace Drive {
 						},
 					})),
 				);
-			return 'FAILED';
+			return failedResult;
 		}
 
 		const drv = fromTokens(at, rt);
-		const results = await ingest(drv, userId, slug, credentialId, selection);
-
-		return !results.failed && results.ok
-			? 'OK'
-			: results.ok && results.failed
-				? 'PARTIAL'
-				: results.failed
-					? 'FAILED'
-					: 'UNMODIFIED';
+		return ingest(drv, userId, slug, credentialId, selection);
 	}
 
 	export async function refreshTokens(

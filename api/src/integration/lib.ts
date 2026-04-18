@@ -18,6 +18,28 @@ export type NexataListDirEntry = {
 	extra?: object;
 };
 
+/**
+ * Checks if a file is unmodified by comparing the remote modifiedAt
+ * against the stored modifiedAt in the database.
+ * Returns true if the file exists and has not been modified (skip download).
+ */
+export async function isFileUnmodified(
+	provider: FileHost,
+	externalId: string,
+	remoteModifiedAt: Date | undefined,
+): Promise<boolean> {
+	if (!remoteModifiedAt) return false;
+
+	const existing = (
+		await db
+			.select({ modifiedAt: file.modifiedAt })
+			.from(file)
+			.where(and(eq(file.provider, provider), eq(file.externalId, externalId)))
+	).at(0);
+
+	return !!existing && existing.modifiedAt >= remoteModifiedAt;
+}
+
 export async function getIngestedFileIds(
 	ids: string[],
 	provider: FileHost,
@@ -57,12 +79,28 @@ export type IngestSelection = {
 	id: string;
 };
 
+export type IngestResult = {
+	ok: number;
+	unmodified: number;
+	failed: number;
+};
+
 export type ProviderIngestor = (
 	userId: string,
 	slug: string,
 	credentialId: string,
 	selection: IngestSelection[],
-) => Promise<string>;
+) => Promise<IngestResult>;
+
+export function ingestResultToStatus(results: IngestResult): string {
+	return !results.failed && results.ok
+		? 'OK'
+		: results.ok && results.failed
+			? 'PARTIAL'
+			: results.failed
+				? 'FAILED'
+				: 'UNMODIFIED';
+}
 
 export const providerIngestors: Partial<Record<FileHost, ProviderIngestor>> = {
 	[FileHost.DROPBOX]: Dropbox.ingestFromCredential,

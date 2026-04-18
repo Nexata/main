@@ -1,6 +1,6 @@
 import { db } from '@api/env';
 import { NexataFile } from '@api/file';
-import { providerIngestors } from '@api/integration/lib';
+import { ingestResultToStatus, providerIngestors } from '@api/integration/lib';
 import {
 	credential,
 	credentialPermission,
@@ -266,7 +266,11 @@ export namespace Nexata {
 			[{ isDir: false, id: existing.externalId }],
 		);
 
-		return { fileId: existing.id, name: existing.name, result };
+		return {
+			fileId: existing.id,
+			name: existing.name,
+			result: ingestResultToStatus(result),
+		};
 	}
 
 	const choiceOption = t.Object({
