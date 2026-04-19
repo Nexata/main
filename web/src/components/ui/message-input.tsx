@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, Info, Loader2, Paperclip, Square, Brain, X  } from "lucide-react"
+import { ArrowUp, CircleHelp, Info, Loader2, Paperclip, Square, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
 import { CHAT_INPUT_MAX_CHARS, CHAT_INPUT_WARNING_THRESHOLD } from "@/lib/chat-input"
 import { cn } from "@/lib/utils"
@@ -12,6 +12,7 @@ import { AudioVisualizer } from "@/components/ui/audio-visualizer"
 import { Button } from "@/components/ui/button"
 import { FilePreview } from "@/components/ui/file-preview"
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
+import PromptTipsModal from "@/components/prompt-tips/prompt-tips.modal"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
   "common.ask_nexy" as common_ask_nexy,
@@ -19,7 +20,8 @@ import {
   "common.attachment" as common_attachment,
   "common.brain_description" as common_brain_description,
   "chat.drop_files" as chat_drop_files,
-  "chat.input_characters_remaining" as chat_input_characters_remaining
+  "chat.input_characters_remaining" as chat_input_characters_remaining,
+  "common.prompt_tips" as common_prompt_tips,
 } from "@/paraglide/messages.js";
 
 
@@ -66,6 +68,7 @@ export function MessageInput({
   const [brainMode, setBrainMode] = useState(() => {
     try { return localStorage.getItem('nexata-extra-reason') === 'true' } catch { return false }
   })
+  const [tipsOpen, setTipsOpen] = useState(false)
   const [dismissedWarning, setDismissedWarning] = useState<boolean>(() => {
     try { return localStorage.getItem('nexata-brain-warning-dismissed') === 'true' } catch { return false }
   })
@@ -327,6 +330,22 @@ export function MessageInput({
 
             {/* Right buttons */}
             <div className="flex items-center gap-1">
+              <Tooltip>
+                <TooltipTrigger>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground hover:text-foreground"
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setTipsOpen(true)}
+                  >
+                    <CircleHelp className="h-5 w-5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{common_prompt_tips()}</TooltipContent>
+              </Tooltip>
+
               {props.allowAttachments && (
                 <Tooltip>
                   <TooltipTrigger>
@@ -441,6 +460,22 @@ export function MessageInput({
               )}
 
               <div className="ml-auto flex items-center gap-1">
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground hover:text-foreground"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => setTipsOpen(true)}
+                    >
+                      <CircleHelp className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>{common_prompt_tips()}</TooltipContent>
+                </Tooltip>
+
                 {shouldShowCharacterWarning && (
                   <span
                     className={cn(
@@ -551,6 +586,8 @@ export function MessageInput({
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PromptTipsModal open={tipsOpen} onClose={() => setTipsOpen(false)} />
     </div>
   )
 }
