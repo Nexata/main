@@ -21,7 +21,7 @@ import {
   "common.brain_description" as common_brain_description,
   "chat.drop_files" as chat_drop_files,
   "chat.input_characters_remaining" as chat_input_characters_remaining,
-  "common.prompt_tips" as common_prompt_tips,
+  "prompt_tips.tooltip" as prompt_tips_tooltip,
 } from "@/paraglide/messages.js";
 
 
@@ -343,7 +343,7 @@ export function MessageInput({
                     <CircleHelp className="h-5 w-5" />
                   </Button>
                 </TooltipTrigger>
-                <TooltipContent>{common_prompt_tips()}</TooltipContent>
+                <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
               </Tooltip>
 
               {props.allowAttachments && (
@@ -473,7 +473,7 @@ export function MessageInput({
                       <CircleHelp className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{common_prompt_tips()}</TooltipContent>
+                  <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
                 </Tooltip>
 
                 {shouldShowCharacterWarning && (
