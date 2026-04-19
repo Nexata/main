@@ -336,7 +336,7 @@ export function MessageInput({
                     type="button"
                     size="icon"
                     variant="ghost"
-                    className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
                     onMouseDown={(e) => e.preventDefault()}
                     onClick={() => setTipsOpen(true)}
                   >
@@ -466,7 +466,7 @@ export function MessageInput({
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground hover:text-foreground"
+                      className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
                       onMouseDown={(e) => e.preventDefault()}
                       onClick={() => setTipsOpen(true)}
                     >
