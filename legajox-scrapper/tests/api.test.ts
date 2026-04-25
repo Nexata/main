@@ -1,503 +1,728 @@
-/**
- * Integration tests for the Legajox scraper API.
- *
- * Usage:
- *   LEGAJOX_USER=user@example.com LEGAJOX_PASSWORD=pass123 API_KEY=xd bun test tests/api.test.ts
- *
- * Optional env vars:
- *   API_BASE_URL   — defaults to http://localhost:3000
- *   SKIP_SCRAPE    — set to "true" to skip tests that launch Puppeteer (slow)
- *
- * The API server must already be running before executing the tests.
- */
+import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { treaty } from '@elysiajs/eden';
+import type { AppDependencies } from '../api/index';
+import { createApp } from '../api/index';
 
-import { describe, it, expect, beforeAll } from "bun:test";
+const API_KEY = 'test-api-key';
+const QUERY_CREDS = {
+	user: 'user@example.com',
+	password: 'super-secret',
+};
+const DEFAULT_CREDS = {
+	defaultUser: 'default@example.com',
+	defaultPassword: 'default-secret',
+};
 
-// ── Config ────────────────────────────────────────────────────────────────────
-
-const BASE_URL    = process.env["API_BASE_URL"]      ?? "http://localhost:3000";
-const API_KEY     = process.env["API_KEY"]           ?? "xd";
-const USER        = process.env["LEGAJOX_USER"]      ?? "";
-const PASSWORD    = process.env["LEGAJOX_PASSWORD"]  ?? "";
-const SKIP_SCRAPE = process.env["SKIP_SCRAPE"]       === "true";
-
-const WRONG_KEY   = "invalid-api-key";
-const WRONG_CREDS = { user: "nobody@example.com", password: "wrongpass" };
-
-// ── Helpers ───────────────────────────────────────────────────────────────────
-
-function qs(params: Record<string, string | number | boolean | undefined>): string {
-  const entries = Object.entries(params).filter(([, v]) => v !== undefined);
-  if (entries.length === 0) return "";
-  return "?" + entries.map(([k, v]) => `${k}=${encodeURIComponent(String(v))}`).join("&");
+function makeDeps(): AppDependencies {
+	return {
+		validateCredentials: mock(async () => true),
+		scrapeEmployees: mock(async () => ({
+			success: true,
+			employees: [],
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeGeneralInfo: mock(async () => ({
+			success: true,
+			info: null,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeOrgChart: mock(async () => ({
+			success: true,
+			chart: null,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeLiquidaciones: mock(async () => ({
+			success: true,
+			liquidaciones: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeAusencias: mock(async () => ({
+			success: true,
+			ausencias: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeVacaciones: mock(async () => ({
+			success: true,
+			registros: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeListDirs: mock(async () => ({
+			success: true,
+			carpetas: [],
+			errors: [],
+		})),
+		scrapeListDocs: mock(async () => ({
+			success: true,
+			documentos: [],
+			errors: [],
+		})),
+		scrapeFileSearch: mock(async () => ({
+			success: true,
+			results: [],
+			errors: [],
+		})),
+		scrapeDownload: mock(async () => ({
+			success: true,
+			metadata: [],
+			errors: [],
+		})),
+	};
 }
 
-async function get(
-  path: string,
-  params: Record<string, string | number | boolean | undefined> = {},
-  opts: { apiKey?: string; noAuth?: boolean } = {},
-): Promise<{ status: number; body: any }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (!opts.noAuth) {
-    headers["Authorization"] = `Bearer ${opts.apiKey ?? API_KEY}`;
-  }
-  const res = await fetch(`${BASE_URL}${path}${qs(params)}`, { headers });
-  let body: any;
-  try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
+function makeClient(
+	dependencies: Partial<AppDependencies> = {},
+	config: {
+		defaultUser?: string;
+		defaultPassword?: string;
+		authHeader?: string | null;
+	} = {},
+) {
+	const deps = { ...makeDeps(), ...dependencies } satisfies AppDependencies;
+	const app = createApp({
+		apiKey: API_KEY,
+		defaultUser: config.defaultUser,
+		defaultPassword: config.defaultPassword,
+		dependencies: deps,
+	});
+
+	const client = treaty(app, {
+		headers:
+			config.authHeader === null
+				? {}
+				: {
+						Authorization: config.authHeader ?? `Bearer ${API_KEY}`,
+					},
+	});
+
+	return { client, deps };
 }
 
-async function post(
-  path: string,
-  payload: unknown,
-  params: Record<string, string | number | boolean | undefined> = {},
-  opts: { apiKey?: string; noAuth?: boolean } = {},
-): Promise<{ status: number; body: any }> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (!opts.noAuth) {
-    headers["Authorization"] = `Bearer ${opts.apiKey ?? API_KEY}`;
-  }
-  const res = await fetch(`${BASE_URL}${path}${qs(params)}`, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(payload),
-  });
-  let body: any;
-  try { body = await res.json(); } catch { body = null; }
-  return { status: res.status, body };
-}
-
-const withCreds = (extra?: Record<string, string | number | boolean | undefined>) => ({
-  user: USER,
-  password: PASSWORD,
-  ...extra,
+beforeEach(() => {
+	mock.restore();
 });
 
-// ── Pre-flight ────────────────────────────────────────────────────────────────
+describe('Auth guard', () => {
+	test('rejects requests without Authorization', async () => {
+		const { client } = makeClient({}, { authHeader: null });
 
-beforeAll(async () => {
-  if (!USER || !PASSWORD) {
-    throw new Error(
-      "Missing credentials. Set LEGAJOX_USER and LEGAJOX_PASSWORD env vars before running tests.",
-    );
-  }
-  // Check API is reachable
-  try {
-    await fetch(BASE_URL);
-  } catch {
-    throw new Error(
-      `API not reachable at ${BASE_URL}. Make sure the server is running (bun run api).`,
-    );
-  }
+		const res = await client.validate.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(401);
+		expect(res.error?.value).toEqual({ error: 'Unauthorized' });
+	});
+
+	test('rejects requests with a wrong API key', async () => {
+		const { client } = makeClient({}, { authHeader: 'Bearer wrong-key' });
+
+		const res = await client.validate.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(401);
+		expect(res.error?.value).toEqual({ error: 'Unauthorized' });
+	});
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// AUTH GUARD (all endpoints must enforce it)
-// ─────────────────────────────────────────────────────────────────────────────
+describe('Credential resolution', () => {
+	test('returns 400 when query credentials and defaults are both missing', async () => {
+		const { client } = makeClient();
 
-describe("Auth guard", () => {
-  const endpoints = ["/validate", "/employees", "/liquidaciones", "/ausencias", "/vacaciones", "/info", "/org-chart"];
+		const res = await client.validate.get();
 
-  for (const ep of endpoints) {
-    it(`${ep} → 401 when no Authorization header`, async () => {
-      const { status } = await get(ep, withCreds(), { noAuth: true });
-      expect(status).toBe(401);
-    });
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error:
+				"Query params 'user' and 'password' are required when DEFAULT_USER and DEFAULT_PASSWORD are not configured.",
+		});
+	});
 
-    it(`${ep} → 401 when wrong API key`, async () => {
-      const { status } = await get(ep, withCreds(), { apiKey: WRONG_KEY });
-      expect(status).toBe(401);
-    });
-  }
+	test('falls back to configured default credentials', async () => {
+		const validateCredentials = mock(async () => true);
+		const { client } = makeClient({ validateCredentials }, DEFAULT_CREDS);
+
+		const res = await client.validate.get();
+
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({ valid: true });
+		expect(validateCredentials).toHaveBeenCalledWith(
+			DEFAULT_CREDS.defaultUser,
+			DEFAULT_CREDS.defaultPassword,
+		);
+	});
+
+	test('prefers explicit query credentials over configured defaults', async () => {
+		const scrapeEmployees = mock(async () => ({
+			success: true,
+			employees: [],
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeEmployees }, DEFAULT_CREDS);
+
+		const res = await client.employees.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(200);
+		expect(scrapeEmployees).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			{ search: null, page: null },
+			expect.anything(),
+		);
+	});
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MISSING CREDENTIALS
-// ─────────────────────────────────────────────────────────────────────────────
+describe('Validate route', () => {
+	test('returns the scraper validation result', async () => {
+		const validateCredentials = mock(async () => false);
+		const { client } = makeClient({ validateCredentials });
 
-describe("Missing credentials (user/password)", () => {
-  const endpoints = ["/validate", "/employees", "/liquidaciones", "/ausencias", "/vacaciones", "/info", "/org-chart"];
+		const res = await client.validate.get({ query: QUERY_CREDS });
 
-  for (const ep of endpoints) {
-    it(`${ep} → 400 when user param is missing`, async () => {
-      const { status, body } = await get(ep, { password: PASSWORD });
-      expect(status).toBe(400);
-      expect(body).toHaveProperty("error");
-    });
-
-    it(`${ep} → 400 when password param is missing`, async () => {
-      const { status, body } = await get(ep, { user: USER });
-      expect(status).toBe(400);
-      expect(body).toHaveProperty("error");
-    });
-  }
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({ valid: false });
+		expect(validateCredentials).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+		);
+	});
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /validate
-// ─────────────────────────────────────────────────────────────────────────────
+describe('Employees route', () => {
+	test('rejects invalid page values before scraping', async () => {
+		const scrapeEmployees = mock(async () => ({
+			success: true,
+			employees: [],
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeEmployees });
 
-describe("GET /validate", () => {
-  it("returns { valid: true } with correct credentials", async () => {
-    const { status, body } = await get("/validate", withCreds());
-    expect(status).toBe(200);
-    expect(body).toEqual({ valid: true });
-  });
+		const res = await client.employees.get({
+			query: { ...QUERY_CREDS, page: '0' },
+		});
 
-  it("returns { valid: false } with wrong credentials", async () => {
-    const { status, body } = await get("/validate", WRONG_CREDS);
-    expect(status).toBe(200);
-    expect(body).toEqual({ valid: false });
-  });
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: "Query param 'page' must be a positive integer.",
+		});
+		expect(scrapeEmployees).not.toHaveBeenCalled();
+	});
+
+	test('passes search and page options through to the scraper', async () => {
+		const scrapeEmployees = mock(async () => ({
+			success: true,
+			employees: [
+				{
+					nombre: 'Ada Lovelace',
+					dni: '123',
+					cuil: '20-123-4',
+					email: 'ada@example.com',
+					telefono: '1234',
+					empresa: 'Nexata',
+					legajo: 'EMP-1',
+					fechaIngreso: '2024-01-01',
+					locacion: 'Remote',
+					estado: 'Activo',
+				},
+			],
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeEmployees });
+
+		const res = await client.employees.get({
+			query: { ...QUERY_CREDS, search: 'ada', page: '2' },
+		});
+
+		expect(res.status).toBe(200);
+		expect(res.data?.employees).toHaveLength(1);
+		expect(scrapeEmployees).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			{ search: 'ada', page: 2 },
+			expect.anything(),
+		);
+	});
+
+	test('maps scraper failures to 500 responses', async () => {
+		const scrapeEmployees = mock(async () => ({
+			success: false,
+			employees: [],
+			errors: ['boom'],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeEmployees });
+
+		const res = await client.employees.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(500);
+		expect(res.error?.value).toEqual({
+			error: 'Scrape failed',
+			details: ['boom'],
+		});
+	});
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /employees
-// ─────────────────────────────────────────────────────────────────────────────
+describe('Liquidaciones route', () => {
+	test('strips internal fields and preserves non-empty errors', async () => {
+		const scrapeLiquidaciones = mock(async () => ({
+			success: true,
+			liquidaciones: [
+				{
+					id: 'liq-1',
+					descripcion: 'Recibo marzo',
+					estado: 'Pendiente',
+					pdfUrl: 'https://example.com/liq.pdf',
+				},
+			],
+			total: 1,
+			errors: ['partial warning'],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeLiquidaciones });
 
-describe("GET /employees — param validation", () => {
-  it("returns 400 when page=0", async () => {
-    const { status, body } = await get("/employees", withCreds({ page: 0 }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
+		const res = await client.liquidaciones.get({ query: QUERY_CREDS });
 
-  it("returns 400 when page is not a number", async () => {
-    const { status, body } = await get("/employees", withCreds({ page: "abc" as any }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			liquidaciones: [
+				{
+					id: 'liq-1',
+					descripcion: 'Recibo marzo',
+					estado: 'Pendiente',
+					pdfUrl: 'https://example.com/liq.pdf',
+				},
+			],
+			total: 1,
+			errors: ['partial warning'],
+		});
+	});
 });
 
-describe.skipIf(SKIP_SCRAPE)("GET /employees — scraping", () => {
-  it("returns a list of employees with correct shape", async () => {
-    const { status, body } = await get("/employees", withCreds({ page: 1 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.employees)).toBe(true);
-    if (body.employees.length > 0) {
-      const emp = body.employees[0];
-      expect(emp).toHaveProperty("nombre");
-      expect(emp).toHaveProperty("dni");
-      expect(emp).toHaveProperty("cuil");
-      expect(emp).toHaveProperty("email");
-      expect(emp).toHaveProperty("estado");
-      expect(emp).toHaveProperty("legajo");
-    }
-  });
+describe('Ausencias route', () => {
+	test('rejects unsupported estado values before scraping', async () => {
+		const scrapeAusencias = mock(async () => ({
+			success: true,
+			ausencias: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeAusencias });
 
-  it("returns empty array for a page that does not exist (page=9999)", async () => {
-    const { status, body } = await get("/employees", withCreds({ page: 9999 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.employees)).toBe(true);
-    expect(body.employees.length).toBe(0);
-  });
+		const res = await client.ausencias.get({
+			query: { ...QUERY_CREDS, estado: 'Invalida' as never },
+		});
 
-  it("accepts a search param and returns filtered results", async () => {
-    // We can't assert specific names, but shape must be correct
-    const { status, body } = await get("/employees", withCreds({ search: "a", page: 1 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.employees)).toBe(true);
-  });
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error:
+				"Query param 'estado' must be one of: Aprobada, Pendiente, Rechazada.",
+		});
+		expect(scrapeAusencias).not.toHaveBeenCalled();
+	});
 
-  it("returns page 1 with search and without page produces consistent results", async () => {
-    const withPage    = await get("/employees", withCreds({ search: "a", page: 1 }));
-    const withoutPage = await get("/employees", withCreds({ search: "a" }));
-    expect(withPage.status).toBe(200);
-    expect(withoutPage.status).toBe(200);
-    // Without page must return >= results than just page 1
-    expect(withoutPage.body.employees.length).toBeGreaterThanOrEqual(
-      withPage.body.employees.length,
-    );
-  });
+	test('normalizes filters before passing them to the scraper', async () => {
+		const scrapeAusencias = mock(async () => ({
+			success: true,
+			ausencias: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeAusencias });
+
+		const res = await client.ausencias.get({
+			query: {
+				...QUERY_CREDS,
+				name: 'Ada',
+				from: '2024-01-01',
+				to: '2024-12-31',
+				historial: 'true',
+				motivo: 'licencia',
+				estado: 'Aprobada',
+			},
+		});
+
+		expect(res.status).toBe(200);
+		expect(scrapeAusencias).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			{
+				name: 'Ada',
+				from: '2024-01-01',
+				to: '2024-12-31',
+				historial: true,
+				motivo: 'licencia',
+				estado: 'Aprobada',
+			},
+			expect.anything(),
+		);
+	});
 });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /liquidaciones
-// ─────────────────────────────────────────────────────────────────────────────
+describe('Info, org chart and vacaciones routes', () => {
+	test('returns info without internal scraper fields', async () => {
+		const scrapeGeneralInfo = mock(async () => ({
+			success: true,
+			info: {
+				nombreApellido: 'Ada Lovelace',
+				dni: '123',
+				cuit: '20-123-4',
+				email: 'ada@example.com',
+				celular: '1234',
+				locacion: 'Remote',
+				puestoSector: 'Engineering',
+				fechaContratacion: '2024-01-01',
+				tipoColaborador: 'Empleado',
+				reportaA: 'Grace Hopper',
+				legajo: 'EMP-1',
+				fechaNacimiento: '1990-01-01',
+				estadoCivil: 'Soltera',
+				sexo: 'F',
+				domicilio: 'Main St',
+				codigoPostal: '1000',
+				pais: 'AR',
+				provincia: 'Buenos Aires',
+				ciudad: 'CABA',
+				puestoLaboral: 'Engineer',
+				sectorLaboral: 'Tech',
+				turno: 'Manana',
+				fechaContratacionLaboral: '2024-01-01',
+				empresas: [{ nombre: 'Nexata', cuit: '30-12345678-9' }],
+				legajosUsados: '1',
+				legajosTotal: '10',
+				modulos: [{ nombre: 'RRHH', activo: true }],
+				miResponsable: 'Grace Hopper',
+				reportanAMi: ['Team Member'],
+				anuncios: [],
+			},
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeGeneralInfo });
 
-describe("GET /liquidaciones — param validation", () => {
-  it("returns 400 when page=0", async () => {
-    const { status, body } = await get("/liquidaciones", withCreds({ page: 0 }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
+		const res = await client.info.get({ query: QUERY_CREDS });
 
-  it("returns 400 when page is not a number", async () => {
-    const { status, body } = await get("/liquidaciones", withCreds({ page: "xyz" as any }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			info: expect.objectContaining({ nombreApellido: 'Ada Lovelace' }),
+		});
+	});
+
+	test('returns org-chart payloads without internal fields', async () => {
+		const scrapeOrgChart = mock(async () => ({
+			success: true,
+			chart: {
+				totalEmpleados: '1',
+				sinPerfilAsignado: '0',
+				raiz: {
+					usrId: '1',
+					legId: '10',
+					nombre: 'Ada',
+					apellido: 'Lovelace',
+					email: 'ada@example.com',
+					grupo: 'Engineering',
+					reportaA: '',
+					subordinados: [],
+				},
+				noAsignados: [],
+			},
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeOrgChart });
+
+		const res = await client['org-chart'].get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			chart: expect.objectContaining({ totalEmpleados: '1' }),
+		});
+	});
+
+	test('returns vacation balances without internal fields', async () => {
+		const scrapeVacaciones = mock(async () => ({
+			success: true,
+			registros: [
+				{
+					nombre: 'Ada Lovelace',
+					asignacionInicial: '10',
+					prorrateo: '0',
+					acarreo: '0',
+					disfrutados: '2',
+					planeados: '1',
+					proximoCiclo: '0',
+					disponibles: '7',
+				},
+			],
+			total: 1,
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeVacaciones });
+
+		const res = await client.vacaciones.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			registros: [expect.objectContaining({ nombre: 'Ada Lovelace' })],
+			total: 1,
+		});
+	});
 });
 
-describe.skipIf(SKIP_SCRAPE)("GET /liquidaciones — scraping", () => {
-  it("returns a list of liquidaciones with correct shape", async () => {
-    const { status, body } = await get("/liquidaciones", withCreds({ page: 1 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.liquidaciones)).toBe(true);
-    if (body.liquidaciones.length > 0) {
-      const liq = body.liquidaciones[0];
-      expect(liq).toHaveProperty("id");
-      expect(liq).toHaveProperty("descripcion");
-      expect(liq).toHaveProperty("estado");
-      expect(liq).toHaveProperty("pdfUrl");
-    }
-  });
+describe('Documents routes', () => {
+	test('maps top-level document folders', async () => {
+		const scrapeListDirs = mock(async () => ({
+			success: true,
+			carpetas: [
+				{
+					nombre: 'Recibos',
+					href: '/files/edit/123',
+					cantidadArchivos: 5,
+				},
+			],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeListDirs });
 
-  it("returns empty array for page that does not exist (page=9999)", async () => {
-    const { status, body } = await get("/liquidaciones", withCreds({ page: 9999 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.liquidaciones)).toBe(true);
-    expect(body.liquidaciones.length).toBe(0);
-  });
+		const res = await client.documents.list.get({ query: QUERY_CREDS });
 
-  it("accepts a search param and returns valid structure", async () => {
-    const { status, body } = await get("/liquidaciones", withCreds({ search: "recibo", page: 1 }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.liquidaciones)).toBe(true);
-  });
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			cursor: null,
+			entries: [
+				{
+					id: '/files/edit/123',
+					name: 'Recibos',
+					nexataId: null,
+					path: '/files/edit/123',
+					ext: 'dir',
+					extra: { cantidadArchivos: 5 },
+				},
+			],
+		});
+	});
 
-  it("returns page 1 with search and without page produces consistent results", async () => {
-    const withPage    = await get("/liquidaciones", withCreds({ search: "recibo", page: 1 }));
-    const withoutPage = await get("/liquidaciones", withCreds({ search: "recibo" }));
-    expect(withPage.status).toBe(200);
-    expect(withoutPage.status).toBe(200);
-    expect(withoutPage.body.liquidaciones.length).toBeGreaterThanOrEqual(
-      withPage.body.liquidaciones.length,
-    );
-  });
-});
+	test('maps document files for a folder path', async () => {
+		const scrapeListDocs = mock(async () => ({
+			success: true,
+			documentos: [
+				{
+					nombre: 'recibo.pdf',
+					url: 'https://example.com/recibo.pdf',
+					fecha: '31/07/2025 11:25hs',
+					firmado: true,
+				},
+			],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeListDocs });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /ausencias
-// ─────────────────────────────────────────────────────────────────────────────
+		const res = await client.documents.list.get({
+			query: { ...QUERY_CREDS, path: '/files/edit/123' },
+		});
 
-describe("GET /ausencias — param validation", () => {
-  it("returns 400 for invalid estado value", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ estado: "Invalido" }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
+		expect(res.status).toBe(200);
+		expect(res.data?.entries[0]).toEqual(
+			expect.objectContaining({
+				id: 'https://example.com/recibo.pdf',
+				name: 'recibo.pdf',
+				ext: 'pdf',
+				extra: {
+					firmado: true,
+					fechaRaw: '31/07/2025 11:25hs',
+				},
+			}),
+		);
+		expect(res.data?.entries[0]?.updatedAt).toBeInstanceOf(Date);
+	});
 
-  it("accepts estado=Aprobada without error", async () => {
-    // Just validates parsing — actual scrape depends on SKIP_SCRAPE
-    if (SKIP_SCRAPE) return;
-    const { status } = await get("/ausencias", withCreds({ estado: "Aprobada", historial: "true" }));
-    expect([200, 500]).toContain(status); // 500 possible if no permissions
-  });
-});
+	test('validates search query length before scraping', async () => {
+		const scrapeFileSearch = mock(async () => ({
+			success: true,
+			results: [],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeFileSearch });
 
-describe.skipIf(SKIP_SCRAPE)("GET /ausencias — scraping", () => {
-  it("returns correct shape with no filters", async () => {
-    const { status, body } = await get("/ausencias", withCreds());
-    expect(status).toBe(200);
-    expect(Array.isArray(body.ausencias)).toBe(true);
-    expect(typeof body.total).toBe("number");
-    if (body.ausencias.length > 0) {
-      const a = body.ausencias[0];
-      expect(a).toHaveProperty("tipo");
-      expect(a).toHaveProperty("fechaDesde");
-      expect(a).toHaveProperty("fechaHasta");
-      expect(a).toHaveProperty("estado");
-      expect(a).toHaveProperty("nombre");
-    }
-  });
+		const res = await client.documents.search.get({
+			query: { ...QUERY_CREDS, q: 'ab' },
+		});
 
-  it("historial=true returns only historial tab records", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ historial: "true" }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.ausencias)).toBe(true);
-  });
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: "Query param 'q' must be at least 3 characters.",
+		});
+		expect(scrapeFileSearch).not.toHaveBeenCalled();
+	});
 
-  it("historial=false returns only próximas tab records", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ historial: "false" }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.ausencias)).toBe(true);
-  });
+	test('maps search results to entries', async () => {
+		const scrapeFileSearch = mock(async () => ({
+			success: true,
+			results: [
+				{
+					carpeta: 'Contratos',
+					nombre: 'contrato.pdf',
+					href: '/enviar_doc/1',
+					url: 'https://example.com/contrato.pdf',
+				},
+			],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeFileSearch });
 
-  it("estado filter only returns matching records", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ estado: "Pendiente" }));
-    expect(status).toBe(200);
-    for (const a of body.ausencias) {
-      expect(a.estado).toBe("Pendiente");
-    }
-  });
+		const res = await client.documents.search.get({
+			query: { ...QUERY_CREDS, q: 'contrato' },
+		});
 
-  it("estado=Rechazada returns only rejected records", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ estado: "Rechazada" }));
-    expect(status).toBe(200);
-    for (const a of body.ausencias) {
-      expect(a.estado).toBe("Rechazada");
-    }
-  });
+		expect(res.status).toBe(200);
+		expect(res.data).toEqual({
+			cursor: null,
+			entries: [
+				{
+					id: '/enviar_doc/1',
+					name: 'contrato.pdf',
+					nexataId: null,
+					url: 'https://example.com/contrato.pdf',
+					path: '/enviar_doc/1',
+					ext: 'pdf',
+					extra: { carpeta: 'Contratos' },
+				},
+			],
+		});
+	});
 
-  it("from/to date range excludes out-of-range records", async () => {
-    const from = "2020-01-01";
-    const to   = "2030-12-31";
-    const { status, body } = await get("/ausencias", withCreds({ from, to }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.ausencias)).toBe(true);
-    // All fechaDesde must be parseable dates (basic sanity)
-    for (const a of body.ausencias) {
-      expect(typeof a.fechaDesde).toBe("string");
-    }
-  });
+	test('requires a non-empty selection for downloads', async () => {
+		const scrapeDownload = mock(async () => ({
+			success: true,
+			metadata: [],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeDownload });
 
-  it("from date in the future returns empty array", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ from: "2099-01-01" }));
-    expect(status).toBe(200);
-    expect(body.ausencias.length).toBe(0);
-  });
+		const res = await client.documents.download.post(
+			{ selection: [] },
+			{ query: QUERY_CREDS },
+		);
 
-  it("to date in the past returns empty array", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ to: "2000-01-01" }));
-    expect(status).toBe(200);
-    expect(body.ausencias.length).toBe(0);
-  });
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: "Body 'selection' must be a non-empty array.",
+		});
+		expect(scrapeDownload).not.toHaveBeenCalled();
+	});
 
-  it("name filter is case-insensitive and reduces result set", async () => {
-    const all        = await get("/ausencias", withCreds());
-    const filtered   = await get("/ausencias", withCreds({ name: "zzz_nombre_que_no_existe" }));
-    expect(filtered.status).toBe(200);
-    expect(filtered.body.ausencias.length).toBe(0);
-    expect(all.body.ausencias.length).toBeGreaterThanOrEqual(filtered.body.ausencias.length);
-  });
+	test('rejects absolute external URLs for direct downloads', async () => {
+		const scrapeDownload = mock(async () => ({
+			success: true,
+			metadata: [],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeDownload });
 
-  it("motivo filter reduces result set", async () => {
-    const { status, body } = await get("/ausencias", withCreds({ motivo: "licencia" }));
-    expect(status).toBe(200);
-    for (const a of body.ausencias) {
-      expect((a.tipo as string).toLowerCase()).toContain("licencia");
-    }
-  });
+		const res = await client.documents.download.post(
+			{
+				selection: [{ id: 'https://evil.example/file.pdf', isDir: false }],
+			},
+			{ query: QUERY_CREDS },
+		);
 
-  it("combined filters: historial + estado + from + to", async () => {
-    const { status, body } = await get(
-      "/ausencias",
-      withCreds({ historial: "true", estado: "Aprobada", from: "2020-01-01", to: "2030-12-31" }),
-    );
-    expect(status).toBe(200);
-    expect(Array.isArray(body.ausencias)).toBe(true);
-    for (const a of body.ausencias) {
-      expect(a.estado).toBe("Aprobada");
-    }
-  });
-});
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: 'Invalid document id: expected a Legajox relative path.',
+		});
+		expect(scrapeDownload).not.toHaveBeenCalled();
+	});
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /info
-// ─────────────────────────────────────────────────────────────────────────────
+	test('rejects malformed directory ids for downloads', async () => {
+		const scrapeDownload = mock(async () => ({
+			success: true,
+			metadata: [],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeDownload });
 
-describe.skipIf(SKIP_SCRAPE)("GET /info — scraping", () => {
-  it("returns user/company profile data", async () => {
-    const { status, body } = await get("/info", withCreds());
-    expect(status).toBe(200);
-    expect(body).not.toHaveProperty("error");
-  });
-});
+		const res = await client.documents.download.post(
+			{
+				selection: [{ id: '../secrets', isDir: true }],
+			},
+			{ query: QUERY_CREDS },
+		);
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /org-chart
-// ─────────────────────────────────────────────────────────────────────────────
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: 'Invalid directory id: expected a Legajox relative path.',
+		});
+		expect(scrapeDownload).not.toHaveBeenCalled();
+	});
 
-describe.skipIf(SKIP_SCRAPE)("GET /org-chart — scraping", () => {
-  it("returns hierarchical org chart data", async () => {
-    const { status, body } = await get("/org-chart", withCreds());
-    expect(status).toBe(200);
-    expect(body).not.toHaveProperty("error");
-  });
-});
+	test('splits selected dirs and direct links for download', async () => {
+		const scrapeDownload = mock(async () => ({
+			success: true,
+			metadata: [
+				{
+					nombre: 'contrato.pdf',
+					downloadUrl: 'https://example.com/contrato.pdf',
+					pesoBytes: 1048576,
+					extension: 'pdf',
+					fecha: '31/07/2025 11:25hs',
+					firmado: true,
+					dirNombre: 'Contratos',
+					rutaLocal: 'outputs/_descargas_tmp/contrato.pdf',
+					estado: 'ok',
+					pesoLegible: '1.00 MB',
+					dir: '/files/edit/123',
+				},
+			],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeDownload });
 
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /vacaciones
-// ─────────────────────────────────────────────────────────────────────────────
+		const res = await client.documents.download.post(
+			{
+				selection: [
+					{ id: '/files/edit/123', isDir: true },
+					{ id: '/storage/contrato.pdf?token=abc', isDir: false },
+				],
+			},
+			{ query: QUERY_CREDS },
+		);
 
-describe.skipIf(SKIP_SCRAPE)("GET /vacaciones — scraping", () => {
-  it("returns vacation balances", async () => {
-    const { status, body } = await get("/vacaciones", withCreds());
-    expect(status).toBe(200);
-    expect(body).not.toHaveProperty("error");
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /documents/list
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe.skipIf(SKIP_SCRAPE)("GET /documents/list — scraping", () => {
-  it("returns top-level folders when no path is provided", async () => {
-    const { status, body } = await get("/documents/list", withCreds());
-    expect(status).toBe(200);
-    expect(Array.isArray(body.entries)).toBe(true);
-    if (body.entries.length > 0) {
-      const entry = body.entries[0];
-      expect(entry).toHaveProperty("id");
-      expect(entry).toHaveProperty("name");
-      expect(entry.ext).toBe("dir");
-    }
-  });
-
-  it("returns files when a valid folder path is provided", async () => {
-    // First, get the real folder paths
-    const { body: listBody } = await get("/documents/list", withCreds());
-    if (!listBody.entries || listBody.entries.length === 0) return; // skip if no folders
-
-    const firstFolder = listBody.entries[0].id;
-    const { status, body } = await get("/documents/list", withCreds({ path: firstFolder }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.entries)).toBe(true);
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /documents/search
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("GET /documents/search — param validation", () => {
-  it("returns 400 when q param is missing", async () => {
-    const { status, body } = await get("/documents/search", withCreds());
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
-
-  it("returns 400 when q is shorter than 3 characters", async () => {
-    const { status, body } = await get("/documents/search", withCreds({ q: "ab" }));
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
-});
-
-describe.skipIf(SKIP_SCRAPE)("GET /documents/search — scraping", () => {
-  it("returns search results with correct shape", async () => {
-    const { status, body } = await get("/documents/search", withCreds({ q: "contrato" }));
-    expect(status).toBe(200);
-    expect(Array.isArray(body.entries)).toBe(true);
-    if (body.entries.length > 0) {
-      const entry = body.entries[0];
-      expect(entry).toHaveProperty("id");
-      expect(entry).toHaveProperty("name");
-      expect(entry).toHaveProperty("url");
-    }
-  });
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// POST /documents/download
-// ─────────────────────────────────────────────────────────────────────────────
-
-describe("POST /documents/download — param validation", () => {
-  it("returns 400 when selection is empty", async () => {
-    const { status, body } = await post("/documents/download", { selection: [] }, withCreds());
-    expect(status).toBe(400);
-    expect(body).toHaveProperty("error");
-  });
-
-  it("returns 401 when no Authorization header", async () => {
-    const { status } = await post(
-      "/documents/download",
-      { selection: [{ id: "/files/edit/123", isDir: true }] },
-      withCreds(),
-      { noAuth: true },
-    );
-    expect(status).toBe(401);
-  });
+		expect(res.status).toBe(200);
+		expect(scrapeDownload).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			['/files/edit/123'],
+			['/storage/contrato.pdf?token=abc'],
+			expect.anything(),
+		);
+		expect(res.data?.entries[0]).toEqual(
+			expect.objectContaining({
+				id: 'https://example.com/contrato.pdf',
+				name: 'contrato.pdf',
+				size: 1,
+				path: 'outputs/_descargas_tmp/contrato.pdf',
+				ext: 'pdf',
+				extra: {
+					estado: 'ok',
+					firmado: true,
+					dirNombre: 'Contratos',
+					dirPath: '/files/edit/123',
+					pesoBytes: 1048576,
+					pesoLegible: '1.00 MB',
+					fechaRaw: '31/07/2025 11:25hs',
+				},
+			}),
+		);
+		expect(res.data?.entries[0]?.updatedAt).toBeInstanceOf(Date);
+	});
 });

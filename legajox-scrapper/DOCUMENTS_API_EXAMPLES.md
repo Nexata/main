@@ -10,6 +10,8 @@ http://localhost:3000
 Authorization: Bearer xd
 ```
 
+Legajox credentials can be sent as `user` / `password` query params, but they are optional when the API server has `DEFAULT_USER` and `DEFAULT_PASSWORD` configured.
+
 ---
 
 ## 1. GET `/documents/list` — List folders or files
@@ -17,7 +19,7 @@ Authorization: Bearer xd
 ### 1a. List top-level folders (root)
 **Request:**
 ```http
-GET /documents/list?user=user@example.com&password=pass123
+GET /documents/list
 Authorization: Bearer xd
 ```
 
@@ -53,7 +55,7 @@ Authorization: Bearer xd
 ### 1b. List files inside a specific folder
 **Request:**
 ```http
-GET /documents/list?user=user@example.com&password=pass123&path=/files/edit/11111
+GET /documents/list?path=/files/edit/11111
 Authorization: Bearer xd
 ```
 
@@ -96,13 +98,14 @@ Authorization: Bearer xd
 
 ### Request
 ```http
-GET /documents/search?user=user@example.com&password=pass123&q=contrato
+GET /documents/search?q=contrato
 Authorization: Bearer xd
 ```
 
 **Notes:**
 - Query param `q` is **required** and must be **at least 3 characters**.
 - Case-insensitive search.
+- `user` and `password` query params are optional when `DEFAULT_USER` and `DEFAULT_PASSWORD` exist on the server.
 
 ### Response
 ```json
@@ -141,7 +144,7 @@ Authorization: Bearer xd
 
 ### Request
 ```http
-POST /documents/download?user=user@example.com&password=pass123
+POST /documents/download
 Authorization: Bearer xd
 Content-Type: application/json
 
@@ -289,7 +292,7 @@ HTTP 400
 ```
 ```json
 {
-  "error": "Query params 'user' and 'password' are required."
+  "error": "Query params 'user' and 'password' are required when DEFAULT_USER and DEFAULT_PASSWORD are not configured."
 }
 ```
 
@@ -331,19 +334,19 @@ HTTP 500
 ### List folders
 ```bash
 curl -H "Authorization: Bearer xd" \
-  "http://localhost:3000/documents/list?user=user@example.com&password=pass123"
+  "http://localhost:3000/documents/list"
 ```
 
 ### List files in folder
 ```bash
 curl -H "Authorization: Bearer xd" \
-  "http://localhost:3000/documents/list?user=user@example.com&password=pass123&path=/files/edit/11111"
+  "http://localhost:3000/documents/list?path=/files/edit/11111"
 ```
 
 ### Search files
 ```bash
 curl -H "Authorization: Bearer xd" \
-  "http://localhost:3000/documents/search?user=user@example.com&password=pass123&q=contrato"
+  "http://localhost:3000/documents/search?q=contrato"
 ```
 
 ### Download selection
@@ -357,5 +360,5 @@ curl -X POST \
       {"id": "/enviar_doc/45812", "isDir": false}
     ]
   }' \
-  "http://localhost:3000/documents/download?user=user@example.com&password=pass123"
+  "http://localhost:3000/documents/download"
 ```
