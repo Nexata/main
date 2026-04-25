@@ -119,6 +119,20 @@ describe('Auth guard', () => {
 		expect(res.status).toBe(200);
 	});
 
+	test('serves OpenAPI json without Authorization', async () => {
+		const { client } = makeClient({}, { authHeader: null });
+
+		const res = await client.docs.json.get();
+
+		expect(res.status).toBe(200);
+		expect(res.data).toMatchObject({
+			openapi: expect.any(String),
+			info: expect.objectContaining({
+				title: 'Legajox Scrapper API',
+			}),
+		});
+	});
+
 	test('rejects requests without Authorization', async () => {
 		const { client } = makeClient({}, { authHeader: null });
 
@@ -222,6 +236,24 @@ describe('Server config', () => {
 				PORT: 'abc',
 			}),
 		).toThrow("Fatal: invalid PORT value 'abc'. Expected 1-65535.");
+	});
+
+	test('prefers PUBLIC_URL in generated OpenAPI servers', async () => {
+		const previous = process.env.PUBLIC_URL;
+		process.env.PUBLIC_URL = 'https://scrapper.example.com';
+
+		try {
+			const { client } = makeClient({}, { authHeader: null });
+			const res = await client.docs.json.get();
+
+			expect(res.status).toBe(200);
+			expect(res.data?.servers).toEqual([
+				{ url: 'https://scrapper.example.com', description: 'Deployment' },
+			]);
+		} finally {
+			if (previous == null) delete process.env.PUBLIC_URL;
+			else process.env.PUBLIC_URL = previous;
+		}
 	});
 });
 

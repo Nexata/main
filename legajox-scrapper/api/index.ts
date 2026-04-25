@@ -1,4 +1,4 @@
-import openapi from '@elysiajs/openapi';
+import openapi, { fromTypes } from '@elysiajs/openapi';
 import { Elysia, t } from 'elysia';
 import { type AusenciasFilters, scrapeAusencias } from '../scripts/absences';
 import { scrapeDownload } from '../scripts/documents/download-docs';
@@ -18,6 +18,329 @@ const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
 const DOCS_PATH = '/docs';
 const OPENAPI_JSON_PATH = '/docs/json';
+
+const OPENAPI_DESCRIPTION =
+	'HTTP wrapper around Puppeteer-based Legajox scrapers for employees, profile data, organizational chart, payroll actions, absences, vacation balances, and Legajox documents.';
+
+const OPENAPI_TYPE_REFERENCES = `{
+	"/employees": {
+		get: {
+			query: {
+				user?: string;
+				password?: string;
+				search?: string;
+				page?: string;
+			};
+			response: {
+				200: { employees: import('../scripts/employees').Employee[]; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/info": {
+		get: {
+			query: { user?: string; password?: string };
+			response: {
+				200: { info: import('../scripts/general_information').GeneralInfo; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/org-chart": {
+		get: {
+			query: { user?: string; password?: string };
+			response: {
+				200: { chart: import('../scripts/org_chart').OrgChart; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/liquidaciones": {
+		get: {
+			query: { user?: string; password?: string; search?: string; page?: string };
+			response: {
+				200: { liquidaciones: import('../scripts/pending_actions').Liquidacion[]; total: number; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/ausencias": {
+		get: {
+			query: { user?: string; password?: string; name?: string; from?: string; to?: string; historial?: string; motivo?: string; estado?: string };
+			response: {
+				200: { ausencias: import('../scripts/absences').Ausencia[]; total: number; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/vacaciones": {
+		get: {
+			query: { user?: string; password?: string };
+			response: {
+				200: { registros: import('../scripts/vacation_days').VacacionEmpleado[]; total: number; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+}`;
+
+const ErrorResponse = t.Object({
+	error: t.String({ description: 'Human-readable error message.' }),
+});
+
+const ScrapeFailureResponse = t.Object({
+	error: t.String({ description: 'Top-level scrape failure message.' }),
+	details: t.Array(t.String(), {
+		description: 'Underlying scraper errors collected during execution.',
+	}),
+});
+
+const EmployeeResponse = t.Object({
+	nombre: t.String(),
+	dni: t.String(),
+	cuil: t.String(),
+	email: t.String(),
+	telefono: t.String(),
+	empresa: t.String(),
+	legajo: t.String(),
+	fechaIngreso: t.String(),
+	locacion: t.String(),
+	estado: t.String(),
+});
+
+const EmployeesResponse = t.Object({
+	employees: t.Array(EmployeeResponse),
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const EmpresaResponse = t.Object({
+	nombre: t.String(),
+	cuit: t.String(),
+});
+
+const ModuloResponse = t.Object({
+	nombre: t.String(),
+	activo: t.Boolean(),
+});
+
+const AnuncioResponse = t.Object({
+	autor: t.String(),
+	fecha: t.String(),
+	texto: t.String(),
+});
+
+const GeneralInfoResponse = t.Object({
+	nombreApellido: t.String(),
+	dni: t.String(),
+	cuit: t.String(),
+	email: t.String(),
+	celular: t.String(),
+	locacion: t.String(),
+	puestoSector: t.String(),
+	fechaContratacion: t.String(),
+	tipoColaborador: t.String(),
+	reportaA: t.String(),
+	legajo: t.String(),
+	fechaNacimiento: t.String(),
+	estadoCivil: t.String(),
+	sexo: t.String(),
+	domicilio: t.String(),
+	codigoPostal: t.String(),
+	pais: t.String(),
+	provincia: t.String(),
+	ciudad: t.String(),
+	puestoLaboral: t.String(),
+	sectorLaboral: t.String(),
+	turno: t.String(),
+	fechaContratacionLaboral: t.String(),
+	empresas: t.Array(EmpresaResponse),
+	legajosUsados: t.String(),
+	legajosTotal: t.String(),
+	modulos: t.Array(ModuloResponse),
+	miResponsable: t.String(),
+	reportanAMi: t.Array(t.String()),
+	anuncios: t.Array(AnuncioResponse),
+});
+
+const InfoResponse = t.Object({
+	info: GeneralInfoResponse,
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const OrgNodeResponse = t.Object({
+	usrId: t.String(),
+	legId: t.String(),
+	nombre: t.String(),
+	apellido: t.String(),
+	email: t.String(),
+	grupo: t.String(),
+	reportaA: t.String(),
+	subordinados: t.Array(t.Any()),
+});
+
+const OrgChartResponse = t.Object({
+	totalEmpleados: t.String(),
+	sinPerfilAsignado: t.String(),
+	raiz: t.Union([OrgNodeResponse, t.Null()]),
+	noAsignados: t.Array(OrgNodeResponse),
+});
+
+const OrgChartEnvelope = t.Object({
+	chart: OrgChartResponse,
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const LiquidacionResponse = t.Object({
+	id: t.String(),
+	descripcion: t.String(),
+	estado: t.String(),
+	pdfUrl: t.String(),
+});
+
+const LiquidacionesResponse = t.Object({
+	liquidaciones: t.Array(LiquidacionResponse),
+	total: t.Number(),
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const AusenciaResponse = t.Object({
+	tipo: t.String(),
+	fechaDesde: t.String(),
+	fechaHasta: t.String(),
+	estado: t.String(),
+	nombre: t.String(),
+	dni: t.String(),
+	cuil: t.String(),
+	email: t.String(),
+	telefono: t.String(),
+	locacion: t.String(),
+	fechaContratacion: t.String(),
+	comentario: t.String(),
+});
+
+const AusenciasResponse = t.Object({
+	ausencias: t.Array(AusenciaResponse),
+	total: t.Number(),
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const VacacionEmpleadoResponse = t.Object({
+	nombre: t.String(),
+	asignacionInicial: t.String(),
+	prorrateo: t.String(),
+	acarreo: t.String(),
+	disfrutados: t.String(),
+	planeados: t.String(),
+	proximoCiclo: t.String(),
+	disponibles: t.String(),
+});
+
+const VacacionesResponse = t.Object({
+	registros: t.Array(VacacionEmpleadoResponse),
+	total: t.Number(),
+	errors: t.Optional(t.Array(t.String())),
+});
+
+const DocumentListEntryResponse = t.Object({
+	id: t.String(),
+	name: t.String(),
+	nexataId: t.Union([t.String(), t.Null()]),
+	url: t.Optional(t.String()),
+	size: t.Optional(t.Number()),
+	path: t.Optional(t.String()),
+	ext: t.Optional(t.String()),
+	updatedAt: t.Optional(t.Date()),
+	extra: t.Optional(t.Record(t.String(), t.Any())),
+});
+
+const DocumentListResponse = t.Object({
+	cursor: t.Union([t.String(), t.Null()]),
+	entries: t.Array(DocumentListEntryResponse),
+});
+
+const CredentialsQuery = t.Object({
+	user: t.Optional(
+		t.String({ description: 'Legajox username. Falls back to DEFAULT_USER.' }),
+	),
+	password: t.Optional(
+		t.String({
+			description: 'Legajox password. Falls back to DEFAULT_PASSWORD.',
+		}),
+	),
+});
+
+const SearchAndPageQuery = t.Object({
+	user: t.Optional(t.String()),
+	password: t.Optional(t.String()),
+	search: t.Optional(
+		t.String({
+			description: 'Free-text filter applied through the UI search box.',
+		}),
+	),
+	page: t.Optional(t.String({ description: '1-based page number to scrape.' })),
+});
+
+const DocumentsListQuery = t.Object({
+	user: t.Optional(t.String()),
+	password: t.Optional(t.String()),
+	path: t.Optional(
+		t.String({
+			description: 'Folder path returned by /documents/list top-level entries.',
+		}),
+	),
+});
+
+const DocumentsSearchQuery = t.Object({
+	user: t.Optional(t.String()),
+	password: t.Optional(t.String()),
+	q: t.String({ description: 'Search term, minimum 3 characters.' }),
+});
+
+const AusenciasQuery = t.Object({
+	user: t.Optional(t.String()),
+	password: t.Optional(t.String()),
+	name: t.Optional(t.String()),
+	from: t.Optional(
+		t.String({ description: 'Inclusive start date in YYYY-MM-DD.' }),
+	),
+	to: t.Optional(
+		t.String({ description: 'Inclusive end date in YYYY-MM-DD.' }),
+	),
+	historial: t.Optional(
+		t.String({
+			description: 'true for history, false for upcoming, absent for both.',
+		}),
+	),
+	motivo: t.Optional(t.String()),
+	estado: t.Optional(t.String()),
+});
+
+const DownloadRequest = t.Object({
+	selection: t.Array(
+		t.Object({
+			id: t.String({
+				description:
+					'Legajox folder path or document path, depending on isDir.',
+			}),
+			isDir: t.Boolean({
+				description:
+					'true when id is a folder path, false for a document path.',
+			}),
+		}),
+	),
+});
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -83,6 +406,15 @@ function missingCreds() {
 
 function isDocsPath(path: string) {
 	return path === DOCS_PATH || path === OPENAPI_JSON_PATH;
+}
+
+function getOpenApiServers() {
+	const publicUrl = process.env.PUBLIC_URL?.trim();
+	if (publicUrl) {
+		return [{ url: publicUrl, description: 'Deployment' }];
+	}
+
+	return [];
 }
 
 function hasCredential(value: string | undefined): value is string {
@@ -345,17 +677,38 @@ export function createApp({
 					path: DOCS_PATH,
 					specPath: OPENAPI_JSON_PATH,
 					provider: 'scalar',
+					references: fromTypes(OPENAPI_TYPE_REFERENCES),
 					documentation: {
 						info: {
 							title: 'Legajox Scrapper API',
 							version: '1.0.0',
-							description:
-								'HTTP wrapper around Puppeteer-based Legajox scrapers.',
+							description: OPENAPI_DESCRIPTION,
 						},
-						servers: [
+						servers: getOpenApiServers(),
+						tags: [
+							{ name: 'auth', description: 'Credential validation endpoints.' },
+							{ name: 'employees', description: 'Employee roster scraping.' },
 							{
-								url: `http://localhost:${process.env.PORT ?? DEFAULT_PORT}`,
-								description: 'Local',
+								name: 'profile',
+								description: 'Authenticated user profile and dashboard data.',
+							},
+							{
+								name: 'org-chart',
+								description: 'Organization structure scraping.',
+							},
+							{
+								name: 'payroll',
+								description: 'Pending payroll documents and actions.',
+							},
+							{ name: 'absences', description: 'Absence records and filters.' },
+							{
+								name: 'vacations',
+								description: 'Vacation balances per employee.',
+							},
+							{
+								name: 'documents',
+								description:
+									'Document listing, search, and download endpoints.',
 							},
 						],
 						components: {
@@ -372,6 +725,7 @@ export function createApp({
 						defaultOpenAllTags: true,
 						expandAllModelSections: true,
 						expandAllResponses: true,
+						hideClientButton: true,
 						hideDarkModeToggle: true,
 						persistAuth: true,
 						theme: 'elysiajs',
@@ -422,6 +776,8 @@ export function createApp({
 					},
 					detail: {
 						summary: 'Validate Legajox credentials',
+						description:
+							'Attempts a real Legajox login using explicit query credentials or configured defaults.',
 						tags: ['auth'],
 						security: [{ bearerAuth: [] }],
 					},
@@ -432,139 +788,216 @@ export function createApp({
 			// Returns all employees with their profile data (nombre, DNI, email, estado, etc.)
 			// Optional: search (string) — filters via DataTable search box before scraping
 			// Optional: page (int)     — scrapes only the given page (1-based); returns empty if out of range
-			.get('/employees', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const { search, page } = queryParams;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				const parsedPage = page != null ? parseInt(page, 10) : null;
-				if (
-					parsedPage !== null &&
-					(Number.isNaN(parsedPage) || parsedPage < 1)
-				) {
-					return status(400, {
-						error: "Query param 'page' must be a positive integer.",
-					});
-				}
-				const options = { search: search ?? null, page: parsedPage };
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeEmployees(creds.user, creds.password, options, signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
+			.get(
+				'/employees',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { search, page } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					const parsedPage = page != null ? parseInt(page, 10) : null;
+					if (
+						parsedPage !== null &&
+						(Number.isNaN(parsedPage) || parsedPage < 1)
+					) {
+						return status(400, {
+							error: "Query param 'page' must be a positive integer.",
 						});
-					return toResponse(result);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /employees error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+					}
+					const options = { search: search ?? null, page: parsedPage };
+					try {
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeEmployees(creds.user, creds.password, options, signal),
+						);
+						if (!result.success)
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						return toResponse(result);
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /employees error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: SearchAndPageQuery,
+					response: {
+						200: EmployeesResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List employees',
+						description:
+							'Scrapes the Legajox employees table, optionally applying the UI search filter and limiting the scrape to a specific page.',
+						tags: ['employees'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /info ──────────────────────────────────────────────────────────────
 			// Returns the authenticated user's profile, company data, plan, and dashboard info.
-			.get('/info', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeGeneralInfo(creds.user, creds.password, signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
-						});
-					return toResponse(result);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /info error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+			.get(
+				'/info',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					try {
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeGeneralInfo(creds.user, creds.password, signal),
+						);
+						if (!result.success)
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						return toResponse(result);
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /info error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: CredentialsQuery,
+					response: {
+						200: InfoResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'Get authenticated profile info',
+						description:
+							'Scrapes the authenticated profile, dashboard, companies, plan usage, manager data, and announcements visible to the current user.',
+						tags: ['profile'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /org-chart ─────────────────────────────────────────────────────────
 			// Returns the organizational chart as a hierarchical tree structure.
-			.get('/org-chart', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeOrgChart(creds.user, creds.password, signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
-						});
-					return toResponse(result);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /org-chart error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+			.get(
+				'/org-chart',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					try {
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeOrgChart(creds.user, creds.password, signal),
+						);
+						if (!result.success)
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						return toResponse(result);
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /org-chart error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: CredentialsQuery,
+					response: {
+						200: OrgChartEnvelope,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'Get organizational chart',
+						description:
+							'Scrapes the Legajox organization chart and returns a hierarchical tree plus unassigned employees.',
+						tags: ['org-chart'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /liquidaciones ─────────────────────────────────────────────────────
 			// Returns pending payroll actions (recibos de sueldo, liquidaciones, Aconpy).
 			// Optional: search (string) — filters via DataTable search box before scraping
 			// Optional: page (int)     — scrapes only the given page (1-based); returns empty if out of range
-			.get('/liquidaciones', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const { search, page } = queryParams;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				const parsedPage = page != null ? parseInt(page, 10) : null;
-				if (
-					parsedPage !== null &&
-					(Number.isNaN(parsedPage) || parsedPage < 1)
-				) {
-					return status(400, {
-						error: "Query param 'page' must be a positive integer.",
-					});
-				}
-				const options = { search: search ?? null, page: parsedPage };
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeLiquidaciones(
-							creds.user,
-							creds.password,
-							options,
-							signal,
-						),
-					);
-					if (!result.success) {
-						console.error(`[api] /liquidaciones: scrape flagged as failed`);
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
+			.get(
+				'/liquidaciones',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { search, page } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					const parsedPage = page != null ? parseInt(page, 10) : null;
+					if (
+						parsedPage !== null &&
+						(Number.isNaN(parsedPage) || parsedPage < 1)
+					) {
+						return status(400, {
+							error: "Query param 'page' must be a positive integer.",
 						});
 					}
-					const response = toResponse(result);
-					// Pre-serialize to detect serialization errors (kept as a safe check)
+					const options = { search: search ?? null, page: parsedPage };
 					try {
-						JSON.stringify(response);
-					} catch (serErr) {
-						const msg =
-							serErr instanceof Error ? serErr.message : String(serErr);
-						console.error(
-							`[api] /liquidaciones: JSON serialization failed:`,
-							msg,
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeLiquidaciones(
+								creds.user,
+								creds.password,
+								options,
+								signal,
+							),
 						);
-						return status(500, { error: `JSON serialization failed: ${msg}` });
+						if (!result.success) {
+							console.error(`[api] /liquidaciones: scrape flagged as failed`);
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						}
+						const response = toResponse(result);
+						try {
+							JSON.stringify(response);
+						} catch (serErr) {
+							const msg =
+								serErr instanceof Error ? serErr.message : String(serErr);
+							console.error(
+								`[api] /liquidaciones: JSON serialization failed:`,
+								msg,
+							);
+							return status(500, {
+								error: `JSON serialization failed: ${msg}`,
+							});
+						}
+						return response;
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /liquidaciones error: ${msg}`);
+						return status(500, { error: msg });
 					}
-					return response;
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /liquidaciones error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+				},
+				{
+					query: SearchAndPageQuery,
+					response: {
+						200: LiquidacionesResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List payroll actions',
+						description:
+							'Scrapes pending payroll actions such as payslips and preview links, optionally filtered by search text and page.',
+						tags: ['payroll'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /ausencias ─────────────────────────────────────────────────────────
 			// Returns absence records (licencias, permisos, inasistencias, faltas).
@@ -575,90 +1008,131 @@ export function createApp({
 			//   historial — "true" → historial tab only | "false" → próximas tab only | absent → both
 			//   motivo    — case-insensitive match on tipo (reason/type of absence)
 			//   estado    — exact match: "Aprobada" | "Pendiente" | "Rechazada"
-			.get('/ausencias', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const { name, from, to, historial, motivo, estado } = queryParams;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				const validEstados = ['Aprobada', 'Pendiente', 'Rechazada'] as const;
-				if (
-					estado &&
-					!validEstados.includes(estado as (typeof validEstados)[number])
-				) {
-					return status(400, {
-						error: `Query param 'estado' must be one of: ${validEstados.join(', ')}.`,
-					});
-				}
-				const filters: AusenciasFilters = {
-					name: name ?? null,
-					from: from ?? null,
-					to: to ?? null,
-					historial: historial != null ? historial === 'true' : null,
-					motivo: motivo ?? null,
-					estado: (estado as AusenciasFilters['estado']) ?? null,
-				};
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeAusencias(creds.user, creds.password, filters, signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
+			.get(
+				'/ausencias',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { name, from, to, historial, motivo, estado } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					const validEstados = ['Aprobada', 'Pendiente', 'Rechazada'] as const;
+					if (
+						estado &&
+						!validEstados.includes(estado as (typeof validEstados)[number])
+					) {
+						return status(400, {
+							error: `Query param 'estado' must be one of: ${validEstados.join(', ')}.`,
 						});
-					return toResponse(result);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /ausencias error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
-
-			// ── GET /vacaciones ────────────────────────────────────────────────────────
-			// Returns vacation day balances per employee.
-			.get('/vacaciones', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeVacaciones(creds.user, creds.password, signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
-						});
-					return toResponse(result);
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /vacaciones error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
-
-			// ── GET /documents/list ──────────────────────────────────────────────────
-			// path absent → top-level folders (list-dirs).
-			// path provided → files inside that folder (list-docs).
-			.get('/documents/list', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const { path: dirPath } = queryParams;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				try {
-					if (!dirPath) {
+					}
+					const filters: AusenciasFilters = {
+						name: name ?? null,
+						from: from ?? null,
+						to: to ?? null,
+						historial: historial != null ? historial === 'true' : null,
+						motivo: motivo ?? null,
+						estado: (estado as AusenciasFilters['estado']) ?? null,
+					};
+					try {
 						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeListDirs(creds.user, creds.password, signal),
+							deps.scrapeAusencias(creds.user, creds.password, filters, signal),
 						);
 						if (!result.success)
 							return status(500, {
 								error: 'Scrape failed',
 								details: result.errors,
 							});
-						const entries: NexataListDirEntry[] =
-							result.carpetas.map(carpetaToEntry);
-						return { cursor: null, entries } as NexataListDir;
-					} else {
+						return toResponse(result);
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /ausencias error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: AusenciasQuery,
+					response: {
+						200: AusenciasResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List absences',
+						description:
+							'Scrapes Legajox absence cards and optionally filters the combined result set by employee, date range, reason, state, and historial mode.',
+						tags: ['absences'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
+
+			// ── GET /vacaciones ────────────────────────────────────────────────────────
+			// Returns vacation day balances per employee.
+			.get(
+				'/vacaciones',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					try {
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeVacaciones(creds.user, creds.password, signal),
+						);
+						if (!result.success)
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						return toResponse(result);
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /vacaciones error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: CredentialsQuery,
+					response: {
+						200: VacacionesResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List vacation balances',
+						description:
+							'Scrapes the vacation balance table visible to the authenticated Legajox user.',
+						tags: ['vacations'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
+
+			// ── GET /documents/list ──────────────────────────────────────────────────
+			// path absent → top-level folders (list-dirs).
+			// path provided → files inside that folder (list-docs).
+			.get(
+				'/documents/list',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { path: dirPath } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					try {
+						if (!dirPath) {
+							const result = await withScrapeTimeout((signal) =>
+								deps.scrapeListDirs(creds.user, creds.password, signal),
+							);
+							if (!result.success)
+								return status(500, {
+									error: 'Scrape failed',
+									details: result.errors,
+								});
+							const entries: NexataListDirEntry[] =
+								result.carpetas.map(carpetaToEntry);
+							return { cursor: null, entries } as NexataListDir;
+						}
+
 						assertLegajoxRelativePath(dirPath.trim(), 'directory');
 						const result = await withScrapeTimeout((signal) =>
 							deps.scrapeListDocs(
@@ -676,44 +1150,84 @@ export function createApp({
 						const entries: NexataListDirEntry[] =
 							result.documentos.map(documentoToEntry);
 						return { cursor: null, entries } as NexataListDir;
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /documents/list error: ${msg}`);
+						return status(500, { error: msg });
 					}
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /documents/list error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+				},
+				{
+					query: DocumentsListQuery,
+					response: {
+						200: DocumentListResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List documents or folders',
+						description:
+							'Without path, returns top-level document folders. With path, returns the files inside a specific Legajox folder.',
+						tags: ['documents'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /documents/search ─────────────────────────────────────────────────
 			// Full-text file search. Query param 'q' is required (min 3 characters).
-			.get('/documents/search', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const { q } = queryParams;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				if (!q) return status(400, { error: "Query param 'q' is required." });
-				if (q.trim().length < 3)
-					return status(400, {
-						error: "Query param 'q' must be at least 3 characters.",
-					});
-				try {
-					const result = await withScrapeTimeout((signal) =>
-						deps.scrapeFileSearch(creds.user, creds.password, q.trim(), signal),
-					);
-					if (!result.success)
-						return status(500, {
-							error: 'Scrape failed',
-							details: result.errors,
+			.get(
+				'/documents/search',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { q } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					if (!q) return status(400, { error: "Query param 'q' is required." });
+					if (q.trim().length < 3)
+						return status(400, {
+							error: "Query param 'q' must be at least 3 characters.",
 						});
-					const entries: NexataListDirEntry[] =
-						result.results.map(searchResultToEntry);
-					return { cursor: null, entries } as NexataListDir;
-				} catch (err) {
-					const msg = err instanceof Error ? err.message : String(err);
-					console.error(`[api] /documents/search error: ${msg}`);
-					return status(500, { error: msg });
-				}
-			})
+					try {
+						const result = await withScrapeTimeout((signal) =>
+							deps.scrapeFileSearch(
+								creds.user,
+								creds.password,
+								q.trim(),
+								signal,
+							),
+						);
+						if (!result.success)
+							return status(500, {
+								error: 'Scrape failed',
+								details: result.errors,
+							});
+						const entries: NexataListDirEntry[] =
+							result.results.map(searchResultToEntry);
+						return { cursor: null, entries } as NexataListDir;
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						console.error(`[api] /documents/search error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: DocumentsSearchQuery,
+					response: {
+						200: DocumentListResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'Search documents',
+						description:
+							'Runs the Legajox document full-text search UI and returns matching files as normalized entries.',
+						tags: ['documents'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── POST /documents/download ──────────────────────────────────────────────
 			// Triggers download of selected dirs / files; returns per-item metadata.
@@ -760,14 +1274,21 @@ export function createApp({
 					}
 				},
 				{
-					body: t.Object({
-						selection: t.Array(
-							t.Object({
-								id: t.String(),
-								isDir: t.Boolean(),
-							}),
-						),
-					}),
+					query: CredentialsQuery,
+					body: DownloadRequest,
+					response: {
+						200: DocumentListResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'Download selected documents',
+						description:
+							'Downloads selected Legajox folders or individual document paths and returns normalized metadata for the processed files.',
+						tags: ['documents'],
+						security: [{ bearerAuth: [] }],
+					},
 				},
 			)
 	);

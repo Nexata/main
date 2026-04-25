@@ -26,8 +26,11 @@ RUN apk add --no-cache \
 	freetype \
 	harfbuzz \
 	ca-certificates \
+	nodejs \
+	npm \
 	ttf-freefont \
 	libstdc++ && \
+	npm install -g typescript && \
 	addgroup -S app && \
 	adduser -S -G app app
 
