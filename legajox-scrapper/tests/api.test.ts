@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import { treaty } from '@elysiajs/eden';
 import type { AppDependencies } from '../api/index';
-import { createApp } from '../api/index';
+import { createApp, getServerConfigFromEnv } from '../api/index';
 
 const API_KEY = 'test-api-key';
 const QUERY_CREDS = {
@@ -111,6 +111,14 @@ beforeEach(() => {
 });
 
 describe('Auth guard', () => {
+	test('allows docs without Authorization', async () => {
+		const { client } = makeClient({}, { authHeader: null });
+
+		const res = await client.docs.get();
+
+		expect(res.status).toBe(200);
+	});
+
 	test('rejects requests without Authorization', async () => {
 		const { client } = makeClient({}, { authHeader: null });
 
@@ -191,6 +199,29 @@ describe('Validate route', () => {
 			QUERY_CREDS.user,
 			QUERY_CREDS.password,
 		);
+	});
+});
+
+describe('Server config', () => {
+	test('reads PORT from env', () => {
+		const config = getServerConfigFromEnv({
+			API_KEY,
+			PORT: '8080',
+			DEFAULT_USER: DEFAULT_CREDS.defaultUser,
+			DEFAULT_PASSWORD: DEFAULT_CREDS.defaultPassword,
+		});
+
+		expect(config.port).toBe(8080);
+		expect(config.apiKey).toBe(API_KEY);
+	});
+
+	test('rejects invalid PORT values', () => {
+		expect(() =>
+			getServerConfigFromEnv({
+				API_KEY,
+				PORT: 'abc',
+			}),
+		).toThrow("Fatal: invalid PORT value 'abc'. Expected 1-65535.");
 	});
 });
 

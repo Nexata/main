@@ -1,3 +1,4 @@
+import openapi from '@elysiajs/openapi';
 import { Elysia, t } from 'elysia';
 import { type AusenciasFilters, scrapeAusencias } from '../scripts/absences';
 import { scrapeDownload } from '../scripts/documents/download-docs';
@@ -14,6 +15,9 @@ import { validateCredentials } from '../scripts/validate_credentials';
 // ── Config ───────────────────────────────────────────────────────────────────
 
 const DEFAULT_PORT = 3000;
+const DEFAULT_HOST = '0.0.0.0';
+const DOCS_PATH = '/docs';
+const OPENAPI_JSON_PATH = '/docs/json';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -77,6 +81,10 @@ function missingCreds() {
 	};
 }
 
+function isDocsPath(path: string) {
+	return path === DOCS_PATH || path === OPENAPI_JSON_PATH;
+}
+
 function hasCredential(value: string | undefined): value is string {
 	return value != null && value !== '';
 }
@@ -95,14 +103,16 @@ function resolveCredentials(
 	return { user, password };
 }
 
-function getServerConfigFromEnv(): ServerConfig {
-	const apiKey = process.env.API_KEY;
+export function getServerConfigFromEnv(
+	env: Record<string, string | undefined> = process.env,
+): ServerConfig {
+	const apiKey = env.API_KEY;
 
 	if (!apiKey) {
 		throw new Error('Fatal: API_KEY environment variable is required.');
 	}
 
-	const portRaw = process.env.PORT;
+	const portRaw = env.PORT;
 	const port = portRaw == null ? DEFAULT_PORT : Number(portRaw);
 	if (!Number.isInteger(port) || port < 1 || port > 65_535) {
 		throw new Error(
@@ -113,8 +123,8 @@ function getServerConfigFromEnv(): ServerConfig {
 	return {
 		apiKey,
 		port,
-		defaultUser: process.env.DEFAULT_USER,
-		defaultPassword: process.env.DEFAULT_PASSWORD,
+		defaultUser: env.DEFAULT_USER,
+		defaultPassword: env.DEFAULT_PASSWORD,
 	};
 }
 
@@ -330,9 +340,56 @@ export function createApp({
 
 	return (
 		new Elysia()
+			.use(
+				openapi({
+					path: DOCS_PATH,
+					specPath: OPENAPI_JSON_PATH,
+					provider: 'scalar',
+					documentation: {
+						info: {
+							title: 'Legajox Scrapper API',
+							version: '1.0.0',
+							description:
+								'HTTP wrapper around Puppeteer-based Legajox scrapers.',
+						},
+						servers: [
+							{
+								url: `http://localhost:${process.env.PORT ?? DEFAULT_PORT}`,
+								description: 'Local',
+							},
+						],
+						components: {
+							securitySchemes: {
+								bearerAuth: {
+									type: 'http',
+									scheme: 'bearer',
+									bearerFormat: 'API key',
+								},
+							},
+						},
+					},
+					scalar: {
+						defaultOpenAllTags: true,
+						expandAllModelSections: true,
+						expandAllResponses: true,
+						hideDarkModeToggle: true,
+						persistAuth: true,
+						theme: 'elysiajs',
+					},
+				}),
+			)
+			.get('/', () => ({ service: 'legajox-scrapper', docs: DOCS_PATH }), {
+				detail: {
+					summary: 'Health check',
+					tags: ['system'],
+					hide: true,
+				},
+			})
 
 			// ── Auth guard ─────────────────────────────────────────────────────────────
-			.onBeforeHandle(({ headers, status }) => {
+			.onBeforeHandle(({ path, headers, status }) => {
+				if (isDocsPath(path)) return;
+
 				const raw = (headers.authorization as string | undefined) ?? '';
 				const key = raw.startsWith('Bearer ') ? raw.slice(7) : raw;
 				if (key !== apiKey) return status(401, { error: 'Unauthorized' });
@@ -341,16 +398,35 @@ export function createApp({
 			// ── GET /validate ──────────────────────────────────────────────────────────
 			// Checks whether the supplied Legajox credentials are valid.
 			// If omitted, falls back to DEFAULT_USER / DEFAULT_PASSWORD.
-			.get('/validate', async ({ query, status }) => {
-				const queryParams = query as Record<string, string | undefined>;
-				const creds = resolveRouteCredentials(queryParams);
-				if (!creds) return status(400, missingCreds());
-				const valid = await deps.validateCredentials(
-					creds.user,
-					creds.password,
-				);
-				return { valid };
-			})
+			.get(
+				'/validate',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					const valid = await deps.validateCredentials(
+						creds.user,
+						creds.password,
+					);
+					return { valid };
+				},
+				{
+					query: t.Object({
+						user: t.Optional(t.String()),
+						password: t.Optional(t.String()),
+					}),
+					response: {
+						200: t.Object({ valid: t.Boolean() }),
+						400: t.Object({ error: t.String() }),
+						401: t.Object({ error: t.String() }),
+					},
+					detail: {
+						summary: 'Validate Legajox credentials',
+						tags: ['auth'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
 
 			// ── GET /employees ─────────────────────────────────────────────────────────
 			// Returns all employees with their profile data (nombre, DNI, email, estado, etc.)
@@ -703,8 +779,8 @@ export function startServer(config: ServerConfig = getServerConfigFromEnv()) {
 	const { port = DEFAULT_PORT, ...appConfig } = config;
 	const app = createApp(appConfig);
 
-	app.listen({ port, idleTimeout: 255 }); // max allowed by Bun
-	console.log(`Legajox API listening on http://localhost:${port}`);
+	app.listen({ hostname: DEFAULT_HOST, port, idleTimeout: 255 }); // max allowed by Bun
+	console.log(`Legajox API listening on http://${DEFAULT_HOST}:${port}`);
 
 	return app;
 }
