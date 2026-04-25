@@ -14,10 +14,11 @@ export async function getMe() {
 export type Me = Awaited<ReturnType<typeof getMe>>;
 export type Language = Me['language'];
 
-export function useMe() {
+export function useMe(enabled = true) {
 	return useQuery<Me>({
 		queryKey: ['me'],
 		queryFn: getMe,
+		enabled,
 		staleTime: Infinity,
 	});
 }
@@ -84,7 +85,7 @@ export async function getMyTenant() {
 export type MyTenant = Awaited<ReturnType<typeof getMyTenant>>;
 export type Plan = MyTenant["plan"];
 
-export function useMyTenant() {
+export function useMyTenant(enabled = true) {
 	return useQuery<
 		Awaited<ReturnType<typeof getMyTenant>>,
 		Error,
@@ -92,6 +93,7 @@ export function useMyTenant() {
 	>({
 		queryKey: ['my-tenant'],
 		queryFn: getMyTenant,
+		enabled,
 		staleTime: Infinity,
 		select: (data) => data ?? null,
 	});

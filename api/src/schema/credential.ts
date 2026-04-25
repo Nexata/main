@@ -1,3 +1,4 @@
+import { tenant } from '@api/schema/tenant';
 import { user } from '@api/schema/user';
 import { desc } from 'drizzle-orm';
 import { index } from 'drizzle-orm/gel-core';
@@ -69,6 +70,9 @@ export const credential = pgTable(
 	'credential',
 	{
 		id: uuid().primaryKey().defaultRandom(),
+		slug: varchar({ length: 16 })
+			.notNull()
+			.references(() => tenant.slug, { onDelete: 'cascade' }),
 		userId: uuid()
 			.notNull()
 			.references(() => user.id, { onDelete: 'cascade' }),
@@ -84,6 +88,6 @@ export const credential = pgTable(
 	},
 	(t) => [
 		index('credential_created_at_desc').on(desc(t.createdAt)),
-		uniqueIndex('credential_unicity').on(t.email, t.provider, t.scope),
+		uniqueIndex('credential_unicity').on(t.slug, t.email, t.provider, t.scope),
 	],
 );

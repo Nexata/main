@@ -255,6 +255,7 @@ export async function authorizeOauthCallback(
 		await db
 			.insert(credential)
 			.values({
+				slug: u.slug,
 				userId: u.id,
 				email: metadata.email,
 				provider: provider,
@@ -263,7 +264,12 @@ export async function authorizeOauthCallback(
 			})
 			.onConflictDoUpdate({
 				set,
-				target: [credential.provider, credential.email, credential.scope],
+				target: [
+					credential.slug,
+					credential.email,
+					credential.provider,
+					credential.scope,
+				],
 			})
 			.returning({ id: credential.id, userId: credential.userId })
 	).at(0);

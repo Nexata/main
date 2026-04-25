@@ -33,6 +33,7 @@ export const Route = createFileRoute('/_private')({
 
 function PrivateLayout() {
 	const { location } = useRouterState();
+	const shouldLoadSessionData = location.pathname !== '/credential-callback';
 	const controlsRef = useRef<HTMLDivElement>(null);
 	const isMobile = useIsMobile();
 	const {
@@ -40,8 +41,10 @@ function PrivateLayout() {
 		close: closeMobileSidebar,
 		toggle: toggleMobileSidebar,
 	} = useMobileSidebarStore();
-	const { data: myTenant, isLoading: tenantLoading } = useMyTenant();
-	const { data: me } = useMe();
+	const { data: myTenant, isLoading: tenantLoading } = useMyTenant(
+		shouldLoadSessionData,
+	);
+	const { data: me } = useMe(shouldLoadSessionData);
 
 	// CTRL+B / CMD+B to toggle sidebar (desktop only)
 	useEffect(() => {
