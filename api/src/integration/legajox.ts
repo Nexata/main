@@ -23,7 +23,7 @@ import {
 	isIngestStopped,
 	setIngestStopFlag,
 } from '@api/utils/billing';
-import { requireEnv } from '@api/utils/env';
+import { log, requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
@@ -33,6 +33,8 @@ import pLimit from 'p-limit';
 
 const INGEST_CONCURRENCY = 8;
 const RECHECK_INTERVAL = 50;
+const REQUEST_TIMEOUT_MS = 180_000;
+const SLOW_REQUEST_MS = 30_000;
 
 const LEGAJOX_ALLOWED_SLUGS = (process.env.LEGAJOX_ALLOWED_SLUGS ?? '')
 	.split(',')
@@ -60,26 +62,89 @@ export namespace Legajox {
 		return requireEnv('LEGAJOX_API_KEY');
 	}
 
+	async function timedFetch(
+		url: string,
+		init: RequestInit,
+		metadata: { path: string; method: string },
+	): Promise<Response> {
+		const startedAt = Date.now();
+		const controller = new AbortController();
+		const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+		try {
+			const res = await fetch(url, { ...init, signal: controller.signal });
+			const elapsedMs = Date.now() - startedAt;
+
+			if (elapsedMs > SLOW_REQUEST_MS)
+				log('warn', {
+					message: 'Slow Legajox request',
+					path: metadata.path,
+					method: metadata.method,
+					status: res.status,
+					elapsedMs,
+				});
+
+			return res;
+		} catch (error) {
+			const elapsedMs = Date.now() - startedAt;
+			captureException(error, {
+				tags: { source: 'Legajox.timedFetch' },
+				extra: {
+					path: metadata.path,
+					method: metadata.method,
+					elapsedMs,
+					timeoutMs: REQUEST_TIMEOUT_MS,
+				},
+			});
+
+			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
+		} finally {
+			clearTimeout(timeout);
+		}
+	}
+
 	async function request<T>(
 		path: string,
 		options?: { method?: string; body?: unknown },
 	): Promise<T> {
 		const url = `${baseUrl()}${path}`;
-		const res = await fetch(url, {
-			method: options?.method ?? 'GET',
-			headers: {
-				Authorization: `Bearer ${apiKey()}`,
-				...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+		const method = options?.method ?? 'GET';
+		const res = await timedFetch(
+			url,
+			{
+				method,
+				headers: {
+					Authorization: `Bearer ${apiKey()}`,
+					...(options?.body ? { 'Content-Type': 'application/json' } : {}),
+				},
+				body: options?.body ? JSON.stringify(options.body) : undefined,
 			},
-			body: options?.body ? JSON.stringify(options.body) : undefined,
-		});
+			{ path, method },
+		);
 
 		if (!res.ok) {
-			const _text = await res.text().catch(() => '');
+			const text = await res.text().catch(() => '');
+			captureException(new Error('Legajox request failed'), {
+				tags: { source: 'Legajox.request' },
+				extra: { path, method, status: res.status, body: text },
+			});
 			throw httpError(HttpCode.CONFLICT, ErrorCode.EXTERNAL_ERROR);
 		}
 
 		return res.json() as Promise<T>;
+	}
+
+	async function download(url: string, path: string) {
+		return timedFetch(
+			url,
+			{
+				method: 'GET',
+				headers: {
+					Authorization: `Bearer ${apiKey()}`,
+				},
+			},
+			{ path, method: 'GET' },
+		);
 	}
 
 	// --- Documents: search ---
@@ -326,10 +391,7 @@ export namespace Legajox {
 			if (await isFileUnmodified(FileHost.LEGAJOX, entry.id, modifiedAt))
 				return 'UNMODIFIED';
 
-			// Download the file from its URL
-			const res = await fetch(entry.url, {
-				headers: { Authorization: `Bearer ${apiKey()}` },
-			});
+			const res = await download(entry.url, `/documents/file/${entry.id}`);
 			if (!res.ok) return 'FAILED';
 
 			const buffer = await res.arrayBuffer();
@@ -411,13 +473,13 @@ export namespace Legajox {
 	// --- Employees ---
 
 	export const [listEmployeesDescription, listEmployeesInput] = [
-		'Legajox tool to list employees from the HR system. Supports search text filter and pagination.',
+		'Legajox tool to list employees from the HR system. Defaults to page 1 to avoid unbounded scrapes. Use page for pagination; for company-wide aggregates, query pages sequentially until an empty page is returned.',
 		tObject({
 			search: Nullish(t.String(), {
 				description: 'Free-text filter applied through the search box.',
 			}),
 			page: Nullish(t.String(), {
-				description: '1-based page number.',
+				description: '1-based page number. Defaults to 1 when omitted.',
 			}),
 		}),
 	] as const;
@@ -428,7 +490,7 @@ export namespace Legajox {
 	}) {
 		const params = new URLSearchParams();
 		if (input.search) params.set('search', input.search);
-		if (input.page) params.set('page', input.page);
+		params.set('page', input.page ?? '1');
 		const qs = params.toString();
 
 		return request<{
@@ -477,13 +539,13 @@ export namespace Legajox {
 	// --- Payroll ---
 
 	export const [listPayrollDescription, listPayrollInput] = [
-		'Legajox tool to list pending payroll actions (payslips). Supports search and pagination.',
+		'Legajox tool to list pending payroll actions (payslips). Defaults to page 1 to avoid unbounded scrapes. Use page for pagination; query pages sequentially when a complete scan is needed.',
 		tObject({
 			search: Nullish(t.String(), {
 				description: 'Free-text filter.',
 			}),
 			page: Nullish(t.String(), {
-				description: '1-based page number.',
+				description: '1-based page number. Defaults to 1 when omitted.',
 			}),
 		}),
 	] as const;
@@ -494,7 +556,7 @@ export namespace Legajox {
 	}) {
 		const params = new URLSearchParams();
 		if (input.search) params.set('search', input.search);
-		if (input.page) params.set('page', input.page);
+		params.set('page', input.page ?? '1');
 		const qs = params.toString();
 
 		return request<{
