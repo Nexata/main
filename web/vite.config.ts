@@ -59,6 +59,7 @@ export default defineConfig({
 				],
 			},
 			workbox: {
+				maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
 				globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
 				navigateFallback: 'index.html',
 				navigateFallbackDenylist: [/^\/robots\.txt$/, /^\/sitemap\.xml$/],
