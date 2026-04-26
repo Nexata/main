@@ -22,6 +22,7 @@ import { useEffect, useRef, useState } from 'react';
 import { ConfirmDeleteCredentialModal } from '@/components/credentials/credential-delete-modal';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { SourceRow } from '@/components/sources/source-row';
+import { StorageFileTree } from '@/components/sources/file-tree';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -67,6 +68,7 @@ import {
 import {
 	credentialsBySource,
 	DINAMIC_DATA_SOURCES,
+	LEGAJOX_SOURCE,
 	STORAGE_DATA_SOURCES,
 } from '@/lib/available-sources';
 import type { CredentialItem } from '@/lib/credential';
@@ -206,6 +208,7 @@ import {
 	'settings.meta.title' as settings_meta_title,
 	'settings.sources.description' as settings_sources_description,
 	'settings.sources.title' as settings_sources_title,
+	'settings.sources.view_details' as settings_sources_view_details,
 	'settings.storage.description' as settings_storage_description,
 	'settings.storage.legajox_description' as settings_storage_legajox_description,
 	'settings.storage.legajox_status' as settings_storage_legajox_status,
@@ -445,6 +448,7 @@ export function StorageSection({
 	const [expandedCredentialId, setExpandedCredentialId] = useState<
 		string | null
 	>(null);
+	const [legajoxExpanded, setLegajoxExpanded] = useState(false);
 
 	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
 
@@ -497,24 +501,40 @@ export function StorageSection({
 					})}
 
 					{showLegajox && (
-						<div className="flex items-center gap-3 rounded-lg border border-border bg-card/60 p-3">
-							<img
-								src="/datasource_icons/legajox.svg"
-								className="w-8 h-8 object-contain shrink-0"
-								alt="Legajox"
-							/>
-							<div className="flex-1 min-w-0">
-								<div className="flex items-center gap-2">
-									<span className="font-medium text-sm">Legajox</span>
+						<div className="rounded-xl border p-3 space-y-3">
+							<div className="flex items-center justify-between gap-x-4 gap-y-2 flex-wrap">
+								<div className="flex items-center gap-3">
+									<img
+										src="/datasource_icons/legajox.svg"
+										className="h-6 w-6 object-contain"
+										alt="Legajox"
+									/>
+									<span className="font-medium">Legajox</span>
 									<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
 										<CheckCircle className="w-3 h-3" />
 										{settings_storage_legajox_status()}
 									</span>
 								</div>
-								<p className="text-xs text-muted-foreground mt-0.5">
+								<Button
+									size="sm"
+									variant="ghost"
+									className="cursor-pointer"
+									onClick={() => setLegajoxExpanded(!legajoxExpanded)}
+								>
+									{legajoxExpanded ? common_cancel() : settings_sources_view_details()}
+								</Button>
+							</div>
+							{!legajoxExpanded && (
+								<p className="text-xs text-muted-foreground">
 									{settings_storage_legajox_description()}
 								</p>
-							</div>
+							)}
+							{legajoxExpanded && (
+								<StorageFileTree
+									credentialId="legajox"
+									source={LEGAJOX_SOURCE}
+								/>
+							)}
 						</div>
 					)}
 				</div>

@@ -498,3 +498,39 @@ export async function deleteExternalDir(id: string) {
 		}),
 	);
 }
+
+/* ======================================================
+   LEGAJOX
+====================================================== */
+
+export async function listLegajoxDir(
+	_credentialId: string,
+	input?: ListDriveDirInput,
+) {
+	const query = normalizeDirInput(input);
+
+	return withAuthRetry((headers) =>
+		apiClient.integration.legajox.get({
+			$headers: headers,
+			$query: query as { path?: string },
+		}),
+	);
+}
+
+export async function ingestFromLegajox(payload: IngestPayload) {
+	return withAuthRetry((headers) =>
+		apiClient.integration.legajox.ingest.post({
+			$headers: headers,
+			selection: payload.selection,
+		}),
+	);
+}
+
+export async function reIngestFromLegajox(payload: IngestPayload) {
+	return withAuthRetry((headers) =>
+		apiClient.integration.legajox['re-ingest'].post({
+			$headers: headers,
+			selection: payload.selection,
+		}),
+	);
+}

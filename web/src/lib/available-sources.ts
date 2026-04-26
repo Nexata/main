@@ -8,11 +8,13 @@ import {
 	type IngestPayload,
 	ingestFromDrive,
 	ingestFromDropbox,
+	ingestFromLegajox,
 	ingestFromOneDrive,
 	type ListDriveDirInput,
 	type SearchDirInput,
 	listDriveDir,
 	listDropboxDir,
+	listLegajoxDir,
 	listOneDriveDir,
 	searchDriveDir,
 	searchDropboxDir,
@@ -133,3 +135,16 @@ export const STORAGE_DATA_SOURCES: SourceConfig[] = [
 		ingest: ingestFromOneDrive,
 	},
 ];
+
+export const LEGAJOX_SOURCE: SourceConfig = {
+	id: 'legajox',
+	provider: 'google' as OauthProvider, // unused — Legajox has no OAuth
+	name: 'Legajox',
+	icon: '/datasource_icons/legajox.svg',
+	scope: 'drive' as OauthScope, // unused
+	connect: async () => '',
+	kind: 'storage',
+	searchMode: 'local',
+	getFileTree: (credentialId, input) => listLegajoxDir(credentialId, input),
+	ingest: ingestFromLegajox,
+};
