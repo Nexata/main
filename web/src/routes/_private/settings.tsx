@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 import {
 	ArrowLeft,
 	CalendarIcon,
+	CheckCircle,
 	ChevronLeft,
 	ChevronRight,
 	ExternalLink,
@@ -91,7 +92,7 @@ import {
 	useIngestFiles,
 	useSearchFiles,
 } from '@/lib/file';
-import { useMe } from '@/lib/user';
+import { useMe, useMyTenant } from '@/lib/user';
 import {
 	'common.cancel' as common_cancel,
 	'common.delete' as common_delete,
@@ -206,6 +207,8 @@ import {
 	'settings.sources.description' as settings_sources_description,
 	'settings.sources.title' as settings_sources_title,
 	'settings.storage.description' as settings_storage_description,
+	'settings.storage.legajox_description' as settings_storage_legajox_description,
+	'settings.storage.legajox_status' as settings_storage_legajox_status,
 	'settings.storage.title' as settings_storage_title,
 	'settings.subtitle' as settings_subtitle,
 	'settings.title' as settings_title,
@@ -438,11 +441,21 @@ export function StorageSection({
 }: StorageSectionProps) {
 	const [openSourceId, setOpenSourceId] = useState<string | null>(null);
 	const { data: me } = useMe();
+	const { data: myTenant } = useMyTenant();
 	const [expandedCredentialId, setExpandedCredentialId] = useState<
 		string | null
 	>(null);
 
 	const canManage = (cred: CredentialItem) => canManageCredential(cred, me);
+
+	const showLegajox = (() => {
+		if (!me?.isAdmin || !myTenant?.slug) return false;
+		const allowed = (import.meta.env.VITE_LEGAJOX_ALLOWED_SLUGS ?? '')
+			.split(',')
+			.map((s) => s.trim())
+			.filter(Boolean);
+		return allowed.includes(myTenant.slug);
+	})();
 
 	return (
 		<Card className="bg-sidebar" data-tour="settings-storage">
@@ -482,6 +495,28 @@ export function StorageSection({
 							/>
 						);
 					})}
+
+					{showLegajox && (
+						<div className="flex items-center gap-3 rounded-lg border border-border bg-card/60 p-3">
+							<img
+								src="/datasource_icons/legajox.svg"
+								className="w-8 h-8 object-contain shrink-0"
+								alt="Legajox"
+							/>
+							<div className="flex-1 min-w-0">
+								<div className="flex items-center gap-2">
+									<span className="font-medium text-sm">Legajox</span>
+									<span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-600">
+										<CheckCircle className="w-3 h-3" />
+										{settings_storage_legajox_status()}
+									</span>
+								</div>
+								<p className="text-xs text-muted-foreground mt-0.5">
+									{settings_storage_legajox_description()}
+								</p>
+							</div>
+						</div>
+					)}
 				</div>
 			</CardContent>
 		</Card>

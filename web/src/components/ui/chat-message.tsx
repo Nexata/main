@@ -8,6 +8,7 @@ import {
   X,
   Ban,
   Globe,
+  Info,
   Search,
   Code,
   Sparkles,
@@ -136,6 +137,34 @@ import {
   'tools.nexata.reingest_error' as tools_nexata_reingest_error,
   'tools.nexata.ask_questions_success' as tools_nexata_ask_questions_success,
   'tools.nexata.ask_questions_error' as tools_nexata_ask_questions_error,
+  'tools.legajox.search' as tools_legajox_search,
+  'tools.legajox.search_success' as tools_legajox_search_success,
+  'tools.legajox.search_error' as tools_legajox_search_error,
+  'tools.legajox.list_dir' as tools_legajox_list_dir,
+  'tools.legajox.list_dir_success' as tools_legajox_list_dir_success,
+  'tools.legajox.list_dir_error' as tools_legajox_list_dir_error,
+  'tools.legajox.ingest' as tools_legajox_ingest,
+  'tools.legajox.ingest_success' as tools_legajox_ingest_success,
+  'tools.legajox.ingest_error' as tools_legajox_ingest_error,
+  'tools.legajox.employees' as tools_legajox_employees,
+  'tools.legajox.employees_success' as tools_legajox_employees_success,
+  'tools.legajox.employees_error' as tools_legajox_employees_error,
+  'tools.legajox.info' as tools_legajox_info,
+  'tools.legajox.info_success' as tools_legajox_info_success,
+  'tools.legajox.info_error' as tools_legajox_info_error,
+  'tools.legajox.org_chart' as tools_legajox_org_chart,
+  'tools.legajox.org_chart_success' as tools_legajox_org_chart_success,
+  'tools.legajox.org_chart_error' as tools_legajox_org_chart_error,
+  'tools.legajox.payroll' as tools_legajox_payroll,
+  'tools.legajox.payroll_success' as tools_legajox_payroll_success,
+  'tools.legajox.payroll_error' as tools_legajox_payroll_error,
+  'tools.legajox.absences' as tools_legajox_absences,
+  'tools.legajox.absences_success' as tools_legajox_absences_success,
+  'tools.legajox.absences_error' as tools_legajox_absences_error,
+  'tools.legajox.vacations' as tools_legajox_vacations,
+  'tools.legajox.vacations_success' as tools_legajox_vacations_success,
+  'tools.legajox.vacations_error' as tools_legajox_vacations_error,
+  'tools.legajox.slow_tooltip' as tools_legajox_slow_tooltip,
   'components.ask_questions.status.answering' as components_ask_questions_status_answering,
   'components.ask_questions.status.submitted' as components_ask_questions_status_submitted,
   'components.ask_questions.label.yes' as components_ask_questions_label_yes,
@@ -881,6 +910,15 @@ const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => str
   DriveIngest:              { pending: tools_drive_ingest,                    success: tools_drive_ingest_success,                    error: tools_drive_ingest_error },
   DropboxIngest:            { pending: tools_dropbox_ingest,                  success: tools_dropbox_ingest_success,                  error: tools_dropbox_ingest_error },
   OneDriveIngest:           { pending: tools_one_drive_ingest,                success: tools_one_drive_ingest_success,                error: tools_one_drive_ingest_error },
+  LegajoxSearch:            { pending: tools_legajox_search,                  success: tools_legajox_search_success,                  error: tools_legajox_search_error },
+  LegajoxListDir:           { pending: tools_legajox_list_dir,                success: tools_legajox_list_dir_success,                error: tools_legajox_list_dir_error },
+  LegajoxIngest:            { pending: tools_legajox_ingest,                  success: tools_legajox_ingest_success,                  error: tools_legajox_ingest_error },
+  LegajoxEmployees:         { pending: tools_legajox_employees,               success: tools_legajox_employees_success,               error: tools_legajox_employees_error },
+  LegajoxInfo:              { pending: tools_legajox_info,                     success: tools_legajox_info_success,                    error: tools_legajox_info_error },
+  LegajoxOrgChart:          { pending: tools_legajox_org_chart,               success: tools_legajox_org_chart_success,               error: tools_legajox_org_chart_error },
+  LegajoxPayroll:           { pending: tools_legajox_payroll,                  success: tools_legajox_payroll_success,                  error: tools_legajox_payroll_error },
+  LegajoxAbsences:          { pending: tools_legajox_absences,                success: tools_legajox_absences_success,                error: tools_legajox_absences_error },
+  LegajoxVacations:         { pending: tools_legajox_vacations,               success: tools_legajox_vacations_success,               error: tools_legajox_vacations_error },
 }
 
 const NEXATA_TOOLS = new Set([
@@ -894,6 +932,18 @@ const NEXATA_TOOLS = new Set([
   'NexataListFilesOnMessage',
   'NexataReingest',
   'NexataAskQuestions',
+])
+
+const LEGAJOX_TOOLS = new Set([
+  'LegajoxSearch',
+  'LegajoxListDir',
+  'LegajoxIngest',
+  'LegajoxEmployees',
+  'LegajoxInfo',
+  'LegajoxOrgChart',
+  'LegajoxPayroll',
+  'LegajoxAbsences',
+  'LegajoxVacations',
 ])
 
 // Mapa directo toolName -> icono, usando los ids exactos de available-sources
@@ -916,6 +966,15 @@ const TOOL_ICON_MAP: Record<string, string> = {
   DriveIngest:              '/datasource_icons/gdrive.png',
   DropboxIngest:            '/datasource_icons/dropbox.png',
   OneDriveIngest:           '/datasource_icons/onedrive.png',
+  LegajoxSearch:            '/datasource_icons/legajox.svg',
+  LegajoxListDir:           '/datasource_icons/legajox.svg',
+  LegajoxIngest:            '/datasource_icons/legajox.svg',
+  LegajoxEmployees:         '/datasource_icons/legajox.svg',
+  LegajoxInfo:              '/datasource_icons/legajox.svg',
+  LegajoxOrgChart:          '/datasource_icons/legajox.svg',
+  LegajoxPayroll:           '/datasource_icons/legajox.svg',
+  LegajoxAbsences:          '/datasource_icons/legajox.svg',
+  LegajoxVacations:         '/datasource_icons/legajox.svg',
   CalendarList:             '/datasource_icons/gcalendar.png',
   CalendarEvents:           '/datasource_icons/gcalendar.png',
   CalendarRead:             '/datasource_icons/gcalendar.png',
@@ -972,6 +1031,7 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
 
   const label      = getToolLabel(rawToolName, part.state)
   const isNexata   = NEXATA_TOOLS.has(rawToolName)
+  const isLegajox  = LEGAJOX_TOOLS.has(rawToolName)
   const icon       = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
   const LucideIcon = !isNexata && !icon ? TOOL_LUCIDE_MAP[rawToolName] : null
 
@@ -1038,7 +1098,23 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
           )}
 
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-semibold truncate">{label}</span>
+            <span className="text-sm font-semibold truncate">
+              {label}
+              {isLegajox && (
+                <TooltipProvider delayDuration={200}>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="ml-1.5 inline-flex items-center text-amber-500/80 cursor-help" onClick={(e) => e.stopPropagation()}>
+                        <Info className="h-3.5 w-3.5" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top" className="max-w-[240px] text-xs">
+                      {tools_legajox_slow_tooltip()}
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              )}
+            </span>
 
             {visibleEmails.length > 0 && (
               <div className="flex items-center gap-1 flex-wrap mt-0.5">
