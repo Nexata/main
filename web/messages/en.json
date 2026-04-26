@@ -475,7 +475,9 @@
 		},
 		"storage": {
 			"title": "Storage",
-			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information."
+			"description": "Manage which files and folders Nexata can analyze, search, and use for contextual information.",
+			"legajox_status": "Integrated",
+			"legajox_description": "Legajox is integrated with your organization. Nexy can search documents, query employees, payroll, absences, and more directly from Legajox."
 		},
 		"files": {
 			"title": "File Management",
@@ -1651,8 +1653,7 @@
 		"settings_sources_description": "Connect dynamic data sources with just one click. These sources are queried in real time — when you ask something, Nexy will search directly in your emails, calendars, contacts, and more without needing to ingest files.",
 		"settings_storage_title": "Storage",
 		"settings_storage_description": "Connect external data sources that handle files, such as Google Drive, OneDrive, or Dropbox. From here you can connect the sources and select files to ingest into Nexata.",
-		"settings_storage_legajox_status": "Integrated",
-		"settings_storage_legajox_description": "Legajox is integrated with your organization. Nexy can search documents, query employees, payslips, absences and more directly from Legajox.",
+
 		"settings_files_title": "File Management",
 		"settings_files_description": "Search, filter, and manage all ingested files. You can re-ingest, delete, upload new files, and toggle auto-sync from here.",
 		"settings_external_dirs_title": "External Folders",
