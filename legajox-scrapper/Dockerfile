@@ -14,7 +14,7 @@ RUN bun build \
 	--minify-whitespace \
 	--minify-syntax \
 	--outfile server \
-	api/index.ts
+	src/index.ts
 
 FROM alpine:3.22 AS runtime
 

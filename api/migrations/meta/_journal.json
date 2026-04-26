@@ -36,6 +36,13 @@
       "when": 1777078111287,
       "tag": "20260425004831_tricky_imperial_guard",
       "breakpoints": false
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1777233728122,
+      "tag": "20260426200208_secret_metal_master",
+      "breakpoints": false
     }
   ]
 }

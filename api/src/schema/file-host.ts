@@ -5,6 +5,7 @@ export enum FileHost {
 	DRIVE = 'drive',
 	ONE_DRIVE = 'one_drive',
 	DROPBOX = 'dropbox',
+	LEGAJOX = 'legajox',
 }
 
 export const PROVIDER_LABELS: Record<FileHost, string> = {
@@ -12,6 +13,7 @@ export const PROVIDER_LABELS: Record<FileHost, string> = {
 	[FileHost.DRIVE]: 'Google Drive',
 	[FileHost.DROPBOX]: 'Dropbox',
 	[FileHost.ONE_DRIVE]: 'OneDrive',
+	[FileHost.LEGAJOX]: 'Legajox',
 };
 
 export const FileHostEnum = pgEnum(

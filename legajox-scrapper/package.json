@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"api": "bun api/index.ts",
+		"api": "bun src/index.ts",
 		"test": "bun test",
 		"validate": "bun scripts/validate_credentials.ts",
 		"user-info": "bun scripts/general_information.ts",
@@ -17,6 +17,7 @@
 	},
 	"dependencies": {
 		"@elysiajs/openapi": "^1.4.15",
+		"@upstash/redis": "^1.37.0",
 		"elysia": "^1.4.28",
 		"puppeteer": "^24.41.0"
 	},

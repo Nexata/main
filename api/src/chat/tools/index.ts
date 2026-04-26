@@ -3,6 +3,7 @@ import { NexataFeedback } from '@api/feedback';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Calendar, Drive, Gmail } from '@api/integration/google';
+import { isLegajoxAllowed, Legajox } from '@api/integration/legajox';
 import {
 	MicrosoftCalendar,
 	OneDrive,
@@ -688,6 +689,83 @@ export const getTools = async (
 				(output, ctx, i) => ({ ...output, credentialEmail: ctx.at(i)?.email }),
 			),
 		};
+
+	// --- Legajox tools (slug + admin gated) ---
+	if (isLegajoxAllowed(activeUser)) {
+		tools = {
+			...tools,
+			LegajoxSearch: toolify(
+				Legajox.searchDescription,
+				Legajox.searchInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.search(input),
+			),
+			LegajoxListDir: toolify(
+				Legajox.listDirDescription,
+				Legajox.listDirInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.listDir(input),
+			),
+			LegajoxEmployees: toolify(
+				Legajox.listEmployeesDescription,
+				Legajox.listEmployeesInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.listEmployees(input),
+			),
+			LegajoxInfo: toolify(
+				Legajox.getInfoDescription,
+				Legajox.getInfoInput,
+				activeUser,
+				(au) => au,
+				async () => Legajox.getInfo(),
+			),
+			LegajoxOrgChart: toolify(
+				Legajox.getOrgChartDescription,
+				Legajox.getOrgChartInput,
+				activeUser,
+				(au) => au,
+				async () => Legajox.getOrgChart(),
+			),
+			LegajoxPayroll: toolify(
+				Legajox.listPayrollDescription,
+				Legajox.listPayrollInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.listPayroll(input),
+			),
+			LegajoxAbsences: toolify(
+				Legajox.listAbsencesDescription,
+				Legajox.listAbsencesInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.listAbsences(input),
+			),
+			LegajoxVacations: toolify(
+				Legajox.listVacationsDescription,
+				Legajox.listVacationsInput,
+				activeUser,
+				(au) => au,
+				async () => Legajox.listVacations(),
+			),
+		};
+
+		if (interactive)
+			tools = {
+				...tools,
+				LegajoxIngest: toolify(
+					Legajox.ingestDescription,
+					Legajox.ingestInput,
+					activeUser,
+					(au) => au,
+					async (au, input) => Legajox.ingest(au.id, au.slug, input.selection),
+					undefined,
+					{ needsApproval: true },
+				),
+			};
+	}
 
 	return tools;
 };

@@ -39,17 +39,30 @@ async function scrapeRow(
 	index: number,
 	total: number | string,
 ): Promise<Employee> {
-	// Extract empresa, estado from visible DOM; parse modal data in browser context
-	const { empresa, estado, data } = await row.evaluate((el) => {
+	// Extract data from visible table cells AND modal payload (if available)
+	const rowData = await row.evaluate((el) => {
 		const tds = el.querySelectorAll('td');
 		const c = (t: string | null | undefined) =>
 			(t ?? '').replace(/\s+/g, ' ').trim();
+
+		// Extract visible cell texts
+		const cells: string[] = [];
+		for (let i = 0; i < tds.length; i++) {
+			cells.push(c((tds[i] as HTMLElement).innerText));
+		}
+
 		const estadoEl = el.querySelector(
 			'span.tag-verde, span.tag-rojo, span.tag-amarillo',
 		);
-		const link = el.querySelector("a[href*='modalVerUsuario']");
-		const href = link?.getAttribute('href') ?? '';
-		const match = href.match(/modalVerUsuario\(`([\s\S]+)`\)/);
+		const estado = estadoEl ? c((estadoEl as HTMLElement).innerText) : '';
+
+		// Try to extract modal payload data (legacy approach)
+		const link =
+			el.querySelector("a[href*='modalVerUsuario']") ||
+			el.querySelector("a[onclick*='modalVerUsuario']");
+		const attrValue =
+			link?.getAttribute('href') ?? link?.getAttribute('onclick') ?? '';
+		const match = attrValue.match(/modalVerUsuario\(`?([\s\S]+?)`?\)/);
 		const parseModalPayload = (raw: string) => {
 			const parsed: Record<string, string | null> = {};
 			const entryPattern =
@@ -65,32 +78,130 @@ async function scrapeRow(
 			}
 			return parsed;
 		};
-		const parsed = match ? parseModalPayload(match[1]) : {};
-		return {
-			empresa: c((tds[2] as HTMLElement | undefined)?.innerText),
-			estado: estadoEl ? c((estadoEl as HTMLElement).innerText) : '',
-			data: parsed,
-		};
+		const modalData = match ? parseModalPayload(match[1]) : {};
+
+		// Also try data attributes on the row or link
+		const dataAttrs: Record<string, string> = {};
+		const allLinks = el.querySelectorAll('a[data-leg_nombre], a[data-nombre]');
+		if (allLinks.length > 0) {
+			const a = allLinks[0] as HTMLElement;
+			for (const attr of Array.from(a.attributes)) {
+				if (attr.name.startsWith('data-')) {
+					dataAttrs[attr.name.slice(5)] = attr.value;
+				}
+			}
+		}
+
+		return { cells, estado, modalData, dataAttrs };
 	});
 
-	const get = (key: string): string => ((data[key] ?? '') as string).trim();
+	const { cells, estado, modalData, dataAttrs } = rowData;
 
-	const nombre = `${get('leg_nombre')} ${get('leg_apellido')}`.trim();
-	const locacion = [get('leg_ciudad'), get('prv_nombre')]
-		.filter(Boolean)
-		.join(', ');
+	const getModal = (key: string): string =>
+		((modalData[key] ?? '') as string).trim();
+	const getAttr = (key: string): string => (dataAttrs[key] ?? '').trim();
 
-	console.log(`  [${index}/${total}] ${nombre}`);
+	// Build employee from modal data if available, otherwise fall back to cell data
+	const hasModalData =
+		Object.keys(modalData).length > 0 &&
+		(getModal('leg_nombre') || getModal('leg_apellido'));
+	const hasAttrData = Object.keys(dataAttrs).length > 0;
+
+	let nombre: string;
+	let dni: string;
+	let cuil: string;
+	let email: string;
+	let telefono: string;
+	let empresa: string;
+	let legajo: string;
+	let fechaIngreso: string;
+	let locacion: string;
+
+	if (hasModalData) {
+		// Legacy modal approach
+		nombre = `${getModal('leg_nombre')} ${getModal('leg_apellido')}`.trim();
+		dni = getModal('leg_dni');
+		cuil = getModal('leg_cuil');
+		email = getModal('leg_email') || getModal('usr_email');
+		telefono = getModal('leg_celular');
+		empresa = cells[2] || '';
+		legajo = getModal('leg_legajo');
+		fechaIngreso = getModal('leg_fecha_ingreso');
+		locacion = [getModal('leg_ciudad'), getModal('prv_nombre')]
+			.filter(Boolean)
+			.join(', ');
+	} else if (hasAttrData) {
+		// Data attributes approach
+		nombre =
+			`${getAttr('leg_nombre') || getAttr('nombre')} ${getAttr('leg_apellido') || getAttr('apellido')}`.trim();
+		dni = getAttr('leg_dni') || getAttr('dni');
+		cuil = getAttr('leg_cuil') || getAttr('cuil');
+		email = getAttr('leg_email') || getAttr('email') || getAttr('usr_email');
+		telefono = getAttr('leg_celular') || getAttr('celular');
+		empresa = cells[2] || getAttr('empresa');
+		legajo = getAttr('leg_legajo') || getAttr('legajo');
+		fechaIngreso = getAttr('leg_fecha_ingreso') || getAttr('fecha_ingreso');
+		locacion = [
+			getAttr('leg_ciudad') || getAttr('ciudad'),
+			getAttr('prv_nombre') || getAttr('provincia'),
+		]
+			.filter(Boolean)
+			.join(', ');
+	} else {
+		// Fallback: extract from visible table cells
+		// Common Legajox table layout:
+		// [0]: checkbox/avatar, [1]: nombre, [2]: empresa, [3]: legajo, [4]: DNI/CUIL, [5]: email, [6]: estado
+		// The exact layout may vary, so we try to be smart about it
+		nombre = cells[1] || '';
+		empresa = cells[2] || '';
+		legajo = cells[3] || '';
+		// Try to identify DNI/CUIL from cells that look like numbers
+		dni = '';
+		cuil = '';
+		email = '';
+		telefono = '';
+		fechaIngreso = '';
+		locacion = '';
+
+		for (let i = 3; i < cells.length; i++) {
+			const cell = cells[i];
+			if (!cell) continue;
+			// DNI: 7-8 digit number
+			if (!dni && /^\d{7,8}$/.test(cell.replace(/\./g, ''))) {
+				dni = cell;
+			}
+			// CUIL: XX-XXXXXXXX-X pattern
+			else if (!cuil && /^\d{2}-\d{7,8}-\d{1}$/.test(cell)) {
+				cuil = cell;
+			}
+			// Email
+			else if (!email && cell.includes('@')) {
+				email = cell;
+			}
+			// Date (dd/mm/yyyy)
+			else if (!fechaIngreso && /^\d{2}\/\d{2}\/\d{4}$/.test(cell)) {
+				fechaIngreso = cell;
+			}
+		}
+	}
+
+	if (!hasModalData && !hasAttrData && !nombre) {
+		console.warn(
+			`  [${index}/${total}] WARNING: Could not extract employee data. Cells: ${JSON.stringify(cells.slice(0, 6))}`,
+		);
+	} else {
+		console.log(`  [${index}/${total}] ${nombre || '(sin nombre)'}`);
+	}
 
 	return {
 		nombre,
-		dni: get('leg_dni'),
-		cuil: get('leg_cuil'),
-		email: get('leg_email') || get('usr_email'),
-		telefono: get('leg_celular'),
+		dni,
+		cuil,
+		email,
+		telefono,
 		empresa,
-		legajo: get('leg_legajo'),
-		fechaIngreso: get('leg_fecha_ingreso'),
+		legajo,
+		fechaIngreso,
 		locacion,
 		estado,
 	};

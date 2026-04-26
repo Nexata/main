@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
 import { treaty } from '@elysiajs/eden';
-import type { AppDependencies } from '../api/index';
-import { createApp, getServerConfigFromEnv } from '../api/index';
+import type { AppDependencies } from '../src/index';
+import { createApp, getServerConfigFromEnv } from '../src/index';
 
 const API_KEY = 'test-api-key';
 const QUERY_CREDS = {

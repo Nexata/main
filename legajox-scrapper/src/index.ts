@@ -11,6 +11,7 @@ import { scrapeOrgChart } from '../scripts/org_chart';
 import { scrapeLiquidaciones } from '../scripts/pending_actions';
 import { scrapeVacaciones } from '../scripts/vacation_days';
 import { validateCredentials } from '../scripts/validate_credentials';
+import { cached } from './cache-utils';
 
 // ── Config ───────────────────────────────────────────────────────────────────
 
@@ -100,6 +101,14 @@ const ErrorResponse = t.Object({
 	error: t.String({ description: 'Human-readable error message.' }),
 });
 
+const CacheMetadata = t.Optional(
+	t.Object({
+		hit: t.Boolean(),
+		key: t.String(),
+		ttl: t.Number(),
+	}),
+);
+
 const ScrapeFailureResponse = t.Object({
 	error: t.String({ description: 'Top-level scrape failure message.' }),
 	details: t.Array(t.String(), {
@@ -123,6 +132,7 @@ const EmployeeResponse = t.Object({
 const EmployeesResponse = t.Object({
 	employees: t.Array(EmployeeResponse),
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const EmpresaResponse = t.Object({
@@ -177,6 +187,7 @@ const GeneralInfoResponse = t.Object({
 const InfoResponse = t.Object({
 	info: GeneralInfoResponse,
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const OrgNodeResponse = t.Object({
@@ -200,6 +211,7 @@ const OrgChartResponse = t.Object({
 const OrgChartEnvelope = t.Object({
 	chart: OrgChartResponse,
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const LiquidacionResponse = t.Object({
@@ -213,6 +225,7 @@ const LiquidacionesResponse = t.Object({
 	liquidaciones: t.Array(LiquidacionResponse),
 	total: t.Number(),
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const AusenciaResponse = t.Object({
@@ -234,6 +247,7 @@ const AusenciasResponse = t.Object({
 	ausencias: t.Array(AusenciaResponse),
 	total: t.Number(),
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const VacacionEmpleadoResponse = t.Object({
@@ -251,6 +265,7 @@ const VacacionesResponse = t.Object({
 	registros: t.Array(VacacionEmpleadoResponse),
 	total: t.Number(),
 	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
 });
 
 const DocumentListEntryResponse = t.Object({
@@ -268,7 +283,14 @@ const DocumentListEntryResponse = t.Object({
 const DocumentListResponse = t.Object({
 	cursor: t.Union([t.String(), t.Null()]),
 	entries: t.Array(DocumentListEntryResponse),
+	_cache: CacheMetadata,
 });
+
+const NocacheQuery = t.Optional(
+	t.String({
+		description: 'Set to "true" to bypass cache and force a fresh scrape.',
+	}),
+);
 
 const CredentialsQuery = t.Object({
 	user: t.Optional(
@@ -279,6 +301,7 @@ const CredentialsQuery = t.Object({
 			description: 'Legajox password. Falls back to DEFAULT_PASSWORD.',
 		}),
 	),
+	nocache: NocacheQuery,
 });
 
 const SearchAndPageQuery = t.Object({
@@ -290,6 +313,7 @@ const SearchAndPageQuery = t.Object({
 		}),
 	),
 	page: t.Optional(t.String({ description: '1-based page number to scrape.' })),
+	nocache: NocacheQuery,
 });
 
 const DocumentsListQuery = t.Object({
@@ -300,12 +324,14 @@ const DocumentsListQuery = t.Object({
 			description: 'Folder path returned by /documents/list top-level entries.',
 		}),
 	),
+	nocache: NocacheQuery,
 });
 
 const DocumentsSearchQuery = t.Object({
 	user: t.Optional(t.String()),
 	password: t.Optional(t.String()),
 	q: t.String({ description: 'Search term, minimum 3 characters.' }),
+	nocache: NocacheQuery,
 });
 
 const AusenciasQuery = t.Object({
@@ -325,6 +351,7 @@ const AusenciasQuery = t.Object({
 	),
 	motivo: t.Optional(t.String()),
 	estado: t.Optional(t.String()),
+	nocache: NocacheQuery,
 });
 
 const DownloadRequest = t.Object({
@@ -758,19 +785,30 @@ export function createApp({
 					const queryParams = query as Record<string, string | undefined>;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
-					const valid = await deps.validateCredentials(
-						creds.user,
-						creds.password,
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `validate:${creds.user}`;
+					const { data, _cache } = await cached(
+						cacheKey,
+						300, // 5 min
+						async () => {
+							const valid = await deps.validateCredentials(
+								creds.user,
+								creds.password,
+							);
+							return { valid };
+						},
+						{ nocache },
 					);
-					return { valid };
+					return { ...data, _cache };
 				},
 				{
 					query: t.Object({
 						user: t.Optional(t.String()),
 						password: t.Optional(t.String()),
+						nocache: NocacheQuery,
 					}),
 					response: {
-						200: t.Object({ valid: t.Boolean() }),
+						200: t.Object({ valid: t.Boolean(), _cache: CacheMetadata }),
 						400: t.Object({ error: t.String() }),
 						401: t.Object({ error: t.String() }),
 					},
@@ -804,19 +842,40 @@ export function createApp({
 							error: "Query param 'page' must be a positive integer.",
 						});
 					}
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `employees:${creds.user}:${search ?? ''}:${parsedPage ?? 'all'}`;
 					const options = { search: search ?? null, page: parsedPage };
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeEmployees(creds.user, creds.password, options, signal),
+						const { data, _cache } = await cached(
+							cacheKey,
+							1800, // 30 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeEmployees(
+										creds.user,
+										creds.password,
+										options,
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						return toResponse(result);
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /employees error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -847,18 +906,34 @@ export function createApp({
 					const queryParams = query as Record<string, string | undefined>;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `info:${creds.user}`;
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeGeneralInfo(creds.user, creds.password, signal),
+						const { data, _cache } = await cached(
+							cacheKey,
+							1800, // 30 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeGeneralInfo(creds.user, creds.password, signal),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						return toResponse(result);
+						return { ...data, _cache } as any;
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /info error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -889,18 +964,34 @@ export function createApp({
 					const queryParams = query as Record<string, string | undefined>;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `org-chart:${creds.user}`;
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeOrgChart(creds.user, creds.password, signal),
+						const { data, _cache } = await cached(
+							cacheKey,
+							3600, // 60 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeOrgChart(creds.user, creds.password, signal),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						return toResponse(result);
+						return { ...data, _cache } as any;
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /org-chart error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -943,40 +1034,47 @@ export function createApp({
 							error: "Query param 'page' must be a positive integer.",
 						});
 					}
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `liquidaciones:${creds.user}:${search ?? ''}:${parsedPage ?? 'all'}`;
 					const options = { search: search ?? null, page: parsedPage };
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeLiquidaciones(
-								creds.user,
-								creds.password,
-								options,
-								signal,
-							),
+						const { data, _cache } = await cached(
+							cacheKey,
+							3600, // 60 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeLiquidaciones(
+										creds.user,
+										creds.password,
+										options,
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								const response = toResponse(result);
+								JSON.stringify(response); // validate serialization
+								return response;
+							},
+							{ nocache },
 						);
-						if (!result.success) {
-							console.error(`[api] /liquidaciones: scrape flagged as failed`);
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						}
-						const response = toResponse(result);
-						try {
-							JSON.stringify(response);
-						} catch (serErr) {
-							const msg =
-								serErr instanceof Error ? serErr.message : String(serErr);
-							console.error(
-								`[api] /liquidaciones: JSON serialization failed:`,
-								msg,
-							);
-							return status(500, {
-								error: `JSON serialization failed: ${msg}`,
-							});
-						}
-						return response;
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							console.error('[api] /liquidaciones: scrape flagged as failed');
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
+						if (msg.startsWith('JSON serialization failed')) {
+							console.error(`[api] /liquidaciones: ${msg}`);
+							return status(500, { error: msg });
+						}
 						console.error(`[api] /liquidaciones error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -1024,6 +1122,8 @@ export function createApp({
 							error: `Query param 'estado' must be one of: ${validEstados.join(', ')}.`,
 						});
 					}
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `ausencias:${creds.user}:${name ?? ''}:${from ?? ''}:${to ?? ''}:${historial ?? ''}:${motivo ?? ''}:${estado ?? ''}`;
 					const filters: AusenciasFilters = {
 						name: name ?? null,
 						from: from ?? null,
@@ -1033,17 +1133,36 @@ export function createApp({
 						estado: (estado as AusenciasFilters['estado']) ?? null,
 					};
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeAusencias(creds.user, creds.password, filters, signal),
+						const { data, _cache } = await cached(
+							cacheKey,
+							900, // 15 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeAusencias(
+										creds.user,
+										creds.password,
+										filters,
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						return toResponse(result);
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /ausencias error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -1074,18 +1193,34 @@ export function createApp({
 					const queryParams = query as Record<string, string | undefined>;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `vacaciones:${creds.user}`;
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeVacaciones(creds.user, creds.password, signal),
+						const { data, _cache } = await cached(
+							cacheKey,
+							1800, // 30 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeVacaciones(creds.user, creds.password, signal),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						return toResponse(result);
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /vacaciones error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -1118,40 +1253,56 @@ export function createApp({
 					const { path: dirPath } = queryParams;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `docs-list:${creds.user}:${dirPath ?? 'root'}`;
 					try {
-						if (!dirPath) {
-							const result = await withScrapeTimeout((signal) =>
-								deps.scrapeListDirs(creds.user, creds.password, signal),
-							);
-							if (!result.success)
-								return status(500, {
-									error: 'Scrape failed',
-									details: result.errors,
-								});
-							const entries: NexataListDirEntry[] =
-								result.carpetas.map(carpetaToEntry);
-							return { cursor: null, entries } as NexataListDir;
-						}
+						const { data, _cache } = await cached(
+							cacheKey,
+							900, // 15 min
+							async () => {
+								if (!dirPath) {
+									const result = await withScrapeTimeout((signal) =>
+										deps.scrapeListDirs(creds.user, creds.password, signal),
+									);
+									if (!result.success) {
+										throw Object.assign(new Error('Scrape failed'), {
+											details: result.errors,
+										});
+									}
+									const entries: NexataListDirEntry[] =
+										result.carpetas.map(carpetaToEntry);
+									return { cursor: null, entries } as NexataListDir;
+								}
 
-						assertLegajoxRelativePath(dirPath.trim(), 'directory');
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeListDocs(
-								creds.user,
-								creds.password,
-								dirPath.trim(),
-								signal,
-							),
+								assertLegajoxRelativePath(dirPath.trim(), 'directory');
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeListDocs(
+										creds.user,
+										creds.password,
+										dirPath.trim(),
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								const entries: NexataListDirEntry[] =
+									result.documentos.map(documentoToEntry);
+								return { cursor: null, entries } as NexataListDir;
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						const entries: NexataListDirEntry[] =
-							result.documentos.map(documentoToEntry);
-						return { cursor: null, entries } as NexataListDir;
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /documents/list error: ${msg}`);
 						return status(500, { error: msg });
 					}
@@ -1188,25 +1339,41 @@ export function createApp({
 						return status(400, {
 							error: "Query param 'q' must be at least 3 characters.",
 						});
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `docs-search:${creds.user}:${q.trim()}`;
 					try {
-						const result = await withScrapeTimeout((signal) =>
-							deps.scrapeFileSearch(
-								creds.user,
-								creds.password,
-								q.trim(),
-								signal,
-							),
+						const { data, _cache } = await cached(
+							cacheKey,
+							600, // 10 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeFileSearch(
+										creds.user,
+										creds.password,
+										q.trim(),
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								const entries: NexataListDirEntry[] =
+									result.results.map(searchResultToEntry);
+								return { cursor: null, entries } as NexataListDir;
+							},
+							{ nocache },
 						);
-						if (!result.success)
-							return status(500, {
-								error: 'Scrape failed',
-								details: result.errors,
-							});
-						const entries: NexataListDirEntry[] =
-							result.results.map(searchResultToEntry);
-						return { cursor: null, entries } as NexataListDir;
+						return { ...data, _cache };
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
 						console.error(`[api] /documents/search error: ${msg}`);
 						return status(500, { error: msg });
 					}

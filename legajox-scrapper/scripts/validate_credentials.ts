@@ -2,15 +2,22 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { Browser, Page } from 'puppeteer';
+import {
+	invalidateSession,
+	restoreSession,
+	saveSession,
+} from '../src/cache-utils';
 import { launchBrowser } from './browser';
 
 const URL_LOGIN = 'https://legajox.com/login';
+const URL_DASHBOARD = 'https://legajox.com/home';
 const DEBUG_DIR = path.resolve('scripts', 'outputs', 'debug');
+
 /**
  * Performs the Legajox login flow on an existing page.
  * Throws if the login fails or the dashboard is never reached.
  */
-export async function login(
+async function performLogin(
 	page: Page,
 	user: string,
 	password: string,
@@ -58,6 +65,36 @@ export async function login(
 			`Login timed out after 20s. URL: ${page.url()} — Screenshot: ${shot}`,
 		);
 	}
+}
+
+/**
+ * Logs into Legajox, using cached session cookies when available.
+ * Falls back to a full login flow if the cached session is stale.
+ * On success, saves the session cookies to cache for future reuse.
+ */
+export async function login(
+	page: Page,
+	user: string,
+	password: string,
+): Promise<void> {
+	// Try restoring cached session
+	const restored = await restoreSession(page, user);
+	if (restored) {
+		// Navigate to dashboard to verify session is still valid
+		await page.goto(URL_DASHBOARD, { waitUntil: 'domcontentloaded' });
+		const currentUrl = page.url();
+		if (!currentUrl.includes('/login')) {
+			// Session is valid — skip login
+			return;
+		}
+		// Session expired, invalidate and proceed with full login
+		await invalidateSession(user);
+	}
+
+	await performLogin(page, user, password);
+
+	// Cache the session cookies for future requests
+	await saveSession(page, user);
 }
 
 /**

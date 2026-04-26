@@ -12,4 +12,4 @@ export const microsoftRouter = new Elysia({ prefix: '/microsoft' })
 	.use(microsoftCalendarRouter)
 	.use(oneDriveRouter);
 
-export { Microsoft, Outlook, MicrosoftCalendar, OneDrive };
+export { Microsoft, MicrosoftCalendar, OneDrive, Outlook };
