@@ -19,7 +19,6 @@
 
 		"types": [],
 
-		"baseUrl": "./",
 		"paths": {
 			"@api": ["./src/"],
 			"@api/*": ["./src/*"]

@@ -168,12 +168,19 @@ const getActiveToolsForStep = (
 		: undefined;
 };
 
+const extendStreamingTimeout = (
+	server: { timeout: (request: Request, seconds: number) => void } | null,
+	request: Request,
+) => server?.timeout(request, 255);
+
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.use(authPlugin())
 	.use(threadRouter)
 	.post(
 		'/',
-		async ({ body, activeUser, request }) => {
+		async ({ body, activeUser, request, server }) => {
+			extendStreamingTimeout(server, request);
+
 			const creditsToUse = body.extraReason ? 2 : 1;
 			const chatBlock = await checkTenantCanChat(activeUser.slug, creditsToUse);
 
@@ -442,7 +449,9 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	)
 	.post(
 		'/answer',
-		async ({ body, activeUser, request }) => {
+		async ({ body, activeUser, request, server }) => {
+			extendStreamingTimeout(server, request);
+
 			const threadMessages = await getThreadMessages(body.threadId, {
 				content: 'partial',
 				slug: activeUser.slug,

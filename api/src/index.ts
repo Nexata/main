@@ -18,7 +18,11 @@ import { helmet } from 'elysia-helmet';
 import { logger } from 'elysia-logger';
 import { sentry } from 'elysiajs-sentry';
 
-export const app = new Elysia()
+export const app = new Elysia({
+	serve: {
+		idleTimeout: 255,
+	},
+})
 	.use(
 		IS_PRODUCTION &&
 			sentry({

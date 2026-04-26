@@ -382,6 +382,7 @@ export async function persistChat(params: {
 }
 
 const SYNC_TIMEOUT = 30_000;
+const STREAM_HEARTBEAT_INTERVAL = 10_000;
 
 export type SyncResolver = {
 	promise: Promise<{ messages: ModelMessage[]; reason: FinishReason }>;
@@ -423,11 +424,20 @@ export function createSyncedStream(
 		// on the `start` event, so the injection is skipped regardless.
 		generateId: (() => undefined) as unknown as () => string,
 		async execute({ writer }) {
+			const heartbeat = setInterval(() => {
+				writer.write({
+					type: 'data-heartbeat',
+					data: { timestamp: new Date().toISOString() },
+					transient: true,
+				} as never);
+			}, STREAM_HEARTBEAT_INTERVAL);
+
 			writer.merge(aiUIStream);
 
-			const { messages: responseMessages, reason } = await syncResolver.promise;
-
 			try {
+				const { messages: responseMessages, reason } =
+					await syncResolver.promise;
+
 				await Promise.race([
 					doPersist(responseMessages, reason),
 					new Promise<never>((_, reject) =>
@@ -452,6 +462,8 @@ export function createSyncedStream(
 					},
 					transient: true,
 				} as never);
+			} finally {
+				clearInterval(heartbeat);
 			}
 		},
 	});
