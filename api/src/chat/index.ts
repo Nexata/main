@@ -168,10 +168,11 @@ const getActiveToolsForStep = (
 		: undefined;
 };
 
-const extendStreamingTimeout = (
+// Bun uses 0 to disable the per-request idle timeout for long-lived SSE.
+const disableStreamingTimeout = (
 	server: { timeout: (request: Request, seconds: number) => void } | null,
 	request: Request,
-) => server?.timeout(request, 255);
+) => server?.timeout(request, 0);
 
 export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.use(authPlugin())
@@ -179,7 +180,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/',
 		async ({ body, activeUser, request, server }) => {
-			extendStreamingTimeout(server, request);
+			disableStreamingTimeout(server, request);
 
 			const creditsToUse = body.extraReason ? 2 : 1;
 			const chatBlock = await checkTenantCanChat(activeUser.slug, creditsToUse);
@@ -450,7 +451,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 	.post(
 		'/answer',
 		async ({ body, activeUser, request, server }) => {
-			extendStreamingTimeout(server, request);
+			disableStreamingTimeout(server, request);
 
 			const threadMessages = await getThreadMessages(body.threadId, {
 				content: 'partial',
