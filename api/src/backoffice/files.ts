@@ -277,7 +277,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 		detail: {
 			summary: 'Sync external files',
 			description:
-				'Sync for external files. Expected to run cronologically once an hour.',
+				'Sync for external files. Expected to run cronologically every 4 hours.',
 		},
 	},
 );
