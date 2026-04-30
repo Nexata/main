@@ -1,4 +1,4 @@
-import { togetherai } from '@ai-sdk/togetherai';
+import { createOpenAI } from '@ai-sdk/openai';
 import type * as schema from '@api/schema';
 import { requireEnv, warnEnv } from '@api/utils/env';
 import { neon, neonConfig } from '@neondatabase/serverless';
@@ -33,13 +33,16 @@ export const db = drizzle({
 	logger: !IS_PRODUCTION,
 }) as NeonHttpDatabase<typeof schema>;
 
-export const MODEL = togetherai('Qwen/Qwen3.5-397B-A17B');
-export const LIGHT_MODEL = togetherai('openai/gpt-oss-20b');
-export const REASONING_MODEL = togetherai('zai-org/GLM-5.1');
-export const VLM_MODEL = togetherai('google/gemma-4-31B-it'); // Qwen/Qwen3.5-9B
-export const EMBEDDING_MODEL = togetherai.embeddingModel(
-	'intfloat/multilingual-e5-large-instruct',
-);
+const novita = createOpenAI({
+	baseURL: 'https://api.novita.ai/openai',
+	apiKey: requireEnv('NOVITA_API_KEY'),
+});
+
+export const MODEL = novita.chat('deepseek/deepseek-v4-flash');
+export const LIGHT_MODEL = novita.chat('openai/gpt-oss-20b');
+export const REASONING_MODEL = novita.chat('zai-org/glm-5.1');
+export const VLM_MODEL = novita.chat('google/gemma-4-31b-it');
+export const EMBEDDING_MODEL = novita.embeddingModel('baai/bge-m3');
 export const EMBEDDING_DIMENSIONS = 1024;
 export const EMBEDDING_SIZE = 500;
 export const EMBEDDING_OVERLAP = 62;

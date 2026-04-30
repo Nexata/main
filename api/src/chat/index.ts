@@ -324,7 +324,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				model: body.extraReason ? REASONING_MODEL : MODEL,
 				maxOutputTokens: 16384,
 				providerOptions: {
-					togetherai: { parallelToolCalls: false },
+					openai: { parallelToolCalls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
 					displayName: activeUser.displayName,
@@ -731,7 +731,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					model: MODEL,
 					maxOutputTokens: 16384,
 					providerOptions: {
-						togetherai: { parallelToolCalls: false },
+						openai: { parallelToolCalls: false },
 					},
 					system: BUILD_SYSTEM_PROMPT({
 						displayName: activeUser.displayName,
@@ -894,7 +894,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 				model: MODEL,
 				maxOutputTokens: 16384,
 				providerOptions: {
-					togetherai: { parallelToolCalls: false },
+					openai: { parallelToolCalls: false },
 				},
 				system: BUILD_SYSTEM_PROMPT({
 					displayName: activeUser.displayName,
