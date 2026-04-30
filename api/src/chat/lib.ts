@@ -43,7 +43,8 @@ export async function generateThreadTitle(
 	})
 		.then((res) => {
 			const title = cleanGeneratedTitle(res.text);
-			if (!title) throw new Error('Thread title generation returned empty text');
+			if (!title)
+				throw new Error('Thread title generation returned empty text');
 			return truncateTitle(title);
 		})
 		.catch((error) => {
@@ -403,6 +404,46 @@ export async function persistChat(params: {
 
 const SYNC_TIMEOUT = 30_000;
 const STREAM_HEARTBEAT_INTERVAL = 10_000;
+const UNSUCCESSFUL_FINISH_REASONS = new Set<FinishReason>([
+	FinishReason.ERROR,
+	FinishReason.LENGTH,
+	FinishReason.STOPPED,
+]);
+
+const summarizeResponseMessage = (m: ModelMessage) => ({
+	role: m.role,
+	content:
+		Array.isArray(m.content) && m.content.length
+			? m.content.map((part) =>
+					typeof part === 'object' && part !== null
+						? {
+								type: 'type' in part ? part.type : undefined,
+								toolName: 'toolName' in part ? part.toolName : undefined,
+							}
+						: { type: typeof part },
+				)
+			: typeof m.content,
+});
+
+const captureUnsuccessfulFinishReason = (
+	reason: FinishReason,
+	responseMessages: ModelMessage[],
+	options: { threadId: string; source: string },
+) => {
+	if (!UNSUCCESSFUL_FINISH_REASONS.has(reason)) return;
+
+	captureException(new Error(`Chat finished with ${reason}`), {
+		tags: {
+			source: `${options.source}:finish-reason`,
+			finishReason: reason,
+		},
+		extra: {
+			threadId: options.threadId,
+			responseMessageCount: responseMessages.length,
+			responseMessages: responseMessages.map(summarizeResponseMessage),
+		},
+	});
+};
 
 export type SyncResolver = {
 	promise: Promise<{ messages: ModelMessage[]; reason: FinishReason }>;
@@ -457,6 +498,7 @@ export function createSyncedStream(
 			try {
 				const { messages: responseMessages, reason } =
 					await syncResolver.promise;
+				captureUnsuccessfulFinishReason(reason, responseMessages, options);
 
 				await Promise.race([
 					doPersist(responseMessages, reason),
