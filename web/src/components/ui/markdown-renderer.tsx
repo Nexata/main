@@ -13,7 +13,7 @@ interface MarkdownRendererProps {
   children: string
 }
 
-export function MarkdownRenderer({ children }: MarkdownRendererProps) {
+function MarkdownRendererBase({ children }: MarkdownRendererProps) {
   const segments = useMemo(() => segmentMarkdownContent(children), [children])
 
   return (
@@ -32,6 +32,8 @@ export function MarkdownRenderer({ children }: MarkdownRendererProps) {
     </div>
   )
 }
+
+export const MarkdownRenderer = React.memo(MarkdownRendererBase)
 
 interface HighlightedPre extends React.HTMLAttributes<HTMLPreElement> {
   children: string

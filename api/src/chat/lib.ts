@@ -15,7 +15,7 @@ import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { captureException } from '@sentry/bun';
 import { createUIMessageStream, generateText, type ModelMessage } from 'ai';
-import { and, asc, eq, exists, gte, inArray, lt, or } from 'drizzle-orm';
+import { and, desc, eq, exists, gte, inArray, lt, or } from 'drizzle-orm';
 
 const truncateTitle = (prompt: string, length = 50) =>
 	((x: string) => (x.length >= length ? `${x.slice(0, length - 3)}...` : x))(
@@ -188,47 +188,49 @@ export async function getThreadMessages(
 		if (cached) return cached.filter((m) => m.content);
 	}
 
-	const noncached = await db
-		.select(
-			op.content === 'partial'
-				? { id: message.id, role: message.role, content: message.content }
-				: {
-						id: message.id,
-						role: message.role,
-						content: message.content,
-						extraReason: message.extraReason,
-						createdAt: message.createdAt,
-						files: jsonAgg(
-							jsonBuildObject({
-								id: file.id,
-								name: file.name,
-								type: file.type,
-								url: file.url,
-							}),
-							{ filterWhere: eq(file.messageId, message.id) },
-						).as('files'),
-					},
-		)
-		.from(message)
-		.leftJoin(file, eq(file.messageId, message.id))
-		.innerJoin(thread, eq(thread.id, message.threadId))
-		.where(
-			and(
-				eq(message.threadId, threadId),
-				exists(
-					db
-						.select({ slug: user.slug })
-						.from(user)
-						.where(and(eq(user.id, thread.userId), eq(user.slug, op.slug))),
+	const noncached = (
+		await db
+			.select(
+				op.content === 'partial'
+					? { id: message.id, role: message.role, content: message.content }
+					: {
+							id: message.id,
+							role: message.role,
+							content: message.content,
+							extraReason: message.extraReason,
+							createdAt: message.createdAt,
+							files: jsonAgg(
+								jsonBuildObject({
+									id: file.id,
+									name: file.name,
+									type: file.type,
+									url: file.url,
+								}),
+								{ filterWhere: eq(file.messageId, message.id) },
+							).as('files'),
+						},
+			)
+			.from(message)
+			.leftJoin(file, eq(file.messageId, message.id))
+			.innerJoin(thread, eq(thread.id, message.threadId))
+			.where(
+				and(
+					eq(message.threadId, threadId),
+					exists(
+						db
+							.select({ slug: user.slug })
+							.from(user)
+							.where(and(eq(user.id, thread.userId), eq(user.slug, op.slug))),
+					),
+					op.userId ? eq(thread.userId, op.userId) : undefined,
+					op.messageId ? eq(message.id, op.messageId) : undefined,
+					op.cursor ? lt(message.createdAt, op.cursor) : undefined,
 				),
-				op.userId ? eq(thread.userId, op.userId) : undefined,
-				op.messageId ? eq(message.id, op.messageId) : undefined,
-				op.cursor ? lt(message.createdAt, op.cursor) : undefined,
-			),
-		)
-		.limit(op.limit ?? 100)
-		.orderBy(asc(message.createdAt))
-		.groupBy(message.id);
+			)
+			.limit(op.limit ?? 100)
+			.orderBy(desc(message.createdAt))
+			.groupBy(message.id)
+	).reverse();
 
 	if (!noncached?.length)
 		throw httpError(

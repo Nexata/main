@@ -107,18 +107,18 @@ export function Chat({
   }, [stop])
 
   const messageOptions = useCallback(
-    (_message: UIMessage) => {
+    (message: UIMessage) => {
       return {
         addToolOutput,
         addToolApprovalResponse,
         onEdit: onEditMessage,
         onBranchOff,
         onRetry,
-        isStreaming,
+        isStreaming: isStreaming && message.id === lastMessage?.id,
         isSyncing,
       }
     },
-    [addToolOutput, addToolApprovalResponse, onEditMessage, onBranchOff, onRetry, isStreaming, isSyncing]
+    [addToolOutput, addToolApprovalResponse, onEditMessage, onBranchOff, onRetry, isStreaming, isSyncing, lastMessage?.id]
   )
 
   return (

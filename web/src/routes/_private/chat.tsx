@@ -325,7 +325,10 @@ export function NexataChat() {
 		addToolApprovalResponse,
 	} = useChat({
 		chat,
+		experimental_throttle: 50,
 	});
+	const messagesRef = useRef(messages);
+	messagesRef.current = messages;
 
 	// ----------------------------
 	// Thread hydration
@@ -798,7 +801,7 @@ export function NexataChat() {
 
 	const handleRetry = useCallback(
 		async (messageId: string) => {
-			const msg = messages.find((m) => m.id === messageId);
+			const msg = messagesRef.current.find((m) => m.id === messageId);
 			if (!msg) return;
 			const text = msg.parts
 				.filter(
@@ -826,7 +829,7 @@ export function NexataChat() {
 				},
 			);
 		},
-		[messages, addStreamingThread, activeThreadId, sendMessage, me?.language],
+		[addStreamingThread, activeThreadId, sendMessage, me?.language],
 	);
 
 	const handleShareThread = useCallback(async () => {

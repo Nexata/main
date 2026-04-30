@@ -280,7 +280,7 @@ export interface ChatMessageProps {
   isLastInGroup?: boolean
 }
 
-export const ChatMessage: React.FC<ChatMessageProps> = ({
+const ChatMessageBase: React.FC<ChatMessageProps> = ({
   message,
   showTimeStamp = false,
   addToolOutput,
@@ -294,10 +294,8 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
 }) => {
   const isUser = message.role === "user"
   const editingMessageId = useChatUIStore((s) => s.editingMessageId)
-  const editingMessageText = useChatUIStore((s) => s.editingMessageText)
   const startEditing = useChatUIStore((s) => s.startEditing)
   const cancelEditing = useChatUIStore((s) => s.cancelEditing)
-  const openTool = useToolDetailStore((s) => s.openTool)
   const isEditing = editingMessageId === message.id
   const [editText, setEditText] = useState("")
   const [confirmVisible, setConfirmVisible] = useState(false)
@@ -809,6 +807,9 @@ export const ChatMessage: React.FC<ChatMessageProps> = ({
     </div>
   )
 }
+
+export const ChatMessage = React.memo(ChatMessageBase)
+ChatMessage.displayName = "ChatMessage"
 /* -------------------------------------------------------------------------- */
 /*                               ReasoningBlock                                */
 /* -------------------------------------------------------------------------- */

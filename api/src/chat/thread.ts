@@ -19,11 +19,13 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 				limit: query.limit,
 				cursor,
 			});
+
 			const [owner] = await db
 				.select({ userId: thread.userId, isPublic: thread.isPublic })
 				.from(thread)
 				.where(eq(thread.id, id))
 				.limit(1);
+
 			return {
 				messages,
 				isOwner: owner?.userId === activeUser.id,

@@ -9,6 +9,7 @@ export function useAutoScroll(dependencies: React.DependencyList) {
 
   const previousScrollTop = useRef(0)
   const rafId = useRef<number | null>(null)
+  const pendingScrollRafId = useRef<number | null>(null)
   const animationStart = useRef<number>(0)
 
   const isProgrammaticScroll = useRef(false)
@@ -78,6 +79,15 @@ export function useAutoScroll(dependencies: React.DependencyList) {
     )
   }
 
+  const scheduleScrollToBottom = () => {
+    if (pendingScrollRafId.current !== null) return
+
+    pendingScrollRafId.current = requestAnimationFrame(() => {
+      pendingScrollRafId.current = null
+      scrollToBottom(false)
+    })
+  }
+
   /* ------------------------------- SCROLL EVT ------------------------------ */
 
   const handleScroll = () => {
@@ -126,11 +136,19 @@ export function useAutoScroll(dependencies: React.DependencyList) {
   useEffect(() => {
     if (!shouldAutoScroll) return
 
-    // streaming → ultra soft animated scroll
-    scrollToBottom(true)
+    scheduleScrollToBottom()
 
     // eslint-disable-next-line
   }, dependencies)
+
+  useEffect(() => {
+    return () => {
+      if (rafId.current) cancelAnimationFrame(rafId.current)
+      if (pendingScrollRafId.current !== null) {
+        cancelAnimationFrame(pendingScrollRafId.current)
+      }
+    }
+  }, [])
 
   return {
     containerRef,
