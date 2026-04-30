@@ -22,6 +22,15 @@ const truncateTitle = (prompt: string, length = 50) =>
 		prompt.charAt(0).toUpperCase() + prompt.slice(1),
 	);
 
+const cleanGeneratedTitle = (title: string) =>
+	title
+		.trim()
+		.split('\n')
+		.at(0)
+		?.trim()
+		.replace(/^['"]+|['"]+$/g, '')
+		.trim();
+
 export async function generateThreadTitle(
 	prompt: string,
 	languagePreference?: string,
@@ -30,9 +39,20 @@ export async function generateThreadTitle(
 		model: LIGHT_MODEL,
 		system: `Generate a concise, descriptive title (max 50 characters) for a chat conversation based on the user's first message. Output only the title, no quotes or extra text.${languagePreference ? ` Respond in ${languagePreference}.` : ''}`,
 		prompt,
+		maxOutputTokens: 16,
 	})
-		.then((res) => truncateTitle(res.text.trim()))
-		.catch(() => truncateTitle(prompt));
+		.then((res) => {
+			const title = cleanGeneratedTitle(res.text);
+			if (!title) throw new Error('Thread title generation returned empty text');
+			return truncateTitle(title);
+		})
+		.catch((error) => {
+			captureException(error, {
+				tags: { source: 'chat:generate-thread-title' },
+				extra: { languagePreference },
+			});
+			return truncateTitle(prompt);
+		});
 }
 
 type SystemPromptContext = {
