@@ -183,7 +183,9 @@ export async function getThreadMessages(
 	threadId: string,
 	op: getThreadMessagesOptions,
 ) {
-	if (op.content === 'partial' && !op.avoidCaching) {
+	const shouldCache = !op.avoidCaching && !op.cursor;
+
+	if (op.content === 'partial' && shouldCache) {
 		const cached = await cache.get<PartialMessage[]>(threadId);
 		if (cached) return cached.filter((m) => m.content);
 	}
@@ -239,7 +241,7 @@ export async function getThreadMessages(
 			op.language,
 		);
 
-	if (!op.avoidCaching)
+	if (shouldCache)
 		await cache.set<PartialMessage[]>(
 			threadId,
 			(op.content === 'full'
