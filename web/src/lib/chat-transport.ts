@@ -190,6 +190,7 @@ export function createAuthenticatedChatTransport(
 					sanitize(threadId) ??
 					storeThreadId ??
 					undefined;
+				const isNewThreadRequest = finalThreadId == null;
 
 				const adaptedPayload = cleanObject({
 					prompt: prompt ?? '',
@@ -286,7 +287,7 @@ export function createAuthenticatedChatTransport(
 									} = event.messageMetadata;
 									const store = useChatUIStore.getState();
 
-									if (newThreadId !== store.activeThreadId) {
+									if (isNewThreadRequest) {
 										promoteChatInstance(newThreadId);
 										store.setActiveThreadId(newThreadId);
 										store.upsertOptimisticThread({
@@ -295,6 +296,8 @@ export function createAuthenticatedChatTransport(
 											isTyping: true,
 											insertedAt: Date.now(),
 										});
+									} else if (newThreadId !== store.activeThreadId) {
+										store.setActiveThreadId(newThreadId);
 									}
 
 									store.addStreamingThread(newThreadId);

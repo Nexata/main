@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, CircleHelp, Info, Loader2, Paperclip, Square, Brain, X  } from "lucide-react"
+import { ArrowUp, CircleHelp, Info, Loader2, Paperclip, Share2, Square, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
 import { CHAT_INPUT_MAX_CHARS, CHAT_INPUT_WARNING_THRESHOLD } from "@/lib/chat-input"
 import { cn } from "@/lib/utils"
@@ -34,6 +34,7 @@ interface MessageInputBaseProps
   enableInterrupt?: boolean
   transcribeAudio?: (blob: Blob) => Promise<string>
   setExtraReason?: (value: boolean) => void
+  onShareThread?: () => void
 }
 
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
@@ -60,6 +61,7 @@ export function MessageInput({
   enableInterrupt = true,
   transcribeAudio,
   setExtraReason,
+  onShareThread,
   ...props
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -368,6 +370,24 @@ export function MessageInput({
                 </Tooltip>
               )}
 
+              {onShareThread && (
+                <Tooltip>
+                  <TooltipTrigger>
+                    <Button
+                      type="button"
+                      size="icon"
+                      variant="ghost"
+                      className="h-8 w-8 rounded-full cursor-pointer"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={onShareThread}
+                    >
+                      <Share2 className="h-5 w-5" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Share</TooltipContent>
+                </Tooltip>
+              )}
+
               {isGenerating && stop ? (
                 <Button
                   type="button"
@@ -509,6 +529,24 @@ export function MessageInput({
                       </Button>
                     </TooltipTrigger>
                     <TooltipContent>{common_attachment()}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {onShareThread && (
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={onShareThread}
+                      >
+                        <Share2 className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Share</TooltipContent>
                   </Tooltip>
                 )}
 

@@ -54,6 +54,7 @@ interface ChatPropsBase {
   onLoadOlderMessages?: () => void
   isFetchingOlderMessages?: boolean
   hasOlderMessages?: boolean
+  onShareThread?: () => void
 }
 
 export function Chat({
@@ -80,6 +81,7 @@ export function Chat({
   onLoadOlderMessages,
   isFetchingOlderMessages,
   hasOlderMessages,
+  onShareThread,
 }: ChatPropsBase) {
   const isHydrating = isHydratingThread === true
   const isStreaming = isGenerating === true
@@ -245,6 +247,7 @@ export function Chat({
                     isGenerating={isGenerating}
                     transcribeAudio={transcribeAudio}
                     setExtraReason={setExtraReason}
+                    onShareThread={onShareThread}
                   />
                 )}
               </ChatForm>

@@ -2,6 +2,7 @@
 
 import { type UIMessage, useChat } from '@ai-sdk/react';
 import { createFileRoute } from '@tanstack/react-router';
+import { useQueryClient } from '@tanstack/react-query';
 import { decode } from '@toon-format/toon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { infoToast } from '@/components/info-toast/info-toast';
@@ -14,6 +15,7 @@ import {
 	useBranchOffMessage,
 	usePublicThreadById,
 	useThreadById,
+	useUpdateThreadShare,
 } from '@/lib/chat';
 import { isAuthenticated } from '@/lib/auth';
 import { useChatUIStore } from '@/lib/chat.store';
@@ -28,6 +30,9 @@ import {
 	'chat.branch_off.success' as chat_branch_off_success,
 	'chat.meta.error' as chat_meta_error,
 	'chat.meta.title' as chat_meta_title,
+	'common.error' as common_error,
+	'common.loading' as common_loading,
+	'common.success' as common_success,
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/chat')({
@@ -195,6 +200,7 @@ function hydrateThreadMessages(
 
 export function NexataChat() {
 	const authenticated = isAuthenticated();
+	const queryClient = useQueryClient();
 	// ----------------------------
 	// Store
 	// ----------------------------
@@ -215,6 +221,8 @@ export function NexataChat() {
 		authenticated &&
 		(viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle'));
 	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
+	const optimisticThreads = useChatUIStore((s) => s.optimisticThreads);
+	const updateThreadShareFn = useUpdateThreadShare();
 
 	// ----------------------------
 	// URL search param sync
@@ -225,15 +233,18 @@ export function NexataChat() {
 
 	useEffect(() => {
 		if (!authenticated) return;
-		if (searchThreadId && searchThreadId !== activeThreadId) {
+		const currentThreadId = useChatUIStore.getState().activeThreadId;
+		if (searchThreadId && searchThreadId !== currentThreadId) {
 			hydrateChat(searchThreadId);
 		}
-	}, [searchThreadId, activeThreadId, hydrateChat, authenticated]);
+	}, [searchThreadId, hydrateChat, authenticated]);
 
 	const navigate = Route.useNavigate();
 
 	useEffect(() => {
 		if (!authenticated) return;
+		if (searchThreadId && searchThreadId !== activeThreadId) return;
+
 		navigate({
 			search: (prev) => ({
 				...prev,
@@ -241,7 +252,7 @@ export function NexataChat() {
 			}),
 			replace: true,
 		});
-	}, [activeThreadId, navigate, authenticated]);
+	}, [searchThreadId, activeThreadId, navigate, authenticated]);
 
 	// ----------------------------
 	// Thread data (React Query es la fuente de verdad del loading)
@@ -290,6 +301,7 @@ export function NexataChat() {
 	const threadMessages = displayThreadData?.messages;
 	const isOwner = authenticated ? (threadData?.isOwner ?? true) : false;
 	const isReadOnly = !!displayThreadId && (!authenticated || !isOwner);
+	const canShareThread = authenticated && !!displayThreadId && !isReadOnly;
 
 	const hydratedMessages = useMemo<UIMessage[]>(
 		() => hydrateThreadMessages((threadMessages ?? []) as ThreadById['messages']),
@@ -368,6 +380,20 @@ export function NexataChat() {
 		if (!authenticated) return;
 		if (isNewChat) setMessages([]);
 	}, [isNewChat, setMessages, authenticated]);
+
+	useEffect(() => {
+		if (!authenticated || !displayThreadId) return;
+		if (!optimisticThreads[displayThreadId]) return;
+		if (unsyncedThreadIds.has(displayThreadId)) return;
+
+		queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+	}, [
+		authenticated,
+		displayThreadId,
+		optimisticThreads,
+		queryClient,
+		unsyncedThreadIds,
+	]);
 
 	// ----------------------------
 	// Older messages pagination (scroll up to load)
@@ -803,6 +829,34 @@ export function NexataChat() {
 		[messages, addStreamingThread, activeThreadId, sendMessage, me?.language],
 	);
 
+	const handleShareThread = useCallback(async () => {
+		if (!displayThreadId || !canShareThread) return;
+
+		const toastId = infoToast.loading({ title: common_loading() });
+
+		try {
+			if (!threadData?.isPublic) {
+				await updateThreadShareFn(displayThreadId, { isPublic: true });
+			}
+
+			await navigator.clipboard.writeText(
+				`${window.location.origin}/chat?id=${encodeURIComponent(displayThreadId)}`,
+			);
+
+			infoToast.success(toastId, { title: common_success() });
+		} catch (error) {
+			infoToast.error(toastId, {
+				title: common_error(),
+				description: extractErrorText(error),
+			});
+		}
+	}, [
+		canShareThread,
+		displayThreadId,
+		threadData?.isPublic,
+		updateThreadShareFn,
+	]);
+
 	// ----------------------------
 	// Branch off
 	// ----------------------------
@@ -883,6 +937,7 @@ export function NexataChat() {
 					onRetry={isReadOnly ? undefined : handleRetry}
 					isReadOnly={isReadOnly}
 					isSyncing={isSyncing}
+					onShareThread={canShareThread ? handleShareThread : undefined}
 					onLoadOlderMessages={loadOlderMessages}
 					isFetchingOlderMessages={isFetchingOlder}
 					hasOlderMessages={hasOlderMessages}

@@ -9,7 +9,6 @@ import {
   MessageSquareText,
   Loader2,
   Search,
-  Share2,
 } from "lucide-react";
 import {
   IoSunny,
@@ -36,9 +35,6 @@ import {
   "sidebar.rename" as sidebar_rename,
   "sidebar.delete" as sidebar_delete,
   "sidebar.delete_selected" as sidebar_delete_selected,
-  "common.success" as common_success,
-  "common.error" as common_error,
-  "common.loading" as common_loading,
   "sidebar.selected_count" as sidebar_selected_count,
   "common.created_at" as common_created_at,
   "sidebar.delete_toast.loading_title" as sidebar_delete_toast_loading_title,
@@ -55,7 +51,7 @@ import {
   "sidebar.delete_toast.bulk_error_desc" as sidebar_delete_toast_bulk_error_desc,
 } from "@/paraglide/messages.js";
 import { TenantLogo } from "../tenant-logo/tenant-logo";
-import { useInfiniteThreads, useDeleteThreadById, useDeleteThreadsByIds, useUpdateThreadById, useUpdateThreadShare } from '@/lib/chat';
+import { useInfiniteThreads, useDeleteThreadById, useDeleteThreadsByIds, useUpdateThreadById } from '@/lib/chat';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import { cn } from "@/lib/utils";
@@ -71,7 +67,6 @@ import {
   ContextMenuTrigger,
   ContextMenuContent,
   ContextMenuItem,
-  ContextMenuSeparator,
 } from "@/components/ui/context-menu";
 
 type SidebarProps = {
@@ -191,7 +186,6 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
   const deleteThreadFn = useDeleteThreadById();
   const deleteThreadsByIdsFn = useDeleteThreadsByIds();
   const updateThreadFn = useUpdateThreadById();
-  const updateThreadShareFn = useUpdateThreadShare();
   const [chatToDelete, setChatToDelete] = useState<{
     id: string;
     title: string | null;
@@ -244,27 +238,6 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
 
 
   const handleDeleteClick = (chat: { id: string; title: string | null }) => setChatToDelete(chat);
-
-  const handleShareClick = async (threadId: string, isPublic?: boolean) => {
-    const toastId = infoToast.loading({ title: common_loading() });
-
-    try {
-      if (!isPublic) {
-        await updateThreadShareFn(threadId, { isPublic: true });
-      }
-
-      await navigator.clipboard.writeText(
-        `${window.location.origin}/chat?id=${encodeURIComponent(threadId)}`,
-      );
-
-      infoToast.success(toastId, { title: common_success() });
-    } catch (error) {
-      infoToast.error(toastId, {
-        title: common_error(),
-        description: extractErrorText(error),
-      });
-    }
-  };
 
   const handleBulkDeleteClick = useCallback(() => {
     if (selectedThreadIds.size === 0) return;
@@ -416,7 +389,7 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
     if (!threadId) startNewChat();
     else hydrateChat(threadId);
 
-    navigate({ to: '/chat', search: { id: undefined } });
+    navigate({ to: '/chat', search: { id: threadId ?? undefined } });
     if (isMobileOverlay && onClose) onClose();
   };
 
@@ -683,13 +656,6 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                                         handleEditClick(chat.id, chat.title ?? sidebar_new_chat());
                                       }}
                                     />
-                                    <Share2
-                                      className="text-muted-foreground hover:text-foreground w-4 h-4 cursor-pointer transition-colors"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleShareClick(chat.id, (chat as { isPublic?: boolean }).isPublic);
-                                      }}
-                                    />
                                     <Trash2
                                       className="text-muted-foreground hover:text-destructive w-4 h-4 cursor-pointer transition-colors"
                                       onClick={(e) => {
@@ -727,14 +693,6 @@ export default function Sidebar({ isMobileOverlay = false, onClose }: SidebarPro
                                     <Pencil className="w-4 h-4 mr-1.5" />
                                     {sidebar_rename()}
                                   </ContextMenuItem>
-                                  <ContextMenuItem
-                                    onClick={() => handleShareClick(chat.id, (chat as { isPublic?: boolean }).isPublic)}
-                                    className="cursor-pointer"
-                                  >
-                                    <Share2 className="w-4 h-4 mr-1.5" />
-                                    Share
-                                  </ContextMenuItem>
-                                  <ContextMenuSeparator />
                                   <ContextMenuItem
                                     variant="destructive"
                                     onClick={() => handleDeleteClick(chat)}
