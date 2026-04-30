@@ -20,13 +20,14 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 				cursor,
 			});
 			const [owner] = await db
-				.select({ userId: thread.userId })
+				.select({ userId: thread.userId, isPublic: thread.isPublic })
 				.from(thread)
 				.where(eq(thread.id, id))
 				.limit(1);
 			return {
 				messages,
 				isOwner: owner?.userId === activeUser.id,
+				isPublic: owner?.isPublic ?? false,
 			};
 		},
 		{
@@ -41,6 +42,22 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 					default: 100,
 					description: 'Limit for pagination.',
 				}),
+			}),
+		},
+	)
+	.patch(
+		'/:id/share',
+		async ({ params: { id }, body, activeUser }) =>
+			db
+				.update(thread)
+				.set({ isPublic: body.isPublic })
+				.where(and(eq(thread.id, id), eq(thread.userId, activeUser.id)))
+				.returning({ id: thread.id, isPublic: thread.isPublic }),
+		{
+			detail: { summary: 'Update thread public sharing' },
+			params: tObject({ id: t.String({ format: 'uuid' }) }),
+			body: tObject({
+				isPublic: t.Boolean(),
 			}),
 		},
 	)
@@ -93,6 +110,7 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 				.select({
 					id: thread.id,
 					title: thread.title,
+					isPublic: thread.isPublic,
 					createdAt: thread.createdAt,
 				})
 				.from(thread)

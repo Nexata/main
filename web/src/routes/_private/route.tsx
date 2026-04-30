@@ -22,7 +22,11 @@ import { useMe, useMyTenant } from '@/lib/user';
 
 export const Route = createFileRoute('/_private')({
 	beforeLoad: () => {
-		if (!isAuthenticated()) {
+		const isPublicSharedChat =
+			window.location.pathname === '/chat' &&
+			new URLSearchParams(window.location.search).has('id');
+
+		if (!isAuthenticated() && !isPublicSharedChat) {
 			throw redirect({
 				to: '/login',
 			});
@@ -33,7 +37,12 @@ export const Route = createFileRoute('/_private')({
 
 function PrivateLayout() {
 	const { location } = useRouterState();
-	const shouldLoadSessionData = location.pathname !== '/credential-callback';
+	const isPublicSharedChat =
+		!isAuthenticated() &&
+		location.pathname === '/chat' &&
+		new URLSearchParams(window.location.search).has('id');
+	const shouldLoadSessionData =
+		!isPublicSharedChat && location.pathname !== '/credential-callback';
 	const controlsRef = useRef<HTMLDivElement>(null);
 	const isMobile = useIsMobile();
 	const {
@@ -48,6 +57,7 @@ function PrivateLayout() {
 
 	// CTRL+B / CMD+B to toggle sidebar (desktop only)
 	useEffect(() => {
+		if (isPublicSharedChat) return;
 		const onKeyDown = (e: KeyboardEvent) => {
 			if ((e.ctrlKey || e.metaKey) && e.key === 'b') {
 				e.preventDefault();
@@ -60,12 +70,13 @@ function PrivateLayout() {
 		};
 		document.addEventListener('keydown', onKeyDown);
 		return () => document.removeEventListener('keydown', onKeyDown);
-	}, [isMobile, toggleMobileSidebar]);
+	}, [isMobile, toggleMobileSidebar, isPublicSharedChat]);
 
 	// Close mobile sidebar on route change
 	useEffect(() => {
+		if (isPublicSharedChat) return;
 		closeMobileSidebar();
-	}, [location.pathname, closeMobileSidebar]);
+	}, [location.pathname, closeMobileSidebar, isPublicSharedChat]);
 
 	// Close tool detail panel when leaving /chat
 	useEffect(() => {
@@ -77,6 +88,7 @@ function PrivateLayout() {
 	}, [location.pathname]);
 
 	useEffect(() => {
+		if (isPublicSharedChat) return;
 		controlsRef.current?.animate(
 			[
 				{
@@ -94,7 +106,17 @@ function PrivateLayout() {
 				fill: 'both',
 			},
 		);
-	}, [location.pathname]);
+	}, [location.pathname, isPublicSharedChat]);
+
+	if (isPublicSharedChat) {
+		return (
+			<div className="flex h-dvh w-screen overflow-hidden bg-background text-foreground font-noto-sans antialiased">
+				<div className="flex-1 overflow-y-auto p-3 sm:p-4 md:p-6">
+					<Outlet />
+				</div>
+			</div>
+		);
+	}
 
 	return (
 		<div

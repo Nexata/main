@@ -1,3 +1,4 @@
+import { publicChatRouter } from '@api/public/chat';
 import { tenantRouter } from '@api/public/tenant';
 import { Language } from '@api/schema';
 import { getUsdArsQuote } from '@api/utils/quote';
@@ -13,6 +14,7 @@ export const publicRouter = new Elysia({ prefix: '/public', tags: ['Public'] })
 			}),
 		}),
 	})
+	.use(publicChatRouter)
 	.use(tenantRouter)
 	.get(
 		'/usd-ars-quote',

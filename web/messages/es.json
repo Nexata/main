@@ -391,7 +391,7 @@
 			"button": "Reintentar"
 		},
 		"shared": {
-			"banner": "Estás viendo un chat compartido. Solo podés bifurcar la conversación.",
+			"banner": "Estás viendo un chat compartido. Esta conversación es de solo lectura.",
 			"badge": "Chat compartido"
 		},
 		"tool_detail": {

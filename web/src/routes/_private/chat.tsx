@@ -9,10 +9,13 @@ import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import {
 	getThreadById,
+	getPublicThreadById,
 	type ThreadById,
 	useBranchOffMessage,
+	usePublicThreadById,
 	useThreadById,
 } from '@/lib/chat';
+import { isAuthenticated } from '@/lib/auth';
 import { useChatUIStore } from '@/lib/chat.store';
 import { CHAT_INPUT_MAX_CHARS } from '@/lib/chat-input';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
@@ -191,6 +194,7 @@ function hydrateThreadMessages(
 }
 
 export function NexataChat() {
+	const authenticated = isAuthenticated();
 	// ----------------------------
 	// Store
 	// ----------------------------
@@ -208,7 +212,8 @@ export function NexataChat() {
 	} = useChatUIStore();
 
 	const isNewChat =
-		viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle');
+		authenticated &&
+		(viewStatus === 'new' || (!activeThreadId && viewStatus === 'idle'));
 	const hydrateChat = useChatUIStore((s) => s.hydrateChat);
 
 	// ----------------------------
@@ -216,16 +221,19 @@ export function NexataChat() {
 	// ----------------------------
 
 	const { id: searchThreadId } = Route.useSearch();
+	const displayThreadId = authenticated ? activeThreadId : (searchThreadId ?? null);
 
 	useEffect(() => {
+		if (!authenticated) return;
 		if (searchThreadId && searchThreadId !== activeThreadId) {
 			hydrateChat(searchThreadId);
 		}
-	}, [searchThreadId]);
+	}, [searchThreadId, activeThreadId, hydrateChat, authenticated]);
 
 	const navigate = Route.useNavigate();
 
 	useEffect(() => {
+		if (!authenticated) return;
 		navigate({
 			search: (prev) => ({
 				...prev,
@@ -233,44 +241,58 @@ export function NexataChat() {
 			}),
 			replace: true,
 		});
-	}, [activeThreadId, navigate]);
+	}, [activeThreadId, navigate, authenticated]);
 
 	// ----------------------------
 	// Thread data (React Query es la fuente de verdad del loading)
 	// ----------------------------
 
-	const isActiveThreadStreaming = activeThreadId
-		? streamingThreadIds.has(activeThreadId)
+	const isActiveThreadStreaming = displayThreadId
+		? streamingThreadIds.has(displayThreadId)
 		: false;
 
 	// Threads created in this session already have messages from the stream —
 	// skip the initial fetch entirely to avoid a flash of loading state.
 	const justCreatedThreadsRef = useRef<Set<string>>(new Set());
-	const isJustCreated = activeThreadId
-		? justCreatedThreadsRef.current.has(activeThreadId)
+	const isJustCreated = displayThreadId
+		? justCreatedThreadsRef.current.has(displayThreadId)
 		: false;
 
 	// Also skip the fetch while the thread is unsynced (data-synced not yet
 	// received). Re-enabling the query before the DB persist completes would
 	// return stale data and flash an inconsistent state.
 	const isThreadUnsynced = unsyncedThreadIds.has(
-		activeThreadId ?? NEW_CHAT_KEY,
+		displayThreadId ?? NEW_CHAT_KEY,
 	);
 
 	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
-		activeThreadId ?? null,
+		displayThreadId ?? null,
 		{ limit: MESSAGES_PAGE_SIZE },
 		{
-			enabled: !isActiveThreadStreaming && !isJustCreated && !isThreadUnsynced,
+			enabled:
+				authenticated &&
+				!isActiveThreadStreaming &&
+				!isJustCreated &&
+				!isThreadUnsynced,
 		},
 	);
+	const {
+		data: publicThreadData,
+		isLoading: isPublicThreadLoading,
+		isError: isPublicThreadError,
+	} = usePublicThreadById(
+		displayThreadId ?? null,
+		{ limit: MESSAGES_PAGE_SIZE },
+		{ enabled: !authenticated && !!displayThreadId },
+	);
 
-	const threadMessages = threadData?.messages;
-	const isOwner = threadData?.isOwner ?? true;
-	const isReadOnly = !!activeThreadId && !isOwner;
+	const displayThreadData = authenticated ? threadData : publicThreadData;
+	const threadMessages = displayThreadData?.messages;
+	const isOwner = authenticated ? (threadData?.isOwner ?? true) : false;
+	const isReadOnly = !!displayThreadId && (!authenticated || !isOwner);
 
 	const hydratedMessages = useMemo<UIMessage[]>(
-		() => hydrateThreadMessages(threadMessages ?? []),
+		() => hydrateThreadMessages((threadMessages ?? []) as ThreadById['messages']),
 		[threadMessages],
 	);
 
@@ -278,7 +300,7 @@ export function NexataChat() {
 	// Chat Engine (per-thread from pool)
 	// ----------------------------
 
-	const chat = useMemo(() => getChatInstance(activeThreadId), [activeThreadId]);
+	const chat = useMemo(() => getChatInstance(displayThreadId), [displayThreadId]);
 
 	const {
 		messages,
@@ -304,18 +326,18 @@ export function NexataChat() {
 		// If activeThreadId was just set while the thread is streaming
 		// (promoted from __new__), mark it as just-created so we skip
 		// both the fetch and the hydration — the AI SDK already has the messages.
-		if (activeThreadId && streamingThreadIds.has(activeThreadId)) {
-			justCreatedThreadsRef.current.add(activeThreadId);
+		if (displayThreadId && streamingThreadIds.has(displayThreadId)) {
+			justCreatedThreadsRef.current.add(displayThreadId);
 		}
-	}, [activeThreadId]);
+	}, [displayThreadId, streamingThreadIds]);
 
 	useEffect(() => {
-		if (!activeThreadId) return;
+		if (!displayThreadId) return;
 		if (threadMessages === undefined) return;
-		if (appliedThreadRef.current === activeThreadId) return;
+		if (appliedThreadRef.current === displayThreadId) return;
 
 		// Don't overwrite if this thread is currently streaming (has live messages)
-		const threadKey = activeThreadId;
+		const threadKey = displayThreadId;
 		if (streamingThreadIds.has(threadKey)) return;
 
 		// Don't apply cached (potentially stale) data while the thread is
@@ -325,16 +347,16 @@ export function NexataChat() {
 
 		// Skip initial hydration for a thread that was just created in this session.
 		// The AI SDK already holds the correct messages from the stream.
-		if (justCreatedThreadsRef.current.has(activeThreadId)) {
-			justCreatedThreadsRef.current.delete(activeThreadId);
-			appliedThreadRef.current = activeThreadId;
+		if (justCreatedThreadsRef.current.has(displayThreadId)) {
+			justCreatedThreadsRef.current.delete(displayThreadId);
+			appliedThreadRef.current = displayThreadId;
 			return;
 		}
 
-		appliedThreadRef.current = activeThreadId;
+		appliedThreadRef.current = displayThreadId;
 		setMessages(hydratedMessages);
 	}, [
-		activeThreadId,
+		displayThreadId,
 		threadMessages,
 		hydratedMessages,
 		setMessages,
@@ -343,8 +365,9 @@ export function NexataChat() {
 	]);
 
 	useEffect(() => {
+		if (!authenticated) return;
 		if (isNewChat) setMessages([]);
-	}, [isNewChat, setMessages]);
+	}, [isNewChat, setMessages, authenticated]);
 
 	// ----------------------------
 	// Older messages pagination (scroll up to load)
@@ -357,7 +380,7 @@ export function NexataChat() {
 	useEffect(() => {
 		setHasOlderMessages(true);
 		setIsFetchingOlder(false);
-	}, [activeThreadId]);
+	}, [displayThreadId]);
 
 	// After initial hydration, check if there could be more messages
 	useEffect(() => {
@@ -368,7 +391,7 @@ export function NexataChat() {
 	}, [threadMessages]);
 
 	const loadOlderMessages = useCallback(async () => {
-		if (!activeThreadId || isFetchingOlder || !hasOlderMessages) return;
+		if (!displayThreadId || isFetchingOlder || !hasOlderMessages) return;
 
 		// Find the oldest hydrated message's createdAt
 		const oldestMessage = messages.find(
@@ -389,12 +412,19 @@ export function NexataChat() {
 
 		setIsFetchingOlder(true);
 		try {
-			const olderData = await getThreadById(activeThreadId, {
-				limit: MESSAGES_PAGE_SIZE,
-				cursor,
-			});
+			const olderData = authenticated
+				? await getThreadById(displayThreadId, {
+						limit: MESSAGES_PAGE_SIZE,
+						cursor,
+					})
+				: await getPublicThreadById(displayThreadId, {
+						limit: MESSAGES_PAGE_SIZE,
+						cursor,
+					});
 
-			const olderHydrated = hydrateThreadMessages(olderData.messages);
+			const olderHydrated = hydrateThreadMessages(
+				olderData.messages as ThreadById['messages'],
+			);
 
 			if (olderHydrated.length === 0) {
 				setHasOlderMessages(false);
@@ -418,7 +448,8 @@ export function NexataChat() {
 			setIsFetchingOlder(false);
 		}
 	}, [
-		activeThreadId,
+		displayThreadId,
+		authenticated,
 		isFetchingOlder,
 		hasOlderMessages,
 		messages,
@@ -430,7 +461,8 @@ export function NexataChat() {
 	// ----------------------------
 
 	useEffect(() => {
-		const threadKey = activeThreadId ?? NEW_CHAT_KEY;
+		if (!authenticated) return;
+		const threadKey = displayThreadId ?? NEW_CHAT_KEY;
 		if (chatStatus === 'submitted') {
 			// Mark unsynced only at the START of a new request (status 'submitted').
 			// Doing it for 'streaming' as well caused a race: the effect for
@@ -466,7 +498,8 @@ export function NexataChat() {
 		}
 	}, [
 		chatStatus,
-		activeThreadId,
+		displayThreadId,
+		authenticated,
 		addStreamingThread,
 		removeStreamingThread,
 		markThreadUnsynced,
@@ -529,7 +562,7 @@ export function NexataChat() {
 
 		for (const threadId of streamingThreadIds) {
 			// Active thread is monitored by the useChat hook above
-			if (threadId === (activeThreadId ?? NEW_CHAT_KEY)) continue;
+			if (threadId === (displayThreadId ?? NEW_CHAT_KEY)) continue;
 
 			const instance = pool.get(threadId);
 			if (!instance) {
@@ -567,7 +600,7 @@ export function NexataChat() {
 		};
 	}, [
 		streamingThreadIds,
-		activeThreadId,
+		displayThreadId,
 		removeStreamingThread,
 		addUnreadThread,
 	]);
@@ -578,8 +611,13 @@ export function NexataChat() {
 
 	const isSdkStreaming =
 		chatStatus === 'streaming' || chatStatus === 'submitted';
-	const isHydrating = !!activeThreadId && isThreadLoading && !isSdkStreaming;
-	const isSyncing = unsyncedThreadIds.has(activeThreadId ?? NEW_CHAT_KEY);
+	const isHydrating =
+		!!displayThreadId &&
+		(authenticated ? isThreadLoading : isPublicThreadLoading) &&
+		!isSdkStreaming;
+	const isSyncing = authenticated
+		? unsyncedThreadIds.has(displayThreadId ?? NEW_CHAT_KEY)
+		: false;
 
 	// ----------------------------
 	// Input / Submit
@@ -639,7 +677,7 @@ export function NexataChat() {
 	// Welcome
 	// ----------------------------
 
-	const { data: me, isLoading: isMeLoading } = useMe();
+	const { data: me, isLoading: isMeLoading } = useMe(authenticated);
 	const userName = me?.displayName?.trim().split(' ')[0] ?? 'there';
 	const welcomeText = useRandomWelcome(userName);
 
@@ -661,7 +699,7 @@ export function NexataChat() {
 
 	useEffect(() => {
 		closeToolDetail();
-	}, [activeThreadId, closeToolDetail]);
+	}, [displayThreadId, closeToolDetail]);
 
 	// ----------------------------
 	// Edit message
@@ -798,6 +836,26 @@ export function NexataChat() {
 	// Render
 	// ----------------------------
 
+	if (!authenticated && isPublicThreadError) {
+		return (
+			<div className="flex h-full min-h-[60dvh] w-full items-center justify-center px-6 text-center">
+				<div>
+					<img
+						src="/nexata_logo.png"
+						alt="Nexata"
+						className="mx-auto mb-6 h-8 w-auto object-contain"
+					/>
+					<h1 className="text-xl font-semibold text-foreground">
+						Shared chat unavailable
+					</h1>
+					<p className="mt-2 max-w-md text-sm text-muted-foreground">
+						This shared chat is unavailable or no longer public.
+					</p>
+				</div>
+			</div>
+		);
+	}
+
 	return (
 		<div className="flex flex-col h-full w-full min-h-0">
 			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
@@ -821,7 +879,7 @@ export function NexataChat() {
 						isReadOnly ? undefined : addToolApprovalResponse
 					}
 					onEditMessage={isReadOnly ? undefined : handleEditMessage}
-					onBranchOff={handleBranchOff}
+					onBranchOff={isReadOnly ? undefined : handleBranchOff}
 					onRetry={isReadOnly ? undefined : handleRetry}
 					isReadOnly={isReadOnly}
 					isSyncing={isSyncing}

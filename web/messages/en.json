@@ -391,7 +391,7 @@
 			"button": "Retry"
 		},
 		"shared": {
-			"banner": "You are viewing a shared chat. You can only branch off the conversation.",
+			"banner": "You are viewing a shared chat. This conversation is read-only.",
 			"badge": "Shared chat"
 		},
 		"tool_detail": {

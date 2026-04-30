@@ -30,6 +30,25 @@ export async function getThreadById(
 
 export type ThreadById = Awaited<ReturnType<typeof getThreadById>>;
 
+export async function getPublicThreadById(
+	threadId: string,
+	params?: { limit?: number; cursor?: string },
+) {
+	const result = await apiClient.public.chat.thread[threadId]!.get({
+		$query: {
+			...(params?.cursor ? { cursor: params.cursor } : {}),
+			limit: params?.limit ?? 100,
+		},
+	});
+
+	if (result.error) throw result.error;
+	if (!result.data) throw new Error('No data returned');
+
+	return result.data;
+}
+
+export type PublicThreadById = Awaited<ReturnType<typeof getPublicThreadById>>;
+
 export function useThreadById(
 	threadId: string | null,
 	params?: { limit?: number },
@@ -40,6 +59,21 @@ export function useThreadById(
 		queryFn: () => {
 			if (!threadId) throw new Error('threadId is required');
 			return getThreadById(threadId, params);
+		},
+		enabled: !!threadId && (options?.enabled ?? true),
+	});
+}
+
+export function usePublicThreadById(
+	threadId: string | null,
+	params?: { limit?: number },
+	options?: { enabled?: boolean },
+) {
+	return useQuery<PublicThreadById>({
+		queryKey: ['public-chat-thread', threadId, params],
+		queryFn: () => {
+			if (!threadId) throw new Error('threadId is required');
+			return getPublicThreadById(threadId, params);
 		},
 		enabled: !!threadId && (options?.enabled ?? true),
 	});
@@ -70,6 +104,35 @@ export function useUpdateThreadById() {
 		await queryClient.invalidateQueries({
 			queryKey: ['chat-threads'],
 		});
+	};
+}
+
+export async function updateThreadShare(
+	threadId: string,
+	data: { isPublic: boolean },
+) {
+	return withAuthRetry((headers) =>
+		apiClient.chat.thread[threadId]!.share.patch({
+			$headers: headers,
+			isPublic: data.isPublic,
+		}),
+	);
+}
+
+export function useUpdateThreadShare() {
+	const queryClient = useQueryClient();
+
+	return async (threadId: string, data: { isPublic: boolean }) => {
+		const res = await updateThreadShare(threadId, data);
+
+		await queryClient.invalidateQueries({
+			queryKey: ['chat-thread', threadId],
+		});
+		await queryClient.invalidateQueries({
+			queryKey: ['chat-threads'],
+		});
+
+		return res;
 	};
 }
 
