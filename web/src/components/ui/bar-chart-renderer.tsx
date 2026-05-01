@@ -17,8 +17,8 @@ type BarChartData = {
   entries: BarEntry[]
 }
 
-// Block element Unicode range + common ASCII fill chars used by LLMs
-const BAR_CHAR_RE = /[\u2580-\u259F\u2588█▄▀▐▌░▒▓]/
+// Block element Unicode range used by LLM-generated text charts.
+const BAR_CHARS = "[\\u2580-\\u259F]+"
 
 // ─── Detection ───────────────────────────────────────────────────────
 
@@ -26,7 +26,7 @@ export function isBarChart(text: string): boolean {
   const lines = text.split("\n").filter((l) => l.trim().length > 0)
   if (lines.length < 2) return false
 
-  const barLinePattern = new RegExp(`^.+?\\s+[\\u2580-\\u259F]+`)
+  const barLinePattern = new RegExp(`^.+?\\s+${BAR_CHARS}`)
   const barLines = lines.filter((l) => barLinePattern.test(l.trim()))
 
   // At least 2 bar lines; allow one leading non-bar title line
@@ -37,8 +37,7 @@ export function isBarChart(text: string): boolean {
 
 function parseBarChart(text: string): BarChartData {
   const lines = text.split("\n").filter((l) => l.trim().length > 0)
-  // label  <block chars>  optional-value
-  const entryPattern = /^(.+?)\s+[\u2580-\u259F]+\s*(\$?[\d,\.]+)?/
+  const entryPattern = new RegExp(`^(.*?)\\s+${BAR_CHARS}(?:\\s+(.*))?$`)
 
   let title: string | null = null
   let unit: string | null = null
@@ -57,18 +56,67 @@ function parseBarChart(text: string): BarChartData {
       continue
     }
 
-    const label = match[1]!.trim()
-    const rawValue = (match[2] ?? "").trim()
-    const numericValue = parseFloat(rawValue.replace(/[$,]/g, ""))
+    const beforeBar = match[1]!.trim()
+    const afterBar = (match[2] ?? "").trim()
+    const valueFromAfterBar = extractNumericValue(afterBar)
+    const valueFromBeforeBar = extractTrailingNumericValue(beforeBar)
+    const valueMatch = valueFromAfterBar ?? valueFromBeforeBar
+    const label = valueFromAfterBar
+      ? beforeBar
+      : (valueFromBeforeBar?.remainingText ?? beforeBar)
+    const numericValue = valueMatch ? parseNumericValue(valueMatch.value) : 0
 
     entries.push({
       label,
       value: isNaN(numericValue) ? 0 : numericValue,
-      formattedValue: rawValue,
+      formattedValue: valueMatch?.value ?? "",
     })
   }
 
   return { title, unit, entries }
+}
+
+function extractNumericValue(text: string) {
+  const match = text.match(/\$?\s*-?\d[\d.,]*/)
+  if (!match) return null
+  return { value: match[0].replace(/\s+/g, "") }
+}
+
+function extractTrailingNumericValue(text: string) {
+  const match = text.match(/^(.*?)(\$?\s*-?\d[\d.,]*)$/)
+  if (!match) return null
+  return {
+    remainingText: match[1]!.trim(),
+    value: match[2]!.replace(/\s+/g, ""),
+  }
+}
+
+function parseNumericValue(value: string): number {
+  const normalizedValue = value.replace(/[$\s]/g, "")
+  const lastDot = normalizedValue.lastIndexOf(".")
+  const lastComma = normalizedValue.lastIndexOf(",")
+
+  if (lastDot !== -1 && lastComma !== -1) {
+    return Number(
+      lastComma > lastDot
+        ? normalizedValue.replace(/\./g, "").replace(",", ".")
+        : normalizedValue.replace(/,/g, "")
+    )
+  }
+
+  if (lastComma !== -1) {
+    return Number(
+      /^-?\d{1,3}(,\d{3})+$/.test(normalizedValue)
+        ? normalizedValue.replace(/,/g, "")
+        : normalizedValue.replace(",", ".")
+    )
+  }
+
+  if (/^-?\d{1,3}(\.\d{3})+$/.test(normalizedValue)) {
+    return Number(normalizedValue.replace(/\./g, ""))
+  }
+
+  return Number(normalizedValue)
 }
 
 // ─── Formatters ──────────────────────────────────────────────────────
@@ -166,9 +214,10 @@ export function BarChartRenderer({ content }: BarChartRendererProps) {
               {/* Label */}
               <span
                 className={cn(
-                  "w-11 shrink-0 text-right font-mono text-xs font-medium tabular-nums",
+                  "w-24 shrink-0 truncate text-right font-mono text-xs font-medium tabular-nums sm:w-32",
                   isMax ? "text-foreground" : "text-muted-foreground",
                 )}
+                title={entry.label}
               >
                 {entry.label}
               </span>
@@ -216,12 +265,13 @@ export function BarChartRenderer({ content }: BarChartRendererProps) {
               </div>
 
               {/* Value */}
-              <div className="flex w-24 shrink-0 items-center justify-end gap-1">
+              <div className="flex w-28 shrink-0 items-center justify-end gap-1 sm:w-32">
                 <span
                   className={cn(
-                    "font-mono text-xs font-semibold tabular-nums",
+                    "truncate font-mono text-xs font-semibold tabular-nums",
                     isMax ? "text-foreground" : "text-muted-foreground",
                   )}
+                  title={entry.formattedValue}
                 >
                   {entry.formattedValue}
                 </span>
