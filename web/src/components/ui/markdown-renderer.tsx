@@ -502,29 +502,31 @@ function getThemeColors(): ThemeColors {
   }
 
   const styles = getComputedStyle(document.documentElement)
-  const readColor = (name: string, fallback: string) => {
+  const readColor = (name: string, fallback: string, matte?: string) => {
     const value = styles.getPropertyValue(name).trim()
     if (!value) return fallback
-    return cssColorToHex(value) ?? value
+    return cssColorToHex(value, matte ?? fallback) ?? value
   }
 
+  const background = readColor("--background", FALLBACK_THEME_COLORS.background)
+
   return {
-    background: readColor("--background", FALLBACK_THEME_COLORS.background),
-    foreground: readColor("--foreground", FALLBACK_THEME_COLORS.foreground),
-    card: readColor("--card", FALLBACK_THEME_COLORS.card),
-    muted: readColor("--muted", FALLBACK_THEME_COLORS.muted),
-    mutedForeground: readColor("--muted-foreground", FALLBACK_THEME_COLORS.mutedForeground),
-    border: readColor("--border", FALLBACK_THEME_COLORS.border),
-    primary: readColor("--primary", FALLBACK_THEME_COLORS.primary),
-    secondary: readColor("--secondary", FALLBACK_THEME_COLORS.secondary),
-    accent: readColor("--accent", FALLBACK_THEME_COLORS.accent),
-    chart1: readColor("--chart-1", FALLBACK_THEME_COLORS.chart1),
-    chart2: readColor("--chart-2", FALLBACK_THEME_COLORS.chart2),
-    chart3: readColor("--chart-3", FALLBACK_THEME_COLORS.chart3),
+    background,
+    foreground: readColor("--foreground", FALLBACK_THEME_COLORS.foreground, background),
+    card: readColor("--card", FALLBACK_THEME_COLORS.card, background),
+    muted: readColor("--muted", FALLBACK_THEME_COLORS.muted, background),
+    mutedForeground: readColor("--muted-foreground", FALLBACK_THEME_COLORS.mutedForeground, background),
+    border: readColor("--border", FALLBACK_THEME_COLORS.border, background),
+    primary: readColor("--primary", FALLBACK_THEME_COLORS.primary, background),
+    secondary: readColor("--secondary", FALLBACK_THEME_COLORS.secondary, background),
+    accent: readColor("--accent", FALLBACK_THEME_COLORS.accent, background),
+    chart1: readColor("--chart-1", FALLBACK_THEME_COLORS.chart1, background),
+    chart2: readColor("--chart-2", FALLBACK_THEME_COLORS.chart2, background),
+    chart3: readColor("--chart-3", FALLBACK_THEME_COLORS.chart3, background),
   }
 }
 
-function cssColorToHex(color: string): string | null {
+function cssColorToHex(color: string, matteColor?: string): string | null {
   if (typeof window === "undefined") {
     return null
   }
@@ -535,18 +537,102 @@ function cssColorToHex(color: string): string | null {
   const resolvedColor = getComputedStyle(option).color
   option.remove()
 
-  const match = resolvedColor.match(
-    /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/
+  return parseRgbToHex(resolvedColor, matteColor) ?? parseOklchToHex(resolvedColor, matteColor) ?? parseOklchToHex(color, matteColor)
+}
+
+function parseRgbToHex(color: string, matteColor?: string): string | null {
+  const match = color.match(
+    /^rgba?\(\s*(\d+(?:\.\d+)?)(?:,\s*|\s+)(\d+(?:\.\d+)?)(?:,\s*|\s+)(\d+(?:\.\d+)?)(?:\s*[,/]\s*([\d.]+%?))?\s*\)$/
   )
 
   if (!match) {
     return null
   }
 
-  const [, r, g, b] = match
-  return `#${[r, g, b]
-    .map((channel) => Number(channel).toString(16).padStart(2, "0"))
-    .join("")}`
+  const [, r, g, b, alpha] = match
+  return rgbToHex(
+    Number(r),
+    Number(g),
+    Number(b),
+    parseAlpha(alpha),
+    matteColor
+  )
+}
+
+function parseOklchToHex(color: string, matteColor?: string): string | null {
+  const match = color.match(
+    /^oklch\(\s*([\d.]+%?)(?:\s+)([\d.]+)(?:\s+)([\d.]+)(?:deg)?(?:\s*\/\s*([\d.]+%?))?\s*\)$/i
+  )
+
+  if (!match) {
+    return null
+  }
+
+  const [, lightness, chroma, hue, alpha] = match
+  if (!lightness || !chroma || !hue) {
+    return null
+  }
+
+  const l = lightness.endsWith("%") ? Number(lightness.slice(0, -1)) / 100 : Number(lightness)
+  const c = Number(chroma)
+  const h = (Number(hue) * Math.PI) / 180
+  const a = c * Math.cos(h)
+  const b = c * Math.sin(h)
+
+  const lPrime = l + 0.3963377774 * a + 0.2158037573 * b
+  const mPrime = l - 0.1055613458 * a - 0.0638541728 * b
+  const sPrime = l - 0.0894841775 * a - 1.291485548 * b
+
+  const lLinear = lPrime ** 3
+  const mLinear = mPrime ** 3
+  const sLinear = sPrime ** 3
+
+  return rgbToHex(
+    linearToRgb(4.0767416621 * lLinear - 3.3077115913 * mLinear + 0.2309699292 * sLinear),
+    linearToRgb(-1.2684380046 * lLinear + 2.6097574011 * mLinear - 0.3413193965 * sLinear),
+    linearToRgb(-0.0041960863 * lLinear - 0.7034186147 * mLinear + 1.707614701 * sLinear),
+    parseAlpha(alpha),
+    matteColor
+  )
+}
+
+function linearToRgb(value: number) {
+  const clamped = Math.min(1, Math.max(0, value))
+  const encoded = clamped <= 0.0031308
+    ? 12.92 * clamped
+    : 1.055 * clamped ** (1 / 2.4) - 0.055
+
+  return Math.round(encoded * 255)
+}
+
+function parseAlpha(alpha: string | undefined) {
+  if (!alpha) return 1
+  return alpha.endsWith("%") ? Number(alpha.slice(0, -1)) / 100 : Number(alpha)
+}
+
+function rgbToHex(red: number, green: number, blue: number, alpha: number, matteColor?: string) {
+  const matte = matteColor ? parseHexColor(matteColor) : null
+  const channels = [red, green, blue].map((channel, index) => {
+    const clamped = Math.min(255, Math.max(0, Math.round(channel)))
+    if (!matte || alpha >= 1) return clamped
+    return Math.round(clamped * alpha + matte[index]! * (1 - alpha))
+  })
+
+  return `#${channels.map((channel) => channel.toString(16).padStart(2, "0")).join("")}`
+}
+
+function parseHexColor(color: string): [number, number, number] | null {
+  const match = color.match(/^#([0-9a-f]{6})$/i)
+  if (!match) return null
+
+  const value = match[1]
+  if (!value) return null
+
+  return [
+    Number.parseInt(value.slice(0, 2), 16),
+    Number.parseInt(value.slice(2, 4), 16),
+    Number.parseInt(value.slice(4, 6), 16),
+  ]
 }
 
 function addPlantUmlTheme(content: string) {
