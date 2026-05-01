@@ -13,6 +13,7 @@ import ToolDetailPanel, {
 	MobileToolDetailPanel,
 } from '@/components/tool-detail-panel/tool-detail-panel';
 import { WalkthroughProvider } from '@/components/walkthrough/walkthrough-provider';
+import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
@@ -45,6 +46,7 @@ function PrivateLayout() {
 		!isPublicSharedChat && location.pathname !== '/credential-callback';
 	const controlsRef = useRef<HTMLDivElement>(null);
 	const isMobile = useIsMobile();
+	const isChatRoute = location.pathname === '/chat';
 	const {
 		isOpen: isMobileSidebarOpen,
 		close: closeMobileSidebar,
@@ -121,10 +123,6 @@ function PrivateLayout() {
 	return (
 		<div
 			className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased"
-			style={{
-				paddingTop: 'env(safe-area-inset-top)',
-				paddingBottom: 'env(safe-area-inset-bottom)',
-			}}
 		>
 			{/* Desktop sidebar */}
 			{!isMobile && <Sidebar />}
@@ -200,7 +198,10 @@ function PrivateLayout() {
 				<motion.div
 					ref={controlsRef}
 					initial={{ opacity: 1, x: 0 }}
-					className="flex-1 overflow-y-auto bg-background text-foreground p-3 sm:p-4 md:p-6"
+					className={cn(
+						"flex-1 overflow-y-auto bg-background text-foreground",
+						isMobile && isChatRoute ? "p-0" : "p-3 sm:p-4 md:p-6",
+					)}
 				>
 					<Outlet />
 				</motion.div>
