@@ -1,8 +1,11 @@
-import React, { Suspense, useMemo } from "react"
+import React, { Suspense, useEffect, useId, useMemo, useState } from "react"
 import Markdown from "react-markdown"
 import remarkGfm from "remark-gfm"
 import remarkMath from "remark-math"
+import rehypeRaw from "rehype-raw"
+import rehypeSanitize, { defaultSchema } from "rehype-sanitize"
 import rehypeKatex from "rehype-katex"
+import { deflateRaw } from "pako"
 import { cn } from "@/lib/utils"
 import { CopyButton } from "@/components/ui/copy-button"
 import { Badge } from "@/components/ui/badge"
@@ -12,6 +15,131 @@ import { BarChartRenderer, isBarChart } from "@/components/ui/bar-chart-renderer
 
 interface MarkdownRendererProps {
   children: string
+}
+
+type ThemeColors = {
+  background: string
+  foreground: string
+  card: string
+  muted: string
+  mutedForeground: string
+  border: string
+  primary: string
+  secondary: string
+  accent: string
+  chart1: string
+  chart2: string
+  chart3: string
+}
+
+const FALLBACK_THEME_COLORS: ThemeColors = {
+  background: "#eef0f3",
+  foreground: "#111827",
+  card: "#f5f6f8",
+  muted: "#e2e5ea",
+  mutedForeground: "#64748b",
+  border: "#cbd5e1",
+  primary: "#38bdf8",
+  secondary: "#e2e8f0",
+  accent: "#67e8f9",
+  chart1: "#7dd3fc",
+  chart2: "#38bdf8",
+  chart3: "#0ea5e9",
+}
+
+const PLANTUML_SERVER_URL =
+  import.meta.env.VITE_PLANTUML_SERVER_URL ??
+  "https://www.plantuml.com/plantuml/svg"
+
+const SANITIZE_SCHEMA = {
+  ...defaultSchema,
+  tagNames: [
+    ...(defaultSchema.tagNames ?? []),
+    "svg",
+    "g",
+    "path",
+    "circle",
+    "ellipse",
+    "line",
+    "polyline",
+    "polygon",
+    "rect",
+    "text",
+    "tspan",
+    "defs",
+    "linearGradient",
+    "radialGradient",
+    "stop",
+    "marker",
+    "pattern",
+    "clipPath",
+    "mask",
+    "title",
+    "desc",
+    "use",
+  ],
+  attributes: {
+    ...defaultSchema.attributes,
+    "*": [
+      ...(defaultSchema.attributes?.["*"] ?? []),
+      "className",
+      "id",
+      "title",
+      "role",
+      "aria-label",
+      "aria-hidden",
+    ],
+    svg: [
+      "xmlns",
+      "viewBox",
+      "width",
+      "height",
+      "fill",
+      "stroke",
+      "strokeWidth",
+      "strokeLinecap",
+      "strokeLinejoin",
+      "preserveAspectRatio",
+      "role",
+      "aria-label",
+      "aria-hidden",
+    ],
+    g: ["fill", "stroke", "strokeWidth", "transform", "opacity"],
+    path: [
+      "d",
+      "fill",
+      "stroke",
+      "strokeWidth",
+      "strokeLinecap",
+      "strokeLinejoin",
+      "opacity",
+      "transform",
+      "markerEnd",
+      "markerStart",
+    ],
+    circle: ["cx", "cy", "r", "fill", "stroke", "strokeWidth", "opacity"],
+    ellipse: ["cx", "cy", "rx", "ry", "fill", "stroke", "strokeWidth", "opacity"],
+    line: ["x1", "y1", "x2", "y2", "stroke", "strokeWidth", "strokeLinecap", "opacity", "markerEnd", "markerStart"],
+    polyline: ["points", "fill", "stroke", "strokeWidth", "strokeLinecap", "strokeLinejoin", "opacity"],
+    polygon: ["points", "fill", "stroke", "strokeWidth", "strokeLinejoin", "opacity"],
+    rect: ["x", "y", "rx", "ry", "width", "height", "fill", "stroke", "strokeWidth", "opacity"],
+    text: ["x", "y", "dx", "dy", "fill", "fontFamily", "fontSize", "fontWeight", "textAnchor", "dominantBaseline", "transform"],
+    tspan: ["x", "y", "dx", "dy", "fill", "fontSize", "fontWeight", "textAnchor"],
+    linearGradient: ["id", "x1", "y1", "x2", "y2", "gradientUnits", "gradientTransform"],
+    radialGradient: ["id", "cx", "cy", "r", "fx", "fy", "gradientUnits", "gradientTransform"],
+    stop: ["offset", "stopColor", "stopOpacity"],
+    marker: ["id", "viewBox", "refX", "refY", "markerWidth", "markerHeight", "orient", "fill", "stroke"],
+    pattern: ["id", "x", "y", "width", "height", "patternUnits", "patternTransform"],
+    clipPath: ["id"],
+    mask: ["id", "x", "y", "width", "height"],
+    use: ["href", "xlinkHref", "x", "y", "width", "height", "fill", "stroke"],
+  },
+  protocols: {
+    ...defaultSchema.protocols,
+    href: ["http", "https", "mailto"],
+    xlinkHref: ["http", "https"],
+    src: ["http", "https"],
+  },
 }
 
 function MarkdownRendererBase({ children }: MarkdownRendererProps) {
@@ -172,6 +300,165 @@ const CodeBlock = ({
   )
 }
 
+type DiagramCardProps = {
+  label: string
+  children: React.ReactNode
+  error?: string | null
+}
+
+function DiagramCard({ label, children, error }: DiagramCardProps) {
+  return (
+    <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="flex h-10 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
+        <Badge
+          variant="secondary"
+          className="h-5 rounded-md border border-border/50 bg-background/50 px-2 font-mono text-[10px] uppercase tracking-widest text-muted-foreground/60 select-none"
+        >
+          {label}
+        </Badge>
+      </div>
+      <div className="overflow-x-auto p-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent">
+        {error ? (
+          <p className="text-sm text-destructive">{error}</p>
+        ) : (
+          children
+        )}
+      </div>
+    </div>
+  )
+}
+
+function MermaidDiagram({ content }: { content: string }) {
+  const id = useId().replace(/:/g, "")
+  const themeVersion = useThemeVersion()
+  const [svg, setSvg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let cancelled = false
+
+    async function renderDiagram() {
+      setError(null)
+      setSvg(null)
+
+      try {
+        const mermaid = (await import("mermaid")).default
+        const colors = getThemeColors()
+
+        mermaid.initialize({
+          startOnLoad: false,
+          securityLevel: "strict",
+          theme: "base",
+          themeVariables: {
+            background: colors.card,
+            mainBkg: colors.card,
+            primaryColor: colors.primary,
+            primaryTextColor: colors.foreground,
+            primaryBorderColor: colors.border,
+            secondaryColor: colors.secondary,
+            secondaryTextColor: colors.foreground,
+            secondaryBorderColor: colors.border,
+            tertiaryColor: colors.muted,
+            tertiaryTextColor: colors.foreground,
+            tertiaryBorderColor: colors.border,
+            lineColor: colors.mutedForeground,
+            textColor: colors.foreground,
+            nodeTextColor: colors.foreground,
+            edgeLabelBackground: colors.card,
+            clusterBkg: colors.muted,
+            clusterBorder: colors.border,
+            noteBkgColor: colors.secondary,
+            noteTextColor: colors.foreground,
+            noteBorderColor: colors.border,
+            actorBkg: colors.card,
+            actorBorder: colors.primary,
+            actorTextColor: colors.foreground,
+            signalColor: colors.foreground,
+            signalTextColor: colors.foreground,
+            labelBoxBkgColor: colors.card,
+            labelBoxBorderColor: colors.border,
+            labelTextColor: colors.foreground,
+          },
+        })
+
+        const result = await mermaid.render(`mermaid-${id}`, content)
+
+        if (!cancelled) {
+          setSvg(result.svg)
+        }
+      } catch (renderError) {
+        if (!cancelled) {
+          setError(
+            renderError instanceof Error
+              ? renderError.message
+              : "Unable to render Mermaid diagram"
+          )
+        }
+      }
+    }
+
+    renderDiagram()
+
+    return () => {
+      cancelled = true
+    }
+  }, [content, id, themeVersion])
+
+  return (
+    <DiagramCard label="mermaid" error={error}>
+      {svg ? (
+        <div
+          className="min-w-max text-foreground [&_svg]:h-auto [&_svg]:max-w-full"
+          dangerouslySetInnerHTML={{ __html: svg }}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">Rendering diagram...</p>
+      )}
+    </DiagramCard>
+  )
+}
+
+function PlantUmlDiagram({ content }: { content: string }) {
+  const themeVersion = useThemeVersion()
+  const [failed, setFailed] = useState(false)
+  const source = useMemo(() => addPlantUmlTheme(content), [content, themeVersion])
+  const imageUrl = useMemo(
+    () => `${PLANTUML_SERVER_URL.replace(/\/$/, "")}/${encodePlantUml(source)}`,
+    [source]
+  )
+
+  useEffect(() => {
+    setFailed(false)
+  }, [imageUrl])
+
+  return (
+    <DiagramCard
+      label="plantuml"
+      error={failed ? "Unable to load PlantUML diagram" : null}
+    >
+      <img
+        src={imageUrl}
+        alt="PlantUML diagram"
+        className="h-auto max-w-full rounded-md bg-card"
+        onError={() => setFailed(true)}
+      />
+    </DiagramCard>
+  )
+}
+
+function SvgBlock({ content }: { content: string }) {
+  const sanitizedSvg = useMemo(() => sanitizeSvg(content), [content])
+
+  return (
+    <DiagramCard label="svg">
+      <div
+        className="min-w-max text-foreground [&_svg]:h-auto [&_svg]:max-w-full"
+        dangerouslySetInnerHTML={{ __html: sanitizedSvg }}
+      />
+    </DiagramCard>
+  )
+}
+
 function childrenTakeAllStringContents(element: any): string {
   if (typeof element === "string") {
     return element
@@ -190,6 +477,186 @@ function childrenTakeAllStringContents(element: any): string {
   }
 
   return ""
+}
+
+function useThemeVersion() {
+  const [version, setVersion] = useState(0)
+
+  useEffect(() => {
+    const root = document.documentElement
+    const observer = new MutationObserver(() => {
+      setVersion((currentVersion) => currentVersion + 1)
+    })
+
+    observer.observe(root, { attributes: true, attributeFilter: ["class"] })
+
+    return () => observer.disconnect()
+  }, [])
+
+  return version
+}
+
+function getThemeColors(): ThemeColors {
+  if (typeof window === "undefined") {
+    return FALLBACK_THEME_COLORS
+  }
+
+  const styles = getComputedStyle(document.documentElement)
+  const readColor = (name: string, fallback: string) => {
+    const value = styles.getPropertyValue(name).trim()
+    if (!value) return fallback
+    return cssColorToHex(value) ?? value
+  }
+
+  return {
+    background: readColor("--background", FALLBACK_THEME_COLORS.background),
+    foreground: readColor("--foreground", FALLBACK_THEME_COLORS.foreground),
+    card: readColor("--card", FALLBACK_THEME_COLORS.card),
+    muted: readColor("--muted", FALLBACK_THEME_COLORS.muted),
+    mutedForeground: readColor("--muted-foreground", FALLBACK_THEME_COLORS.mutedForeground),
+    border: readColor("--border", FALLBACK_THEME_COLORS.border),
+    primary: readColor("--primary", FALLBACK_THEME_COLORS.primary),
+    secondary: readColor("--secondary", FALLBACK_THEME_COLORS.secondary),
+    accent: readColor("--accent", FALLBACK_THEME_COLORS.accent),
+    chart1: readColor("--chart-1", FALLBACK_THEME_COLORS.chart1),
+    chart2: readColor("--chart-2", FALLBACK_THEME_COLORS.chart2),
+    chart3: readColor("--chart-3", FALLBACK_THEME_COLORS.chart3),
+  }
+}
+
+function cssColorToHex(color: string): string | null {
+  if (typeof window === "undefined") {
+    return null
+  }
+
+  const option = document.createElement("option")
+  option.style.color = color
+  document.body.append(option)
+  const resolvedColor = getComputedStyle(option).color
+  option.remove()
+
+  const match = resolvedColor.match(
+    /^rgba?\((\d+),\s*(\d+),\s*(\d+)(?:,\s*([\d.]+))?\)$/
+  )
+
+  if (!match) {
+    return null
+  }
+
+  const [, r, g, b] = match
+  return `#${[r, g, b]
+    .map((channel) => Number(channel).toString(16).padStart(2, "0"))
+    .join("")}`
+}
+
+function addPlantUmlTheme(content: string) {
+  const colors = getThemeColors()
+  const theme = [
+    "skinparam backgroundColor transparent",
+    `skinparam defaultTextColor ${colors.foreground}`,
+    `skinparam defaultFontColor ${colors.foreground}`,
+    `skinparam arrowColor ${colors.mutedForeground}`,
+    `skinparam shadowing false`,
+    `skinparam roundcorner 10`,
+    `skinparam classBackgroundColor ${colors.card}`,
+    `skinparam classBorderColor ${colors.primary}`,
+    `skinparam classFontColor ${colors.foreground}`,
+    `skinparam participantBackgroundColor ${colors.card}`,
+    `skinparam participantBorderColor ${colors.primary}`,
+    `skinparam participantFontColor ${colors.foreground}`,
+    `skinparam activityBackgroundColor ${colors.card}`,
+    `skinparam activityBorderColor ${colors.primary}`,
+    `skinparam activityFontColor ${colors.foreground}`,
+    `skinparam noteBackgroundColor ${colors.secondary}`,
+    `skinparam noteBorderColor ${colors.border}`,
+    `skinparam noteFontColor ${colors.foreground}`,
+    `skinparam sequenceLifeLineBorderColor ${colors.border}`,
+    `skinparam sequenceGroupBackgroundColor ${colors.muted}`,
+    `skinparam sequenceGroupBorderColor ${colors.border}`,
+  ].join("\n")
+
+  return content.replace(/(@start\w+\b)/, `$1\n${theme}`)
+}
+
+function encodePlantUml(content: string) {
+  const compressed = deflateRaw(new TextEncoder().encode(content), { level: 9 })
+  let encoded = ""
+
+  for (let index = 0; index < compressed.length; index += 3) {
+    encoded += encodePlantUmlTriplet(
+      compressed[index]!,
+      compressed[index + 1] ?? 0,
+      compressed[index + 2] ?? 0
+    )
+  }
+
+  return encoded
+}
+
+function encodePlantUmlTriplet(byte1: number, byte2: number, byte3: number) {
+  const char1 = byte1 >> 2
+  const char2 = ((byte1 & 0x3) << 4) | (byte2 >> 4)
+  const char3 = ((byte2 & 0xf) << 2) | (byte3 >> 6)
+  const char4 = byte3 & 0x3f
+
+  return (
+    encodePlantUmlChar(char1 & 0x3f) +
+    encodePlantUmlChar(char2 & 0x3f) +
+    encodePlantUmlChar(char3 & 0x3f) +
+    encodePlantUmlChar(char4 & 0x3f)
+  )
+}
+
+function encodePlantUmlChar(value: number) {
+  if (value < 10) return String.fromCharCode(48 + value)
+  if (value < 36) return String.fromCharCode(65 + value - 10)
+  if (value < 62) return String.fromCharCode(97 + value - 36)
+  return value === 62 ? "-" : "_"
+}
+
+function sanitizeSvg(content: string) {
+  if (typeof window === "undefined") {
+    return ""
+  }
+
+  const parser = new DOMParser()
+  const document = parser.parseFromString(content, "image/svg+xml")
+  const parserError = document.querySelector("parsererror")
+
+  if (parserError) {
+    return ""
+  }
+
+  sanitizeSvgElement(document.documentElement)
+  return new XMLSerializer().serializeToString(document.documentElement)
+}
+
+function sanitizeSvgElement(element: Element) {
+  const blockedTags = new Set(["script", "foreignObject", "iframe", "object", "embed"])
+
+  if (blockedTags.has(element.tagName)) {
+    element.remove()
+    return
+  }
+
+  for (const attribute of Array.from(element.attributes)) {
+    const name = attribute.name.toLowerCase()
+    const value = attribute.value.trim().toLowerCase()
+
+    if (
+      name.startsWith("on") ||
+      value.includes("javascript:") ||
+      value.includes("data:text/html") ||
+      value.includes("@import") ||
+      value.includes("expression(")
+    ) {
+      element.removeAttribute(attribute.name)
+    }
+  }
+
+  for (const child of Array.from(element.children)) {
+    sanitizeSvgElement(child)
+  }
 }
 
 type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart"
@@ -240,7 +707,7 @@ function renderMarkdownSegment(content: string, key: string) {
     <Markdown
       key={key}
       remarkPlugins={[remarkGfm, remarkMath]}
-      rehypePlugins={[rehypeKatex]}
+      rehypePlugins={[rehypeRaw, [rehypeSanitize, SANITIZE_SCHEMA], rehypeKatex]}
       components={COMPONENTS}
     >
       {content}
@@ -423,6 +890,7 @@ const COMPONENTS = {
   blockquote: withClass("blockquote", "border-l-2 border-primary pl-4"),
   code: ({ children, className, node, ...rest }: any) => {
     const match = /language-(\w+)/.exec(className || "")
+    const language = match?.[1]?.toLowerCase()
 
     // Extract text content for auto-detection
     const textContent =
@@ -436,6 +904,18 @@ const COMPONENTS = {
 
     if (structuredBlockType) {
       return renderStructuredBlock(structuredBlockType, textContent, "code-block")
+    }
+
+    if (language === "mermaid") {
+      return <MermaidDiagram content={textContent} />
+    }
+
+    if (language === "plantuml" || language === "puml") {
+      return <PlantUmlDiagram content={textContent} />
+    }
+
+    if (language === "svg") {
+      return <SvgBlock content={textContent} />
     }
 
     return match ? (
