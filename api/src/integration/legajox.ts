@@ -113,6 +113,13 @@ export namespace Legajox {
 		return requireEnv('LEGAJOX_API_KEY');
 	}
 
+	function legajoxUrl(pathOrUrl: string) {
+		const value = pathOrUrl.trim();
+		if (value.startsWith('http://') || value.startsWith('https://')) return value;
+
+		return `${baseUrl().replace(/\/+$/, '')}/${value.replace(/^\/+/, '')}`;
+	}
+
 	async function timedFetch(
 		url: string,
 		init: RequestInit,
@@ -158,7 +165,7 @@ export namespace Legajox {
 		path: string,
 		options?: { method?: string; body?: unknown },
 	): Promise<T> {
-		const url = `${baseUrl()}${path}`;
+		const url = legajoxUrl(path);
 		const method = options?.method ?? 'GET';
 		const res = await timedFetch(
 			url,
@@ -222,7 +229,7 @@ export namespace Legajox {
 
 	async function download(url: string, path: string) {
 		return timedFetch(
-			url,
+			legajoxUrl(url),
 			{
 				method: 'GET',
 				headers: {
