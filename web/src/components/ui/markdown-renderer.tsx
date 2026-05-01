@@ -304,9 +304,10 @@ type DiagramCardProps = {
   label: string
   children: React.ReactNode
   error?: string | null
+  actions?: React.ReactNode
 }
 
-function DiagramCard({ label, children, error }: DiagramCardProps) {
+function DiagramCard({ label, children, error, actions }: DiagramCardProps) {
   return (
     <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
       <div className="flex h-10 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
@@ -316,8 +317,9 @@ function DiagramCard({ label, children, error }: DiagramCardProps) {
         >
           {label}
         </Badge>
+        {actions}
       </div>
-      <div className="overflow-x-auto p-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent">
+      <div className="max-h-[75vh] overflow-auto p-4 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar]:w-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent">
         {error ? (
           <p className="text-sm text-destructive">{error}</p>
         ) : (
@@ -333,6 +335,7 @@ function MermaidDiagram({ content }: { content: string }) {
   const themeVersion = useThemeVersion()
   const [svg, setSvg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [zoom, setZoom] = useState(160)
 
   useEffect(() => {
     let cancelled = false
@@ -405,10 +408,43 @@ function MermaidDiagram({ content }: { content: string }) {
   }, [content, id, themeVersion])
 
   return (
-    <DiagramCard label="mermaid" error={error}>
+    <DiagramCard
+      label="mermaid"
+      error={error}
+      actions={
+        !error && (
+          <div className="flex items-center gap-1 text-xs text-muted-foreground">
+            <button
+              type="button"
+              className="rounded-md border border-border/50 bg-background/50 px-2 py-1 leading-none transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              onClick={() => setZoom((currentZoom) => Math.max(80, currentZoom - 20))}
+              disabled={zoom <= 80}
+            >
+              -
+            </button>
+            <button
+              type="button"
+              className="min-w-12 rounded-md border border-border/50 bg-background/50 px-2 py-1 font-mono text-[10px] leading-none transition-colors hover:bg-muted"
+              onClick={() => setZoom(160)}
+            >
+              {zoom}%
+            </button>
+            <button
+              type="button"
+              className="rounded-md border border-border/50 bg-background/50 px-2 py-1 leading-none transition-colors hover:bg-muted disabled:pointer-events-none disabled:opacity-40"
+              onClick={() => setZoom((currentZoom) => Math.min(300, currentZoom + 20))}
+              disabled={zoom >= 300}
+            >
+              +
+            </button>
+          </div>
+        )
+      }
+    >
       {svg ? (
         <div
-          className="min-w-max text-foreground [&_svg]:h-auto [&_svg]:max-w-full"
+          className="min-w-[720px] text-foreground [&_svg]:h-auto [&_svg]:w-full [&_svg]:max-w-none"
+          style={{ width: `${zoom}%` }}
           dangerouslySetInnerHTML={{ __html: svg }}
         />
       ) : (
