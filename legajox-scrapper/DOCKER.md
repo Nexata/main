@@ -28,4 +28,4 @@ docker run --rm -p 3000:3000 \
 - The image sets `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser` so Puppeteer uses Alpine's Chromium instead of requiring Google Chrome.
 - The image also sets `PUPPETEER_NO_SANDBOX=true` because many managed container runtimes, including Cloud Run, do not permit Chromium's default sandbox mode.
 - `DEBUG_HEADLESS=false` requests headed mode, but that is not useful in a normal container unless you also provide a display server.
-- Downloads and debug screenshots are written under `/app/outputs` and `/app/scripts/outputs/debug`.
+- Downloads are written under `/app/outputs`; login timeout screenshots are written under `/app/request_imitator/outputs/debug`.

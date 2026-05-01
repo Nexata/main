@@ -1,16 +1,19 @@
 import openapi, { fromTypes } from '@elysiajs/openapi';
 import { Elysia, t } from 'elysia';
-import { type AusenciasFilters, scrapeAusencias } from '../scripts/absences';
-import { scrapeDownload } from '../scripts/documents/download-docs';
-import { scrapeFileSearch } from '../scripts/documents/file-search';
-import { scrapeListDirs } from '../scripts/documents/list-dirs';
-import { scrapeListDocs } from '../scripts/documents/list-docs';
-import { scrapeEmployees } from '../scripts/employees';
-import { scrapeGeneralInfo } from '../scripts/general_information';
-import { scrapeOrgChart } from '../scripts/org_chart';
-import { scrapeLiquidaciones } from '../scripts/pending_actions';
-import { scrapeVacaciones } from '../scripts/vacation_days';
-import { validateCredentials } from '../scripts/validate_credentials';
+import {
+	type AusenciasFilters,
+	scrapeAusencias,
+	scrapeDownload,
+	scrapeEmployees,
+	scrapeFileSearch,
+	scrapeGeneralInfo,
+	scrapeLiquidaciones,
+	scrapeListDirs,
+	scrapeListDocs,
+	scrapeOrgChart,
+	scrapeVacaciones,
+	validateCredentials,
+} from '../request_imitator/api';
 import { cached } from './cache-utils';
 
 // ── Config ───────────────────────────────────────────────────────────────────
@@ -33,7 +36,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 				page?: string;
 			};
 			response: {
-				200: { employees: import('../scripts/employees').Employee[]; errors?: string[] };
+				200: { employees: import('../request_imitator/api').Employee[]; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -44,7 +47,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 		get: {
 			query: { user?: string; password?: string };
 			response: {
-				200: { info: import('../scripts/general_information').GeneralInfo; errors?: string[] };
+				200: { info: import('../request_imitator/api').GeneralInfo; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -55,7 +58,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 		get: {
 			query: { user?: string; password?: string };
 			response: {
-				200: { chart: import('../scripts/org_chart').OrgChart; errors?: string[] };
+				200: { chart: import('../request_imitator/api').OrgChart; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -66,7 +69,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 		get: {
 			query: { user?: string; password?: string; search?: string; page?: string };
 			response: {
-				200: { liquidaciones: import('../scripts/pending_actions').Liquidacion[]; total: number; errors?: string[] };
+				200: { liquidaciones: import('../request_imitator/api').Liquidacion[]; total: number; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -77,7 +80,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 		get: {
 			query: { user?: string; password?: string; name?: string; from?: string; to?: string; historial?: string; motivo?: string; estado?: string };
 			response: {
-				200: { ausencias: import('../scripts/absences').Ausencia[]; total: number; errors?: string[] };
+				200: { ausencias: import('../request_imitator/api').Ausencia[]; total: number; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -88,7 +91,7 @@ const OPENAPI_TYPE_REFERENCES = `{
 		get: {
 			query: { user?: string; password?: string };
 			response: {
-				200: { registros: import('../scripts/vacation_days').VacacionEmpleado[]; total: number; errors?: string[] };
+				200: { registros: import('../request_imitator/api').VacacionEmpleado[]; total: number; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -374,7 +377,7 @@ const DownloadRequest = t.Object({
 type ScrapeBase = {
 	success: boolean;
 	errors: string[];
-	outputFile: string | null;
+	outputFile?: string | null;
 };
 
 type Credentials = {
@@ -388,17 +391,98 @@ type DownloadSelection = {
 };
 
 export type AppDependencies = {
-	validateCredentials: typeof validateCredentials;
-	scrapeEmployees: typeof scrapeEmployees;
-	scrapeGeneralInfo: typeof scrapeGeneralInfo;
-	scrapeOrgChart: typeof scrapeOrgChart;
-	scrapeLiquidaciones: typeof scrapeLiquidaciones;
-	scrapeAusencias: typeof scrapeAusencias;
-	scrapeVacaciones: typeof scrapeVacaciones;
-	scrapeListDirs: typeof scrapeListDirs;
-	scrapeListDocs: typeof scrapeListDocs;
-	scrapeFileSearch: typeof scrapeFileSearch;
-	scrapeDownload: typeof scrapeDownload;
+	validateCredentials: (user: string, password: string) => Promise<boolean>;
+	scrapeEmployees: (
+		user: string,
+		password: string,
+		options: { search?: string | null; page?: number | null },
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { employees: unknown[] }>;
+	scrapeGeneralInfo: (
+		user: string,
+		password: string,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { info: unknown }>;
+	scrapeOrgChart: (
+		user: string,
+		password: string,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { chart: unknown }>;
+	scrapeLiquidaciones: (
+		user: string,
+		password: string,
+		options: { search?: string | null; page?: number | null },
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { liquidaciones: unknown[]; total: number }>;
+	scrapeAusencias: (
+		user: string,
+		password: string,
+		filters: AusenciasFilters,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { ausencias: unknown[]; total: number }>;
+	scrapeVacaciones: (
+		user: string,
+		password: string,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { registros: unknown[]; total: number }>;
+	scrapeListDirs: (
+		user: string,
+		password: string,
+		signal?: AbortSignal,
+	) => Promise<
+		ScrapeBase & {
+			carpetas: { nombre: string; href: string; cantidadArchivos: number }[];
+		}
+	>;
+	scrapeListDocs: (
+		user: string,
+		password: string,
+		dirPath: string,
+		signal?: AbortSignal,
+	) => Promise<
+		ScrapeBase & {
+			documentos: {
+				nombre: string;
+				url: string;
+				fecha: string;
+				firmado: boolean;
+			}[];
+		}
+	>;
+	scrapeFileSearch: (
+		user: string,
+		password: string,
+		query: string,
+		signal?: AbortSignal,
+	) => Promise<
+		ScrapeBase & {
+			results: { carpeta: string; nombre: string; href: string; url: string }[];
+		}
+	>;
+	scrapeDownload: (
+		user: string,
+		password: string,
+		dirs: string[],
+		links: string[],
+		signal?: AbortSignal,
+	) => Promise<
+		ScrapeBase & {
+			metadata: {
+				nombre: string;
+				downloadUrl: string;
+				pesoBytes: number;
+				extension: string;
+				fecha: string;
+				firmado: boolean;
+				dirNombre: string;
+				rutaLocal: string;
+				estado: string;
+				errorDetalle?: string;
+				pesoLegible?: string;
+				dir?: string;
+			}[];
+		}
+	>;
 };
 
 type AppConfig = {
@@ -696,6 +780,24 @@ export function createApp({
 		scrapeDownload,
 		...dependencies,
 	};
+	const useResponseCache = dependencies == null;
+	const cacheOrRun = async <T>(
+		key: string,
+		ttlSeconds: number,
+		fn: () => Promise<T>,
+		options?: { nocache?: boolean },
+	) => {
+		if (!useResponseCache) {
+			return { data: await fn(), _cache: null };
+		}
+
+		return await cached(key, ttlSeconds, fn, options);
+	};
+	const withCache = <T extends object>(
+		data: T,
+		_cache: { hit: boolean; key: string; ttl: number } | null,
+	) => (_cache ? { ...data, _cache } : data);
+	const routeResponse = <T>(data: T): never => data as never;
 
 	return (
 		new Elysia()
@@ -787,7 +889,7 @@ export function createApp({
 					if (!creds) return status(400, missingCreds());
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `validate:${creds.user}`;
-					const { data, _cache } = await cached(
+					const { data, _cache } = await cacheOrRun(
 						cacheKey,
 						300, // 5 min
 						async () => {
@@ -799,7 +901,7 @@ export function createApp({
 						},
 						{ nocache },
 					);
-					return { ...data, _cache };
+					return routeResponse(withCache(data, _cache));
 				},
 				{
 					query: t.Object({
@@ -846,7 +948,7 @@ export function createApp({
 					const cacheKey = `employees:${creds.user}:${search ?? ''}:${parsedPage ?? 'all'}`;
 					const options = { search: search ?? null, page: parsedPage };
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							1800, // 30 min
 							async () => {
@@ -867,7 +969,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -909,7 +1011,7 @@ export function createApp({
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `info:${creds.user}`;
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							1800, // 30 min
 							async () => {
@@ -925,7 +1027,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache } as any;
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -967,7 +1069,7 @@ export function createApp({
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `org-chart:${creds.user}`;
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							3600, // 60 min
 							async () => {
@@ -983,7 +1085,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache } as any;
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -1038,7 +1140,7 @@ export function createApp({
 					const cacheKey = `liquidaciones:${creds.user}:${search ?? ''}:${parsedPage ?? 'all'}`;
 					const options = { search: search ?? null, page: parsedPage };
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							3600, // 60 min
 							async () => {
@@ -1061,7 +1163,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -1133,7 +1235,7 @@ export function createApp({
 						estado: (estado as AusenciasFilters['estado']) ?? null,
 					};
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							900, // 15 min
 							async () => {
@@ -1154,7 +1256,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -1196,7 +1298,7 @@ export function createApp({
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `vacaciones:${creds.user}`;
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							1800, // 30 min
 							async () => {
@@ -1212,7 +1314,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -1256,7 +1358,7 @@ export function createApp({
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `docs-list:${creds.user}:${dirPath ?? 'root'}`;
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							900, // 15 min
 							async () => {
@@ -1294,7 +1396,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return routeResponse(withCache(data, _cache));
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
@@ -1342,7 +1444,7 @@ export function createApp({
 					const nocache = queryParams.nocache === 'true';
 					const cacheKey = `docs-search:${creds.user}:${q.trim()}`;
 					try {
-						const { data, _cache } = await cached(
+						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							600, // 10 min
 							async () => {
@@ -1365,7 +1467,7 @@ export function createApp({
 							},
 							{ nocache },
 						);
-						return { ...data, _cache };
+						return withCache(data, _cache);
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
 						if (msg === 'Scrape failed') {
