@@ -215,6 +215,7 @@ export function NexataChat() {
 		addUnreadThread,
 		markThreadUnsynced,
 		markThreadSynced,
+		startNewChat,
 	} = useChatUIStore();
 
 	const isNewChat =
@@ -276,7 +277,12 @@ export function NexataChat() {
 		displayThreadId ?? NEW_CHAT_KEY,
 	);
 
-	const { data: threadData, isLoading: isThreadLoading } = useThreadById(
+	const {
+		data: threadData,
+		isLoading: isThreadLoading,
+		isError: isThreadError,
+		error: threadError,
+	} = useThreadById(
 		displayThreadId ?? null,
 		{ limit: MESSAGES_PAGE_SIZE },
 		{
@@ -383,6 +389,13 @@ export function NexataChat() {
 		if (!authenticated) return;
 		if (isNewChat) setMessages([]);
 	}, [isNewChat, setMessages, authenticated]);
+
+	// If the thread 404s during hydration, reset to empty state
+	useEffect(() => {
+		if (!authenticated || !isThreadError) return;
+		if ((threadError as any)?.status !== 404) return;
+		startNewChat();
+	}, [authenticated, isThreadError, threadError, startNewChat]);
 
 	useEffect(() => {
 		if (!authenticated || !displayThreadId) return;
@@ -655,10 +668,9 @@ export function NexataChat() {
 	const [input, setInput] = useState('');
 	const [extraReason, setExtraReason] = useState(() => {
 		try {
-			const stored = localStorage.getItem('nexata-extra-reason');
-			return stored === null ? true : stored === 'true';
+			return localStorage.getItem('nexata-extra-reason') === 'true';
 		} catch {
-			return true;
+			return false;
 		}
 	});
 
