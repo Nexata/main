@@ -1,10 +1,16 @@
+import { fetchAbsenceDetail } from './absence_detail';
 import {
 	type Estado,
 	fetchAbsences,
 	filterAbsences,
 	parseAbsences,
 } from './absences';
-import { fetchDashboard, parseDashboard } from './dashboard';
+import {
+	fetchDashboard,
+	fetchNotifications,
+	filterNotifications,
+	parseDashboard,
+} from './dashboard';
 import { processDirectLinks, processDirs } from './download';
 import { fetchEmployees, filterEmployees, parseEmployees } from './employees';
 import { fetchInvoicesPage, parseInvoices } from './invoices';
@@ -110,6 +116,51 @@ export type Ausencia = {
 	comentario: string;
 };
 
+export type AusenciaDetalle = {
+	id: string;
+	legajoId: string;
+	empresaId: string;
+	autorizoUsuarioId: string;
+	tipoId: string;
+	fechaInicio: string;
+	fechaFin: string;
+	fechaAutorizacion: string | null;
+	motivoRechazo: string;
+	descripcion: string;
+	comentarios: string;
+	estado: string;
+	createdAt: string;
+	deletedAt: string | null;
+	motivoEditar: string | null;
+	fechaInicioFormat: string;
+	fechaFinFormat: string;
+	empleado: {
+		id: string;
+		legajo: string;
+		nombre: string;
+		apellido: string;
+		dni: string;
+		email: string;
+		celular: string;
+		fechaIngreso: string;
+		fechaEgreso: string | null;
+	};
+	tipo: { id: string; nombre: string };
+	autorizador: { nombre: string; apellido: string | null } | null;
+	rol: string;
+	usuarioId: string;
+};
+
+export type Notificacion = {
+	id: string;
+	titulo: string;
+	texto: string;
+	fechaLeido: string | null;
+	createdAt: string;
+	tipo: string;
+	ausencia: number;
+};
+
 export type VacacionEmpleado = {
 	nombre: string;
 	asignacionInicial: string;
@@ -128,6 +179,12 @@ export type AusenciasFilters = {
 	historial: boolean | null;
 	motivo: string | null;
 	estado: Estado | null;
+};
+
+export type NotificationFilters = {
+	query: string | null;
+	from: string | null;
+	to: string | null;
 };
 
 export async function validateCredentials(
@@ -384,6 +441,120 @@ export async function scrapeAusencias(
 		};
 	} catch (err) {
 		return failure('ausencias', err, { ausencias: [], total: 0 });
+	}
+}
+
+export async function scrapeAbsenceDetail(
+	user: string,
+	password: string,
+	absenceId: string,
+	_signal?: AbortSignal,
+): Promise<ScrapeBase & { detail: AusenciaDetalle | null }> {
+	try {
+		const detail = await withSessionRetry(user, password, async (cookie) => {
+			const raw = await fetchAbsenceDetail(absenceId, cookie);
+
+			return {
+				id: raw.au_id,
+				legajoId: raw.au_legajo_id,
+				empresaId: raw.au_empresa_id,
+				autorizoUsuarioId: raw.au_autorizo_usr_id,
+				tipoId: raw.au_tipo_id,
+				fechaInicio: raw.au_fecha_inicio,
+				fechaFin: raw.au_fecha_fin,
+				fechaAutorizacion: raw.au_fecha_autorizacion,
+				motivoRechazo: raw.au_motivo_rechazo,
+				descripcion: raw.au_descripcion,
+				comentarios: raw.au_comentarios,
+				estado: raw.au_estado,
+				createdAt: raw.au_created_at,
+				deletedAt: raw.au_deleted_at,
+				motivoEditar: raw.au_motivo_editar,
+				fechaInicioFormat: raw.au_fecha_inicio_format,
+				fechaFinFormat: raw.au_fecha_fin_format,
+				empleado: {
+					id: raw.leg_id,
+					legajo: raw.leg_legajo,
+					nombre: raw.leg_nombre,
+					apellido: raw.leg_apellido,
+					dni: raw.leg_dni,
+					email: raw.leg_email,
+					celular: raw.leg_celular,
+					fechaIngreso: raw.leg_fecha_ingreso,
+					fechaEgreso: raw.leg_fecha_egreso,
+				},
+				tipo: { id: raw.ta_id, nombre: raw.ta_nombre },
+				autorizador: raw.usr_autorizo
+					? {
+							nombre: raw.usr_autorizo.usr_nombre,
+							apellido: raw.usr_autorizo.usr_apellido,
+						}
+					: null,
+				rol: raw.rol,
+				usuarioId: raw.usr_id,
+			};
+		});
+
+		return { success: true, detail, errors: [], outputFile: null };
+	} catch (err) {
+		return failure('absence-detail', err, { detail: null });
+	}
+}
+
+export async function scrapeNotifications(
+	user: string,
+	password: string,
+	filters: NotificationFilters,
+	_signal?: AbortSignal,
+): Promise<ScrapeBase & { notificaciones: Notificacion[]; total: number }> {
+	try {
+		const { notificaciones, errors } = await withSessionRetry(
+			user,
+			password,
+			async (cookie) => {
+				const dashboard = parseDashboard(await fetchDashboard(cookie));
+				if (dashboard.notificacionesId === null) {
+					return {
+						notificaciones: [],
+						errors: [
+							'Could not determine Legajox notifications id from dashboard.',
+						],
+					};
+				}
+
+				const parsed = filterNotifications(
+					await fetchNotifications(cookie, dashboard.notificacionesId),
+					{
+						query: filters.query,
+						from: filters.from ? new Date(filters.from) : null,
+						to: filters.to ? new Date(filters.to) : null,
+					},
+				);
+
+				return {
+					notificaciones: parsed.map((notification) => ({
+						id: notification.not_id,
+						titulo: notification.not_titulo,
+						texto: notification.not_texto,
+						fechaLeido: notification.not_fecha_leido,
+						createdAt: notification.not_created_at,
+						tipo: notification.not_tipo_not,
+						ausencia: notification.not_ausencia,
+					})),
+					errors: [],
+				};
+			},
+		);
+
+		return {
+			success: true,
+			notificaciones,
+			total: notificaciones.length,
+			errors,
+			outputFile: null,
+		};
+	} catch (err) {
+		return failure('notifications', err, { notificaciones: [], total: 0 });
 	}
 }
 

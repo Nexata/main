@@ -95,6 +95,15 @@ export namespace Legajox {
 		Estado?: string | null;
 		estado?: string | null;
 	};
+	type AbsenceDetailInput = { Id?: string; id?: string };
+	type NotificationsInput = {
+		Query?: string | null;
+		query?: string | null;
+		From?: string | null;
+		from?: string | null;
+		To?: string | null;
+		to?: string | null;
+	};
 
 	function baseUrl() {
 		return requireEnv('LEGAJOX_API_URL');
@@ -192,9 +201,23 @@ export namespace Legajox {
 
 	function normalizeSelection(selection: SelectionInput[]) {
 		return selection.map((item) => ({
-			id: item.Id ?? item.id ?? '',
+			id: normalizeLegajoxSelectionId(item.Id ?? item.id ?? ''),
 			isDir: item.IsDir ?? item.isDir ?? false,
 		}));
+	}
+
+	function normalizeLegajoxSelectionId(id: string) {
+		const value = id.trim();
+		if (!value.startsWith('http://') && !value.startsWith('https://'))
+			return value;
+
+		try {
+			const url = new URL(value);
+			if (url.host !== 'app.legajox.com') return value;
+			return `${url.pathname}${url.search}`;
+		} catch {
+			return value;
+		}
 	}
 
 	async function download(url: string, path: string) {
@@ -505,13 +528,13 @@ export namespace Legajox {
 	export async function reingest(
 		userId: string,
 		slug: string,
-		selection: { id: string; isDir: boolean }[],
+		selection: SelectionInput[],
 	) {
 		// For re-ingest, resolve nexata file IDs back to external IDs
 		const _externalIds: string[] = [];
 		const resolvedSelection: { id: string; isDir: boolean }[] = [];
 
-		for (const item of selection) {
+		for (const item of normalizeSelection(selection)) {
 			if (item.isDir) {
 				// Folder re-ingest: pass the path directly
 				resolvedSelection.push(item);
@@ -704,6 +727,99 @@ export namespace Legajox {
 		}>(`/ausencias${queryString(params)}`);
 	}
 
+	// --- Absence detail ---
+
+	export const [getAbsenceDetailDescription, getAbsenceDetailInput] = [
+		'Legajox tool to get the full detail for a single absence by absence id. Use LegajoxAbsences first to find absence ids when needed.',
+		tObject({
+			Id: t.String({
+				description:
+					'Legajox absence id, returned as ausenciaId in absence data.',
+			}),
+		}),
+	] as const;
+
+	export async function getAbsenceDetail(input: AbsenceDetailInput) {
+		const id = input.Id ?? input.id ?? '';
+
+		return request<{
+			detail: {
+				id: string;
+				legajoId: string;
+				empresaId: string;
+				autorizoUsuarioId: string;
+				tipoId: string;
+				fechaInicio: string;
+				fechaFin: string;
+				fechaAutorizacion: string | null;
+				motivoRechazo: string;
+				descripcion: string;
+				comentarios: string;
+				estado: string;
+				createdAt: string;
+				deletedAt: string | null;
+				motivoEditar: string | null;
+				fechaInicioFormat: string;
+				fechaFinFormat: string;
+				empleado: {
+					id: string;
+					legajo: string;
+					nombre: string;
+					apellido: string;
+					dni: string;
+					email: string;
+					celular: string;
+					fechaIngreso: string;
+					fechaEgreso: string | null;
+				};
+				tipo: { id: string; nombre: string };
+				autorizador: { nombre: string; apellido: string | null } | null;
+				rol: string;
+				usuarioId: string;
+			};
+			errors?: string[];
+		}>(`/ausencias/${encodeURIComponent(id)}`);
+	}
+
+	// --- Notifications ---
+
+	export const [listNotificationsDescription, listNotificationsInput] = [
+		'Legajox tool to list dashboard notifications. Supports filtering by notification title/body text and created date range.',
+		tObject({
+			Query: Nullish(t.String(), {
+				description:
+					'Case-insensitive match on notification title or body text.',
+			}),
+			From: Nullish(t.String(), {
+				description: 'Inclusive notification created date from YYYY-MM-DD.',
+			}),
+			To: Nullish(t.String(), {
+				description: 'Inclusive notification created date to YYYY-MM-DD.',
+			}),
+		}),
+	] as const;
+
+	export async function listNotifications(input: NotificationsInput) {
+		const params = new URLSearchParams();
+		appendParam(params, 'query', input.Query ?? input.query);
+		appendParam(params, 'from', input.From ?? input.from);
+		appendParam(params, 'to', input.To ?? input.to);
+
+		return request<{
+			notificaciones: {
+				id: string;
+				titulo: string;
+				texto: string;
+				fechaLeido: string | null;
+				createdAt: string;
+				tipo: string;
+				ausencia: number;
+			}[];
+			total: number;
+			errors?: string[];
+		}>(`/notificaciones${queryString(params)}`);
+	}
+
 	// --- Vacations ---
 
 	export const [listVacationsDescription, listVacationsInput] = [
@@ -755,6 +871,32 @@ export const legajoxRouter = new Elysia({ prefix: '/legajox' })
 			path: Nullish(t.String()),
 		}),
 	})
+	.get(
+		'/ausencias/:id',
+		async ({ params }) => Legajox.getAbsenceDetail(params),
+		{
+			detail: {
+				summary: 'Get Legajox absence detail',
+				description: Legajox.getAbsenceDetailDescription,
+			},
+			params: tObject({ id: t.String() }),
+		},
+	)
+	.get(
+		'/notificaciones',
+		async ({ query }) => Legajox.listNotifications(query),
+		{
+			detail: {
+				summary: 'List Legajox notifications',
+				description: Legajox.listNotificationsDescription,
+			},
+			query: tObject({
+				query: Nullish(t.String()),
+				from: Nullish(t.String()),
+				to: Nullish(t.String()),
+			}),
+		},
+	)
 	.post(
 		'/ingest',
 		async ({ activeUser, body }) => {

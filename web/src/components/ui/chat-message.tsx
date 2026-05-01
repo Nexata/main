@@ -161,6 +161,12 @@ import {
   'tools.legajox.absences' as tools_legajox_absences,
   'tools.legajox.absences_success' as tools_legajox_absences_success,
   'tools.legajox.absences_error' as tools_legajox_absences_error,
+  'tools.legajox.absence_detail' as tools_legajox_absence_detail,
+  'tools.legajox.absence_detail_success' as tools_legajox_absence_detail_success,
+  'tools.legajox.absence_detail_error' as tools_legajox_absence_detail_error,
+  'tools.legajox.notifications' as tools_legajox_notifications,
+  'tools.legajox.notifications_success' as tools_legajox_notifications_success,
+  'tools.legajox.notifications_error' as tools_legajox_notifications_error,
   'tools.legajox.vacations' as tools_legajox_vacations,
   'tools.legajox.vacations_success' as tools_legajox_vacations_success,
   'tools.legajox.vacations_error' as tools_legajox_vacations_error,
@@ -919,6 +925,8 @@ const TOOL_LABEL_MAP: Record<string, { pending: () => string; success: () => str
   LegajoxOrgChart:          { pending: tools_legajox_org_chart,               success: tools_legajox_org_chart_success,               error: tools_legajox_org_chart_error },
   LegajoxPayroll:           { pending: tools_legajox_payroll,                  success: tools_legajox_payroll_success,                  error: tools_legajox_payroll_error },
   LegajoxAbsences:          { pending: tools_legajox_absences,                success: tools_legajox_absences_success,                error: tools_legajox_absences_error },
+  LegajoxAbsenceDetail:     { pending: tools_legajox_absence_detail,          success: tools_legajox_absence_detail_success,          error: tools_legajox_absence_detail_error },
+  LegajoxNotifications:     { pending: tools_legajox_notifications,           success: tools_legajox_notifications_success,           error: tools_legajox_notifications_error },
   LegajoxVacations:         { pending: tools_legajox_vacations,               success: tools_legajox_vacations_success,               error: tools_legajox_vacations_error },
 }
 
@@ -944,6 +952,8 @@ const LEGAJOX_TOOLS = new Set([
   'LegajoxOrgChart',
   'LegajoxPayroll',
   'LegajoxAbsences',
+  'LegajoxAbsenceDetail',
+  'LegajoxNotifications',
   'LegajoxVacations',
 ])
 
@@ -975,6 +985,8 @@ const TOOL_ICON_MAP: Record<string, string> = {
   LegajoxOrgChart:          '/datasource_icons/legajox.svg',
   LegajoxPayroll:           '/datasource_icons/legajox.svg',
   LegajoxAbsences:          '/datasource_icons/legajox.svg',
+  LegajoxAbsenceDetail:     '/datasource_icons/legajox.svg',
+  LegajoxNotifications:     '/datasource_icons/legajox.svg',
   LegajoxVacations:         '/datasource_icons/legajox.svg',
   CalendarList:             '/datasource_icons/gcalendar.png',
   CalendarEvents:           '/datasource_icons/gcalendar.png',

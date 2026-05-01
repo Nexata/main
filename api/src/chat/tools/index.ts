@@ -743,6 +743,20 @@ export const getTools = async (
 				(au) => au,
 				async (_au, input) => Legajox.listAbsences(input),
 			),
+			LegajoxAbsenceDetail: toolify(
+				Legajox.getAbsenceDetailDescription,
+				Legajox.getAbsenceDetailInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.getAbsenceDetail(input),
+			),
+			LegajoxNotifications: toolify(
+				Legajox.listNotificationsDescription,
+				Legajox.listNotificationsInput,
+				activeUser,
+				(au) => au,
+				async (_au, input) => Legajox.listNotifications(input),
+			),
 			LegajoxVacations: toolify(
 				Legajox.listVacationsDescription,
 				Legajox.listVacationsInput,

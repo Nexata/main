@@ -48,6 +48,19 @@ function makeDeps(): AppDependencies {
 			errors: [],
 			outputFile: null,
 		})),
+		scrapeAbsenceDetail: mock(async () => ({
+			success: true,
+			detail: null,
+			errors: [],
+			outputFile: null,
+		})),
+		scrapeNotifications: mock(async () => ({
+			success: true,
+			notificaciones: [],
+			total: 0,
+			errors: [],
+			outputFile: null,
+		})),
 		scrapeVacaciones: mock(async () => ({
 			success: true,
 			registros: [],
@@ -428,6 +441,138 @@ describe('Ausencias route', () => {
 			},
 			expect.anything(),
 		);
+	});
+});
+
+describe('Absence detail and notifications routes', () => {
+	test('rejects invalid absence detail ids before scraping', async () => {
+		const scrapeAbsenceDetail = mock(async () => ({
+			success: true,
+			detail: null,
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeAbsenceDetail });
+
+		const res = await client.ausencias({ id: 'abc' }).get({
+			query: QUERY_CREDS,
+		});
+
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: "Path param 'id' must be a positive integer.",
+		});
+		expect(scrapeAbsenceDetail).not.toHaveBeenCalled();
+	});
+
+	test('returns absence detail without internal scraper fields', async () => {
+		const scrapeAbsenceDetail = mock(async () => ({
+			success: true,
+			detail: {
+				id: '35',
+				legajoId: '10',
+				empresaId: '20',
+				autorizoUsuarioId: '30',
+				tipoId: '1',
+				fechaInicio: '2024-01-01',
+				fechaFin: '2024-01-02',
+				fechaAutorizacion: null,
+				motivoRechazo: '',
+				descripcion: 'Licencia',
+				comentarios: 'Comentario',
+				estado: 'Aprobada',
+				createdAt: '01/01/2024 10:00hs',
+				deletedAt: null,
+				motivoEditar: null,
+				fechaInicioFormat: '01/01/2024',
+				fechaFinFormat: '02/01/2024',
+				empleado: {
+					id: '10',
+					legajo: 'EMP-1',
+					nombre: 'Ada',
+					apellido: 'Lovelace',
+					dni: '123',
+					email: 'ada@example.com',
+					celular: '1234',
+					fechaIngreso: '2020-01-01',
+					fechaEgreso: null,
+				},
+				tipo: { id: '1', nombre: 'Vacaciones' },
+				autorizador: { nombre: 'Grace', apellido: 'Hopper' },
+				rol: 'admin',
+				usuarioId: '99',
+			},
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeAbsenceDetail });
+
+		const res = await client
+			.ausencias({ id: '35' })
+			.get({ query: QUERY_CREDS });
+
+		expect(res.status).toBe(200);
+		expect(scrapeAbsenceDetail).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			'35',
+			expect.anything(),
+		);
+		expect(res.data).toEqual({
+			detail: expect.objectContaining({ id: '35', estado: 'Aprobada' }),
+		});
+	});
+
+	test('passes notification filters to scraper', async () => {
+		const scrapeNotifications = mock(async () => ({
+			success: true,
+			notificaciones: [
+				{
+					id: '1',
+					titulo: 'Ausencia aprobada',
+					texto: 'Tu ausencia fue aprobada',
+					fechaLeido: null,
+					createdAt: '01/01/2024 10:00hs',
+					tipo: 'ausencia',
+					ausencia: 35,
+				},
+			],
+			total: 1,
+			errors: [],
+			outputFile: null,
+		}));
+		const { client } = makeClient({ scrapeNotifications });
+
+		const res = await client.notificaciones.get({
+			query: {
+				...QUERY_CREDS,
+				query: 'ausencia',
+				from: '2024-01-01',
+				to: '2024-01-31',
+			},
+		});
+
+		expect(res.status).toBe(200);
+		expect(scrapeNotifications).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			{ query: 'ausencia', from: '2024-01-01', to: '2024-01-31' },
+			expect.anything(),
+		);
+		expect(res.data).toEqual({
+			notificaciones: [
+				{
+					id: '1',
+					titulo: 'Ausencia aprobada',
+					texto: 'Tu ausencia fue aprobada',
+					fechaLeido: null,
+					createdAt: '01/01/2024 10:00hs',
+					tipo: 'ausencia',
+					ausencia: 35,
+				},
+			],
+			total: 1,
+		});
 	});
 });
 

@@ -2,6 +2,8 @@ import openapi, { fromTypes } from '@elysiajs/openapi';
 import { Elysia, t } from 'elysia';
 import {
 	type AusenciasFilters,
+	type NotificationFilters,
+	scrapeAbsenceDetail,
 	scrapeAusencias,
 	scrapeDownload,
 	scrapeEmployees,
@@ -10,6 +12,7 @@ import {
 	scrapeLiquidaciones,
 	scrapeListDirs,
 	scrapeListDocs,
+	scrapeNotifications,
 	scrapeOrgChart,
 	scrapeVacaciones,
 	validateCredentials,
@@ -92,6 +95,29 @@ const OPENAPI_TYPE_REFERENCES = `{
 			query: { user?: string; password?: string };
 			response: {
 				200: { registros: import('../request_imitator/api').VacacionEmpleado[]; total: number; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/ausencias/:id": {
+		get: {
+			params: { id: string };
+			query: { user?: string; password?: string };
+			response: {
+				200: { detail: import('../request_imitator/api').AusenciaDetalle; errors?: string[] };
+				400: { error: string };
+				401: { error: string };
+				500: { error: string; details?: string[] };
+			};
+		};
+	};
+	"/notificaciones": {
+		get: {
+			query: { user?: string; password?: string; query?: string; from?: string; to?: string };
+			response: {
+				200: { notificaciones: import('../request_imitator/api').Notificacion[]; total: number; errors?: string[] };
 				400: { error: string };
 				401: { error: string };
 				500: { error: string; details?: string[] };
@@ -253,6 +279,67 @@ const AusenciasResponse = t.Object({
 	_cache: CacheMetadata,
 });
 
+const AbsenceDetailResponse = t.Object({
+	id: t.String(),
+	legajoId: t.String(),
+	empresaId: t.String(),
+	autorizoUsuarioId: t.String(),
+	tipoId: t.String(),
+	fechaInicio: t.String(),
+	fechaFin: t.String(),
+	fechaAutorizacion: t.Union([t.String(), t.Null()]),
+	motivoRechazo: t.String(),
+	descripcion: t.String(),
+	comentarios: t.String(),
+	estado: t.String(),
+	createdAt: t.String(),
+	deletedAt: t.Union([t.String(), t.Null()]),
+	motivoEditar: t.Union([t.String(), t.Null()]),
+	fechaInicioFormat: t.String(),
+	fechaFinFormat: t.String(),
+	empleado: t.Object({
+		id: t.String(),
+		legajo: t.String(),
+		nombre: t.String(),
+		apellido: t.String(),
+		dni: t.String(),
+		email: t.String(),
+		celular: t.String(),
+		fechaIngreso: t.String(),
+		fechaEgreso: t.Union([t.String(), t.Null()]),
+	}),
+	tipo: t.Object({ id: t.String(), nombre: t.String() }),
+	autorizador: t.Union([
+		t.Object({ nombre: t.String(), apellido: t.Union([t.String(), t.Null()]) }),
+		t.Null(),
+	]),
+	rol: t.String(),
+	usuarioId: t.String(),
+});
+
+const AbsenceDetailEnvelope = t.Object({
+	detail: AbsenceDetailResponse,
+	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
+});
+
+const NotificationResponse = t.Object({
+	id: t.String(),
+	titulo: t.String(),
+	texto: t.String(),
+	fechaLeido: t.Union([t.String(), t.Null()]),
+	createdAt: t.String(),
+	tipo: t.String(),
+	ausencia: t.Number(),
+});
+
+const NotificationsResponse = t.Object({
+	notificaciones: t.Array(NotificationResponse),
+	total: t.Number(),
+	errors: t.Optional(t.Array(t.String())),
+	_cache: CacheMetadata,
+});
+
 const VacacionEmpleadoResponse = t.Object({
 	nombre: t.String(),
 	asignacionInicial: t.String(),
@@ -357,6 +444,21 @@ const AusenciasQuery = t.Object({
 	nocache: NocacheQuery,
 });
 
+const NotificationsQuery = t.Object({
+	user: t.Optional(t.String()),
+	password: t.Optional(t.String()),
+	query: t.Optional(
+		t.String({ description: 'Case-insensitive match on title or body text.' }),
+	),
+	from: t.Optional(
+		t.String({ description: 'Inclusive start date in YYYY-MM-DD.' }),
+	),
+	to: t.Optional(
+		t.String({ description: 'Inclusive end date in YYYY-MM-DD.' }),
+	),
+	nocache: NocacheQuery,
+});
+
 const DownloadRequest = t.Object({
 	selection: t.Array(
 		t.Object({
@@ -420,6 +522,18 @@ export type AppDependencies = {
 		filters: AusenciasFilters,
 		signal?: AbortSignal,
 	) => Promise<ScrapeBase & { ausencias: unknown[]; total: number }>;
+	scrapeAbsenceDetail: (
+		user: string,
+		password: string,
+		absenceId: string,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { detail: unknown | null }>;
+	scrapeNotifications: (
+		user: string,
+		password: string,
+		filters: NotificationFilters,
+		signal?: AbortSignal,
+	) => Promise<ScrapeBase & { notificaciones: unknown[]; total: number }>;
 	scrapeVacaciones: (
 		user: string,
 		password: string,
@@ -773,6 +887,8 @@ export function createApp({
 		scrapeOrgChart,
 		scrapeLiquidaciones,
 		scrapeAusencias,
+		scrapeAbsenceDetail,
+		scrapeNotifications,
 		scrapeVacaciones,
 		scrapeListDirs,
 		scrapeListDocs,
@@ -830,6 +946,11 @@ export function createApp({
 								description: 'Pending payroll documents and actions.',
 							},
 							{ name: 'absences', description: 'Absence records and filters.' },
+							{
+								name: 'notifications',
+								description:
+									'Dashboard notifications visible to the current user.',
+							},
 							{
 								name: 'vacations',
 								description: 'Vacation balances per employee.',
@@ -1282,6 +1403,145 @@ export function createApp({
 						description:
 							'Scrapes Legajox absence cards and optionally filters the combined result set by employee, date range, reason, state, and historial mode.',
 						tags: ['absences'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
+
+			// ── GET /ausencias/:id ──────────────────────────────────────────────────────
+			// Returns the detailed AJAX payload for a single absence card.
+			.get(
+				'/ausencias/:id',
+				async ({ params, query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { id } = params;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					if (!/^\d+$/.test(id)) {
+						return status(400, {
+							error: "Path param 'id' must be a positive integer.",
+						});
+					}
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `ausencias-detail:${creds.user}:${id}`;
+					try {
+						const { data, _cache } = await cacheOrRun(
+							cacheKey,
+							900, // 15 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeAbsenceDetail(
+										creds.user,
+										creds.password,
+										id,
+										signal,
+									),
+								);
+								if (!result.success || result.detail == null) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
+						);
+						return routeResponse(withCache(data, _cache));
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
+						console.error(`[api] /ausencias/${id} error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					params: t.Object({ id: t.String() }),
+					query: CredentialsQuery,
+					response: {
+						200: AbsenceDetailEnvelope,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'Get absence detail',
+						description:
+							'Fetches the Legajox AJAX detail payload for a single absence id, including employee and authorization metadata.',
+						tags: ['absences'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
+
+			// ── GET /notificaciones ────────────────────────────────────────────────────
+			// Returns dashboard notifications, optionally filtered by text and date range.
+			.get(
+				'/notificaciones',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const { query: textQuery, from, to } = queryParams;
+					const creds = resolveRouteCredentials(queryParams);
+					if (!creds) return status(400, missingCreds());
+					const nocache = queryParams.nocache === 'true';
+					const cacheKey = `notificaciones:${creds.user}:${textQuery ?? ''}:${from ?? ''}:${to ?? ''}`;
+					const filters: NotificationFilters = {
+						query: textQuery ?? null,
+						from: from ?? null,
+						to: to ?? null,
+					};
+					try {
+						const { data, _cache } = await cacheOrRun(
+							cacheKey,
+							300, // 5 min
+							async () => {
+								const result = await withScrapeTimeout((signal) =>
+									deps.scrapeNotifications(
+										creds.user,
+										creds.password,
+										filters,
+										signal,
+									),
+								);
+								if (!result.success) {
+									throw Object.assign(new Error('Scrape failed'), {
+										details: result.errors,
+									});
+								}
+								return toResponse(result);
+							},
+							{ nocache },
+						);
+						return routeResponse(withCache(data, _cache));
+					} catch (err) {
+						const msg = err instanceof Error ? err.message : String(err);
+						if (msg === 'Scrape failed') {
+							return status(500, {
+								error: msg,
+								details: (err as { details?: string[] }).details ?? [],
+							});
+						}
+						console.error(`[api] /notificaciones error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: NotificationsQuery,
+					response: {
+						200: NotificationsResponse,
+						400: ErrorResponse,
+						401: ErrorResponse,
+						500: t.Union([ErrorResponse, ScrapeFailureResponse]),
+					},
+					detail: {
+						summary: 'List notifications',
+						description:
+							'Fetches dashboard notifications visible to the authenticated Legajox user and optionally filters them by text and date range.',
+						tags: ['notifications'],
 						security: [{ bearerAuth: [] }],
 					},
 				},
