@@ -760,7 +760,7 @@ export const getTools = async (
 					Legajox.ingestInput,
 					activeUser,
 					(au) => au,
-					async (au, input) => Legajox.ingest(au.id, au.slug, input.selection),
+					async (au, input) => Legajox.ingest(au.id, au.slug, input.Selection),
 					undefined,
 					{ needsApproval: true },
 				),

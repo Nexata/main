@@ -54,6 +54,48 @@ function assertLegajoxAccess(activeUser: ActiveUser) {
 }
 
 export namespace Legajox {
+	type SearchInput = { Q?: string; q?: string };
+	type ListDirInput = { Path?: string | null; path?: string | null };
+	type SelectionInput = {
+		Id?: string;
+		id?: string;
+		IsDir?: boolean;
+		isDir?: boolean;
+	};
+	type EmployeesInput = {
+		Search?: string | null;
+		search?: string | null;
+		Page?: string | null;
+		page?: string | null;
+		Legajo?: string | null;
+		Name?: string | null;
+		Active?: string | boolean | null;
+		IngresoFrom?: string | null;
+		IngresoTo?: string | null;
+		EgresoFrom?: string | null;
+		EgresoTo?: string | null;
+	};
+	type PayrollInput = {
+		Search?: string | null;
+		search?: string | null;
+		Page?: string | null;
+		page?: string | null;
+	};
+	type AbsencesInput = {
+		Name?: string | null;
+		name?: string | null;
+		From?: string | null;
+		from?: string | null;
+		To?: string | null;
+		to?: string | null;
+		Historial?: string | boolean | null;
+		historial?: string | boolean | null;
+		Motivo?: string | null;
+		motivo?: string | null;
+		Estado?: string | null;
+		estado?: string | null;
+	};
+
 	function baseUrl() {
 		return requireEnv('LEGAJOX_API_URL');
 	}
@@ -134,6 +176,27 @@ export namespace Legajox {
 		return res.json() as Promise<T>;
 	}
 
+	function appendParam(
+		params: URLSearchParams,
+		key: string,
+		value: string | boolean | null | undefined,
+	) {
+		if (value === null || value === undefined || value === '') return;
+		params.set(key, String(value));
+	}
+
+	function queryString(params: URLSearchParams) {
+		const qs = params.toString();
+		return qs ? `?${qs}` : '';
+	}
+
+	function normalizeSelection(selection: SelectionInput[]) {
+		return selection.map((item) => ({
+			id: item.Id ?? item.id ?? '',
+			isDir: item.IsDir ?? item.isDir ?? false,
+		}));
+	}
+
 	async function download(url: string, path: string) {
 		return timedFetch(
 			url,
@@ -152,14 +215,15 @@ export namespace Legajox {
 	export const [searchDescription, searchInput] = [
 		'Legajox tool to search for documents by name. Minimum 3 characters.',
 		tObject({
-			q: t.String({
+			Q: t.String({
 				minLength: 3,
 				description: 'Search term, minimum 3 characters.',
 			}),
 		}),
 	] as const;
 
-	export async function search(input: { q: string }): Promise<NexataListDir> {
+	export async function search(input: SearchInput): Promise<NexataListDir> {
+		const q = input.Q ?? input.q ?? '';
 		const data = await request<{
 			cursor: string | null;
 			entries: {
@@ -172,7 +236,7 @@ export namespace Legajox {
 				ext?: string;
 				updatedAt?: string;
 			}[];
-		}>(`/documents/search?q=${encodeURIComponent(input.q)}`);
+		}>(`/documents/search?q=${encodeURIComponent(q)}`);
 
 		const entries: NexataListDirEntry[] = data.entries.map((e) => ({
 			id: e.id,
@@ -209,17 +273,16 @@ export namespace Legajox {
 	export const [listDirDescription, listDirInput] = [
 		'Legajox tool to list document folders and files. Without path returns top-level folders; with path returns files inside that folder.',
 		tObject({
-			path: Nullish(t.String(), {
+			Path: Nullish(t.String(), {
 				description:
 					'Folder path to list contents of. Omit for top-level folders.',
 			}),
 		}),
 	] as const;
 
-	export async function listDir(input: {
-		path?: string | null;
-	}): Promise<NexataListDir> {
-		const params = input.path ? `?path=${encodeURIComponent(input.path)}` : '';
+	export async function listDir(input: ListDirInput): Promise<NexataListDir> {
+		const path = input.Path ?? input.path;
+		const params = path ? `?path=${encodeURIComponent(path)}` : '';
 		const data = await request<{
 			cursor: string | null;
 			entries: {
@@ -269,12 +332,12 @@ export namespace Legajox {
 	export const [ingestDescription, ingestInput] = [
 		'Legajox tool to ingest (download and vectorize) files or folders from Legajox into Nexata. Use LegajoxSearch or LegajoxListDir first to find items, then pass their IDs here. Directories are ingested recursively. Only use when the user explicitly requests ingestion.',
 		tObject({
-			selection: t.Array(
+			Selection: t.Array(
 				tObject({
-					id: t.String({
+					Id: t.String({
 						description: 'Legajox folder path or document path.',
 					}),
-					isDir: t.Boolean({
+					IsDir: t.Boolean({
 						description:
 							'true when id is a folder path, false for a document path.',
 					}),
@@ -287,8 +350,9 @@ export namespace Legajox {
 	export async function ingest(
 		userId: string,
 		slug: string,
-		selection: { id: string; isDir: boolean }[],
+		selection: SelectionInput[],
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
+		const normalizedSelection = normalizeSelection(selection);
 		const blockReason = await checkTenantCanIngest(slug);
 		if (blockReason) {
 			if (blockReason === 'PAYMENT_REQUIRED')
@@ -314,7 +378,7 @@ export namespace Legajox {
 			}[];
 		}>('/documents/download', {
 			method: 'POST',
-			body: { selection },
+			body: { selection: normalizedSelection },
 		});
 
 		const entries = data.entries.filter((e) => isSupportedExt(e.name));
@@ -475,23 +539,47 @@ export namespace Legajox {
 	export const [listEmployeesDescription, listEmployeesInput] = [
 		'Legajox tool to list employees from the HR system. Defaults to page 1 to avoid unbounded scrapes. Use page for pagination; for company-wide aggregates, query pages sequentially until an empty page is returned.',
 		tObject({
-			search: Nullish(t.String(), {
+			Search: Nullish(t.String(), {
 				description: 'Free-text filter applied through the search box.',
 			}),
-			page: Nullish(t.String(), {
+			Page: Nullish(t.String(), {
 				description: '1-based page number. Defaults to 1 when omitted.',
+			}),
+			Legajo: Nullish(t.String(), {
+				description: 'Employee file number filter.',
+			}),
+			Name: Nullish(t.String(), {
+				description: 'Employee name filter.',
+			}),
+			Active: Nullish(t.Boolean(), {
+				description: 'true for active employees, false for inactive employees.',
+			}),
+			IngresoFrom: Nullish(t.String(), {
+				description: 'Employment start date from YYYY-MM-DD.',
+			}),
+			IngresoTo: Nullish(t.String(), {
+				description: 'Employment start date to YYYY-MM-DD.',
+			}),
+			EgresoFrom: Nullish(t.String(), {
+				description: 'Employment end date from YYYY-MM-DD.',
+			}),
+			EgresoTo: Nullish(t.String(), {
+				description: 'Employment end date to YYYY-MM-DD.',
 			}),
 		}),
 	] as const;
 
-	export async function listEmployees(input: {
-		search?: string | null;
-		page?: string | null;
-	}) {
+	export async function listEmployees(input: EmployeesInput) {
 		const params = new URLSearchParams();
-		if (input.search) params.set('search', input.search);
-		params.set('page', input.page ?? '1');
-		const qs = params.toString();
+		appendParam(params, 'search', input.Search ?? input.search);
+		appendParam(params, 'page', input.Page ?? input.page ?? '1');
+		appendParam(params, 'legajo', input.Legajo);
+		appendParam(params, 'name', input.Name);
+		appendParam(params, 'active', input.Active);
+		appendParam(params, 'ingresoFrom', input.IngresoFrom);
+		appendParam(params, 'ingresoTo', input.IngresoTo);
+		appendParam(params, 'egresoFrom', input.EgresoFrom);
+		appendParam(params, 'egresoTo', input.EgresoTo);
 
 		return request<{
 			employees: {
@@ -507,7 +595,7 @@ export namespace Legajox {
 				estado: string;
 			}[];
 			errors?: string[];
-		}>(`/employees${qs ? `?${qs}` : ''}`);
+		}>(`/employees${queryString(params)}`);
 	}
 
 	// --- Profile info ---
@@ -541,23 +629,19 @@ export namespace Legajox {
 	export const [listPayrollDescription, listPayrollInput] = [
 		'Legajox tool to list pending payroll actions (payslips). Defaults to page 1 to avoid unbounded scrapes. Use page for pagination; query pages sequentially when a complete scan is needed.',
 		tObject({
-			search: Nullish(t.String(), {
+			Search: Nullish(t.String(), {
 				description: 'Free-text filter.',
 			}),
-			page: Nullish(t.String(), {
+			Page: Nullish(t.String(), {
 				description: '1-based page number. Defaults to 1 when omitted.',
 			}),
 		}),
 	] as const;
 
-	export async function listPayroll(input: {
-		search?: string | null;
-		page?: string | null;
-	}) {
+	export async function listPayroll(input: PayrollInput) {
 		const params = new URLSearchParams();
-		if (input.search) params.set('search', input.search);
-		params.set('page', input.page ?? '1');
-		const qs = params.toString();
+		appendParam(params, 'search', input.Search ?? input.search);
+		appendParam(params, 'page', input.Page ?? input.page ?? '1');
 
 		return request<{
 			liquidaciones: {
@@ -568,7 +652,7 @@ export namespace Legajox {
 			}[];
 			total: number;
 			errors?: string[];
-		}>(`/liquidaciones${qs ? `?${qs}` : ''}`);
+		}>(`/liquidaciones${queryString(params)}`);
 	}
 
 	// --- Absences ---
@@ -576,37 +660,29 @@ export namespace Legajox {
 	export const [listAbsencesDescription, listAbsencesInput] = [
 		'Legajox tool to list absence records. Supports filtering by employee name, date range, reason, state, and historial mode.',
 		tObject({
-			name: Nullish(t.String(), { description: 'Employee name filter.' }),
-			from: Nullish(t.String(), {
+			Name: Nullish(t.String(), { description: 'Employee name filter.' }),
+			From: Nullish(t.String(), {
 				description: 'Inclusive start date (YYYY-MM-DD).',
 			}),
-			to: Nullish(t.String(), {
+			To: Nullish(t.String(), {
 				description: 'Inclusive end date (YYYY-MM-DD).',
 			}),
-			historial: Nullish(t.String(), {
+			Historial: Nullish(t.Boolean(), {
 				description: 'true for history, false for upcoming, omit for both.',
 			}),
-			motivo: Nullish(t.String(), { description: 'Absence reason filter.' }),
-			estado: Nullish(t.String(), { description: 'State filter.' }),
+			Motivo: Nullish(t.String(), { description: 'Absence reason filter.' }),
+			Estado: Nullish(t.String(), { description: 'State filter.' }),
 		}),
 	] as const;
 
-	export async function listAbsences(input: {
-		name?: string | null;
-		from?: string | null;
-		to?: string | null;
-		historial?: string | null;
-		motivo?: string | null;
-		estado?: string | null;
-	}) {
+	export async function listAbsences(input: AbsencesInput) {
 		const params = new URLSearchParams();
-		if (input.name) params.set('name', input.name);
-		if (input.from) params.set('from', input.from);
-		if (input.to) params.set('to', input.to);
-		if (input.historial) params.set('historial', input.historial);
-		if (input.motivo) params.set('motivo', input.motivo);
-		if (input.estado) params.set('estado', input.estado);
-		const qs = params.toString();
+		appendParam(params, 'name', input.Name ?? input.name);
+		appendParam(params, 'from', input.From ?? input.from);
+		appendParam(params, 'to', input.To ?? input.to);
+		appendParam(params, 'historial', input.Historial ?? input.historial);
+		appendParam(params, 'motivo', input.Motivo ?? input.motivo);
+		appendParam(params, 'estado', input.Estado ?? input.estado);
 
 		return request<{
 			ausencias: {
@@ -625,7 +701,7 @@ export namespace Legajox {
 			}[];
 			total: number;
 			errors?: string[];
-		}>(`/ausencias${qs ? `?${qs}` : ''}`);
+		}>(`/ausencias${queryString(params)}`);
 	}
 
 	// --- Vacations ---
