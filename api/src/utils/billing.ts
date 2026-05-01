@@ -1,4 +1,4 @@
-import { cache, db, EMBEDDING_SIZE } from '@api/env';
+import { cache, db, EMBEDDING_BYTES, EMBEDDING_SIZE } from '@api/env';
 import { FileCategory } from '@api/file/lib/types';
 import { locales } from '@api/locales';
 import {
@@ -54,7 +54,9 @@ export const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
 export const STORAGE_OVERHEAD_MULTIPLIER = 4;
 
 /** SQL expression: estimated storage megabytes for a single chunk row. */
-export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + 4096) * ${STORAGE_OVERHEAD_MULTIPLIER} / (1024.0 * 1024.0)`;
+export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + ${EMBEDDING_BYTES}) * ${STORAGE_OVERHEAD_MULTIPLIER} / (1024.0 * 1024.0)`;
+
+const ESTIMATED_CHUNK_BYTES = EMBEDDING_SIZE + EMBEDDING_BYTES;
 
 const LIMIT_TYPE_LOCALE_KEY: Record<string, string> = {
 	message: 'typeMessages',
@@ -657,7 +659,7 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 			case FileCategory.TEXT: {
 				const chunks = Math.ceil(sizeBytes / EMBEDDING_SIZE);
 				estimatedStorageMB +=
-					(chunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(chunks * ESTIMATED_CHUNK_BYTES * STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedEmbedTokens += chunks * 250;
 				break;
@@ -666,13 +668,13 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 				const textChunks = Math.ceil((sizeBytes * 0.3) / EMBEDDING_SIZE);
 				const estimatedImages = Math.max(1, Math.floor(sizeBytes / 500_000));
 				estimatedStorageMB +=
-					(textChunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(textChunks * ESTIMATED_CHUNK_BYTES * STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				// 2 chunks per image (description + OCR)
 				estimatedStorageMB +=
 					(estimatedImages *
 						2 *
-						(EMBEDDING_SIZE + 4096) *
+						ESTIMATED_CHUNK_BYTES *
 						STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedEmbedTokens += textChunks * 250 + estimatedImages * 40_000;
@@ -682,12 +684,12 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 				const docChunks = Math.ceil((sizeBytes * 0.2) / EMBEDDING_SIZE);
 				const docImages = Math.max(1, Math.floor(sizeBytes / 500_000));
 				estimatedStorageMB +=
-					(docChunks * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(docChunks * ESTIMATED_CHUNK_BYTES * STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedStorageMB +=
 					(docImages *
 						2 *
-						(EMBEDDING_SIZE + 4096) *
+						ESTIMATED_CHUNK_BYTES *
 						STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedEmbedTokens += docChunks * 250 + docImages * 40_000;
@@ -696,9 +698,7 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 			case FileCategory.SPREADSHEET: {
 				const sheetChunks = Math.ceil((sizeBytes * 0.5) / EMBEDDING_SIZE);
 				estimatedStorageMB +=
-					(sheetChunks *
-						(EMBEDDING_SIZE + 4096) *
-						STORAGE_OVERHEAD_MULTIPLIER) /
+					(sheetChunks * ESTIMATED_CHUNK_BYTES * STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedEmbedTokens += sheetChunks * 250;
 				break;
@@ -706,7 +706,7 @@ export function estimateBatchResources(files: FileEstimate[]): BatchEstimate {
 			case FileCategory.IMAGE: {
 				// 2 chunks (description + OCR), VLM token cost
 				estimatedStorageMB +=
-					(2 * (EMBEDDING_SIZE + 4096) * STORAGE_OVERHEAD_MULTIPLIER) /
+					(2 * ESTIMATED_CHUNK_BYTES * STORAGE_OVERHEAD_MULTIPLIER) /
 					(1024 * 1024);
 				estimatedEmbedTokens += 40_000;
 				break;

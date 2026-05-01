@@ -50,6 +50,20 @@
       "when": 1777510967372,
       "tag": "20260430010247_solid_impossible_man",
       "breakpoints": false
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1777666568800,
+      "tag": "20260501201608_lethal_the_hand",
+      "breakpoints": false
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1777668937319,
+      "tag": "20260501205537_whole_rafael_vega",
+      "breakpoints": false
     }
   ]
 }

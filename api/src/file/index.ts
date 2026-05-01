@@ -1,5 +1,10 @@
 import { authPlugin } from '@api/auth';
-import { db, EMBEDDING_MODEL } from '@api/env';
+import {
+	db,
+	EMBEDDING_BYTES,
+	EMBEDDING_DIMENSIONS,
+	EMBEDDING_MODEL,
+} from '@api/env';
 import { stringToChunks, toStringChunks } from '@api/file/lib';
 import {
 	BillableEventType,
@@ -36,7 +41,6 @@ import { s3 } from 'bun';
 import {
 	and,
 	asc,
-	cosineDistance,
 	desc,
 	eq,
 	exists,
@@ -45,6 +49,7 @@ import {
 	ilike,
 	inArray,
 	isNotNull,
+	lt,
 	or,
 	sql,
 } from 'drizzle-orm';
@@ -55,6 +60,14 @@ const _insertFile = createInsertSchema(file);
 const insertFile = t.Omit(_insertFile, ['createdAt']);
 const CHUNK_INSERT_BATCH_SIZE = 25;
 const CHUNK_INSERT_CONCURRENCY = 5;
+
+function embeddingLiteral(embedding: number[]): string {
+	return JSON.stringify(embedding);
+}
+
+function halfvecCosineDistance(embedding: number[]) {
+	return sql<number>`(${chunk.embedding}::halfvec(${sql.raw(EMBEDDING_DIMENSIONS.toString())})) <=> ((${embeddingLiteral(embedding)}::vector)::halfvec(${sql.raw(EMBEDDING_DIMENSIONS.toString())}))`;
+}
 
 function shouldCaptureIngestError(error: unknown): boolean {
 	if (!(error instanceof Error)) return true;
@@ -130,9 +143,8 @@ export namespace NexataFile {
 				})
 			: { embedding: undefined };
 
-		const similarity =
-			embedding &&
-			sql<number>`1 - (${cosineDistance(chunk.embedding, embedding)})`;
+		const distance = embedding && halfvecCosineDistance(embedding);
+		const similarity = distance && sql<number>`1 - (${distance})`;
 
 		return db
 			.select({
@@ -241,7 +253,7 @@ export namespace NexataFile {
 										),
 								),
 							),
-					similarity && gt(similarity, 0.3),
+					distance && lt(distance, 0.7),
 					input.fileIds ? inArray(file.id, input.fileIds) : undefined,
 					input.provider ? eq(file.provider, input.provider) : undefined,
 					input.name ? ilike(file.name, `%${input.name}%`) : undefined,
@@ -254,7 +266,7 @@ export namespace NexataFile {
 				),
 			)
 			.groupBy(file.id, user.id, thread.id, credential.id, chunk.id)
-			.orderBy(similarity ? desc(similarity) : desc(file.createdAt))
+			.orderBy(distance ? asc(distance) : desc(file.createdAt))
 			.limit(similarity ? 10 : 25)
 			.offset(((input.page ?? 1) - 1) * (similarity ? 10 : 25))
 			.$withCache(false);
@@ -309,7 +321,7 @@ export namespace NexataFile {
 
 			const totalEmbedTokens = (result.tokenUsage ?? 0) + embeddingUsage;
 			const storageDeltaMB =
-				(chunks.reduce((acc, c) => acc + c.text.length + 4096, 0) *
+				(chunks.reduce((acc, c) => acc + c.text.length + EMBEDDING_BYTES, 0) *
 					STORAGE_OVERHEAD_MULTIPLIER) /
 				(1024 * 1024);
 
@@ -386,9 +398,8 @@ export namespace NexataFile {
 			? await embed({ model: EMBEDDING_MODEL, value: input.query })
 			: { embedding: undefined };
 
-		const similarity =
-			embedding &&
-			sql<number>`1 - (${cosineDistance(chunk.embedding, embedding)})`;
+		const distance = embedding && halfvecCosineDistance(embedding);
+		const similarity = distance && sql<number>`1 - (${distance})`;
 
 		return db
 			.select({
@@ -438,11 +449,11 @@ export namespace NexataFile {
 										),
 								),
 							),
-					similarity ? gt(similarity, 0.3) : undefined,
+					distance ? lt(distance, 0.7) : undefined,
 					input.cursor ? gt(chunk.order, input.cursor) : undefined,
 				),
 			)
-			.orderBy(similarity ? desc(similarity) : asc(chunk.order))
+			.orderBy(distance ? asc(distance) : asc(chunk.order))
 			.limit(20);
 	}
 }

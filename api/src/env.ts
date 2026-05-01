@@ -3,6 +3,7 @@ import type * as schema from '@api/schema';
 import { requireEnv, warnEnv } from '@api/utils/env';
 import { neon, neonConfig } from '@neondatabase/serverless';
 import { Redis } from '@upstash/redis';
+import { defaultEmbeddingSettingsMiddleware, wrapEmbeddingModel } from 'ai';
 import { upstashCache } from 'drizzle-orm/cache/upstash';
 import { drizzle, type NeonHttpDatabase } from 'drizzle-orm/neon-http';
 import { createTransport } from 'nodemailer';
@@ -42,11 +43,21 @@ export const MODEL = novita.chat('deepseek/deepseek-v4-flash');
 export const LIGHT_MODEL = novita.chat('openai/gpt-oss-20b');
 export const REASONING_MODEL = novita.chat('zai-org/glm-5.1');
 export const VLM_MODEL = novita.chat('google/gemma-4-31b-it');
-export const EMBEDDING_MODEL = novita.embeddingModel('baai/bge-m3');
-export const EMBEDDING_DIMENSIONS = 1024;
+export const EMBEDDING_DIMENSIONS = 2048;
+export const EMBEDDING_MODEL = wrapEmbeddingModel({
+	model: novita.embeddingModel('qwen/qwen3-embedding-8b'),
+	middleware: defaultEmbeddingSettingsMiddleware({
+		settings: {
+			providerOptions: {
+				openai: { dimensions: EMBEDDING_DIMENSIONS },
+			},
+		},
+	}),
+});
 export const EMBEDDING_SIZE = 500;
 export const EMBEDDING_OVERLAP = 62;
 export const EMBEDDING_DB_MAX = 768;
+export const EMBEDDING_BYTES = EMBEDDING_DIMENSIONS * 4;
 
 export const SMTP = createTransport({
 	host: requireEnv('SMTP_HOST'),
