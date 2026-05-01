@@ -8,6 +8,7 @@ import { CopyButton } from "@/components/ui/copy-button"
 import { Badge } from "@/components/ui/badge"
 import { DirectoryTree, isDirectoryTree } from "@/components/ui/directory-tree"
 import { TimelineChart, isTimeline } from "@/components/ui/timeline-chart"
+import { BarChartRenderer, isBarChart } from "@/components/ui/bar-chart-renderer"
 
 interface MarkdownRendererProps {
   children: string
@@ -191,7 +192,7 @@ function childrenTakeAllStringContents(element: any): string {
   return ""
 }
 
-type StructuredBlockType = "directory-tree" | "timeline"
+type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart"
 
 type MarkdownSegment =
   | { type: "markdown"; content: string }
@@ -206,12 +207,16 @@ function getStructuredBlockType(text: string): StructuredBlockType | null {
 
   const isTree = isDirectoryTree(normalizedText)
   const isTimelineBlock = isTimeline(normalizedText)
+  const isBarChartBlock = isBarChart(normalizedText)
 
-  if (isTree === isTimelineBlock) {
+  const matchCount = [isTree, isTimelineBlock, isBarChartBlock].filter(Boolean).length
+  if (matchCount !== 1) {
     return null
   }
 
-  return isTree ? "directory-tree" : "timeline"
+  if (isTree) return "directory-tree"
+  if (isTimelineBlock) return "timeline"
+  return "bar-chart"
 }
 
 function renderStructuredBlock(
@@ -221,6 +226,10 @@ function renderStructuredBlock(
 ) {
   if (type === "directory-tree") {
     return <DirectoryTree key={key} content={content} />
+  }
+
+  if (type === "bar-chart") {
+    return <BarChartRenderer key={key} content={content} />
   }
 
   return <TimelineChart key={key} content={content} />
