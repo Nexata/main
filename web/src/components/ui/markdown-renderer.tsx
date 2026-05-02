@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge"
 import { DirectoryTree, isDirectoryTree } from "@/components/ui/directory-tree"
 import { TimelineChart, isTimeline } from "@/components/ui/timeline-chart"
 import { BarChartRenderer, isBarChart } from "@/components/ui/bar-chart-renderer"
+import { LineChartRenderer, isLineChart } from "@/components/ui/line-chart-renderer"
 
 interface MarkdownRendererProps {
   children: string
@@ -781,7 +782,7 @@ function sanitizeSvgElement(element: Element) {
   }
 }
 
-type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart"
+type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart" | "line-chart"
 
 type MarkdownSegment =
   | { type: "markdown"; content: string }
@@ -797,14 +798,16 @@ function getStructuredBlockType(text: string): StructuredBlockType | null {
   const isTree = isDirectoryTree(normalizedText)
   const isTimelineBlock = isTimeline(normalizedText)
   const isBarChartBlock = isBarChart(normalizedText)
+  const isLineChartBlock = isLineChart(normalizedText)
 
-  const matchCount = [isTree, isTimelineBlock, isBarChartBlock].filter(Boolean).length
+  const matchCount = [isTree, isTimelineBlock, isBarChartBlock, isLineChartBlock].filter(Boolean).length
   if (matchCount !== 1) {
     return null
   }
 
   if (isTree) return "directory-tree"
   if (isTimelineBlock) return "timeline"
+  if (isLineChartBlock) return "line-chart"
   return "bar-chart"
 }
 
@@ -819,6 +822,10 @@ function renderStructuredBlock(
 
   if (type === "bar-chart") {
     return <BarChartRenderer key={key} content={content} />
+  }
+
+  if (type === "line-chart") {
+    return <LineChartRenderer key={key} content={content} />
   }
 
   return <TimelineChart key={key} content={content} />
