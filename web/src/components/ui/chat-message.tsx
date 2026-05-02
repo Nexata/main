@@ -285,6 +285,8 @@ export interface ChatMessageProps {
   isStreaming?: boolean
   isSyncing?: boolean
   isLastInGroup?: boolean
+  /** Tool parts collected from subsequent whitespace-only assistant messages */
+  extraToolParts?: UIMessage["parts"][number][]
 }
 
 const ChatMessageBase: React.FC<ChatMessageProps> = ({
@@ -298,6 +300,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
   isStreaming = false,
   isSyncing = false,
   isLastInGroup = true,
+  extraToolParts,
 }) => {
   const isUser = message.role === "user"
   const editingMessageId = useChatUIStore((s) => s.editingMessageId)
@@ -750,6 +753,19 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                 toolGroupBuffer.push({ part, index })
               }
             })
+
+            // Append cross-message continuation tool parts (from whitespace-only sibling messages)
+            if (extraToolParts?.length) {
+              flushBuffer()
+              const extraOffset = message.parts.length
+              extraToolParts.forEach((xp, xi) => {
+                if (!isToolPart(xp)) return
+                const tcId = (xp as { toolCallId?: string }).toolCallId
+                if (tcId && renderedToolCallIds.has(tcId)) return
+                if (tcId) renderedToolCallIds.add(tcId)
+                toolGroupBuffer.push({ part: xp, index: extraOffset + xi })
+              })
+            }
 
             // flush final text bubble & tool group
             flushBuffer()
@@ -2808,7 +2824,7 @@ function getStatusIcon(state?: string) {
   return () => (<Loader2 className="h-4 w-4 animate-spin text-blue-500" />)
 }
 
-function isToolPart(
+export function isToolPart(
   part: UIMessage["parts"][number]
 ): part is Extract<UIMessage["parts"][number], { state: string }> {
   return (
@@ -2816,3 +2832,14 @@ function isToolPart(
     (part.type.startsWith("tool-") && part.type !== "tool-result")
   )
 }
+
+/** Tool names that have bespoke renderers and must NOT be absorbed into cross-message groups */
+export const GROUPABLE_TOOL_BLACKLIST = new Set([
+  "NexataAskQuestions",
+  "NexataReingest",
+  "GmailIngestAttachments",
+  "OutlookIngestAttachments",
+  "DriveIngest",
+  "DropboxIngest",
+  "OneDriveIngest",
+])
