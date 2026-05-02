@@ -149,6 +149,7 @@ export namespace NexataFile {
 		return db
 			.select({
 				id: file.id,
+				externalId: file.externalId,
 				ownedBy: jsonBuildObject({
 					id: user.id,
 					email: user.email,

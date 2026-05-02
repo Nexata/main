@@ -233,6 +233,13 @@ export namespace Legajox {
 		}
 	}
 
+	function legajoxAppUrl(id: string) {
+		const value = id.trim();
+		if (value.startsWith('http://') || value.startsWith('https://'))
+			return value;
+		return `https://app.legajox.com/${value.replace(/^\/+/, '')}`;
+	}
+
 	async function downloadDownloadedFile(filePath: string, path: string) {
 		return timedFetch(
 			legajoxUrl(`/documents/file?path=${encodeURIComponent(filePath)}`),
@@ -513,7 +520,7 @@ export namespace Legajox {
 					slug,
 					provider: FileHost.LEGAJOX,
 					externalId: entry.id,
-					url: entry.url,
+					url: legajoxAppUrl(entry.url ?? entry.id),
 					name: entry.name,
 					type: mimeType,
 					modifiedAt,

@@ -697,6 +697,7 @@ const PROVIDER_OPTIONS = [
 	{ id: 'drive', name: 'Google Drive', icon: '/datasource_icons/gdrive.png' },
 	{ id: 'one_drive', name: 'OneDrive', icon: '/datasource_icons/onedrive.png' },
 	{ id: 'dropbox', name: 'Dropbox', icon: '/datasource_icons/dropbox.png' },
+	{ id: 'legajox', name: 'Legajox', icon: '/datasource_icons/legajox.svg' },
 ];
 
 function getProviderOption(id?: string | null) {
@@ -721,6 +722,18 @@ function ProviderBadge({ provider }: { provider?: string }) {
 			{option?.name ?? provider}
 		</span>
 	);
+}
+
+function getLegajoxUrl(id: string) {
+	if (id.startsWith('http://') || id.startsWith('https://')) return id;
+	return `https://app.legajox.com/${id.replace(/^\/+/, '')}`;
+}
+
+function getFileExternalUrl(file: SearchFilesResult[number]) {
+	if (file.provider === 'legajox' && file.externalId)
+		return getLegajoxUrl(file.externalId);
+
+	return file.url;
 }
 
 function TypeBadge({ type }: { type?: string | null }) {
@@ -1504,7 +1517,10 @@ export function FilesManagementSection() {
 
 							{!isLoading &&
 								!empty &&
-								files.map((file) => (
+								files.map((file) => {
+									const externalUrl = getFileExternalUrl(file);
+
+									return (
 									<TableRow
 										key={file.id}
 										className={`transition-colors ${selected.has(file.id) ? 'bg-primary/5' : ''}`}
@@ -1523,11 +1539,11 @@ export function FilesManagementSection() {
 															<div className="rounded-md bg-muted p-1.5 shrink-0">
 																<FileText className="w-3.5 h-3.5 text-muted-foreground" />
 															</div>
-															{file.url ? (
-																<a
-																	href={file.url}
-																	target="_blank"
-																	rel="noopener noreferrer"
+																		{externalUrl ? (
+																			<a
+																				href={externalUrl}
+																				target="_blank"
+																				rel="noopener noreferrer"
 																	className="text-sm font-medium truncate max-w-[180px] hover:underline"
 																>
 																	{file.name}
@@ -1658,7 +1674,8 @@ export function FilesManagementSection() {
 											</div>
 										</TableCell>
 									</TableRow>
-								))}
+									);
+								})}
 						</TableBody>
 
 						<TableFooter className="bg-muted/30">
