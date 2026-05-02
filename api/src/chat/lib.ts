@@ -213,6 +213,7 @@ export type getThreadMessagesOptions = {
 	userId?: string;
 	messageId?: string;
 	cursor?: Date | null;
+	allowPublic?: true;
 	avoidCaching?: true;
 	language?: Language;
 };
@@ -240,7 +241,23 @@ export async function getThreadMessages(
 	threadId: string,
 	op: getThreadMessagesOptions,
 ) {
-	const shouldCache = !op.avoidCaching && !op.cursor;
+	const shouldCache = !op.avoidCaching && !op.cursor && !op.allowPublic;
+	const threadAccess = op.allowPublic
+		? or(
+				exists(
+					db
+						.select({ slug: user.slug })
+						.from(user)
+						.where(and(eq(user.id, thread.userId), eq(user.slug, op.slug))),
+				),
+				eq(thread.isPublic, true),
+			)
+		: exists(
+				db
+					.select({ slug: user.slug })
+					.from(user)
+					.where(and(eq(user.id, thread.userId), eq(user.slug, op.slug))),
+			);
 
 	if (op.content === 'partial' && shouldCache) {
 		const cached = await cache.get<PartialMessage[]>(threadId);
@@ -275,12 +292,7 @@ export async function getThreadMessages(
 			.where(
 				and(
 					eq(message.threadId, threadId),
-					exists(
-						db
-							.select({ slug: user.slug })
-							.from(user)
-							.where(and(eq(user.id, thread.userId), eq(user.slug, op.slug))),
-					),
+					threadAccess,
 					op.userId ? eq(thread.userId, op.userId) : undefined,
 					op.messageId ? eq(message.id, op.messageId) : undefined,
 					op.cursor ? lt(message.createdAt, op.cursor) : undefined,

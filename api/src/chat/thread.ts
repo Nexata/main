@@ -19,6 +19,7 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 				slug: activeUser.slug,
 				limit: query.limit,
 				cursor,
+				allowPublic: true,
 			});
 
 			const [owner] = await db

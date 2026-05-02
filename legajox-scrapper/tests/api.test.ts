@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 import * as fs from 'node:fs/promises';
 import * as path from 'node:path';
 import { treaty } from '@elysiajs/eden';
@@ -127,6 +127,10 @@ beforeEach(() => {
 	mock.restore();
 });
 
+afterEach(() => {
+	mock.restore();
+});
+
 describe('Auth guard', () => {
 	test('allows docs without Authorization', async () => {
 		const { client } = makeClient({}, { authHeader: null });
@@ -220,6 +224,111 @@ describe('Downloaded document file route', () => {
 			});
 		} finally {
 			await fs.rm(outsidePath, { force: true });
+		}
+	});
+});
+
+describe('Direct document downloads', () => {
+	test('uses Content-Disposition filename for /enviar_doc downloads', async () => {
+		const originalFetch = globalThis.fetch;
+		const fetchMock = mock(
+			async () =>
+				new Response('pdf bytes', {
+					status: 200,
+					headers: {
+						'content-type': 'application/pdf',
+						'content-disposition': 'attachment; filename="contrato.pdf"',
+					},
+				}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		try {
+			const { processDirectLinks } = await import(
+				'../request_imitator/download'
+			);
+			const { results } = await processDirectLinks(
+				['/enviar_doc/46461'],
+				'cookie',
+			);
+
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({
+				estado: 'ok',
+				extension: 'pdf',
+				downloadUrl: '/enviar_doc/46461',
+				pesoBytes: 9,
+			});
+			expect(results[0]?.nombre).toEndWith('-contrato.pdf');
+			expect(results[0]?.rutaLocal).toContain('contrato.pdf');
+		} finally {
+			globalThis.fetch = originalFetch;
+			await fs.rm(path.join(DOWNLOAD_OUTPUT_DIR, 'direct-links'), {
+				force: true,
+				recursive: true,
+			});
+		}
+	});
+
+	test('infers filename extension from Content-Type for /enviar_doc downloads', async () => {
+		const originalFetch = globalThis.fetch;
+		const fetchMock = mock(
+			async () =>
+				new Response('pdf bytes', {
+					status: 200,
+					headers: { 'content-type': 'application/pdf' },
+				}),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		try {
+			const { processDirectLinks } = await import(
+				'../request_imitator/download'
+			);
+			const { results } = await processDirectLinks(
+				['/enviar_doc/46461'],
+				'cookie',
+			);
+
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({
+				estado: 'ok',
+				extension: 'pdf',
+				downloadUrl: '/enviar_doc/46461',
+			});
+			expect(results[0]?.nombre).toEndWith('-46461.pdf');
+		} finally {
+			globalThis.fetch = originalFetch;
+			await fs.rm(path.join(DOWNLOAD_OUTPUT_DIR, 'direct-links'), {
+				force: true,
+				recursive: true,
+			});
+		}
+	});
+
+	test('propagates login HTML as an auth error for session retry', async () => {
+		const originalFetch = globalThis.fetch;
+		const fetchMock = mock(
+			async () =>
+				new Response(
+					'<html><form action="/login"><input id="usr_email"></form>',
+					{
+						status: 200,
+						headers: { 'content-type': 'text/html' },
+					},
+				),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		try {
+			const { processDirectLinks } = await import(
+				'../request_imitator/download'
+			);
+			await expect(
+				processDirectLinks(['/enviar_doc/46461'], 'cookie'),
+			).rejects.toThrow('Session invalid');
+		} finally {
+			globalThis.fetch = originalFetch;
 		}
 	});
 });

@@ -1,12 +1,36 @@
 import * as fs from 'node:fs';
 import * as path from 'node:path';
-import { getCiSession } from './get_cookies';
 import { fetchDocsPage, parseDocs } from './list-docs';
-import { legajoxHeaders } from './session';
+import { InvalidCookieError, legajoxHeaders } from './session';
 
 const BASE_URL = 'https://app.legajox.com';
 const BASE_HOST = 'app.legajox.com';
 const OUTPUT_DIR = path.resolve('outputs', '_descargas_tmp');
+
+const CONTENT_TYPE_EXTENSION: Record<string, string> = {
+	'application/pdf': 'pdf',
+	'application/msword': 'doc',
+	'application/rtf': 'rtf',
+	'application/vnd.ms-excel': 'xls',
+	'application/vnd.ms-powerpoint': 'ppt',
+	'application/vnd.openxmlformats-officedocument.presentationml.presentation':
+		'pptx',
+	'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet': 'xlsx',
+	'application/vnd.openxmlformats-officedocument.wordprocessingml.document':
+		'docx',
+	'application/vnd.oasis.opendocument.presentation': 'odp',
+	'application/vnd.oasis.opendocument.spreadsheet': 'ods',
+	'application/vnd.oasis.opendocument.text': 'odt',
+	'image/gif': 'gif',
+	'image/jpeg': 'jpg',
+	'image/png': 'png',
+	'image/svg+xml': 'svg',
+	'image/webp': 'webp',
+	'text/csv': 'csv',
+	'text/html': 'html',
+	'text/markdown': 'md',
+	'text/plain': 'txt',
+};
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -60,6 +84,16 @@ function extractExtension(filename: string): string {
 	return dot !== -1 ? filename.substring(dot + 1).toLowerCase() : '';
 }
 
+function hasExtension(filename: string): boolean {
+	return extractExtension(filename) !== '';
+}
+
+function extensionFromContentType(contentType: string | null): string {
+	if (!contentType) return '';
+	const mime = contentType.split(';', 1)[0]?.trim().toLowerCase() ?? '';
+	return CONTENT_TYPE_EXTENSION[mime] ?? '';
+}
+
 function extractFilenameFromUrl(url: string): string {
 	try {
 		const pathname = new URL(url, BASE_URL).pathname;
@@ -89,9 +123,77 @@ function normalizeLegajoxUrl(url: string): URL {
 	return parsed;
 }
 
-function resolveDownloadTarget(url: string, dir = '') {
+function decodeContentDispositionValue(value: string): string {
+	try {
+		return decodeURIComponent(value.replace(/^UTF-8''/i, ''));
+	} catch {
+		return value;
+	}
+}
+
+function filenameFromContentDisposition(value: string | null): string | null {
+	if (!value) return null;
+
+	const encodedMatch = value.match(/filename\*=([^;]+)/i);
+	if (encodedMatch?.[1]) {
+		return decodeContentDispositionValue(
+			encodedMatch[1].trim().replace(/^"|"$/g, ''),
+		);
+	}
+
+	const plainMatch = value.match(/filename="?([^";]+)"?/i);
+	return plainMatch?.[1]?.trim() ?? null;
+}
+
+function looksLikeHtml(buffer: Buffer): boolean {
+	const prefix = buffer
+		.subarray(0, 2048)
+		.toString('utf8')
+		.trimStart()
+		.toLowerCase();
+	return (
+		prefix.startsWith('<!doctype html') ||
+		prefix.startsWith('<html') ||
+		prefix.includes('action="/login"') ||
+		prefix.includes("action='/login'") ||
+		prefix.includes('id="usr_email"') ||
+		prefix.includes('id="usr_password"')
+	);
+}
+
+function assertDownloadedContent(
+	buffer: Buffer,
+	contentType: string | null,
+	contentDisposition: string | null,
+	pathname: string,
+) {
+	const isHtml =
+		(contentType ?? '').toLowerCase().includes('text/html') ||
+		looksLikeHtml(buffer);
+	if (!isHtml) return;
+
+	const html = buffer.subarray(0, 8192).toString('utf8');
+	if (
+		html.includes('action="/login"') ||
+		html.includes("action='/login'") ||
+		html.includes('id="usr_email"') ||
+		html.includes('id="usr_password"')
+	) {
+		throw new InvalidCookieError(
+			'Session invalid — login form found in download',
+		);
+	}
+
+	if (!contentDisposition) {
+		throw new Error(
+			`Unexpected HTML response while downloading ${pathname}; expected a document file.`,
+		);
+	}
+}
+
+function resolveDownloadTarget(url: string, dir = '', preferredName?: string) {
 	const parsed = normalizeLegajoxUrl(url);
-	const rawName = extractFilenameFromUrl(parsed.toString());
+	const rawName = preferredName ?? extractFilenameFromUrl(parsed.toString());
 	const safeName = sanitizeFilename(rawName);
 	const fallbackName =
 		safeName === 'archivo_desconocido' ? 'documento' : safeName;
@@ -109,6 +211,27 @@ function resolveDownloadTarget(url: string, dir = '') {
 	};
 }
 
+function buildDownloadedFilename(
+	url: string,
+	contentType: string | null,
+	contentDisposition: string | null,
+): string {
+	const parsed = normalizeLegajoxUrl(url);
+	const dispositionName = filenameFromContentDisposition(contentDisposition);
+	const urlName = extractFilenameFromUrl(parsed.toString());
+	const ext = extensionFromContentType(contentType);
+	let filename = dispositionName ?? urlName;
+
+	if (filename === 'archivo_desconocido' || filename === '') {
+		filename = parsed.pathname.startsWith('/enviar_doc/')
+			? `documento-${parsed.pathname.split('/').pop()}`
+			: 'documento';
+	}
+
+	if (!hasExtension(filename) && ext) filename = `${filename}.${ext}`;
+	return filename;
+}
+
 function extractDirName(html: string): string {
 	// Try <h5 class="titulo_categoria">...</h5>
 	let m = html.match(/<[^>]*titulo_categoria[^>]*>([^<]+)</);
@@ -124,42 +247,81 @@ function extractDirName(html: string): string {
 	return 'carpeta';
 }
 
-// ── Auth ─────────────────────────────────────────────────────────────────────
-
-async function refreshCookie(): Promise<string> {
-	const user = process.env.LEGAJOX_USER;
-	const password = process.env.LEGAJOX_PASSWORD;
-
-	if (!user || !password) {
-		throw new Error(
-			'LEGAJOX_USER and LEGAJOX_PASSWORD must be set in .env to auto-refresh the cookie.',
-		);
-	}
-
-	console.log(`[auth] Logging in as ${user} to obtain a fresh cookie…`);
-	const fresh = await getCiSession(user, password);
-	console.log('[auth] Fresh ci_session obtained.');
-	return fresh;
-}
-
 // ── Download ─────────────────────────────────────────────────────────────────
 
 async function downloadFile(
 	url: string,
-	destPath: string,
 	cookie: string,
-): Promise<number> {
+	dir = '',
+): Promise<{
+	nombre: string;
+	extension: string;
+	pesoBytes: number;
+	pesoLegible: string;
+	rutaLocal: string;
+	downloadUrl: string;
+	estado: 'ok' | 'duplicado';
+}> {
 	const parsed = normalizeLegajoxUrl(url);
-	fs.mkdirSync(path.dirname(destPath), { recursive: true });
 	const response = await fetch(parsed.toString(), {
 		headers: legajoxHeaders(cookie, '*/*'),
 	});
+
+	if (response.url.includes('/login')) {
+		throw new InvalidCookieError('Session invalid — redirected to login page');
+	}
+
 	if (!response.ok) {
 		throw new Error(`HTTP ${response.status} al descargar ${parsed.pathname}`);
 	}
+
+	const responseUrl = response.url || parsed.toString();
+	const responseParsed = normalizeLegajoxUrl(responseUrl);
+	const contentType = response.headers.get('content-type');
+	const contentDisposition = response.headers.get('content-disposition');
 	const buffer = Buffer.from(await response.arrayBuffer());
+	assertDownloadedContent(
+		buffer,
+		contentType,
+		contentDisposition,
+		responseParsed.pathname,
+	);
+
+	const preferredName = buildDownloadedFilename(
+		responseParsed.toString(),
+		contentType,
+		contentDisposition,
+	);
+	const { fileName, destPath } = resolveDownloadTarget(
+		responseParsed.toString(),
+		dir,
+		preferredName,
+	);
+
+	if (fs.existsSync(destPath)) {
+		const stat = fs.statSync(destPath);
+		return {
+			nombre: fileName,
+			extension: extractExtension(fileName),
+			pesoBytes: stat.size,
+			pesoLegible: formatBytes(stat.size),
+			rutaLocal: destPath,
+			downloadUrl: responseParsed.pathname + responseParsed.search,
+			estado: 'duplicado',
+		};
+	}
+
+	fs.mkdirSync(path.dirname(destPath), { recursive: true });
 	fs.writeFileSync(destPath, buffer);
-	return buffer.length;
+	return {
+		nombre: fileName,
+		extension: extractExtension(fileName),
+		pesoBytes: buffer.length,
+		pesoLegible: formatBytes(buffer.length),
+		rutaLocal: destPath,
+		downloadUrl: responseParsed.pathname + responseParsed.search,
+		estado: 'ok',
+	};
 }
 
 // ── Procesamiento de Dirs ─────────────────────────────────────────────────────
@@ -168,7 +330,7 @@ export async function processDirs(
 	dirs: string[],
 	initialCookie: string,
 ): Promise<{ results: DocumentMetadata[]; cookie: string }> {
-	let cookie = initialCookie;
+	const cookie = initialCookie;
 	const results: DocumentMetadata[] = [];
 
 	for (const dir of dirs) {
@@ -190,16 +352,7 @@ export async function processDirs(
 			html = await fetchDocsPage(folderId, cookie);
 		} catch (err) {
 			if (isAuthError(err)) {
-				console.warn(`[auth] ${(err as Error).message}. Refreshing cookie…`);
-				try {
-					cookie = await refreshCookie();
-					html = await fetchDocsPage(folderId, cookie);
-				} catch (retryErr) {
-					console.error(
-						`  ❌ No se pudo obtener la carpeta ${dir}: ${retryErr instanceof Error ? retryErr.message : retryErr}`,
-					);
-					continue;
-				}
+				throw err;
 			} else {
 				console.error(
 					`  ❌ Error al obtener carpeta ${dir}: ${err instanceof Error ? err.message : err}`,
@@ -236,48 +389,30 @@ export async function processDirs(
 				continue;
 			}
 
-			const { fileName, destPath } = resolveDownloadTarget(doc.url, dir);
-
-			// Already downloaded
-			if (fs.existsSync(destPath)) {
-				const stat = fs.statSync(destPath);
-				results.push({
-					nombre: fileName,
-					extension: extractExtension(fileName),
-					downloadUrl: doc.url,
-					dir,
-					dirNombre,
-					fecha: doc.fecha,
-					firmado: doc.firmado,
-					pesoBytes: stat.size,
-					pesoLegible: formatBytes(stat.size),
-					rutaLocal: destPath,
-					estado: 'duplicado',
-				});
-				console.log(`  ⏭️  [${i + 1}/${docs.length}] Duplicado: ${fileName}`);
-				continue;
-			}
-
 			try {
-				const size = await downloadFile(doc.url, destPath, cookie);
+				const downloaded = await downloadFile(doc.url, cookie, dir);
 				results.push({
-					nombre: fileName,
-					extension: extractExtension(fileName),
-					downloadUrl: doc.url,
+					nombre: downloaded.nombre,
+					extension: downloaded.extension,
+					downloadUrl: downloaded.downloadUrl,
 					dir,
 					dirNombre,
 					fecha: doc.fecha,
 					firmado: doc.firmado,
-					pesoBytes: size,
-					pesoLegible: formatBytes(size),
-					rutaLocal: destPath,
-					estado: 'ok',
+					pesoBytes: downloaded.pesoBytes,
+					pesoLegible: downloaded.pesoLegible,
+					rutaLocal: downloaded.rutaLocal,
+					estado: downloaded.estado,
 				});
+				const icon = downloaded.estado === 'duplicado' ? '⏭️ ' : '✅';
 				console.log(
-					`  ✅ [${i + 1}/${docs.length}] ${fileName} (${formatBytes(size)})`,
+					`  ${icon} [${i + 1}/${docs.length}] ${downloaded.nombre} (${downloaded.pesoLegible})`,
 				);
 			} catch (err) {
+				if (isAuthError(err)) throw err;
+
 				const msg = err instanceof Error ? err.message : String(err);
+				const { fileName } = resolveDownloadTarget(doc.url, dir);
 				results.push({
 					nombre: fileName,
 					extension: extractExtension(fileName),
@@ -306,7 +441,7 @@ export async function processDirectLinks(
 	links: string[],
 	initialCookie: string,
 ): Promise<{ results: DocumentMetadata[]; cookie: string }> {
-	let cookie = initialCookie;
+	const cookie = initialCookie;
 	const results: DocumentMetadata[] = [];
 
 	if (links.length === 0) return { results, cookie };
@@ -315,92 +450,32 @@ export async function processDirectLinks(
 
 	for (let i = 0; i < links.length; i++) {
 		const url = links[i];
-		const { fileName, destPath, parsed } = resolveDownloadTarget(url);
-
-		if (fs.existsSync(destPath)) {
-			const stat = fs.statSync(destPath);
-			results.push({
-				nombre: fileName,
-				extension: extractExtension(fileName),
-				downloadUrl: parsed.pathname + parsed.search,
-				dir: '',
-				dirNombre: '',
-				fecha: '',
-				firmado: false,
-				pesoBytes: stat.size,
-				pesoLegible: formatBytes(stat.size),
-				rutaLocal: destPath,
-				estado: 'duplicado',
-			});
-			console.log(`  ⏭️  [${i + 1}/${links.length}] Duplicado: ${fileName}`);
-			continue;
-		}
+		const parsed = normalizeLegajoxUrl(url);
 
 		try {
-			const size = await downloadFile(url, destPath, cookie);
+			const downloaded = await downloadFile(url, cookie);
 			results.push({
-				nombre: fileName,
-				extension: extractExtension(fileName),
-				downloadUrl: parsed.pathname + parsed.search,
+				nombre: downloaded.nombre,
+				extension: downloaded.extension,
+				downloadUrl: downloaded.downloadUrl,
 				dir: '',
 				dirNombre: '',
 				fecha: '',
 				firmado: false,
-				pesoBytes: size,
-				pesoLegible: formatBytes(size),
-				rutaLocal: destPath,
-				estado: 'ok',
+				pesoBytes: downloaded.pesoBytes,
+				pesoLegible: downloaded.pesoLegible,
+				rutaLocal: downloaded.rutaLocal,
+				estado: downloaded.estado,
 			});
+			const icon = downloaded.estado === 'duplicado' ? '⏭️ ' : '✅';
 			console.log(
-				`  ✅ [${i + 1}/${links.length}] ${fileName} (${formatBytes(size)})`,
+				`  ${icon} [${i + 1}/${links.length}] ${downloaded.nombre} (${downloaded.pesoLegible})`,
 			);
 		} catch (err) {
-			// If auth error on download, try refreshing
-			if (isAuthError(err)) {
-				console.warn(`[auth] Cookie expired during download. Refreshing…`);
-				try {
-					cookie = await refreshCookie();
-					const size = await downloadFile(url, destPath, cookie);
-					results.push({
-						nombre: fileName,
-						extension: extractExtension(fileName),
-						downloadUrl: parsed.pathname + parsed.search,
-						dir: '',
-						dirNombre: '',
-						fecha: '',
-						firmado: false,
-						pesoBytes: size,
-						pesoLegible: formatBytes(size),
-						rutaLocal: destPath,
-						estado: 'ok',
-					});
-					console.log(
-						`  ✅ [${i + 1}/${links.length}] ${fileName} (${formatBytes(size)})`,
-					);
-					continue;
-				} catch (retryErr) {
-					const msg =
-						retryErr instanceof Error ? retryErr.message : String(retryErr);
-					results.push({
-						nombre: fileName,
-						extension: extractExtension(fileName),
-						downloadUrl: parsed.pathname + parsed.search,
-						dir: '',
-						dirNombre: '',
-						fecha: '',
-						firmado: false,
-						pesoBytes: 0,
-						pesoLegible: '0 B',
-						rutaLocal: '',
-						estado: 'error',
-						errorDetalle: msg,
-					});
-					console.log(`  ❌ [${i + 1}/${links.length}] ${fileName} — ${msg}`);
-					continue;
-				}
-			}
+			if (isAuthError(err)) throw err;
 
 			const msg = err instanceof Error ? err.message : String(err);
+			const { fileName } = resolveDownloadTarget(url);
 			results.push({
 				nombre: fileName,
 				extension: extractExtension(fileName),

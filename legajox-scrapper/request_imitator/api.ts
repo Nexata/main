@@ -661,20 +661,23 @@ export async function scrapeDownload(
 	_signal?: AbortSignal,
 ) {
 	try {
-		const cookie = await getSessionCookie(user, password);
-		const metadata = [];
-		let updatedCookie = cookie;
+		const metadata = await withSessionRetry(user, password, async (cookie) => {
+			const metadata = [];
+			let updatedCookie = cookie;
 
-		if (dirs.length > 0) {
-			const result = await processDirs(dirs, updatedCookie);
-			metadata.push(...result.results);
-			updatedCookie = result.cookie;
-		}
+			if (dirs.length > 0) {
+				const result = await processDirs(dirs, updatedCookie);
+				metadata.push(...result.results);
+				updatedCookie = result.cookie;
+			}
 
-		if (links.length > 0) {
-			const result = await processDirectLinks(links, updatedCookie);
-			metadata.push(...result.results);
-		}
+			if (links.length > 0) {
+				const result = await processDirectLinks(links, updatedCookie);
+				metadata.push(...result.results);
+			}
+
+			return metadata;
+		});
 
 		return { success: true, metadata, errors: [], outputFile: null };
 	} catch (err) {

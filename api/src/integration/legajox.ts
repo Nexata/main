@@ -427,7 +427,10 @@ export namespace Legajox {
 			body: { selection: normalizedSelection },
 		});
 
-		const entries = data.entries.filter((e) => isSupportedExt(e.name));
+		const entries = data.entries.filter(
+			(e) => e.path && e.size !== 0 && isSupportedExt(e.name),
+		);
+		const discardedEntries = data.entries.length - entries.length;
 
 		const estimates: FileEstimate[] = entries.map((e) => ({
 			sizeBytes: (e.size ?? 0) * 1024 * 1024,
@@ -436,14 +439,18 @@ export namespace Legajox {
 
 		const capacity = await checkBatchCapacity(slug, estimates);
 		if (!capacity.canProceed)
-			return { ok: 0, unmodified: 0, failed: entries.length };
+			return {
+				ok: 0,
+				unmodified: 0,
+				failed: entries.length + discardedEntries,
+			};
 
 		const entriesToProcess =
 			capacity.maxFiles !== null
 				? entries.slice(0, capacity.maxFiles)
 				: entries;
 
-		const results = { ok: 0, unmodified: 0, failed: 0 };
+		const results = { ok: 0, unmodified: 0, failed: discardedEntries };
 		if (capacity.maxFiles !== null)
 			results.failed += entries.length - capacity.maxFiles;
 
