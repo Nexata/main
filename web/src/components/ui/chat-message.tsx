@@ -22,6 +22,7 @@ import {
   Paperclip,
   FolderOpen,
   Brain,
+  ChevronDown,
 } from "lucide-react"
 import { cn } from "@/lib/utils"
 import { FilePreview, type RemoteFile } from "@/components/ui/file-preview"
@@ -533,10 +534,20 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
           {(() => {
             const blocks: React.ReactNode[] = []
             let buffer: { part: Record<string, unknown>; globalIndex: number }[] = []
+            let toolGroupBuffer: { part: UIMessage["parts"][number]; index: number }[] = []
             const renderedToolCallIds = new Set<string>()
 
             const flushBuffer = () => {
               if (!buffer.length) return
+
+              // Skip rendering bubbles that contain only whitespace text (LLM newlines between tool calls)
+              const hasRealContent = buffer.some(b => {
+                const p = b.part as { type: string; text?: string }
+                if (p.type === "file") return true
+                if (p.type === "text") return (p.text ?? "").trim().length > 0
+                return false
+              })
+              if (!hasRealContent) { buffer = []; return }
 
               const firstIndex = buffer[0]?.globalIndex
               const lastIndex = buffer[buffer.length - 1]?.globalIndex
@@ -581,16 +592,43 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
               buffer = []
             }
 
+            // Flush accumulated regular tool calls as a group (or single ToolRenderer)
+            const flushToolGroup = () => {
+              if (!toolGroupBuffer.length) return
+              if (toolGroupBuffer.length === 1) {
+                const { part, index } = toolGroupBuffer[0]
+                blocks.push(<ToolRenderer key={`tool-${index}`} part={part} />)
+              } else {
+                const firstIndex = toolGroupBuffer[0].index
+                const lastIndex  = toolGroupBuffer[toolGroupBuffer.length - 1].index
+                blocks.push(
+                  <ToolGroupRenderer
+                    key={`toolgroup-${firstIndex}-${lastIndex}`}
+                    parts={toolGroupBuffer.map(t => t.part)}
+                  />
+                )
+              }
+              toolGroupBuffer = []
+            }
+
             message.parts.forEach((part, index) => {
               if (part.type === "text" || part.type === "file") {
+                // Whitespace-only text between tool calls should NOT break a group
+                // and should NOT produce an empty bubble — skip it silently.
+                if (part.type === "text" && !((part as { text?: string }).text ?? "").trim()) {
+                  return
+                }
+                // Real text/file: flush any pending tool group first, then add to text buffer
+                flushToolGroup()
                 buffer.push({ part: part as unknown as Record<string, unknown>, globalIndex: index })
                 return
               }
 
-              // flush bubble before special block
+              // Non-text part: flush the text bubble
               flushBuffer()
 
               if (part.type === "reasoning") {
+                flushToolGroup()
                 blocks.push(
                   <ReasoningBlock
                     key={`reasoning-${index}`}
@@ -612,6 +650,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   : part.type.replace("tool-", "")
 
                 if (rawName === "NexataAskQuestions") {
+                  flushToolGroup()
                   blocks.push(
                     <AskQuestionsRenderer
                       key={`ask-${index}`}
@@ -633,6 +672,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   rawName === "NexataReingest" &&
                   ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
                 ) {
+                  flushToolGroup()
                   blocks.push(
                     <ReingestApprovalRenderer
                       key={`reingest-approval-${index}`}
@@ -650,6 +690,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   rawName === "GmailIngestAttachments" &&
                   ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
                 ) {
+                  flushToolGroup()
                   blocks.push(
                     <GmailIngestApprovalRenderer
                       key={`gmail-ingest-approval-${index}`}
@@ -667,6 +708,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   rawName === "OutlookIngestAttachments" &&
                   ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
                 ) {
+                  flushToolGroup()
                   blocks.push(
                     <OutlookIngestApprovalRenderer
                       key={`outlook-ingest-approval-${index}`}
@@ -684,6 +726,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   (rawName === "DriveIngest" || rawName === "DropboxIngest" || rawName === "OneDriveIngest") &&
                   ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
                 ) {
+                  flushToolGroup()
                   const cfg = PROVIDER_INGEST_I18N[rawName as keyof typeof PROVIDER_INGEST_I18N]
                   blocks.push(
                     <ProviderIngestApprovalRenderer
@@ -701,17 +744,14 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                   return
                 }
 
-                blocks.push(
-                  <ToolRenderer
-                    key={`tool-${index}`}
-                    part={part}
-                  />
-                )
+                // Regular tool call — accumulate into group buffer
+                toolGroupBuffer.push({ part, index })
               }
             })
 
-            // flush final bubble
+            // flush final text bubble & tool group
             flushBuffer()
+            flushToolGroup()
 
             return blocks
           })()}
@@ -1181,6 +1221,247 @@ function ToolRenderer({ part }: { part: UIMessage["parts"][number] }) {
         </div>
       </div>
     </motion.div>
+  )
+}
+
+/* -------------------------------------------------------------------------- */
+/*                         ToolGroup helpers & renderer                        */
+/* -------------------------------------------------------------------------- */
+
+function getRawToolName(part: UIMessage["parts"][number]): string {
+  return part.type === "dynamic-tool"
+    ? (part as { toolName: string }).toolName
+    : part.type.replace("tool-", "")
+}
+
+function ToolIconBadge({
+  rawToolName,
+  size = "md",
+}: {
+  rawToolName: string
+  size?: "sm" | "md"
+}) {
+  const isNexata = NEXATA_TOOLS.has(rawToolName)
+  const icon = !isNexata ? TOOL_ICON_MAP[rawToolName] : null
+  const LucideIcon = !isNexata && !icon ? TOOL_LUCIDE_MAP[rawToolName] : null
+
+  const containerCls = size === "sm"
+    ? "h-6 w-6 rounded-md"
+    : "h-8 w-8 rounded-lg"
+  const imgCls = size === "sm" ? "h-3.5 w-3.5" : "h-4 w-4"
+  const logoH  = size === "sm" ? "h-3 max-w-[18px]" : "h-4 max-w-[28px]"
+
+  return (
+    <div className={cn(
+      "flex items-center justify-center bg-muted/60 border border-border/40 shrink-0",
+      containerCls
+    )}>
+      {isNexata ? (
+        <img src="/nexata_logo.png" alt="Nexata" className={cn("w-auto object-contain opacity-80", logoH)} />
+      ) : icon ? (
+        <img src={icon} alt={rawToolName} className={cn("object-contain", imgCls)} />
+      ) : LucideIcon ? (
+        <LucideIcon className={cn("text-muted-foreground", imgCls)} />
+      ) : (
+        <Globe className={cn("text-muted-foreground", imgCls)} />
+      )}
+    </div>
+  )
+}
+
+function ToolGroupItem({
+  part,
+  isLast,
+  onClick,
+}: {
+  part: UIMessage["parts"][number]
+  isLast: boolean
+  onClick?: () => void
+}) {
+  const rawToolName = getRawToolName(part)
+  const isSuccess = (part as { state?: string }).state === "output-available"
+  const isError   = (part as { state?: string }).state === "output-error"
+  const isDenied  = (part as { state?: string }).state === "output-denied"
+  const isPending = !isSuccess && !isError && !isDenied
+
+  const label = getToolLabel(rawToolName, (part as { state?: string }).state)
+
+  return (
+    <div
+      className={cn(
+        "flex items-center justify-between gap-3 px-4 py-2.5 cursor-pointer transition-colors duration-150 hover:bg-muted/30",
+        !isLast && "border-b border-border/30"
+      )}
+      onClick={onClick}
+    >
+      <div className="flex items-center gap-2.5 min-w-0">
+        <ToolIconBadge rawToolName={rawToolName} size="sm" />
+        <span className="text-[13px] text-foreground/90 truncate">{label}</span>
+      </div>
+
+      <div className={cn(
+        "flex items-center justify-center h-5 w-5 rounded-full border shrink-0 transition-all duration-200",
+        isSuccess && "bg-green-500/10 border-green-500/25",
+        isError   && "bg-red-500/10   border-red-500/25",
+        isDenied  && "bg-yellow-500/10 border-yellow-500/25",
+        isPending && "bg-blue-500/10  border-blue-500/20",
+      )}>
+        {isSuccess && <Check   className="h-2.5 w-2.5 text-green-600 dark:text-green-400" />}
+        {isError   && <X       className="h-2.5 w-2.5 text-red-600   dark:text-red-400" />}
+        {isDenied  && <Ban     className="h-2.5 w-2.5 text-yellow-600 dark:text-yellow-400" />}
+        {isPending && <Loader2 className="h-2.5 w-2.5 animate-spin text-blue-500" />}
+      </div>
+    </div>
+  )
+}
+
+function ToolGroupRenderer({ parts }: { parts: Array<UIMessage["parts"][number]> }) {
+  const toggleTool = useToolDetailStore((s) => s.toggleTool)
+
+  const total        = parts.length
+  const doneCount    = parts.filter(p => (p as { state?: string }).state === "output-available").length
+  const errorCount   = parts.filter(p => {
+    const s = (p as { state?: string }).state
+    return s === "output-error" || s === "output-denied"
+  }).length
+  const pendingCount = total - doneCount - errorCount
+
+  const allDone  = pendingCount === 0
+  const anyError = errorCount > 0
+  const anyPending = pendingCount > 0
+
+  const [isExpanded, setIsExpanded] = useState(!allDone)
+
+  const overallStatus = anyPending ? "pending" : anyError ? "error" : "success"
+
+  const summaryParts: string[] = []
+  if (pendingCount > 0) summaryParts.push(`${pendingCount} running…`)
+  if (doneCount > 0)    summaryParts.push(`${doneCount} done`)
+  if (errorCount > 0)   summaryParts.push(`${errorCount} failed`)
+  const summaryText = summaryParts.join(", ")
+
+  // Unique preview icons — up to 4
+  const previewNames = parts.slice(0, 4).map(getRawToolName)
+  const extraIconCount = total - previewNames.length
+
+  const handleItemClick = (part: UIMessage["parts"][number]) => {
+    const rawToolName = getRawToolName(part)
+    const toolCallId  = (part as { toolCallId?: string }).toolCallId ?? ""
+    toggleTool({
+      toolName: rawToolName,
+      toolCallId,
+      state:  (part as { state?: string }).state,
+      input:  (part as { input?: unknown }).input,
+      output: (part as { output?: unknown }).output ?? (part as { errorText?: string }).errorText,
+    })
+  }
+
+  return (
+    <div className="relative w-full sm:max-w-[85%]">
+      {/* iOS stacked shadow cards — visible only when collapsed */}
+      {!isExpanded && total > 2 && (
+        <div className="absolute inset-x-4 -bottom-[7px] h-full rounded-xl border border-border/20 bg-card/30 -z-20 pointer-events-none" />
+      )}
+      {!isExpanded && total > 1 && (
+        <div className="absolute inset-x-2 -bottom-[3.5px] h-full rounded-xl border border-border/30 bg-card/50 -z-10 pointer-events-none" />
+      )}
+
+      <motion.div
+        layout
+        className={cn(
+          "relative rounded-xl border overflow-hidden transition-colors duration-200 chat-float",
+          "bg-card/80 border-border/50 hover:bg-card hover:border-border/70"
+        )}
+      >
+        {/* Top state bar */}
+        <div className={cn(
+          "absolute top-0 left-0 right-0 h-[2px] z-10",
+          overallStatus === "success" && "bg-green-500/70",
+          overallStatus === "error"   && "bg-red-500/70",
+          overallStatus === "pending" && "bg-blue-400/60",
+        )} />
+
+        {/* ── Header ── */}
+        <div
+          className="flex items-center justify-between gap-4 px-4 py-3 cursor-pointer select-none"
+          onClick={() => setIsExpanded((v) => !v)}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            {/* Overlapping icon stack */}
+            <div className="flex -space-x-1.5 shrink-0">
+              {previewNames.map((name, i) => (
+                <div
+                  key={i}
+                  style={{ zIndex: previewNames.length - i }}
+                  className="ring-1 ring-background/80 rounded-md"
+                >
+                  <ToolIconBadge rawToolName={name} size="sm" />
+                </div>
+              ))}
+              {extraIconCount > 0 && (
+                <div
+                  style={{ zIndex: 0 }}
+                  className="h-6 w-6 flex items-center justify-center rounded-md bg-muted/60 border border-border/40 ring-1 ring-background/80 text-[10px] font-semibold text-muted-foreground shrink-0"
+                >
+                  +{extraIconCount}
+                </div>
+              )}
+            </div>
+
+            <div className="flex flex-col min-w-0">
+              <span className="text-sm font-semibold leading-snug">
+                {total} {total === 1 ? "acción" : "acciones"}
+              </span>
+              <span className="text-xs text-muted-foreground truncate leading-snug">{summaryText}</span>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Overall status badge */}
+            <div className={cn(
+              "flex items-center justify-center h-6 w-6 rounded-full border transition-all duration-200",
+              overallStatus === "success" && "bg-green-500/10 border-green-500/25",
+              overallStatus === "error"   && "bg-red-500/10   border-red-500/25",
+              overallStatus === "pending" && "bg-blue-500/10  border-blue-500/20",
+            )}>
+              {overallStatus === "success" && <Check   className="h-3 w-3 text-green-600 dark:text-green-400" />}
+              {overallStatus === "error"   && <X       className="h-3 w-3 text-red-600   dark:text-red-400" />}
+              {overallStatus === "pending" && <Loader2 className="h-3 w-3 animate-spin text-blue-500" />}
+            </div>
+
+            <ChevronDown className={cn(
+              "h-4 w-4 text-muted-foreground/60 transition-transform duration-300",
+              isExpanded && "rotate-180"
+            )} />
+          </div>
+        </div>
+
+        {/* ── Expanded tool list ── */}
+        <AnimatePresence initial={false}>
+          {isExpanded && (
+            <motion.div
+              key="tool-list"
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: "auto", opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+              className="overflow-hidden"
+            >
+              <div className="border-t border-border/40">
+                {parts.map((part, i) => (
+                  <ToolGroupItem
+                    key={i}
+                    part={part}
+                    isLast={i === parts.length - 1}
+                    onClick={() => handleItemClick(part)}
+                  />
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    </div>
   )
 }
 
