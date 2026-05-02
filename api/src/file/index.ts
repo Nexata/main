@@ -572,6 +572,13 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					activeUser.language,
 				);
 
+			if ('autoSync' in body && existing.provider === FileHost.LEGAJOX)
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.INVALID_REQUEST,
+					activeUser.language,
+				);
+
 			const set =
 				'name' in body || 'metadata' in body
 					? {

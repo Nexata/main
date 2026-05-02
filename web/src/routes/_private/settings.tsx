@@ -736,6 +736,10 @@ function getFileExternalUrl(file: SearchFilesResult[number]) {
 	return file.url;
 }
 
+function canToggleFileAutoSync(provider?: string | null) {
+	return provider !== 'nexata' && provider !== 'legajox';
+}
+
 function TypeBadge({ type }: { type?: string | null }) {
 	if (!type) return <span className="text-xs text-muted-foreground">—</span>;
 	const option = getTypeOption(type);
@@ -1095,6 +1099,9 @@ export function FilesManagementSection() {
 	};
 
 	const handleFileAutoSyncToggle = async (fileId: string, value: boolean) => {
+		const file = files.find((f) => f.id === fileId);
+		if (!file || !canToggleFileAutoSync(file.provider)) return;
+
 		try {
 			await updateFileAutoSync(fileId, value);
 			refetch();
@@ -1519,6 +1526,7 @@ export function FilesManagementSection() {
 								!empty &&
 								files.map((file) => {
 									const externalUrl = getFileExternalUrl(file);
+									const canAutoSync = canToggleFileAutoSync(file.provider);
 
 									return (
 									<TableRow
@@ -1607,7 +1615,7 @@ export function FilesManagementSection() {
 														<div className="inline-flex">
 															<Switch
 																checked={file.autoSync ?? false}
-																disabled={file.provider === 'nexata'}
+																disabled={!canAutoSync}
 																onCheckedChange={(v) =>
 																	handleFileAutoSyncToggle(file.id, v)
 																}
@@ -1616,7 +1624,7 @@ export function FilesManagementSection() {
 														</div>
 													</TooltipTrigger>
 													<TooltipContent>
-														{file.provider === 'nexata'
+														{!canAutoSync
 															? settings_files_tooltip_autosync_unavailable()
 															: file.autoSync
 																? settings_files_tooltip_autosync_on()
