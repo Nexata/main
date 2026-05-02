@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, CircleHelp, Info, Loader2, Paperclip, Share2, Square, Brain, X  } from "lucide-react"
+import { ArrowUp, CircleHelp, Ellipsis, Info, Loader2, Paperclip, Share2, Square, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
 import { CHAT_INPUT_MAX_CHARS, CHAT_INPUT_WARNING_THRESHOLD } from "@/lib/chat-input"
 import { cn } from "@/lib/utils"
@@ -14,6 +14,12 @@ import { FilePreview } from "@/components/ui/file-preview"
 import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
 import PromptTipsModal from "@/components/prompt-tips/prompt-tips.modal"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
 import {
   "common.ask_nexy" as common_ask_nexy,
   "common.brain" as common_brain,
@@ -332,61 +338,113 @@ export function MessageInput({
 
             {/* Right buttons */}
             <div className="flex items-center gap-1">
-              <Tooltip>
-                <TooltipTrigger>
-                  <Button
-                    type="button"
-                    size="icon"
-                    variant="ghost"
-                    className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={() => setTipsOpen(true)}
-                  >
-                    <CircleHelp className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
-              </Tooltip>
-
-              {props.allowAttachments && (
+              {/* Desktop secondary buttons */}
+              <div className="hidden sm:flex items-center gap-1">
                 <Tooltip>
-                  <TooltipTrigger>
+                  <TooltipTrigger asChild>
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
-                      data-tour="attachment-button"
-                      className="h-8 w-8 rounded-full cursor-pointer"
+                      className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={async () => {
-                        const files = await showFileUploadDialog()
-                        addFiles(files)
-                      }}
+                      onClick={() => setTipsOpen(true)}
                     >
-                      <Paperclip className="h-5 w-5" />
+                      <CircleHelp className="h-5 w-5" />
                     </Button>
                   </TooltipTrigger>
-                  <TooltipContent>{common_attachment()}</TooltipContent>
+                  <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
                 </Tooltip>
-              )}
 
-              {onShareThread && (
-                <Tooltip>
-                  <TooltipTrigger>
+                {props.allowAttachments && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        data-tour="attachment-button"
+                        className="h-8 w-8 rounded-full cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={async () => {
+                          const files = await showFileUploadDialog()
+                          addFiles(files)
+                        }}
+                      >
+                        <Paperclip className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{common_attachment()}</TooltipContent>
+                  </Tooltip>
+                )}
+
+                {onShareThread && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full cursor-pointer"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={onShareThread}
+                      >
+                        <Share2 className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Share</TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+
+              {/* Mobile secondary buttons — collapsed into a dropdown */}
+              <div className="sm:hidden">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
                     <Button
                       type="button"
                       size="icon"
                       variant="ghost"
-                      className="h-8 w-8 rounded-full cursor-pointer"
+                      className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground"
                       onMouseDown={(e) => e.preventDefault()}
-                      onClick={onShareThread}
                     >
-                      <Share2 className="h-5 w-5" />
+                      <Ellipsis className="h-5 w-5" />
                     </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>Share</TooltipContent>
-                </Tooltip>
-              )}
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end" side="top" className="min-w-[160px]">
+                    <DropdownMenuItem
+                      className="gap-2 cursor-pointer text-sky-400 focus:text-sky-400"
+                      onSelect={() => setTipsOpen(true)}
+                    >
+                      <CircleHelp className="h-4 w-4" />
+                      {prompt_tips_tooltip()}
+                    </DropdownMenuItem>
+
+                    {props.allowAttachments && (
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onSelect={async () => {
+                          const files = await showFileUploadDialog()
+                          addFiles(files)
+                        }}
+                      >
+                        <Paperclip className="h-4 w-4" />
+                        {common_attachment()}
+                      </DropdownMenuItem>
+                    )}
+
+                    {onShareThread && (
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer"
+                        onSelect={onShareThread}
+                      >
+                        <Share2 className="h-4 w-4" />
+                        Share
+                      </DropdownMenuItem>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
 
               {isGenerating && stop ? (
                 <Button
@@ -480,21 +538,112 @@ export function MessageInput({
               )}
 
               <div className="ml-auto flex items-center gap-1">
-                <Tooltip>
-                  <TooltipTrigger>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
-                      onMouseDown={(e) => e.preventDefault()}
-                      onClick={() => setTipsOpen(true)}
-                    >
-                      <CircleHelp className="h-5 w-5" />
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
-                </Tooltip>
+                {/* Desktop secondary buttons */}
+                <div className="hidden sm:flex items-center gap-1">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full cursor-pointer text-sky-400 hover:text-sky-500"
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => setTipsOpen(true)}
+                      >
+                        <CircleHelp className="h-5 w-5" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>{prompt_tips_tooltip()}</TooltipContent>
+                  </Tooltip>
+
+                  {props.allowAttachments && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full cursor-pointer"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={async () => {
+                            const files = await showFileUploadDialog()
+                            addFiles(files)
+                          }}
+                        >
+                          <Paperclip className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>{common_attachment()}</TooltipContent>
+                    </Tooltip>
+                  )}
+
+                  {onShareThread && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8 rounded-full cursor-pointer"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={onShareThread}
+                        >
+                          <Share2 className="h-5 w-5" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Share</TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
+
+                {/* Mobile secondary buttons — collapsed into a dropdown */}
+                <div className="sm:hidden">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground"
+                        onMouseDown={(e) => e.preventDefault()}
+                      >
+                        <Ellipsis className="h-5 w-5" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end" side="top" className="min-w-[160px]">
+                      <DropdownMenuItem
+                        className="gap-2 cursor-pointer text-sky-400 focus:text-sky-400"
+                        onSelect={() => setTipsOpen(true)}
+                      >
+                        <CircleHelp className="h-4 w-4" />
+                        {prompt_tips_tooltip()}
+                      </DropdownMenuItem>
+
+                      {props.allowAttachments && (
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onSelect={async () => {
+                            const files = await showFileUploadDialog()
+                            addFiles(files)
+                          }}
+                        >
+                          <Paperclip className="h-4 w-4" />
+                          {common_attachment()}
+                        </DropdownMenuItem>
+                      )}
+
+                      {onShareThread && (
+                        <DropdownMenuItem
+                          className="gap-2 cursor-pointer"
+                          onSelect={onShareThread}
+                        >
+                          <Share2 className="h-4 w-4" />
+                          Share
+                        </DropdownMenuItem>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
 
                 {shouldShowCharacterWarning && (
                   <span
@@ -509,45 +658,6 @@ export function MessageInput({
                       remaining: Math.max(remainingCharacters, 0),
                     })}
                   </span>
-                )}
-
-                {props.allowAttachments && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full cursor-pointer"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={async () => {
-                          const files = await showFileUploadDialog()
-                          addFiles(files)
-                        }}
-                      >
-                        <Paperclip className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>{common_attachment()}</TooltipContent>
-                  </Tooltip>
-                )}
-
-                {onShareThread && (
-                  <Tooltip>
-                    <TooltipTrigger>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full cursor-pointer"
-                        onMouseDown={(e) => e.preventDefault()}
-                        onClick={onShareThread}
-                      >
-                        <Share2 className="h-5 w-5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Share</TooltipContent>
-                  </Tooltip>
                 )}
 
                 {isGenerating && stop ? (
