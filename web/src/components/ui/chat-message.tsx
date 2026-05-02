@@ -599,11 +599,13 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                 const { part, index } = toolGroupBuffer[0]
                 blocks.push(<ToolRenderer key={`tool-${index}`} part={part} />)
               } else {
+                // Key uses only firstIndex so that as more tools are streamed in
+                // the key stays stable and the component updates in-place
+                // (no remount = state preserved, no flicker).
                 const firstIndex = toolGroupBuffer[0].index
-                const lastIndex  = toolGroupBuffer[toolGroupBuffer.length - 1].index
                 blocks.push(
                   <ToolGroupRenderer
-                    key={`toolgroup-${firstIndex}-${lastIndex}`}
+                    key={`toolgroup-${firstIndex}`}
                     parts={toolGroupBuffer.map(t => t.part)}
                   />
                 )
@@ -1330,7 +1332,9 @@ function ToolGroupRenderer({ parts }: { parts: Array<UIMessage["parts"][number]>
   const anyError = errorCount > 0
   const anyPending = pendingCount > 0
 
-  const [isExpanded, setIsExpanded] = useState(!allDone)
+  // Always start collapsed — iOS notification group feel.
+  // The user clicks the header to see individual actions.
+  const [isExpanded, setIsExpanded] = useState(false)
 
   const overallStatus = anyPending ? "pending" : anyError ? "error" : "success"
 
@@ -1366,8 +1370,7 @@ function ToolGroupRenderer({ parts }: { parts: Array<UIMessage["parts"][number]>
         <div className="absolute inset-x-2 -bottom-[3.5px] h-full rounded-xl border border-border/30 bg-card/50 -z-10 pointer-events-none" />
       )}
 
-      <motion.div
-        layout
+      <div
         className={cn(
           "relative rounded-xl border overflow-hidden transition-colors duration-200 chat-float",
           "bg-card/80 border-border/50 hover:bg-card hover:border-border/70"
@@ -1460,7 +1463,7 @@ function ToolGroupRenderer({ parts }: { parts: Array<UIMessage["parts"][number]>
             </motion.div>
           )}
         </AnimatePresence>
-      </motion.div>
+      </div>
     </div>
   )
 }
