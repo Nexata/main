@@ -459,12 +459,11 @@ export function NexataChat() {
 		setIsFetchingOlder(false);
 	}, [displayThreadId]);
 
-	// After initial hydration, check if there could be more messages
+	// After hydration, recalculate whether older messages may exist. This also
+	// re-enables pagination after post-send rehydration of the same thread.
 	useEffect(() => {
 		if (!threadMessages) return;
-		if (threadMessages.length < MESSAGES_PAGE_SIZE) {
-			setHasOlderMessages(false);
-		}
+		setHasOlderMessages(threadMessages.length >= MESSAGES_PAGE_SIZE);
 	}, [threadMessages]);
 
 	const loadOlderMessages = useCallback(async () => {
