@@ -9,6 +9,7 @@ import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import {
+	bumpThreadListItem,
 	getThreadById,
 	getPublicThreadById,
 	type ThreadById,
@@ -341,6 +342,8 @@ export function NexataChat() {
 	// ----------------------------
 
 	const appliedThreadRef = useRef<string | null>(null);
+	const [pendingPostSendHydrationThreadId, setPendingPostSendHydrationThreadId] =
+		useState<string | null>(null);
 
 	useEffect(() => {
 		appliedThreadRef.current = null;
@@ -381,6 +384,38 @@ export function NexataChat() {
 		threadMessages,
 		hydratedMessages,
 		setMessages,
+		streamingThreadIds,
+		unsyncedThreadIds,
+	]);
+
+	useEffect(() => {
+		if (!authenticated) return;
+		if (!pendingPostSendHydrationThreadId) return;
+		if (pendingPostSendHydrationThreadId !== displayThreadId) return;
+		if (streamingThreadIds.has(pendingPostSendHydrationThreadId)) return;
+		if (unsyncedThreadIds.has(pendingPostSendHydrationThreadId)) return;
+
+		let cancelled = false;
+		const threadId = pendingPostSendHydrationThreadId;
+		appliedThreadRef.current = null;
+
+		queryClient
+			.invalidateQueries({ queryKey: ['chat-thread', threadId] })
+			.finally(() => {
+				if (cancelled) return;
+				setPendingPostSendHydrationThreadId((current) =>
+					current === threadId ? null : current,
+				);
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		authenticated,
+		displayThreadId,
+		pendingPostSendHydrationThreadId,
+		queryClient,
 		streamingThreadIds,
 		unsyncedThreadIds,
 	]);
@@ -558,6 +593,16 @@ export function NexataChat() {
 		(s) => s.addExtraReasonMessageId,
 	);
 	const pendingExtraReasonRef = useRef(false);
+	const pendingThreadListInvalidationsRef = useRef<Set<string>>(new Set());
+
+	useEffect(() => {
+		if (!authenticated || !displayThreadId) return;
+		if (!pendingThreadListInvalidationsRef.current.has(displayThreadId)) return;
+		if (unsyncedThreadIds.has(displayThreadId)) return;
+
+		pendingThreadListInvalidationsRef.current.delete(displayThreadId);
+		queryClient.invalidateQueries({ queryKey: ['chat-threads'] });
+	}, [authenticated, displayThreadId, queryClient, unsyncedThreadIds]);
 
 	useEffect(() => {
 		if (!lastUserMessageId) return;
@@ -693,8 +738,13 @@ export function NexataChat() {
 		const text = input;
 		const files = options?.attachments;
 		const reasoning = extraReason;
+		const threadIdToRehydrate = activeThreadId;
 
 		setInput('');
+		if (activeThreadId) {
+			bumpThreadListItem(queryClient, activeThreadId);
+			pendingThreadListInvalidationsRef.current.add(activeThreadId);
+		}
 		addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 		if (reasoning) {
@@ -712,6 +762,10 @@ export function NexataChat() {
 				},
 			},
 		);
+
+		if (threadIdToRehydrate) {
+			setPendingPostSendHydrationThreadId(threadIdToRehydrate);
+		}
 	};
 
 	// ----------------------------
@@ -779,7 +833,12 @@ export function NexataChat() {
 
 	const handleEditMessage = useCallback(
 		async (messageId: string, newText: string) => {
+			const threadIdToRehydrate = activeThreadId;
 			cancelEditing();
+			if (activeThreadId) {
+				bumpThreadListItem(queryClient, activeThreadId);
+				pendingThreadListInvalidationsRef.current.add(activeThreadId);
+			}
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 			if (extraReasonRef.current) {
@@ -797,9 +856,14 @@ export function NexataChat() {
 					},
 				},
 			);
+
+			if (threadIdToRehydrate) {
+				setPendingPostSendHydrationThreadId(threadIdToRehydrate);
+			}
 		},
 		[
 			cancelEditing,
+			queryClient,
 			addStreamingThread,
 			activeThreadId,
 			sendMessage,
@@ -815,6 +879,7 @@ export function NexataChat() {
 		async (messageId: string) => {
 			const msg = messagesRef.current.find((m) => m.id === messageId);
 			if (!msg) return;
+			const threadIdToRehydrate = activeThreadId;
 			const text = msg.parts
 				.filter(
 					(p): p is Extract<typeof p, { type: 'text' }> => p.type === 'text',
@@ -823,6 +888,10 @@ export function NexataChat() {
 				.join('');
 			if (!text.trim()) return;
 
+			if (activeThreadId) {
+				bumpThreadListItem(queryClient, activeThreadId);
+				pendingThreadListInvalidationsRef.current.add(activeThreadId);
+			}
 			addStreamingThread(activeThreadId ?? NEW_CHAT_KEY);
 
 			if (extraReasonRef.current) {
@@ -840,8 +909,12 @@ export function NexataChat() {
 					},
 				},
 			);
+
+			if (threadIdToRehydrate) {
+				setPendingPostSendHydrationThreadId(threadIdToRehydrate);
+			}
 		},
-		[addStreamingThread, activeThreadId, sendMessage, me?.language],
+		[addStreamingThread, activeThreadId, queryClient, sendMessage, me?.language],
 	);
 
 	const handleShareThread = useCallback(async () => {

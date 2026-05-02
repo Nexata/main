@@ -935,8 +935,28 @@ function ThreadTitle({
 }
 
 function getThreadSortTimestamp(
-  thread: { createdAt?: Date | string; insertedAt?: number }
+  thread: {
+    createdAt?: Date | string;
+    lastActivityAt?: Date | string | number | null;
+    insertedAt?: number;
+  }
 ) {
+  if (thread.lastActivityAt instanceof Date) {
+    return thread.lastActivityAt.getTime();
+  }
+
+  if (typeof thread.lastActivityAt === 'number') {
+    return thread.lastActivityAt;
+  }
+
+  if (typeof thread.lastActivityAt === 'string') {
+    const parsedTime = new Date(thread.lastActivityAt).getTime();
+
+    if (!Number.isNaN(parsedTime)) {
+      return parsedTime;
+    }
+  }
+
   if (typeof thread.insertedAt === 'number') {
     return thread.insertedAt;
   }

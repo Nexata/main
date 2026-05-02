@@ -1,4 +1,6 @@
 import {
+	type InfiniteData,
+	type QueryClient,
 	useInfiniteQuery,
 	useQuery,
 	useQueryClient,
@@ -199,6 +201,57 @@ export async function listThreads(params?: {
 
 export type Threads = Awaited<ReturnType<typeof listThreads>>;
 
+export type ThreadListItem = Threads[number];
+
+function toCursorDate(value: unknown) {
+	if (!value) return null;
+	if (typeof value === 'string') return value;
+	if (value instanceof Date) return value.toISOString();
+	return null;
+}
+
+function getActivityCursor(thread: ThreadListItem) {
+	return toCursorDate(
+		(thread as { lastActivityAt?: Date | string | null }).lastActivityAt ??
+			thread.createdAt,
+	);
+}
+
+export function bumpThreadListItem(
+	queryClient: QueryClient,
+	threadId: string,
+	lastActivityAt = new Date().toISOString(),
+) {
+	const activityDate = new Date(lastActivityAt);
+	const queries = queryClient.getQueriesData<InfiniteData<Threads>>({
+		queryKey: ['chat-threads'],
+	});
+
+	for (const [queryKey, data] of queries) {
+		if (!data?.pages?.length) continue;
+
+		let updated = false;
+		const pages = data.pages.map((page) =>
+			page.map((thread) => {
+				if (thread.id !== threadId) return thread;
+				updated = true;
+				return {
+					...thread,
+					lastActivityAt: activityDate,
+					lastMessageAt: activityDate,
+				};
+			}),
+		);
+
+		if (!updated) continue;
+
+		queryClient.setQueryData<InfiniteData<Threads>>(queryKey, {
+			...data,
+			pages,
+		});
+	}
+}
+
 export function useThreads(params?: { limit?: number; search?: string }) {
 	return useQuery<Threads>({
 		queryKey: ['chat-threads', params],
@@ -221,10 +274,7 @@ export function useInfiniteThreads(params?: { search?: string }) {
 		getNextPageParam: (lastPage) => {
 			if (!lastPage || lastPage.length < THREADS_PAGE_SIZE) return undefined;
 			const lastItem = lastPage[lastPage.length - 1];
-			if (!lastItem?.createdAt) return undefined;
-			return typeof lastItem.createdAt === 'string'
-				? lastItem.createdAt
-				: (lastItem.createdAt as Date).toISOString();
+			return lastItem ? getActivityCursor(lastItem) : undefined;
 		},
 	});
 }

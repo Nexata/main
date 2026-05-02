@@ -1,9 +1,10 @@
 import { authPlugin } from '@api/auth';
 import { getThreadMessages } from '@api/chat/lib';
 import { db } from '@api/env';
-import { thread } from '@api/schema';
+import { message, thread } from '@api/schema';
+import { coalesce } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
-import { and, desc, eq, ilike, inArray, lt } from 'drizzle-orm';
+import { and, desc, eq, ilike, inArray, lt, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const threadRouter = new Elysia({ prefix: '/thread' })
@@ -107,6 +108,20 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 		'/',
 		async ({ query, activeUser }) => {
 			const cursor = query.cursor ? new Date(query.cursor) : null;
+			const lastMessage = db
+				.select({
+					threadId: message.threadId,
+					lastMessageAt: sql<Date | null>`max(${message.createdAt})`.as(
+						'last_message_at',
+					),
+				})
+				.from(message)
+				.groupBy(message.threadId)
+				.as('last_message');
+			const lastActivityAt = coalesce(
+				lastMessage.lastMessageAt,
+				thread.createdAt,
+			);
 
 			return db
 				.select({
@@ -114,24 +129,27 @@ export const threadRouter = new Elysia({ prefix: '/thread' })
 					title: thread.title,
 					isPublic: thread.isPublic,
 					createdAt: thread.createdAt,
+					lastMessageAt: lastMessage.lastMessageAt,
+					lastActivityAt,
 				})
 				.from(thread)
+				.leftJoin(lastMessage, eq(lastMessage.threadId, thread.id))
 				.where(
 					and(
 						eq(thread.userId, activeUser.id),
-						cursor ? lt(thread.createdAt, cursor) : undefined,
+						cursor ? lt(lastActivityAt, cursor) : undefined,
 						query.search ? ilike(thread.title, `%${query.search}%`) : undefined,
 					),
 				)
 				.limit(query.limit)
-				.orderBy(desc(thread.createdAt));
+				.orderBy(desc(lastActivityAt), desc(thread.createdAt));
 		},
 		{
-			detail: { summary: 'List threads (desc)' },
+			detail: { summary: 'List threads by recent activity (desc)' },
 			query: tObject({
 				cursor: Nullish(t.String({ format: 'date-time' }), {
 					description:
-						'Cursor for pagination, based on createdAt prop (creation date).',
+						'Cursor for pagination, based on lastActivityAt prop (latest message date, or creation date when empty).',
 				}),
 				limit: t.Number({
 					default: 100,

@@ -5,6 +5,7 @@ export type OptimisticThread = {
 	id: string;
 	title: string;
 	isTyping: boolean;
+	lastActivityAt: string | number;
 	insertedAt: number;
 };
 

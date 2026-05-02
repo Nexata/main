@@ -294,6 +294,7 @@ export function createAuthenticatedChatTransport(
 											id: newThreadId,
 											title: threadTitle ?? sidebar_new_chat(),
 											isTyping: true,
+											lastActivityAt: new Date().toISOString(),
 											insertedAt: Date.now(),
 										});
 									} else if (newThreadId !== store.activeThreadId) {
