@@ -266,11 +266,22 @@ async function downloadFile(
 	const response = await fetch(parsed.toString(), {
 		headers: legajoxHeaders(cookie, '*/*'),
 	});
-
-	if (response.url.includes('/login')) {
-		throw new InvalidCookieError('Session invalid — redirected to login page');
+	<<<<<<< HEAD
+	// Detect redirect to login page (missing/expired session)
+	if (new URL(response.url).pathname.includes('/login')) {
+		throw new InvalidCookieError(
+			`Download redirected to login for ${parsed.pathname}`,
+		);
 	}
 
+	=======
+	// Detect redirect to login page (missing/expired session)
+	if (new URL(response.url).pathname.includes('/login')) {
+		throw new InvalidCookieError(
+			`Download redirected to login for ${parsed.pathname}`,
+		);
+	}
+	>>>>>>> 1d89c16500eaf716d9e31df4cd8d42f1261ed255
 	if (!response.ok) {
 		throw new Error(`HTTP ${response.status} al descargar ${parsed.pathname}`);
 	}
@@ -390,23 +401,51 @@ export async function processDirs(
 			}
 
 			try {
+				<<<<<<< HEAD
 				const downloaded = await downloadFile(doc.url, cookie, dir);
-				results.push({
-					nombre: downloaded.nombre,
-					extension: downloaded.extension,
+				=======
+				let size: number;
+				try {
+					size = await downloadFile(doc.url, destPath, cookie);
+				} catch (err) {
+					if (isAuthError(err)) {
+						console.warn(
+							`[auth] Cookie expired during download of ${fileName}. Refreshing…`,
+						);
+						cookie = await refreshCookie();
+						size = await downloadFile(doc.url, destPath, cookie);
+					} else {
+						throw err;
+					}
+				}
+				>>>>>>> 1d89c16500eaf716d9e31df4cd8d42f1261ed255
+				results.push(
+				nombre: downloaded.nombre, extension;
+				: downloaded.extension,
 					downloadUrl: downloaded.downloadUrl,
 					dir,
 					dirNombre,
 					fecha: doc.fecha,
 					firmado: doc.firmado,
+<<<<<<< HEAD
 					pesoBytes: downloaded.pesoBytes,
 					pesoLegible: downloaded.pesoLegible,
 					rutaLocal: downloaded.rutaLocal,
 					estado: downloaded.estado,
-				});
+=======
+					pesoBytes: size!,
+					pesoLegible: formatBytes(size!),
+					rutaLocal: destPath,
+					estado: 'ok',
+>>>>>>> 1d89c16500eaf716d9e31df4cd8d42f1261ed255
+				)
 				const icon = downloaded.estado === 'duplicado' ? '⏭️ ' : '✅';
 				console.log(
+<<<<<<< HEAD
 					`  ${icon} [${i + 1}/${docs.length}] ${downloaded.nombre} (${downloaded.pesoLegible})`,
+=======
+					`  ✅ [${i + 1}/${docs.length}] ${fileName} (${formatBytes(size!)})`,
+>>>>>>> 1d89c16500eaf716d9e31df4cd8d42f1261ed255
 				);
 			} catch (err) {
 				if (isAuthError(err)) throw err;

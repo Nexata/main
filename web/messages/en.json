@@ -394,6 +394,16 @@
 			"banner": "You are viewing a shared chat. This conversation is read-only.",
 			"badge": "Shared chat"
 		},
+		"share_modal": {
+			"title": "Chat shared!",
+			"description": "Your chat is now public. Anyone with the link can view this conversation.",
+			"public_label": "Conversation is now public",
+			"clipboard_label": "Link copied to clipboard",
+			"link_label": "Share link",
+			"copy_link": "Copy link",
+			"link_copied": "Copied!",
+			"done": "Done"
+		},
 		"tool_detail": {
 			"title": "Tool detail",
 			"input": "Parameters",

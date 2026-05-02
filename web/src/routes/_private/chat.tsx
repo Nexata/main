@@ -6,6 +6,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { decode } from '@toon-format/toon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { infoToast } from '@/components/info-toast/info-toast';
+import { ShareSuccessModal } from '@/components/chat/share-success-modal';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
 import {
@@ -709,6 +710,9 @@ export function NexataChat() {
 	// Input / Submit
 	// ----------------------------
 
+	const [shareModalOpen, setShareModalOpen] = useState(false);
+	const [shareUrl, setShareUrl] = useState('');
+
 	const [input, setInput] = useState('');
 	const [extraReason, setExtraReason] = useState(() => {
 		try {
@@ -919,20 +923,18 @@ export function NexataChat() {
 	const handleShareThread = useCallback(async () => {
 		if (!displayThreadId || !canShareThread) return;
 
-		const toastId = infoToast.loading({ title: common_loading() });
-
 		try {
 			if (!threadData?.isPublic) {
 				await updateThreadShareFn(displayThreadId, { isPublic: true });
 			}
 
-			await navigator.clipboard.writeText(
-				`${window.location.origin}/chat?id=${encodeURIComponent(displayThreadId)}`,
-			);
+			const url = `${window.location.origin}/chat?id=${encodeURIComponent(displayThreadId)}`;
+			await navigator.clipboard.writeText(url);
 
-			infoToast.success(toastId, { title: common_success() });
+			setShareUrl(url);
+			setShareModalOpen(true);
 		} catch (error) {
-			infoToast.error(toastId, {
+			infoToast.error('share-error', {
 				title: common_error(),
 				description: extractErrorText(error),
 			});
@@ -1031,5 +1033,10 @@ export function NexataChat() {
 				/>
 			</div>
 		</div>
+		<ShareSuccessModal
+			open={shareModalOpen}
+			onClose={() => setShareModalOpen(false)}
+			shareUrl={shareUrl}
+		/>
 	);
 }
