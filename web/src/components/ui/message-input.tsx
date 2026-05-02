@@ -15,12 +15,6 @@ import { InterruptPrompt } from "@/components/ui/interrupt-prompt"
 import PromptTipsModal from "@/components/prompt-tips/prompt-tips.modal"
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip"
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
-import {
   "common.ask_nexy" as common_ask_nexy,
   "common.brain" as common_brain,
   "common.attachment" as common_attachment,
@@ -77,6 +71,7 @@ export function MessageInput({
     try { return localStorage.getItem('nexata-extra-reason') === 'true' } catch { return false }
   })
   const [tipsOpen, setTipsOpen] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [dismissedWarning, setDismissedWarning] = useState<boolean>(() => {
     try { return localStorage.getItem('nexata-brain-warning-dismissed') === 'true' } catch { return false }
   })
@@ -397,53 +392,90 @@ export function MessageInput({
                 )}
               </div>
 
-              {/* Mobile secondary buttons — collapsed into a dropdown */}
-              <div className="sm:hidden">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <Button
-                      type="button"
-                      size="icon"
-                      variant="ghost"
-                      className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground"
-                      onMouseDown={(e) => e.preventDefault()}
-                    >
-                      <Ellipsis className="h-5 w-5" />
-                    </Button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="end" side="top" className="min-w-[160px]">
-                    <DropdownMenuItem
-                      className="gap-2 cursor-pointer text-sky-400 focus:text-sky-400"
-                      onSelect={() => setTipsOpen(true)}
-                    >
-                      <CircleHelp className="h-4 w-4" />
-                      {prompt_tips_tooltip()}
-                    </DropdownMenuItem>
-
-                    {props.allowAttachments && (
-                      <DropdownMenuItem
-                        className="gap-2 cursor-pointer"
-                        onSelect={async () => {
-                          const files = await showFileUploadDialog()
-                          addFiles(files)
-                        }}
+              {/* Mobile secondary buttons — animated submenu */}
+              <div className="sm:hidden relative">
+                <AnimatePresence>
+                  {mobileMenuOpen && (
+                    <>
+                      <div
+                        className="fixed inset-0 z-40"
+                        onClick={() => setMobileMenuOpen(false)}
+                      />
+                      <motion.div
+                        initial={{ opacity: 0, scale: 0.88, y: 6 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        exit={{ opacity: 0, scale: 0.88, y: 6 }}
+                        transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                        className="absolute bottom-full right-0 mb-2 z-50 flex items-center gap-0.5 rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-lg px-2 py-1.5"
                       >
-                        <Paperclip className="h-4 w-4" />
-                        {common_attachment()}
-                      </DropdownMenuItem>
-                    )}
+                        <motion.button
+                          initial={{ opacity: 0, scale: 0.5 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: 0.04, type: "spring", stiffness: 420, damping: 22 }}
+                          type="button"
+                          className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                          onMouseDown={(e) => e.preventDefault()}
+                          onClick={() => { setTipsOpen(true); setMobileMenuOpen(false) }}
+                        >
+                          <CircleHelp className="h-5 w-5 text-sky-400" />
+                          <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">{prompt_tips_tooltip()}</span>
+                        </motion.button>
 
-                    {onShareThread && (
-                      <DropdownMenuItem
-                        className="gap-2 cursor-pointer"
-                        onSelect={onShareThread}
-                      >
-                        <Share2 className="h-4 w-4" />
-                        Share
-                      </DropdownMenuItem>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
+                        {props.allowAttachments && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.09, type: "spring", stiffness: 420, damping: 22 }}
+                            type="button"
+                            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={async () => {
+                              const files = await showFileUploadDialog()
+                              addFiles(files)
+                              setMobileMenuOpen(false)
+                            }}
+                          >
+                            <Paperclip className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">{common_attachment()}</span>
+                          </motion.button>
+                        )}
+
+                        {onShareThread && (
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.14, type: "spring", stiffness: 420, damping: 22 }}
+                            type="button"
+                            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { onShareThread(); setMobileMenuOpen(false) }}
+                          >
+                            <Share2 className="h-5 w-5 text-muted-foreground" />
+                            <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">Share</span>
+                          </motion.button>
+                        )}
+                      </motion.div>
+                    </>
+                  )}
+                </AnimatePresence>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="ghost"
+                  className={cn(
+                    "h-8 w-8 rounded-full cursor-pointer transition-colors",
+                    mobileMenuOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+                  )}
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => setMobileMenuOpen(v => !v)}
+                >
+                  <motion.div
+                    animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
+                    transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                  >
+                    <Ellipsis className="h-5 w-5" />
+                  </motion.div>
+                </Button>
               </div>
 
               {isGenerating && stop ? (
@@ -596,53 +628,90 @@ export function MessageInput({
                   )}
                 </div>
 
-                {/* Mobile secondary buttons — collapsed into a dropdown */}
-                <div className="sm:hidden">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        type="button"
-                        size="icon"
-                        variant="ghost"
-                        className="h-8 w-8 rounded-full cursor-pointer text-muted-foreground"
-                        onMouseDown={(e) => e.preventDefault()}
-                      >
-                        <Ellipsis className="h-5 w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" side="top" className="min-w-[160px]">
-                      <DropdownMenuItem
-                        className="gap-2 cursor-pointer text-sky-400 focus:text-sky-400"
-                        onSelect={() => setTipsOpen(true)}
-                      >
-                        <CircleHelp className="h-4 w-4" />
-                        {prompt_tips_tooltip()}
-                      </DropdownMenuItem>
-
-                      {props.allowAttachments && (
-                        <DropdownMenuItem
-                          className="gap-2 cursor-pointer"
-                          onSelect={async () => {
-                            const files = await showFileUploadDialog()
-                            addFiles(files)
-                          }}
+                {/* Mobile secondary buttons — animated submenu */}
+                <div className="sm:hidden relative">
+                  <AnimatePresence>
+                    {mobileMenuOpen && (
+                      <>
+                        <div
+                          className="fixed inset-0 z-40"
+                          onClick={() => setMobileMenuOpen(false)}
+                        />
+                        <motion.div
+                          initial={{ opacity: 0, scale: 0.88, y: 6 }}
+                          animate={{ opacity: 1, scale: 1, y: 0 }}
+                          exit={{ opacity: 0, scale: 0.88, y: 6 }}
+                          transition={{ type: "spring", stiffness: 380, damping: 26 }}
+                          className="absolute bottom-full right-0 mb-2 z-50 flex items-center gap-0.5 rounded-2xl border border-border/60 bg-background/95 backdrop-blur-md shadow-lg px-2 py-1.5"
                         >
-                          <Paperclip className="h-4 w-4" />
-                          {common_attachment()}
-                        </DropdownMenuItem>
-                      )}
+                          <motion.button
+                            initial={{ opacity: 0, scale: 0.5 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            transition={{ delay: 0.04, type: "spring", stiffness: 420, damping: 22 }}
+                            type="button"
+                            className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => { setTipsOpen(true); setMobileMenuOpen(false) }}
+                          >
+                            <CircleHelp className="h-5 w-5 text-sky-400" />
+                            <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">{prompt_tips_tooltip()}</span>
+                          </motion.button>
 
-                      {onShareThread && (
-                        <DropdownMenuItem
-                          className="gap-2 cursor-pointer"
-                          onSelect={onShareThread}
-                        >
-                          <Share2 className="h-4 w-4" />
-                          Share
-                        </DropdownMenuItem>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                          {props.allowAttachments && (
+                            <motion.button
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.09, type: "spring", stiffness: 420, damping: 22 }}
+                              type="button"
+                              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={async () => {
+                                const files = await showFileUploadDialog()
+                                addFiles(files)
+                                setMobileMenuOpen(false)
+                              }}
+                            >
+                              <Paperclip className="h-5 w-5 text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">{common_attachment()}</span>
+                            </motion.button>
+                          )}
+
+                          {onShareThread && (
+                            <motion.button
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              transition={{ delay: 0.14, type: "spring", stiffness: 420, damping: 22 }}
+                              type="button"
+                              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl hover:bg-muted transition-colors cursor-pointer"
+                              onMouseDown={(e) => e.preventDefault()}
+                              onClick={() => { onShareThread(); setMobileMenuOpen(false) }}
+                            >
+                              <Share2 className="h-5 w-5 text-muted-foreground" />
+                              <span className="text-[10px] text-muted-foreground leading-none whitespace-nowrap">Share</span>
+                            </motion.button>
+                          )}
+                        </motion.div>
+                      </>
+                    )}
+                  </AnimatePresence>
+                  <Button
+                    type="button"
+                    size="icon"
+                    variant="ghost"
+                    className={cn(
+                      "h-8 w-8 rounded-full cursor-pointer transition-colors",
+                      mobileMenuOpen ? "bg-muted text-foreground" : "text-muted-foreground"
+                    )}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onClick={() => setMobileMenuOpen(v => !v)}
+                  >
+                    <motion.div
+                      animate={{ rotate: mobileMenuOpen ? 90 : 0 }}
+                      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+                    >
+                      <Ellipsis className="h-5 w-5" />
+                    </motion.div>
+                  </Button>
                 </div>
 
                 {shouldShowCharacterWarning && (
