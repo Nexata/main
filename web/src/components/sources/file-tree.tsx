@@ -353,6 +353,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
 
   const formatMB = (n: number) => `${n.toFixed(2)} MB`;
   const formatDate = (d: string) => new Date(d).toLocaleDateString();
+  const hasValidDate = (d?: string) => !!d && !Number.isNaN(new Date(d).getTime());
 
   /* SAVE SELECTION */
   async function handleConfirm() {
@@ -593,9 +594,11 @@ export function StorageFileTree({ credentialId, source }: Props) {
                           </a>
                         </div>
 
-                        <span className="text-muted-foreground">
-                          {components_file_tree_updated()} {formatDate(file.updatedAt)}
-                        </span>
+                        {hasValidDate(file.updatedAt) && (
+                          <span className="text-muted-foreground">
+                            {components_file_tree_updated()} {formatDate(file.updatedAt)}
+                          </span>
+                        )}
                       </div>
                     </div>
 
