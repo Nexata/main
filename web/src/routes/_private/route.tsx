@@ -164,7 +164,7 @@ function PrivateLayout() {
 				{isMobile && (
 					<div
 						className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3"
-						style={{ paddingTop: `calc(env(safe-area-inset-top) + 0.75rem)` }}
+						style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
 					>
 						{/* Izquierda: botón menú */}
 						<button

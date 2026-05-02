@@ -427,7 +427,7 @@ export const ChatForm = forwardRef<HTMLFormElement, ChatFormProps>(
 
     return (
       <form ref={ref} onSubmit={onSubmit} className={className}>
-        <div className="flex justify-center" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="flex justify-center" style={{ paddingBottom: 'max(env(safe-area-inset-bottom), 0.75rem)' }}>
           <div className="w-full max-w-4xl px-6 max-sm:px-3">
             {children({ files, setFiles })}
           </div>
