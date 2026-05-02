@@ -2,7 +2,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { getCiSession } from './get_cookies';
 import { fetchDocsPage, parseDocs } from './list-docs';
-import { legajoxHeaders } from './session';
+import { InvalidCookieError, legajoxHeaders } from './session';
 
 const BASE_URL = 'https://app.legajox.com';
 const BASE_HOST = 'app.legajox.com';
@@ -154,6 +154,12 @@ async function downloadFile(
 	const response = await fetch(parsed.toString(), {
 		headers: legajoxHeaders(cookie, '*/*'),
 	});
+	// Detect redirect to login page (missing/expired session)
+	if (new URL(response.url).pathname.includes('/login')) {
+		throw new InvalidCookieError(
+			`Download redirected to login for ${parsed.pathname}`,
+		);
+	}
 	if (!response.ok) {
 		throw new Error(`HTTP ${response.status} al descargar ${parsed.pathname}`);
 	}
@@ -259,7 +265,20 @@ export async function processDirs(
 			}
 
 			try {
-				const size = await downloadFile(doc.url, destPath, cookie);
+				let size: number;
+				try {
+					size = await downloadFile(doc.url, destPath, cookie);
+				} catch (err) {
+					if (isAuthError(err)) {
+						console.warn(
+							`[auth] Cookie expired during download of ${fileName}. Refreshing…`,
+						);
+						cookie = await refreshCookie();
+						size = await downloadFile(doc.url, destPath, cookie);
+					} else {
+						throw err;
+					}
+				}
 				results.push({
 					nombre: fileName,
 					extension: extractExtension(fileName),
@@ -268,13 +287,13 @@ export async function processDirs(
 					dirNombre,
 					fecha: doc.fecha,
 					firmado: doc.firmado,
-					pesoBytes: size,
-					pesoLegible: formatBytes(size),
+					pesoBytes: size!,
+					pesoLegible: formatBytes(size!),
 					rutaLocal: destPath,
 					estado: 'ok',
 				});
 				console.log(
-					`  ✅ [${i + 1}/${docs.length}] ${fileName} (${formatBytes(size)})`,
+					`  ✅ [${i + 1}/${docs.length}] ${fileName} (${formatBytes(size!)})`,
 				);
 			} catch (err) {
 				const msg = err instanceof Error ? err.message : String(err);
