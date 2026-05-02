@@ -517,6 +517,27 @@ export async function listLegajoxDir(
 	);
 }
 
+export async function searchLegajoxDir(
+	_credentialId: string,
+	input: SearchDirInput,
+) {
+	const query = normalizeSearchInput(input);
+
+	if ('cursor' in query) {
+		return listLegajoxDir(_credentialId, { pageToken: query.cursor });
+	}
+
+	return withAuthRetry((headers) =>
+		apiClient.integration.legajox.search.get({
+			$headers: headers,
+			$query: {
+				q: query.query,
+				...(query.path ? { path: query.path } : {}),
+			},
+		}),
+	);
+}
+
 export async function ingestFromLegajox(payload: IngestPayload) {
 	return withAuthRetry((headers) =>
 		apiClient.integration.legajox.ingest.post({

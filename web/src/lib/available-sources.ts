@@ -18,6 +18,7 @@ import {
 	listOneDriveDir,
 	searchDriveDir,
 	searchDropboxDir,
+	searchLegajoxDir,
 } from './file';
 
 type OauthProvider = `${CredentialItem['provider']}`;
@@ -38,6 +39,7 @@ export type SourceConfig = {
 	connect: () => Promise<string>;
 	kind: 'dynamic' | 'storage';
 	searchMode?: 'remote' | 'local';
+	minSearchLength?: number;
 	getFileTree?: (
 		credentialId: string,
 		input?: ListDriveDirInput,
@@ -144,7 +146,9 @@ export const LEGAJOX_SOURCE: SourceConfig = {
 	scope: 'drive' as OauthScope, // unused
 	connect: async () => '',
 	kind: 'storage',
-	searchMode: 'local',
+	searchMode: 'remote',
+	minSearchLength: 3,
 	getFileTree: (credentialId, input) => listLegajoxDir(credentialId, input),
+	searchFiles: (credentialId, input) => searchLegajoxDir(credentialId, input),
 	ingest: ingestFromLegajox,
 };

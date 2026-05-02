@@ -1,3 +1,5 @@
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import openapi, { fromTypes } from '@elysiajs/openapi';
 import { Elysia, t } from 'elysia';
 import {
@@ -25,6 +27,7 @@ const DEFAULT_PORT = 3000;
 const DEFAULT_HOST = '0.0.0.0';
 const DOCS_PATH = '/docs';
 const OPENAPI_JSON_PATH = '/docs/json';
+const DOWNLOAD_OUTPUT_DIR = path.resolve('outputs', '_descargas_tmp');
 
 const OPENAPI_DESCRIPTION =
 	'HTTP wrapper around Puppeteer-based Legajox scrapers for employees, profile data, organizational chart, payroll actions, absences, vacation balances, and Legajox documents.';
@@ -421,6 +424,12 @@ const DocumentsSearchQuery = t.Object({
 	user: t.Optional(t.String()),
 	password: t.Optional(t.String()),
 	q: t.String({ description: 'Search term, minimum 3 characters.' }),
+	path: t.Optional(
+		t.String({
+			description:
+				'Optional folder path returned by /documents/list. When present, searches within that folder.',
+		}),
+	),
 	nocache: NocacheQuery,
 });
 
@@ -725,6 +734,30 @@ function normalizeDownloadSelection(selection: DownloadSelection[]) {
 	}
 
 	return { dirs, links };
+}
+
+async function resolveDownloadedFilePath(value: string) {
+	const requestedPath = value.trim();
+	if (requestedPath === '') {
+		throw new Error('Invalid file path: value cannot be blank.');
+	}
+
+	const absolutePath = path.resolve(requestedPath);
+	const [rootPath, filePath] = await Promise.all([
+		fs.realpath(DOWNLOAD_OUTPUT_DIR),
+		fs.realpath(absolutePath),
+	]);
+
+	const relativePath = path.relative(rootPath, filePath);
+	if (
+		relativePath === '' ||
+		relativePath.startsWith('..') ||
+		path.isAbsolute(relativePath)
+	) {
+		throw new Error('Invalid file path: outside download directory.');
+	}
+
+	return filePath;
 }
 
 async function withScrapeTimeout<T>(
@@ -1693,7 +1726,7 @@ export function createApp({
 				'/documents/search',
 				async ({ query, status }) => {
 					const queryParams = query as Record<string, string | undefined>;
-					const { q } = queryParams;
+					const { path: dirPath, q } = queryParams;
 					const creds = resolveRouteCredentials(queryParams);
 					if (!creds) return status(400, missingCreds());
 					if (!q) return status(400, { error: "Query param 'q' is required." });
@@ -1701,13 +1734,39 @@ export function createApp({
 						return status(400, {
 							error: "Query param 'q' must be at least 3 characters.",
 						});
+					const trimmedPath = dirPath?.trim();
 					const nocache = queryParams.nocache === 'true';
-					const cacheKey = `docs-search:${creds.user}:${q.trim()}`;
+					const cacheKey = `docs-search:${creds.user}:${trimmedPath ?? 'global'}:${q.trim()}`;
 					try {
+						if (trimmedPath)
+							assertLegajoxRelativePath(trimmedPath, 'directory');
+
 						const { data, _cache } = await cacheOrRun(
 							cacheKey,
 							600, // 10 min
 							async () => {
+								if (trimmedPath) {
+									const result = await withScrapeTimeout((signal) =>
+										deps.scrapeListDocs(
+											creds.user,
+											creds.password,
+											trimmedPath,
+											signal,
+										),
+									);
+									if (!result.success) {
+										throw Object.assign(new Error('Scrape failed'), {
+											details: result.errors,
+										});
+									}
+
+									const needle = q.trim().toLowerCase();
+									const entries: NexataListDirEntry[] = result.documentos
+										.filter((doc) => doc.nombre.toLowerCase().includes(needle))
+										.map(documentoToEntry);
+									return { cursor: null, entries } as NexataListDir;
+								}
+
 								const result = await withScrapeTimeout((signal) =>
 									deps.scrapeFileSearch(
 										creds.user,
@@ -1730,6 +1789,10 @@ export function createApp({
 						return withCache(data, _cache);
 					} catch (err) {
 						const msg = err instanceof Error ? err.message : String(err);
+						if (msg.startsWith('Invalid ')) {
+							return status(400, { error: msg });
+						}
+
 						if (msg === 'Scrape failed') {
 							return status(500, {
 								error: msg,
@@ -1752,6 +1815,65 @@ export function createApp({
 						summary: 'Search documents',
 						description:
 							'Runs the Legajox document full-text search UI and returns matching files as normalized entries.',
+						tags: ['documents'],
+						security: [{ bearerAuth: [] }],
+					},
+				},
+			)
+
+			// ── GET /documents/file ───────────────────────────────────────────────────
+			// Serves files previously downloaded by /documents/download.
+			.get(
+				'/documents/file',
+				async ({ query, status }) => {
+					const queryParams = query as Record<string, string | undefined>;
+					const requestedPath = queryParams.path;
+					if (!requestedPath) {
+						return status(400, { error: "Query param 'path' is required." });
+					}
+
+					try {
+						const filePath = await resolveDownloadedFilePath(requestedPath);
+						const file = Bun.file(filePath);
+						if (!(await file.exists()))
+							return status(404, { error: 'File not found' });
+
+						return new Response(file, {
+							headers: {
+								'Content-Type': file.type || 'application/octet-stream',
+							},
+						});
+					} catch (err) {
+						if ((err as NodeJS.ErrnoException).code === 'ENOENT') {
+							return status(404, { error: 'File not found' });
+						}
+
+						const msg = err instanceof Error ? err.message : String(err);
+						if (msg.startsWith('Invalid file path:')) {
+							return status(400, { error: msg });
+						}
+
+						console.error(`[api] /documents/file error: ${msg}`);
+						return status(500, { error: msg });
+					}
+				},
+				{
+					query: t.Object({
+						path: t.String({
+							description:
+								'Local rutaLocal returned by /documents/download metadata.',
+						}),
+					}),
+					response: {
+						400: ErrorResponse,
+						401: ErrorResponse,
+						404: ErrorResponse,
+						500: ErrorResponse,
+					},
+					detail: {
+						summary: 'Read downloaded document file',
+						description:
+							'Returns the bytes for a file previously downloaded into the controlled document download directory.',
 						tags: ['documents'],
 						security: [{ bearerAuth: [] }],
 					},

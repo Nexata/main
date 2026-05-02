@@ -23,6 +23,7 @@ import {
 import { fetchPersonalInfo, parsePersonalInfo } from './personal_information';
 import { fetchSearchResults } from './search-docs';
 import { getSessionCookie, withSessionRetry } from './session';
+import { fetchVacationsPage, parseVacations } from './vacations';
 
 type ScrapeBase = {
 	success: boolean;
@@ -559,19 +560,25 @@ export async function scrapeNotifications(
 }
 
 export async function scrapeVacaciones(
-	_user: string,
-	_password: string,
+	user: string,
+	password: string,
 	_signal?: AbortSignal,
 ): Promise<ScrapeBase & { registros: VacacionEmpleado[]; total: number }> {
-	return {
-		success: false,
-		registros: [],
-		total: 0,
-		errors: [
-			'Unsupported after request_imitator migration: no request_imitator implementation exists for vacaciones.',
-		],
-		outputFile: null,
-	};
+	try {
+		const registros = await withSessionRetry(user, password, async (cookie) =>
+			parseVacations(await fetchVacationsPage(cookie)),
+		);
+
+		return {
+			success: true,
+			registros,
+			total: registros.length,
+			errors: [],
+			outputFile: null,
+		};
+	} catch (err) {
+		return failure('vacaciones', err, { registros: [], total: 0 });
+	}
 }
 
 export async function scrapeListDirs(

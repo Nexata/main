@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, mock, test } from 'bun:test';
+import * as fs from 'node:fs/promises';
+import * as path from 'node:path';
 import { treaty } from '@elysiajs/eden';
+import { parseVacations } from '../request_imitator/vacations';
 import type { AppDependencies } from '../src/index';
 import { createApp, getServerConfigFromEnv } from '../src/index';
 
@@ -12,6 +15,7 @@ const DEFAULT_CREDS = {
 	defaultUser: 'default@example.com',
 	defaultPassword: 'default-secret',
 };
+const DOWNLOAD_OUTPUT_DIR = path.resolve('outputs', '_descargas_tmp');
 
 function makeDeps(): AppDependencies {
 	return {
@@ -116,7 +120,7 @@ function makeClient(
 					},
 	});
 
-	return { client, deps };
+	return { client, deps, app };
 }
 
 beforeEach(() => {
@@ -162,6 +166,61 @@ describe('Auth guard', () => {
 
 		expect(res.status).toBe(401);
 		expect(res.error?.value).toEqual({ error: 'Unauthorized' });
+	});
+});
+
+describe('Downloaded document file route', () => {
+	test('returns a downloaded file from the controlled output directory', async () => {
+		const filePath = path.join(DOWNLOAD_OUTPUT_DIR, 'api-test-file.txt');
+		await fs.mkdir(path.dirname(filePath), { recursive: true });
+		await fs.writeFile(filePath, 'downloaded content');
+
+		try {
+			const { app } = makeClient();
+			const res = await app.handle(
+				new Request(
+					`http://localhost/documents/file?path=${encodeURIComponent(filePath)}`,
+					{ headers: { Authorization: `Bearer ${API_KEY}` } },
+				),
+			);
+
+			expect(res.status).toBe(200);
+			expect(await res.text()).toBe('downloaded content');
+		} finally {
+			await fs.rm(filePath, { force: true });
+		}
+	});
+
+	test('returns 404 when downloaded file does not exist', async () => {
+		const { client } = makeClient();
+		const res = await client.documents.file.get({
+			query: {
+				path: path.join(DOWNLOAD_OUTPUT_DIR, 'missing-file.pdf'),
+			},
+		});
+
+		expect(res.status).toBe(404);
+		expect(res.error?.value).toEqual({ error: 'File not found' });
+	});
+
+	test('rejects paths outside the controlled output directory', async () => {
+		const outsidePath = path.resolve('outputs', 'api-test-outside.txt');
+		await fs.mkdir(path.dirname(outsidePath), { recursive: true });
+		await fs.writeFile(outsidePath, 'secret');
+
+		try {
+			const { client } = makeClient();
+			const res = await client.documents.file.get({
+				query: { path: outsidePath },
+			});
+
+			expect(res.status).toBe(400);
+			expect(res.error?.value).toEqual({
+				error: 'Invalid file path: outside download directory.',
+			});
+		} finally {
+			await fs.rm(outsidePath, { force: true });
+		}
 	});
 });
 
@@ -687,6 +746,47 @@ describe('Info, org chart and vacaciones routes', () => {
 	});
 });
 
+describe('Vacations parser', () => {
+	test('parses vacation balance rows from Legajox table html', () => {
+		const html = `
+			<body onload="init_funtion(123)">
+				<table id="DataTables_Table_0">
+					<tbody>
+						<tr class="p5px odd">
+							<td><span class="nombre_empleados">Ada Lovelace</span></td>
+							<td>10</td>
+							<td>0</td>
+							<td>1</td>
+							<td>2</td>
+							<td>3</td>
+							<td>4</td>
+							<td>6</td>
+						</tr>
+					</tbody>
+				</table>
+			</body>`;
+
+		expect(parseVacations(html)).toEqual([
+			{
+				nombre: 'Ada Lovelace',
+				asignacionInicial: '10',
+				prorrateo: '0',
+				acarreo: '1',
+				disfrutados: '2',
+				planeados: '3',
+				proximoCiclo: '4',
+				disponibles: '6',
+			},
+		]);
+	});
+
+	test('returns empty list when vacation table has no rows', () => {
+		expect(
+			parseVacations('<table id="DataTables_Table_0"><tbody /></table>'),
+		).toEqual([]);
+	});
+});
+
 describe('Documents routes', () => {
 	test('maps top-level document folders', async () => {
 		const scrapeListDirs = mock(async () => ({
@@ -807,6 +907,73 @@ describe('Documents routes', () => {
 				},
 			],
 		});
+	});
+
+	test('searches within a folder path using list docs', async () => {
+		const scrapeFileSearch = mock(async () => ({
+			success: true,
+			results: [],
+			errors: [],
+		}));
+		const scrapeListDocs = mock(async () => ({
+			success: true,
+			documentos: [
+				{
+					nombre: 'recibo-marzo.pdf',
+					url: 'https://example.com/recibo-marzo.pdf',
+					fecha: '31/03/2026 11:25hs',
+					firmado: true,
+				},
+				{
+					nombre: 'contrato.pdf',
+					url: 'https://example.com/contrato.pdf',
+					fecha: '31/07/2025 11:25hs',
+					firmado: false,
+				},
+			],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeFileSearch, scrapeListDocs });
+
+		const res = await client.documents.search.get({
+			query: { ...QUERY_CREDS, q: 'recibo', path: '/files/edit/123' },
+		});
+
+		expect(res.status).toBe(200);
+		expect(scrapeFileSearch).not.toHaveBeenCalled();
+		expect(scrapeListDocs).toHaveBeenCalledWith(
+			QUERY_CREDS.user,
+			QUERY_CREDS.password,
+			'/files/edit/123',
+			expect.anything(),
+		);
+		expect(res.data?.entries).toHaveLength(1);
+		expect(res.data?.entries[0]).toEqual(
+			expect.objectContaining({
+				id: 'https://example.com/recibo-marzo.pdf',
+				name: 'recibo-marzo.pdf',
+				ext: 'pdf',
+			}),
+		);
+	});
+
+	test('rejects invalid folder paths for scoped search', async () => {
+		const scrapeListDocs = mock(async () => ({
+			success: true,
+			documentos: [],
+			errors: [],
+		}));
+		const { client } = makeClient({ scrapeListDocs });
+
+		const res = await client.documents.search.get({
+			query: { ...QUERY_CREDS, q: 'recibo', path: '../secrets' },
+		});
+
+		expect(res.status).toBe(400);
+		expect(res.error?.value).toEqual({
+			error: 'Invalid directory id: expected a Legajox relative path.',
+		});
+		expect(scrapeListDocs).not.toHaveBeenCalled();
 	});
 
 	test('requires a non-empty selection for downloads', async () => {

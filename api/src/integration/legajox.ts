@@ -54,7 +54,12 @@ function assertLegajoxAccess(activeUser: ActiveUser) {
 }
 
 export namespace Legajox {
-	type SearchInput = { Q?: string; q?: string };
+	type SearchInput = {
+		Q?: string;
+		q?: string;
+		Path?: string | null;
+		path?: string | null;
+	};
 	type ListDirInput = { Path?: string | null; path?: string | null };
 	type SelectionInput = {
 		Id?: string;
@@ -115,7 +120,8 @@ export namespace Legajox {
 
 	function legajoxUrl(pathOrUrl: string) {
 		const value = pathOrUrl.trim();
-		if (value.startsWith('http://') || value.startsWith('https://')) return value;
+		if (value.startsWith('http://') || value.startsWith('https://'))
+			return value;
 
 		return `${baseUrl().replace(/\/+$/, '')}/${value.replace(/^\/+/, '')}`;
 	}
@@ -227,9 +233,9 @@ export namespace Legajox {
 		}
 	}
 
-	async function download(url: string, path: string) {
+	async function downloadDownloadedFile(filePath: string, path: string) {
 		return timedFetch(
-			legajoxUrl(url),
+			legajoxUrl(`/documents/file?path=${encodeURIComponent(filePath)}`),
 			{
 				method: 'GET',
 				headers: {
@@ -254,6 +260,9 @@ export namespace Legajox {
 
 	export async function search(input: SearchInput): Promise<NexataListDir> {
 		const q = input.Q ?? input.q ?? '';
+		const path = input.Path ?? input.path;
+		const params = new URLSearchParams({ q });
+		appendParam(params, 'path', path);
 		const data = await request<{
 			cursor: string | null;
 			entries: {
@@ -266,10 +275,10 @@ export namespace Legajox {
 				ext?: string;
 				updatedAt?: string;
 			}[];
-		}>(`/documents/search?q=${encodeURIComponent(q)}`);
+		}>(`/documents/search?${params.toString()}`);
 
 		const entries: NexataListDirEntry[] = data.entries.map((e) => ({
-			id: e.id,
+			id: normalizeLegajoxSelectionId(e.id),
 			name: e.name,
 			nexataId: e.nexataId,
 			url: e.url,
@@ -328,7 +337,7 @@ export namespace Legajox {
 		}>(`/documents/list${params}`);
 
 		const entries: NexataListDirEntry[] = data.entries.map((e) => ({
-			id: e.id,
+			id: normalizeLegajoxSelectionId(e.id),
 			name: e.name,
 			nexataId: e.nexataId,
 			url: e.url,
@@ -472,12 +481,13 @@ export namespace Legajox {
 			id: string;
 			name: string;
 			url?: string;
+			path?: string;
 			size?: number;
 			updatedAt?: string;
 		},
 	): Promise<string> {
 		try {
-			if (!entry.url) return 'FAILED';
+			if (!entry.path) return 'FAILED';
 
 			const modifiedAt = entry.updatedAt
 				? new Date(entry.updatedAt)
@@ -485,7 +495,10 @@ export namespace Legajox {
 			if (await isFileUnmodified(FileHost.LEGAJOX, entry.id, modifiedAt))
 				return 'UNMODIFIED';
 
-			const res = await download(entry.url, `/documents/file/${entry.id}`);
+			const res = await downloadDownloadedFile(
+				entry.path,
+				`/documents/file/${entry.id}`,
+			);
 			if (!res.ok) return 'FAILED';
 
 			const buffer = await res.arrayBuffer();
@@ -867,6 +880,7 @@ export const legajoxRouter = new Elysia({ prefix: '/legajox' })
 		},
 		query: tObject({
 			q: t.String({ minLength: 3 }),
+			path: Nullish(t.String()),
 		}),
 	})
 	.get('/', async ({ query }) => Legajox.listDir(query), {

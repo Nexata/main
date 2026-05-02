@@ -141,6 +141,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
   const current = history[historyIndex];
   const isSearching = debouncedSearch.length > 0;
   const usesLocalSearch = source.searchMode === "local";
+  const minSearchLength = source.minSearchLength ?? 1;
 
   const deleteMutation = useDeleteFiles();
   const queryClient = useQueryClient();
@@ -162,7 +163,10 @@ export function StorageFileTree({ credentialId, source }: Props) {
     try {
       let cursor: string | null = null;
       let all: Entry[] = [];
-      const remoteQuery = usesLocalSearch ? undefined : query;
+      const remoteQuery =
+        !usesLocalSearch && query && query.length >= minSearchLength
+          ? query
+          : undefined;
 
       do {
         const res: EntryResult | null = remoteQuery && source.searchFiles
@@ -234,7 +238,7 @@ export function StorageFileTree({ credentialId, source }: Props) {
     }
 
     fetchEntries(current?.id, debouncedSearch || undefined);
-  }, [current?.id, debouncedSearch, usesLocalSearch]);
+  }, [current?.id, debouncedSearch, minSearchLength, usesLocalSearch]);
 
   useEffect(() => {
     if (!usesLocalSearch) return;
