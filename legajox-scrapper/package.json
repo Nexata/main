@@ -1,6 +1,6 @@
 {
 	"scripts": {
-		"api": "bun src/index.ts",
+		"dev": "bun src/index.ts",
 		"test": "bun test",
 		"validate": "bun request_imitator/get_cookies.ts",
 		"user-info": "bun request_imitator/personal_information.ts",

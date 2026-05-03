@@ -40,7 +40,7 @@ RUN mkdir -p /app/outputs/_descargas_tmp /app/scripts/outputs/debug && \
 	chown -R app:app /app
 
 ENV NODE_ENV=production
-ENV PORT=3000
+ENV PORT=8080
 ENV DEBUG_HEADLESS=true
 ENV PUPPETEER_SKIP_DOWNLOAD=1
 ENV PUPPETEER_NO_SANDBOX=true
@@ -48,6 +48,6 @@ ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
 
 USER app
 
-EXPOSE 3000
+EXPOSE 8080
 
 ENTRYPOINT ["/app/server"]

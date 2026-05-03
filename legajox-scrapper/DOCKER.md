@@ -13,7 +13,7 @@ docker build -t legajox-scrapper .
 ## Run
 
 ```bash
-docker run --rm -p 3000:3000 \
+docker run --rm -p 8080:8080 \
   -e API_KEY=xd \
   -e DEFAULT_USER=your-user \
   -e DEFAULT_PASSWORD=your-password \
@@ -23,7 +23,7 @@ docker run --rm -p 3000:3000 \
 ## Notes
 
 - `API_KEY` is required. The server exits immediately without it.
-- The app reads the listen port from the `PORT` environment variable and binds to `0.0.0.0`, so it is compatible with Cloud Run and other container platforms.
+- The image defaults to `PORT=8080`, and the app reads the listen port from `PORT` and binds to `0.0.0.0`, so it is compatible with Cloud Run and other container platforms.
 - Set `PUBLIC_URL` in deployment environments if you want `/docs` to advertise the public API origin instead of omitting server URLs from the OpenAPI spec.
 - The image sets `PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser` so Puppeteer uses Alpine's Chromium instead of requiring Google Chrome.
 - The image also sets `PUPPETEER_NO_SANDBOX=true` because many managed container runtimes, including Cloud Run, do not permit Chromium's default sandbox mode.
