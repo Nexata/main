@@ -351,13 +351,15 @@ export function ChatMessages({
       onTouchStart={handleTouchStart}
     >
       <div className="col-[1/1] row-[1/1] flex justify-center">
-        <div className="w-full max-w-4xl px-6">
+        <div className="w-full max-w-4xl px-6 pt-4 sm:pt-6">
           {isFetchingOlderMessages && (
             <div className="flex justify-center py-3">
               <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
             </div>
           )}
           {children}
+          {/* Bottom spacer */}
+          <div className="h-4" />
         </div>
       </div>
 
