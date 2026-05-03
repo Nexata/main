@@ -54,7 +54,7 @@ export const LIMIT_WARN_KEY = (slug: string) => `tenant:${slug}:limit-warned`;
 export const STORAGE_OVERHEAD_MULTIPLIER = 4;
 
 /** SQL expression: estimated storage megabytes for a single chunk row. */
-export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + ${EMBEDDING_BYTES}) * ${STORAGE_OVERHEAD_MULTIPLIER} / (1024.0 * 1024.0)`;
+export const chunkStorageMB = sql<number>`(octet_length(${chunk.text}) + ${sql.raw(EMBEDDING_BYTES.toString())}) * ${sql.raw(STORAGE_OVERHEAD_MULTIPLIER.toString())} / (1024.0 * 1024.0)`;
 
 const ESTIMATED_CHUNK_BYTES = EMBEDDING_SIZE + EMBEDDING_BYTES;
 
