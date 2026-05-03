@@ -9,17 +9,27 @@ import {
 import {
 	getIngestedDirIds,
 	getIngestedFileIds,
+	type IngestResult,
+	type IngestSelection,
 	isFileUnmodified,
 	type NexataListDir,
 	type NexataListDirEntry,
 } from '@api/integration/lib';
-import { FileHost, file, type Language, TraceType, trace } from '@api/schema';
+import {
+	externalDir,
+	FileHost,
+	file,
+	type Language,
+	TraceType,
+	trace,
+} from '@api/schema';
 import type { ActiveUser } from '@api/utils/auth';
 import {
 	checkBatchCapacity,
 	checkTenantCanIngest,
 	clearIngestStopFlag,
 	type FileEstimate,
+	invalidateStorageUsage,
 	isIngestStopped,
 	setIngestStopFlag,
 } from '@api/utils/billing';
@@ -27,7 +37,7 @@ import { log, requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import pLimit from 'p-limit';
 
@@ -219,6 +229,14 @@ export namespace Legajox {
 		}));
 	}
 
+	function dedupeSelection(selection: { isDir: boolean; id: string }[]) {
+		const unique = new Map<string, { isDir: boolean; id: string }>();
+
+		for (const item of selection) unique.set(`${item.isDir}:${item.id}`, item);
+
+		return [...unique.values()];
+	}
+
 	function normalizeLegajoxSelectionId(id: string) {
 		const value = id.trim();
 		if (!value.startsWith('http://') && !value.startsWith('https://'))
@@ -398,7 +416,23 @@ export namespace Legajox {
 		slug: string,
 		selection: SelectionInput[],
 	): Promise<{ ok: number; unmodified: number; failed: number }> {
-		const normalizedSelection = normalizeSelection(selection);
+		return ingestSelection(
+			userId,
+			slug,
+			undefined,
+			normalizeSelection(selection),
+		);
+	}
+
+	async function ingestSelection(
+		userId: string,
+		slug: string,
+		credentialId: string | undefined,
+		selection: { id: string; isDir: boolean }[],
+	): Promise<IngestResult> {
+		const normalizedSelection = dedupeSelection(selection).sort(({ isDir }) =>
+			isDir ? -1 : 1,
+		);
 		const blockReason = await checkTenantCanIngest(slug);
 		if (blockReason) {
 			if (blockReason === 'PAYMENT_REQUIRED')
@@ -409,7 +443,54 @@ export namespace Legajox {
 			);
 		}
 
-		// Call Legajox download endpoint to get file metadata + URLs
+		if (!credentialId)
+			return ingestDownloadedSelection(userId, slug, normalizedSelection);
+
+		const fileSelection = normalizedSelection.filter((item) => !item.isDir);
+		const dirSelection = normalizedSelection.filter((item) => item.isDir);
+		const results: IngestResult = { ok: 0, unmodified: 0, failed: 0 };
+
+		if (dirSelection.length) {
+			const dirResults = await Promise.allSettled(
+				dirSelection.map((dir) =>
+					ingestDirectory(userId, slug, credentialId, dir.id),
+				),
+			);
+
+			for (const result of dirResults) {
+				if (result.status === 'rejected') {
+					results.failed++;
+					continue;
+				}
+
+				results.ok += result.value.ok;
+				results.unmodified += result.value.unmodified;
+				results.failed += result.value.failed;
+			}
+		}
+
+		if (!fileSelection.length) return results;
+
+		const fileResults = await ingestDownloadedSelection(
+			userId,
+			slug,
+			fileSelection,
+			credentialId,
+		);
+		results.ok += fileResults.ok;
+		results.unmodified += fileResults.unmodified;
+		results.failed += fileResults.failed;
+
+		return results;
+	}
+
+	async function ingestDownloadedSelection(
+		userId: string,
+		slug: string,
+		selection: { id: string; isDir: boolean }[],
+		credentialId?: string,
+		externalDirId?: string,
+	): Promise<IngestResult> {
 		const data = await request<{
 			cursor: string | null;
 			entries: {
@@ -424,7 +505,7 @@ export namespace Legajox {
 			}[];
 		}>('/documents/download', {
 			method: 'POST',
-			body: { selection: normalizedSelection },
+			body: { selection },
 		});
 
 		const entries = data.entries.filter(
@@ -450,7 +531,11 @@ export namespace Legajox {
 				? entries.slice(0, capacity.maxFiles)
 				: entries;
 
-		const results = { ok: 0, unmodified: 0, failed: discardedEntries };
+		const results: IngestResult = {
+			ok: 0,
+			unmodified: 0,
+			failed: discardedEntries,
+		};
 		if (capacity.maxFiles !== null)
 			results.failed += entries.length - capacity.maxFiles;
 
@@ -471,7 +556,13 @@ export namespace Legajox {
 						}
 					}
 
-					return ingestSingleFile(userId, slug, entry);
+					return ingestSingleFile(
+						userId,
+						slug,
+						entry,
+						credentialId,
+						externalDirId,
+					);
 				}),
 			),
 		);
@@ -499,6 +590,8 @@ export namespace Legajox {
 			size?: number;
 			updatedAt?: string;
 		},
+		credentialId?: string,
+		externalDirId?: string,
 	): Promise<string> {
 		try {
 			if (!entry.path) return 'FAILED';
@@ -526,7 +619,9 @@ export namespace Legajox {
 					userId,
 					slug,
 					provider: FileHost.LEGAJOX,
+					externalDirId,
 					externalId: entry.id,
+					credentialId,
 					url: legajoxAppUrl(entry.url ?? entry.id),
 					name: entry.name,
 					type: mimeType,
@@ -555,6 +650,109 @@ export namespace Legajox {
 
 			return 'FAILED';
 		}
+	}
+
+	async function ingestDirectory(
+		userId: string,
+		slug: string,
+		credentialId: string,
+		dirId: string,
+	): Promise<IngestResult> {
+		const existing = (
+			await db
+				.select({ id: externalDir.id })
+				.from(externalDir)
+				.where(
+					and(
+						eq(externalDir.provider, FileHost.LEGAJOX),
+						eq(externalDir.externalId, dirId),
+					),
+				)
+		).at(0);
+
+		const listed = await listDir({ path: dirId });
+		const remoteFiles = listed.entries.filter(
+			(entry) => entry.ext !== 'dir' && isSupportedExt(entry.name),
+		);
+		const currentExternalIds = remoteFiles.map((entry) => entry.id);
+
+		const externalDirId =
+			existing?.id ??
+			(
+				await db
+					.insert(externalDir)
+					.values({
+						externalId: dirId,
+						credentialId,
+						name: dirId.split('/').filter(Boolean).at(-1) ?? dirId,
+						provider: FileHost.LEGAJOX,
+						url: legajoxAppUrl(dirId),
+						modifiedAt: new Date(),
+					})
+					.returning({ id: externalDir.id })
+			).at(0)?.id;
+
+		if (!externalDirId)
+			throw httpError(
+				HttpCode.INTERNAL_SERVER_ERROR,
+				ErrorCode.EXTERNAL_DIR_FAILED,
+			);
+
+		if (existing) {
+			const deleted = currentExternalIds.length
+				? await db
+						.delete(file)
+						.where(
+							and(
+								eq(file.externalDirId, externalDirId),
+								eq(file.provider, FileHost.LEGAJOX),
+								notInArray(file.externalId, currentExternalIds),
+							),
+						)
+						.returning({ id: file.id })
+				: await db
+						.delete(file)
+						.where(
+							and(
+								eq(file.externalDirId, externalDirId),
+								eq(file.provider, FileHost.LEGAJOX),
+							),
+						)
+						.returning({ id: file.id });
+
+			if (deleted.length) await invalidateStorageUsage(slug);
+		}
+
+		const unmodifiedResults = await Promise.all(
+			remoteFiles.map(async (entry) => ({
+				entry,
+				unmodified: await isFileUnmodified(
+					FileHost.LEGAJOX,
+					entry.id,
+					entry.updatedAt,
+				),
+			})),
+		);
+		const entriesToDownload = unmodifiedResults
+			.filter(({ unmodified }) => !unmodified)
+			.map(({ entry }) => entry);
+		const unmodified = remoteFiles.length - entriesToDownload.length;
+
+		if (!entriesToDownload.length) return { ok: 0, unmodified, failed: 0 };
+
+		const result = await ingestDownloadedSelection(
+			userId,
+			slug,
+			entriesToDownload.map((entry) => ({ id: entry.id, isDir: false })),
+			credentialId,
+			externalDirId,
+		);
+
+		return {
+			ok: result.ok,
+			unmodified: result.unmodified + unmodified,
+			failed: result.failed,
+		};
 	}
 
 	// --- Re-ingest (refresh folders) ---
@@ -589,6 +787,15 @@ export namespace Legajox {
 
 		if (!resolvedSelection.length) return { ok: 0, unmodified: 0, failed: 0 };
 		return ingest(userId, slug, resolvedSelection);
+	}
+
+	export async function ingestFromCredential(
+		userId: string,
+		slug: string,
+		credentialId: string,
+		selection: IngestSelection[],
+	): Promise<IngestResult> {
+		return ingestSelection(userId, slug, credentialId, selection);
 	}
 
 	// --- Employees ---

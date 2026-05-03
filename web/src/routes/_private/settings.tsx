@@ -1824,6 +1824,44 @@ export function ExternalDirsSection() {
 		}
 	};
 
+	const handleSingleDirRefresh = async (dirId: string) => {
+		const dir = dirs.find((d) => d.id === dirId);
+		if (!dir) return;
+
+		const toastId = infoToast.loading({
+			title: settings_files_actions_refresh(),
+		});
+
+		try {
+			const result = await reIngestByProvider(dir.provider, {
+				credentialId: dir.credentialId,
+				selection: [{ id: dir.id, isDir: true }],
+			});
+
+			refetch();
+			await queryClient.invalidateQueries({ queryKey: ['platform-files'] });
+
+			if (result.failed > 0) {
+				infoToast.error(toastId, {
+					title: common_error(),
+				});
+			} else if (result.ok > 0) {
+				infoToast.success(toastId, {
+					title: common_success(),
+				});
+			} else {
+				infoToast.info(toastId, {
+					title: common_no_changes(),
+				});
+			}
+		} catch (error) {
+			infoToast.error(toastId, {
+				title: common_error(),
+				description: extractErrorText(error) ?? undefined,
+			});
+		}
+	};
+
 	const handleConfirmDeleteDir = async () => {
 		if (!deleteDialog.open) return;
 		const ids =
@@ -2112,6 +2150,21 @@ export function ExternalDirsSection() {
 										<TableCell>
 											<div className="flex justify-end gap-1">
 												<TooltipProvider>
+													<Tooltip>
+														<TooltipTrigger asChild>
+															<Button
+																size="icon"
+																variant="ghost"
+																className="h-8 w-8 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+																onClick={() => handleSingleDirRefresh(dir.id)}
+															>
+																<RefreshCcw className="w-3.5 h-3.5" />
+															</Button>
+														</TooltipTrigger>
+														<TooltipContent>
+															{settings_files_actions_refresh()}
+														</TooltipContent>
+													</Tooltip>
 													{dir.url && (
 														<Tooltip>
 															<TooltipTrigger asChild>

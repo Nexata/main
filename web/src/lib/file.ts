@@ -325,6 +325,8 @@ export async function reIngestByProvider(
 			return reIngestFromOneDrive(payload) as Promise<ReIngestResult>;
 		case 'dropbox':
 			return reIngestFromDropbox(payload) as Promise<ReIngestResult>;
+		case 'legajox':
+			return reIngestFromLegajox(payload) as Promise<ReIngestResult>;
 		default:
 			throw new Error(`Unsupported provider for re-ingest: ${provider}`);
 	}

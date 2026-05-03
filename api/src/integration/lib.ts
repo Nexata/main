@@ -1,6 +1,7 @@
 import { db } from '@api/env';
 import { Dropbox } from '@api/integration/dropbox';
 import { Drive } from '@api/integration/google/drive';
+import { Legajox } from '@api/integration/legajox';
 import { OneDrive } from '@api/integration/microsoft/onedrive';
 import { externalDir, FileHost, file } from '@api/schema';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
@@ -105,6 +106,7 @@ export function ingestResultToStatus(results: IngestResult): string {
 export const providerIngestors: Partial<Record<FileHost, ProviderIngestor>> = {
 	[FileHost.DROPBOX]: Dropbox.ingestFromCredential,
 	[FileHost.DRIVE]: Drive.ingestFromCredential,
+	[FileHost.LEGAJOX]: Legajox.ingestFromCredential,
 	[FileHost.ONE_DRIVE]: OneDrive.ingestFromCredential,
 };
 

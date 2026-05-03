@@ -3,7 +3,7 @@ import { file, Language, message, thread } from '@api/schema';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
-import { and, asc, eq, lt } from 'drizzle-orm';
+import { and, desc, eq, lt } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 export const publicChatRouter = new Elysia({ prefix: '/chat' }).get(
@@ -38,7 +38,7 @@ export const publicChatRouter = new Elysia({ prefix: '/chat' }).get(
 				),
 			)
 			.limit(query.limit ?? 100)
-			.orderBy(asc(message.createdAt))
+			.orderBy(desc(message.createdAt))
 			.groupBy(message.id);
 
 		if (!messages.length) {
@@ -50,7 +50,7 @@ export const publicChatRouter = new Elysia({ prefix: '/chat' }).get(
 		}
 
 		return {
-			messages: messages.filter((m) => m.content),
+			messages: messages.reverse().filter((m) => m.content),
 			isOwner: false,
 			isPublic: true,
 		};

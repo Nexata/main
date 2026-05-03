@@ -105,6 +105,7 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 						eq(file.autoSync, true),
 						isNull(file.externalDirId),
 						ne(file.provider, FileHost.NEXATA),
+						ne(file.provider, FileHost.LEGAJOX),
 					),
 				),
 		]);
