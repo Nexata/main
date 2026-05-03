@@ -15,9 +15,9 @@ export const externalDir = pgTable(
 	{
 		id: uuid().primaryKey().defaultRandom(),
 		externalId: varchar().notNull(),
-		credentialId: uuid()
-			.notNull()
-			.references(() => credential.id, { onDelete: 'cascade' }),
+		credentialId: uuid().references(() => credential.id, {
+			onDelete: 'cascade',
+		}),
 		name: varchar({ length: 512 }).notNull(),
 		provider: FileHostEnum().notNull(),
 		url: varchar(),

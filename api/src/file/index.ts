@@ -32,6 +32,7 @@ import {
 	STORAGE_OVERHEAD_MULTIPLIER,
 } from '@api/utils/billing';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { isLegajoxAllowed } from '@api/utils/legajox';
 import { uploadFile } from '@api/utils/s3';
 import { caseWhenNull, jsonAgg, jsonBuildObject } from '@api/utils/sql';
 import { Nullish, tObject } from '@api/utils/type';
@@ -631,47 +632,55 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.patch(
 		'/dir/:id',
 		async ({ params: { id }, body, activeUser }) => {
+			const canAccessLegajox = isLegajoxAllowed(activeUser);
+			const credentialBackedAccess = activeUser.isAdmin
+				? exists(
+						db
+							.select({ id: user.id })
+							.from(user)
+							.where(
+								and(
+									eq(user.id, credential.userId),
+									eq(user.slug, activeUser.slug),
+								),
+							),
+					)
+				: or(
+						eq(credential.userId, activeUser.id),
+						exists(
+							db
+								.select({ userId: credentialPermission.userId })
+								.from(credentialPermission)
+								.where(
+									and(
+										eq(credentialPermission.credentialId, credential.id),
+										eq(credentialPermission.userId, activeUser.id),
+										eq(credentialPermission.isAdmin, true),
+									),
+								),
+						),
+					);
 			const existing = (
 				await db
 					.select({
 						id: externalDir.id,
 						credentialId: externalDir.credentialId,
+						provider: externalDir.provider,
 					})
 					.from(externalDir)
-					.innerJoin(credential, eq(credential.id, externalDir.credentialId))
+					.leftJoin(credential, eq(credential.id, externalDir.credentialId))
 					.where(
 						and(
 							eq(externalDir.id, id),
-							activeUser.isAdmin
-								? exists(
-										db
-											.select({ id: user.id })
-											.from(user)
-											.where(
-												and(
-													eq(user.id, credential.userId),
-													eq(user.slug, activeUser.slug),
-												),
-											),
-									)
-								: or(
-										eq(credential.userId, activeUser.id),
-										exists(
-											db
-												.select({ userId: credentialPermission.userId })
-												.from(credentialPermission)
-												.where(
-													and(
-														eq(
-															credentialPermission.credentialId,
-															credential.id,
-														),
-														eq(credentialPermission.userId, activeUser.id),
-														eq(credentialPermission.isAdmin, true),
-													),
-												),
-										),
-									),
+							or(
+								canAccessLegajox
+									? eq(externalDir.provider, FileHost.LEGAJOX)
+									: undefined,
+								and(
+									isNotNull(externalDir.credentialId),
+									credentialBackedAccess,
+								),
+							),
 						),
 					)
 			).at(0);
@@ -680,6 +689,13 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 				throw httpError(
 					HttpCode.NOT_FOUND,
 					ErrorCode.EXTERNAL_DIR_NOT_FOUND,
+					activeUser.language,
+				);
+
+			if (body.autoSync && existing.provider === FileHost.LEGAJOX)
+				throw httpError(
+					HttpCode.BAD_REQUEST,
+					ErrorCode.INVALID_REQUEST,
 					activeUser.language,
 				);
 
@@ -790,57 +806,59 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.delete(
 		'/dir/:id',
 		async ({ params: { id }, activeUser }) => {
+			const canAccessLegajox = isLegajoxAllowed(activeUser);
+			const credentialBackedAccess = activeUser.isAdmin
+				? exists(
+						db
+							.select({ id: user.id })
+							.from(user)
+							.innerJoin(credential, eq(credential.userId, user.id))
+							.where(
+								and(
+									eq(credential.id, externalDir.credentialId),
+									eq(user.slug, activeUser.slug),
+								),
+							),
+					)
+				: exists(
+						db
+							.select({ id: credential.id })
+							.from(credential)
+							.where(
+								and(
+									eq(credential.id, externalDir.credentialId),
+									or(
+										eq(credential.userId, activeUser.id),
+										exists(
+											db
+												.select({ userId: credentialPermission.userId })
+												.from(credentialPermission)
+												.where(
+													and(
+														eq(
+															credentialPermission.credentialId,
+															credential.id,
+														),
+														eq(credentialPermission.userId, activeUser.id),
+														eq(credentialPermission.isAdmin, true),
+													),
+												),
+										),
+									),
+								),
+							),
+					);
 			const deleted = await db
 				.delete(externalDir)
 				.where(
 					and(
 						eq(externalDir.id, id),
-						activeUser.isAdmin
-							? exists(
-									db
-										.select({ id: user.id })
-										.from(user)
-										.innerJoin(credential, eq(credential.userId, user.id))
-										.where(
-											and(
-												eq(credential.id, externalDir.credentialId),
-												eq(user.slug, activeUser.slug),
-											),
-										),
-								)
-							: exists(
-									db
-										.select({ id: credential.id })
-										.from(credential)
-										.where(
-											and(
-												eq(credential.id, externalDir.credentialId),
-												or(
-													eq(credential.userId, activeUser.id),
-													exists(
-														db
-															.select({
-																userId: credentialPermission.userId,
-															})
-															.from(credentialPermission)
-															.where(
-																and(
-																	eq(
-																		credentialPermission.credentialId,
-																		credential.id,
-																	),
-																	eq(
-																		credentialPermission.userId,
-																		activeUser.id,
-																	),
-																	eq(credentialPermission.isAdmin, true),
-																),
-															),
-													),
-												),
-											),
-										),
-								),
+						or(
+							canAccessLegajox
+								? eq(externalDir.provider, FileHost.LEGAJOX)
+								: undefined,
+							credentialBackedAccess,
+						),
 					),
 				)
 				.returning({ id: externalDir.id });
@@ -859,6 +877,33 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 		async ({ activeUser, query: { provider, page } }) => {
 			const limit = 25;
 			const offset = ((page ?? 1) - 1) * limit;
+			const canAccessLegajox = isLegajoxAllowed(activeUser);
+			const credentialBackedAccess = activeUser.isAdmin
+				? exists(
+						db
+							.select({ id: user.id })
+							.from(user)
+							.where(
+								and(
+									eq(user.id, credential.userId),
+									eq(user.slug, activeUser.slug),
+								),
+							),
+					)
+				: or(
+						eq(credential.userId, activeUser.id),
+						exists(
+							db
+								.select({ userId: credentialPermission.userId })
+								.from(credentialPermission)
+								.where(
+									and(
+										eq(credentialPermission.credentialId, credential.id),
+										eq(credentialPermission.userId, activeUser.id),
+									),
+								),
+						),
+					);
 
 			return db
 				.select({
@@ -874,35 +919,15 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					createdAt: externalDir.createdAt,
 				})
 				.from(externalDir)
-				.innerJoin(credential, eq(credential.id, externalDir.credentialId))
+				.leftJoin(credential, eq(credential.id, externalDir.credentialId))
 				.where(
 					and(
-						activeUser.isAdmin
-							? exists(
-									db
-										.select({ id: user.id })
-										.from(user)
-										.where(
-											and(
-												eq(user.id, credential.userId),
-												eq(user.slug, activeUser.slug),
-											),
-										),
-								)
-							: or(
-									eq(credential.userId, activeUser.id),
-									exists(
-										db
-											.select({ userId: credentialPermission.userId })
-											.from(credentialPermission)
-											.where(
-												and(
-													eq(credentialPermission.credentialId, credential.id),
-													eq(credentialPermission.userId, activeUser.id),
-												),
-											),
-									),
-								),
+						or(
+							canAccessLegajox
+								? eq(externalDir.provider, FileHost.LEGAJOX)
+								: undefined,
+							and(isNotNull(externalDir.credentialId), credentialBackedAccess),
+						),
 						provider ? eq(externalDir.provider, provider) : undefined,
 					),
 				)

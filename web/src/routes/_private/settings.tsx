@@ -1834,7 +1834,7 @@ export function ExternalDirsSection() {
 
 		try {
 			const result = await reIngestByProvider(dir.provider, {
-				credentialId: dir.credentialId,
+				credentialId: dir.credentialId ?? 'legajox',
 				selection: [{ id: dir.id, isDir: true }],
 			});
 

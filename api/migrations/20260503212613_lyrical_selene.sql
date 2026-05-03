@@ -1,0 +1,1 @@
+ALTER TABLE "external_dir" ALTER COLUMN "credential_id" DROP NOT NULL;

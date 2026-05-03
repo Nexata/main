@@ -35,24 +35,19 @@ import {
 } from '@api/utils/billing';
 import { log, requireEnv } from '@api/utils/env';
 import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { isLegajoxAllowed } from '@api/utils/legajox';
 import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 import pLimit from 'p-limit';
 
+export { isLegajoxAllowed } from '@api/utils/legajox';
+
 const INGEST_CONCURRENCY = 8;
 const RECHECK_INTERVAL = 50;
 const REQUEST_TIMEOUT_MS = 180_000;
 const SLOW_REQUEST_MS = 30_000;
-
-const LEGAJOX_ALLOWED_SLUGS = (process.env.LEGAJOX_ALLOWED_SLUGS ?? '')
-	.split(',')
-	.filter(Boolean);
-
-export function isLegajoxAllowed(activeUser: ActiveUser): boolean {
-	return activeUser.isAdmin && LEGAJOX_ALLOWED_SLUGS.includes(activeUser.slug);
-}
 
 function assertLegajoxAccess(activeUser: ActiveUser) {
 	if (!isLegajoxAllowed(activeUser))
@@ -443,9 +438,6 @@ export namespace Legajox {
 			);
 		}
 
-		if (!credentialId)
-			return ingestDownloadedSelection(userId, slug, normalizedSelection);
-
 		const fileSelection = normalizedSelection.filter((item) => !item.isDir);
 		const dirSelection = normalizedSelection.filter((item) => item.isDir);
 		const results: IngestResult = { ok: 0, unmodified: 0, failed: 0 };
@@ -655,7 +647,7 @@ export namespace Legajox {
 	async function ingestDirectory(
 		userId: string,
 		slug: string,
-		credentialId: string,
+		credentialId: string | undefined,
 		dirId: string,
 	): Promise<IngestResult> {
 		const existing = (
@@ -683,10 +675,11 @@ export namespace Legajox {
 					.insert(externalDir)
 					.values({
 						externalId: dirId,
-						credentialId,
+						credentialId: credentialId ?? null,
 						name: dirId.split('/').filter(Boolean).at(-1) ?? dirId,
 						provider: FileHost.LEGAJOX,
 						url: legajoxAppUrl(dirId),
+						autoSync: false,
 						modifiedAt: new Date(),
 					})
 					.returning({ id: externalDir.id })
