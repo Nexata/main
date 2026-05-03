@@ -331,6 +331,88 @@ describe('Direct document downloads', () => {
 			globalThis.fetch = originalFetch;
 		}
 	});
+
+	test('classifies protected document HTML as a per-file download error', async () => {
+		const originalFetch = globalThis.fetch;
+		const fetchMock = mock(
+			async () =>
+				new Response(
+					'<html><head><title>Acceso denegado</title></head><body>No tiene permiso para descargar este documento protegido.</body></html>',
+					{
+						status: 200,
+						headers: { 'content-type': 'text/html' },
+					},
+				),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		try {
+			const { processDirectLinks } = await import(
+				'../request_imitator/download'
+			);
+			const { results } = await processDirectLinks(
+				['/enviar_doc/46461'],
+				'cookie',
+			);
+
+			expect(results).toHaveLength(1);
+			expect(results[0]).toMatchObject({
+				estado: 'error',
+				downloadUrl: '/enviar_doc/46461',
+			});
+			expect(results[0]?.errorDetalle).toContain(
+				'Legajox returned an HTML page',
+			);
+			expect(results[0]?.errorDetalle).toContain(
+				'detected an access/security restriction',
+			);
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+	});
+});
+
+describe('Document search', () => {
+	test('prefers download URLs returned by search API before synthesizing /enviar_doc links', async () => {
+		const originalFetch = globalThis.fetch;
+		const fetchMock = mock(
+			async () =>
+				new Response(
+					JSON.stringify([
+						{
+							carpeta: 'Contratos',
+							path: '/files/edit/123',
+							name: 'contrato.pdf',
+							cf_id: '46461',
+							url: '/enviar_doc/46461?token=secure',
+						},
+					]),
+					{
+						status: 200,
+						headers: { 'content-type': 'application/json' },
+					},
+				),
+		);
+		globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+		try {
+			const { fetchSearchResults } = await import(
+				'../request_imitator/search-docs'
+			);
+			const results = await fetchSearchResults('contrato', 'cookie');
+
+			expect(results).toEqual([
+				{
+					carpeta: 'Contratos',
+					nombre: 'contrato.pdf',
+					href: '/enviar_doc/46461?token=secure',
+					url: 'https://app.legajox.com/enviar_doc/46461?token=secure',
+				},
+			]);
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+	});
 });
 
 describe('Credential resolution', () => {

@@ -2,6 +2,7 @@ import { getCiSession } from './get_cookies';
 import { InvalidCookieError, legajoxHeaders } from './session';
 
 const BASE_URL = 'https://app.legajox.com';
+const BASE_HOST = 'app.legajox.com';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,6 +19,9 @@ interface ApiSearchResult {
 	path: string;
 	name: string;
 	cf_id: string;
+	href?: string;
+	url?: string;
+	download_url?: string;
 }
 
 // ── Fetch ────────────────────────────────────────────────────────────────────
@@ -70,8 +74,10 @@ export async function fetchSearchResults(
 
 	const data = (await response.json()) as ApiSearchResult[];
 
-	return data.map((item) => {
-		const href = `/enviar_doc/${item.cf_id}`;
+	return data.flatMap((item) => {
+		const href = normalizeSearchHref(item);
+		if (!href) return [];
+
 		return {
 			carpeta: item.carpeta,
 			nombre: item.name,
@@ -79,6 +85,36 @@ export async function fetchSearchResults(
 			url: `${BASE_URL}${href}`,
 		};
 	});
+}
+
+function normalizeSearchHref(item: ApiSearchResult): string | null {
+	const candidates = [
+		item.href,
+		item.url,
+		item.download_url,
+		item.path,
+		item.cf_id ? `/enviar_doc/${item.cf_id}` : undefined,
+	];
+
+	for (const candidate of candidates) {
+		if (!candidate) continue;
+		const href = normalizeLegajoxFileHref(candidate);
+		if (href) return href;
+	}
+
+	return null;
+}
+
+function normalizeLegajoxFileHref(value: string): string | null {
+	try {
+		const parsed = new URL(value, BASE_URL);
+		if (parsed.host !== BASE_HOST) return null;
+		if (parsed.pathname.includes('/login')) return null;
+		if (parsed.pathname.startsWith('/files/edit/')) return null;
+		return parsed.pathname + parsed.search;
+	} catch {
+		return null;
+	}
 }
 
 // ── Auth ─────────────────────────────────────────────────────────────────────

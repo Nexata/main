@@ -161,6 +161,80 @@ function looksLikeHtml(buffer: Buffer): boolean {
 	);
 }
 
+function decodeHtmlEntities(value: string): string {
+	return value
+		.replace(/&nbsp;/gi, ' ')
+		.replace(/&amp;/gi, '&')
+		.replace(/&quot;/gi, '"')
+		.replace(/&#39;/g, "'")
+		.replace(/&lt;/gi, '<')
+		.replace(/&gt;/gi, '>');
+}
+
+function extractHtmlTitle(html: string): string | null {
+	const match = html.match(/<title[^>]*>([\s\S]*?)<\/title>/i);
+	const title = match?.[1]
+		? decodeHtmlEntities(match[1].replace(/<[^>]+>/g, ' '))
+				.replace(/\s+/g, ' ')
+				.trim()
+		: '';
+	return title || null;
+}
+
+function htmlToText(html: string): string {
+	return decodeHtmlEntities(
+		html
+			.replace(/<script[\s\S]*?<\/script>/gi, ' ')
+			.replace(/<style[\s\S]*?<\/style>/gi, ' ')
+			.replace(/<[^>]+>/g, ' '),
+	)
+		.replace(/\s+/g, ' ')
+		.trim();
+}
+
+function classifyUnexpectedHtml(html: string): string {
+	const text = htmlToText(html);
+	const lower = text.toLowerCase();
+	if (
+		lower.includes('acceso denegado') ||
+		lower.includes('no autorizado') ||
+		lower.includes('no estas autorizado') ||
+		lower.includes('no estás autorizado') ||
+		lower.includes('no tiene permiso') ||
+		lower.includes('no tienes permiso') ||
+		lower.includes('no tiene acceso') ||
+		lower.includes('permission denied') ||
+		lower.includes('unauthorized') ||
+		lower.includes('forbidden')
+	) {
+		return 'detected an access/security restriction';
+	}
+
+	if (
+		lower.includes('documento protegido') ||
+		lower.includes('archivo protegido') ||
+		lower.includes('seguridad') ||
+		lower.includes('validar identidad') ||
+		lower.includes('validación') ||
+		lower.includes('firma electrónica') ||
+		lower.includes('firmar documento')
+	) {
+		return 'detected a protected-document page';
+	}
+
+	if (lower.includes('no encontrado') || lower.includes('not found')) {
+		return 'detected a not-found page';
+	}
+
+	const title = extractHtmlTitle(html);
+	return title ? `HTML page title: "${title}"` : 'HTML page had no title';
+}
+
+function unexpectedHtmlDownloadMessage(html: string, pathname: string): string {
+	const detail = classifyUnexpectedHtml(html);
+	return `Legajox returned an HTML page while downloading ${pathname} instead of a document file (${detail}). The scraped URL may not be a direct file URL, or this Legajox user may lack permission to download the protected document.`;
+}
+
 function assertDownloadedContent(
 	buffer: Buffer,
 	contentType: string | null,
@@ -185,9 +259,7 @@ function assertDownloadedContent(
 	}
 
 	if (!contentDisposition) {
-		throw new Error(
-			`Unexpected HTML response while downloading ${pathname}; expected a document file.`,
-		);
+		throw new Error(unexpectedHtmlDownloadMessage(html, pathname));
 	}
 }
 
@@ -263,8 +335,19 @@ async function downloadFile(
 	estado: 'ok' | 'duplicado';
 }> {
 	const parsed = normalizeLegajoxUrl(url);
+	const referer = dir ? `${BASE_URL}${dir}` : `${BASE_URL}/documentos`;
 	const response = await fetch(parsed.toString(), {
-		headers: legajoxHeaders(cookie, '*/*'),
+		headers: {
+			...legajoxHeaders(
+				cookie,
+				'text/html,application/xhtml+xml,application/xml;q=0.9,application/pdf,application/octet-stream,*/*;q=0.8',
+			),
+			Referer: referer,
+			'Sec-Fetch-Dest': 'document',
+			'Sec-Fetch-Mode': 'navigate',
+			'Sec-Fetch-Site': 'same-origin',
+			'Upgrade-Insecure-Requests': '1',
+		},
 	});
 	const responseUrl = response.url || parsed.toString();
 	const responseParsed = normalizeLegajoxUrl(responseUrl);
@@ -415,7 +498,7 @@ export async function processDirs(
 				if (isAuthError(err)) throw err;
 
 				const msg = err instanceof Error ? err.message : String(err);
-				const { fileName } = resolveDownloadTarget(doc.url, dir);
+				const { fileName } = resolveDownloadTarget(doc.url, dir, doc.nombre);
 				results.push({
 					nombre: fileName,
 					extension: extractExtension(fileName),
