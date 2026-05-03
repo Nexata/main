@@ -412,7 +412,7 @@ export function useSetBatchBilling() {
 export async function getUsdArsQuote() {
 	return await withAuthRetry(() =>
 		apiClient.public['usd-ars-quote'].get({
-			$headers: { language: undefined },
+			$headers: {},
 		}),
 	);
 }

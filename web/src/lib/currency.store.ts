@@ -10,7 +10,7 @@ type CurrencyState = {
 export const useCurrencyStore = create<CurrencyState>()(
 	persist(
 		(set) => ({
-			showARS: false,
+			showARS: true,
 			setShowARS: (v) => set({ showARS: v }),
 			toggleCurrency: () => set((s) => ({ showARS: !s.showARS })),
 		}),
