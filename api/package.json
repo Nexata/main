@@ -5,6 +5,7 @@
 		"dev": "bun run --watch src/index.ts",
 		"mig": "bunx drizzle-kit generate",
 		"mig:push": "bunx drizzle-kit migrate",
+		"prod:mig:push": "ENV=production bunx drizzle-kit migrate",
 		"reembed:chunks": "bun run scripts/reembed-chunks.ts",
 		"check": "biome check --fix --unsafe --verbose"
 	},

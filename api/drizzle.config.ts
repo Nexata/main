@@ -17,6 +17,9 @@ export default defineConfig({
 	strict: true,
 
 	dbCredentials: {
-		url: process.env.DATABASE_URL ?? '',
+		url:
+			(process.env.ENV === 'production'
+				? process.env.PROD_DATABASE_URL
+				: process.env.DATABASE_URL) ?? '',
 	},
 }) satisfies Config;
