@@ -21,6 +21,7 @@ type TimelineEntry = {
 type TimelineData = {
   years: number[];
   entries: TimelineEntry[];
+  pointTimeline?: boolean;
 };
 
 type TimelineChartProps = {
@@ -123,7 +124,12 @@ function parseTimeline(text: string): TimelineData {
         (yearPositions[yearPositions.length - 1]!.year - yearPositions[0]!.year)
       : 6; // fallback
 
-  // Step 2: Parse entry lines
+  const pointEntries = parsePointTimelineEntries(lines, yearPositions);
+  if (pointEntries.length >= 2) {
+    return { years, entries: pointEntries, pointTimeline: true };
+  }
+
+  // Step 2: Parse range entry lines
   const rangeEntries: TimelineEntry[] = [];
 
   for (const line of lines) {
@@ -199,11 +205,7 @@ function parseTimeline(text: string): TimelineData {
     });
   }
 
-  if (rangeEntries.length > 0) {
-    return { years, entries: rangeEntries };
-  }
-
-  return { years, entries: parsePointTimelineEntries(lines, yearPositions) };
+  return { years, entries: rangeEntries };
 }
 
 function parsePointTimelineEntries(
@@ -335,6 +337,10 @@ export function TimelineChart({ content }: TimelineChartProps) {
   const data = useMemo(() => parseTimeline(content), [content]);
 
   if (data.years.length === 0 || data.entries.length === 0) return null;
+
+  if (data.pointTimeline) {
+    return <PointTimelineChart data={data} />;
+  }
 
   const minYear = Math.min(...data.years);
   const maxYear = Math.max(...data.years) + 1; // +1 for ongoing items
@@ -552,6 +558,69 @@ export function TimelineChart({ content }: TimelineChartProps) {
                       )}
                     </div>
                   )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PointTimelineChart({ data }: { data: TimelineData }) {
+  const firstYear = Math.floor(data.entries[0]?.startYear ?? data.years[0]!);
+  const lastYear = Math.floor(data.entries[data.entries.length - 1]?.startYear ?? data.years[data.years.length - 1]!);
+
+  return (
+    <div className="my-4 overflow-hidden rounded-xl border border-border/60 bg-card shadow-sm">
+      <div className="flex h-11 items-center justify-between border-b border-border/40 bg-muted/30 px-4">
+        <div className="flex items-center gap-2.5">
+          <svg
+            className="size-4 text-primary/70"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <line x1="12" y1="4" x2="12" y2="20" />
+            <circle cx="12" cy="7" r="1.5" fill="currentColor" />
+            <circle cx="12" cy="12" r="1.5" fill="currentColor" />
+            <circle cx="12" cy="17" r="1.5" fill="currentColor" />
+          </svg>
+          <span className="text-sm font-medium text-foreground/80">
+            Línea de tiempo
+          </span>
+        </div>
+        <span className="text-[10px] font-mono text-muted-foreground/35 select-none">
+          {firstYear === lastYear ? firstYear : `${firstYear}–${lastYear}`}
+        </span>
+      </div>
+
+      <div className="px-4 py-3 sm:px-5">
+        <div className="relative space-y-2">
+          <div className="absolute bottom-4 left-[5.5rem] top-4 w-px bg-border/50 sm:left-[6.5rem]" />
+          {data.entries.map((entry, index) => {
+            const color = BAR_COLORS[index % BAR_COLORS.length]!;
+            const year = Math.floor(entry.startYear);
+
+            return (
+              <div key={`${entry.name}-${index}`} className="relative grid grid-cols-[4.75rem_1rem_1fr] items-start gap-3 py-1 sm:grid-cols-[5.75rem_1rem_1fr]">
+                <div className="pt-0.5 text-right font-mono text-[11px] text-muted-foreground/70">
+                  {entry.dateLabel?.replace(`/${year}`, "") ?? year}
+                </div>
+                <div className="relative z-10 flex justify-center pt-1.5">
+                  <span className={cn("size-2.5 rounded-full ring-4 ring-card", color.dot)} />
+                </div>
+                <div className="rounded-lg border border-border/35 bg-muted/15 px-3 py-2">
+                  <div className="text-sm font-medium leading-snug text-foreground/85">
+                    {entry.name}
+                  </div>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    {entry.dateLabel}
+                  </div>
                 </div>
               </div>
             );
