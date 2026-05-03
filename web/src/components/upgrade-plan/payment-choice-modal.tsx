@@ -2,6 +2,7 @@ import { CreditCard, CalendarRange, Percent } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import { Button } from "@/components/ui/button";
+import { PaymentMethodModal } from "@/components/payment-method/payment-method-modal";
 import {
   "components.payment_choice_modal.title" as payment_choice_title,
   "components.payment_choice_modal.subtitle" as payment_choice_subtitle,
@@ -13,14 +14,15 @@ import {
   "components.payment_choice_modal.pay_advance_badge" as payment_choice_pay_advance_badge,
   "components.payment_choice_modal.pay_advance_button" as payment_choice_pay_advance_button,
 } from "@/paraglide/messages.js";
-import { useGetPaymentMpCheckout } from "@/lib/admin";
-import { getLocale } from "@/paraglide/runtime";
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button";
+import { useState } from "react";
 
 type PaymentChoiceModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   billId: string | null;
+  amount: string | number | null;
+  usdArsQuote?: number | null;
   onSelectAdvance: () => void;
 };
 
@@ -28,18 +30,21 @@ export function PaymentChoiceModal({
   open,
   onOpenChange,
   billId,
+  amount,
+  usdArsQuote,
   onSelectAdvance,
 }: PaymentChoiceModalProps) {
-  const getCheckout = useGetPaymentMpCheckout();
+  const [paymentOpen, setPaymentOpen] = useState(false);
+  const [paymentBill, setPaymentBill] = useState<{
+    billId: string;
+    amount: string | number | null;
+  } | null>(null);
 
   const handlePayNow = async () => {
     if (!billId) return;
-    const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-    const language = getLocale();
-    const checkout = await getCheckout(billId, redirect, language);
-    if (checkout?.init_point) {
-      window.open(checkout.init_point, "_self");
-    }
+    setPaymentBill({ billId, amount });
+    onOpenChange(false);
+    setPaymentOpen(true);
   };
 
   const handlePayAdvance = () => {
@@ -48,8 +53,9 @@ export function PaymentChoiceModal({
   };
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
         className="
           w-[95vw] sm:w-[560px]
           min-w-[95vw] sm:min-w-[560px]
@@ -156,7 +162,20 @@ export function PaymentChoiceModal({
             </div>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <PaymentMethodModal
+        open={paymentOpen}
+        onOpenChange={(nextOpen) => {
+          setPaymentOpen(nextOpen);
+          if (!nextOpen) setPaymentBill(null);
+        }}
+        billId={paymentBill?.billId ?? null}
+        amount={paymentBill?.amount ?? null}
+        redirect={`${import.meta.env.VITE_FRONT_URL}/adminsettings`}
+        usdArsQuote={usdArsQuote}
+      />
+    </>
   );
 }

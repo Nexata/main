@@ -1,4 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import type { Language } from '@/lib/user';
 import { apiClient, withAuthRetry } from '@/api';
 
 // Consumptions
@@ -292,7 +293,7 @@ export function useCreateBillingRefill() {
 export async function getPaymentMpCheckout(
 	billId: string,
 	redirect?: string,
-	language?: string,
+	language?: Language,
 ) {
 	return await withAuthRetry((headers) =>
 		apiClient.payment.mp[billId]!.get({
@@ -303,7 +304,7 @@ export async function getPaymentMpCheckout(
 }
 
 export function useGetPaymentMpCheckout() {
-	return async (billId: string, redirect?: string, language?: string) => {
+	return async (billId: string, redirect?: string, language?: Language) => {
 		return await getPaymentMpCheckout(billId, redirect, language);
 	};
 }
@@ -320,8 +321,8 @@ export async function getBillingBills(params: BillingBillsParams = {}) {
 		apiClient.admin.billing.bills.get({
 			$headers: headers,
 			$query: {
-				...(params.cursor ? { cursor: params.cursor } : {}),
-				...(params.limit ? { limit: params.limit } : {}),
+				cursor: params.cursor ?? undefined,
+				limit: params.limit ?? 100,
 			},
 		}),
 	);
@@ -409,9 +410,9 @@ export function useSetBatchBilling() {
 // ---------- USD/ARS Quote ----------
 
 export async function getUsdArsQuote() {
-	return await withAuthRetry((headers) =>
+	return await withAuthRetry(() =>
 		apiClient.public['usd-ars-quote'].get({
-			$headers: headers,
+			$headers: { language: undefined },
 		}),
 	);
 }

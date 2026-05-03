@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { CreditCard, Package, Zap } from "lucide-react";
 import { CurrencyToggle } from "@/components/currency-toggle/currency-toggle";
+import { PaymentMethodModal } from "@/components/payment-method/payment-method-modal";
 import {
   'components.buy_messages_modal.title' as components_buy_messages_modal_title,
   'components.buy_messages_modal.subtitle' as components_buy_messages_modal_subtitle,
@@ -17,9 +18,8 @@ import {
   'components.buy_messages_modal.custom.buy_button' as components_buy_messages_modal_custom_buy_button
 } from '@/paraglide/messages.js';
 import { useMemo, useState } from "react";
-import { useCreateBillingRefill, useGetPaymentMpCheckout, useUsdArsQuote } from "@/lib/admin";
+import { useCreateBillingRefill, useUsdArsQuote } from "@/lib/admin";
 import { useCurrencyStore, formatAmount, formatAmountUnit } from "@/lib/currency.store";
-import { getLocale } from "@/paraglide/runtime";
 
 type BuyMessagesModalProps = {
   open: boolean;
@@ -35,8 +35,11 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
   const PACK_1000 = { qty: 1000, unit: PACK_PRICE, total: parseFloat((1000 * PACK_PRICE).toFixed(2)), originalTotal: parseFloat((1000 * BASE_PRICE).toFixed(2)) };
 
   const [customAmount, setCustomAmount] = useState<string>("");
+  const [paymentBill, setPaymentBill] = useState<{
+    billId: string;
+    amount: number;
+  } | null>(null);
   const refill = useCreateBillingRefill();
-  const getCheckout = useGetPaymentMpCheckout();
   const { data: usdArsQuote } = useUsdArsQuote();
   const quote = (usdArsQuote as number | null | undefined) ?? null;
   const showARS = useCurrencyStore((s) => s.showARS);
@@ -47,12 +50,9 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
   const handleBuy = async (messages: number) => {
     if (!messages || messages <= 0) return;
 
-    const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-    const language = getLocale();
-
-    const { billId } = await refill(messages);
-    const checkout = await getCheckout(billId, redirect, language);
-    if (checkout?.init_point) window.open(checkout.init_point, "_self");
+    const { billId, amount } = await refill(messages);
+    onOpenChange(false);
+    setPaymentBill({ billId, amount });
   };
 
   const totalPrice = useMemo(() => {
@@ -63,8 +63,9 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
 
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
       className="
       w-[95vw] sm:w-[80vw] lg:w-[60vw]
       min-w-[95vw] sm:min-w-[80vw] lg:min-w-[60vw]
@@ -188,7 +189,19 @@ export function BuyMessagesModal({ open, onOpenChange }: BuyMessagesModalProps) 
             <p className="text-xs text-muted-foreground">{components_buy_messages_modal_custom_helper()}</p>
           </div>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <PaymentMethodModal
+        open={paymentBill !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPaymentBill(null);
+        }}
+        billId={paymentBill?.billId ?? null}
+        amount={paymentBill?.amount ?? null}
+        redirect={`${import.meta.env.VITE_FRONT_URL}/adminsettings`}
+        usdArsQuote={quote}
+      />
+    </>
   );
 }

@@ -3,6 +3,7 @@ import { Calendar, Loader2, Percent, Tag } from "lucide-react";
 import { useState } from "react";
 import { CurrencyToggle } from "@/components/currency-toggle/currency-toggle";
 import { AsyncConfirmButton } from "@/components/async-confirm-button/async-confirm-button";
+import { PaymentMethodModal } from "@/components/payment-method/payment-method-modal";
 import { Dialog, DialogContent, DialogHeader } from "@/components/ui/dialog";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -31,12 +32,10 @@ import {
 import {
   useBatchBillingPreview,
   useSetBatchBilling,
-  useGetPaymentMpCheckout,
 } from "@/lib/admin";
 import { useCurrencyStore, formatAmount } from "@/lib/currency.store";
 import { infoToast } from "@/components/info-toast/info-toast";
 import { extractErrorText } from "@/lib/error";
-import { getLocale } from "@/paraglide/runtime";
 
 type BatchBillingModalProps = {
   open: boolean;
@@ -59,12 +58,15 @@ export function BatchBillingModal({
   usdArsQuote,
 }: BatchBillingModalProps) {
   const [months, setMonths] = useState(1);
+  const [paymentBill, setPaymentBill] = useState<{
+    billId: string;
+    amount: number;
+  } | null>(null);
   const { data: preview, isLoading: previewLoading } = useBatchBillingPreview(
     months,
     open,
   );
   const setBatch = useSetBatchBilling();
-  const getCheckout = useGetPaymentMpCheckout();
   const showARS = useCurrencyStore((s) => s.showARS);
   const quote = (usdArsQuote as number | null | undefined) ?? null;
 
@@ -81,10 +83,7 @@ export function BatchBillingModal({
       onOpenChange(false);
 
       if (res?.billId) {
-        const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-        const language = getLocale();
-        const checkout = await getCheckout(res.billId, redirect, language);
-        if (checkout?.init_point) window.open(checkout.init_point, "_self");
+        setPaymentBill({ billId: res.billId, amount: res.amount });
       }
     } catch (error) {
       infoToast.error(toastId, { title: batch_error_toast(), description: extractErrorText(error) });
@@ -95,8 +94,9 @@ export function BatchBillingModal({
   const hasDiscount = discountRate > 0;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent
         className="
           w-[95vw] sm:w-[480px]
           min-w-[95vw] sm:min-w-[480px]
@@ -281,7 +281,19 @@ export function BatchBillingModal({
             {batch_confirm_button()}
           </AsyncConfirmButton>
         </div>
-      </DialogContent>
-    </Dialog>
+        </DialogContent>
+      </Dialog>
+
+      <PaymentMethodModal
+        open={paymentBill !== null}
+        onOpenChange={(nextOpen) => {
+          if (!nextOpen) setPaymentBill(null);
+        }}
+        billId={paymentBill?.billId ?? null}
+        amount={paymentBill?.amount ?? null}
+        redirect={`${import.meta.env.VITE_FRONT_URL}/adminsettings`}
+        usdArsQuote={quote}
+      />
+    </>
   );
 }

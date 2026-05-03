@@ -10,7 +10,6 @@ import {
 	CheckCircle2,
 	CreditCard,
 	Filter,
-	Loader2,
 	MessageSquarePlus,
 	Pencil,
 	Settings,
@@ -45,6 +44,7 @@ import {
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { PaymentMethodModal } from '@/components/payment-method/payment-method-modal';
 import {
 	Popover,
 	PopoverContent,
@@ -81,7 +81,6 @@ import {
 	useDeleteUser,
 	useEditTenant,
 	useEditUser,
-	useGetPaymentMpCheckout,
 	useUsdArsQuote,
 	useUsers,
 } from '@/lib/admin';
@@ -286,9 +285,10 @@ function CompanyOverviewSection() {
 	const editTenantFn = useEditTenant();
 	const [buyMessagesOpen, setBuyMessagesOpen] = useState(false);
 	const [upgradePlanOpen, setUpgradePlanOpen] = useState(false);
-	const [paymentChoiceBillId, setPaymentChoiceBillId] = useState<string | null>(
-		null,
-	);
+	const [paymentChoiceBill, setPaymentChoiceBill] = useState<{
+		billId: string;
+		amount: number;
+	} | null>(null);
 	const [batchAfterUpgradeOpen, setBatchAfterUpgradeOpen] = useState(false);
 	const { data: usage, isLoading: usageLoading } = useBillingUsage();
 	const { data: usdArsQuoteData } = useUsdArsQuote();
@@ -548,22 +548,24 @@ function CompanyOverviewSection() {
 							});
 						}
 					}}
-					onPlanUpgraded={(billId) => {
+					onPlanUpgraded={(bill) => {
 						queryClient.invalidateQueries({
 							queryKey: ['my-tenant'],
 						});
-						setPaymentChoiceBillId(billId);
+						setPaymentChoiceBill(bill);
 					}}
 				/>
 
 				<PaymentChoiceModal
-					open={paymentChoiceBillId !== null}
+					open={paymentChoiceBill !== null}
 					onOpenChange={(open) => {
-						if (!open) setPaymentChoiceBillId(null);
+						if (!open) setPaymentChoiceBill(null);
 					}}
-					billId={paymentChoiceBillId}
+					billId={paymentChoiceBill?.billId ?? null}
+					amount={paymentChoiceBill?.amount ?? null}
+					usdArsQuote={usdArsQuote}
 					onSelectAdvance={() => {
-						setPaymentChoiceBillId(null);
+						setPaymentChoiceBill(null);
 						setBatchAfterUpgradeOpen(true);
 					}}
 				/>
@@ -588,7 +590,6 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 	const { data: lastBill, isLoading: lastBillLoading } = useBillingLastBill();
 	const { data: lastRefillBill, isLoading: lastRefillLoading } =
 		useBillingLastRefillBill();
-	const getCheckout = useGetPaymentMpCheckout();
 	const showARS = useCurrencyStore((s) => s.showARS);
 	const BILLS_PAGE_SIZE = 5;
 	const [billsCursorStack, setBillsCursorStack] = useState<(string | null)[]>([
@@ -596,7 +597,10 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 	]);
 	const [billsPage, setBillsPage] = useState(1);
 	const billsCursor = billsCursorStack[billsPage - 1] ?? null;
-	const [payingBillId, setPayingBillId] = useState<string | null>(null);
+	const [paymentBill, setPaymentBill] = useState<{
+		billId: string;
+		amount: string | number;
+	} | null>(null);
 	const [batchModalOpen, setBatchModalOpen] = useState(false);
 
 	const { data: bills, isLoading: billsLoading } = useBillingBills({
@@ -880,27 +884,14 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 											<Button
 												size="sm"
 												className="cursor-pointer flex-1"
-												disabled={payingBillId === lastBill.id}
-												onClick={async () => {
-													setPayingBillId(lastBill.id);
-													try {
-														const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-														const checkout = await getCheckout(
-															lastBill.id,
-															redirect,
-														);
-														if (checkout?.init_point)
-															window.open(checkout.init_point, '_self');
-													} finally {
-														setPayingBillId(null);
-													}
-												}}
+												onClick={() =>
+													setPaymentBill({
+														billId: lastBill.id,
+														amount: lastBill.amount,
+													})
+												}
 											>
-												{payingBillId === lastBill.id ? (
-													<Loader2 className="h-4 w-4 animate-spin mr-2" />
-												) : (
-													<CreditCard className="h-4 w-4 mr-2" />
-												)}
+												<CreditCard className="h-4 w-4 mr-2" />
 												{admin_billing_last_bill_pay_button()}
 											</Button>
 											{lastBill.source !== 'refill' && (
@@ -1186,30 +1177,14 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 																		size="icon"
 																		variant="ghost"
 																		className="h-7 w-7 cursor-pointer text-muted-foreground hover:text-primary hover:bg-primary/10"
-																		disabled={payingBillId === bill.id}
-																		onClick={async () => {
-																			setPayingBillId(bill.id);
-																			try {
-																				const redirect = `${import.meta.env.VITE_FRONT_URL}/adminsettings`;
-																				const checkout = await getCheckout(
-																					bill.id,
-																					redirect,
-																				);
-																				if (checkout?.init_point)
-																					window.open(
-																						checkout.init_point,
-																						'_self',
-																					);
-																			} finally {
-																				setPayingBillId(null);
-																			}
-																		}}
+																		onClick={() =>
+																			setPaymentBill({
+																				billId: bill.id,
+																				amount: bill.amount,
+																			})
+																		}
 																	>
-																		{payingBillId === bill.id ? (
-																			<Loader2 className="h-4 w-4 animate-spin" />
-																		) : (
-																			<CreditCard className="h-4 w-4" />
-																		)}
+																		<CreditCard className="h-4 w-4" />
 																	</Button>
 																</TooltipTrigger>
 																<TooltipContent>
@@ -1271,6 +1246,17 @@ function BillingSection({ usdArsQuote }: BillingSectionProps) {
 				open={batchModalOpen}
 				onOpenChange={setBatchModalOpen}
 				usdArsQuote={usdArsQuote}
+			/>
+
+			<PaymentMethodModal
+				open={paymentBill !== null}
+				onOpenChange={(nextOpen) => {
+					if (!nextOpen) setPaymentBill(null);
+				}}
+				billId={paymentBill?.billId ?? null}
+				amount={paymentBill?.amount ?? null}
+				redirect={`${import.meta.env.VITE_FRONT_URL}/adminsettings`}
+				usdArsQuote={quote}
 			/>
 		</Card>
 	);

@@ -217,7 +217,7 @@ export const billingRouter = new Elysia({ prefix: '/billing' })
 					await cache.del(...usersWithKeys.map((u) => `apikey:${u.id}`));
 			}
 
-			return { plan: body.plan, billId: b.billId };
+			return { plan: body.plan, billId: b.billId, amount: b.amount };
 		},
 		{
 			detail: { summary: 'Change tenant plan' },

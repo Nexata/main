@@ -45,7 +45,7 @@ import { AsyncConfirmButton } from "../async-confirm-button/async-confirm-button
 type UpgradePlanModalProps = {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPlanUpgraded?: (billId: string) => void;
+  onPlanUpgraded?: (bill: { billId: string; amount: number }) => void;
 };
 
 type ModalMode = "upgrade" | "downgrade";
@@ -144,7 +144,7 @@ export function UpgradePlanModal({ open, onOpenChange, onPlanUpgraded }: Upgrade
 
     if (isUpgrade && res?.billId && onPlanUpgraded) {
       onOpenChange(false);
-      onPlanUpgraded(res.billId);
+      onPlanUpgraded({ billId: res.billId, amount: res.amount });
       return;
     }
 
