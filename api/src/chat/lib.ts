@@ -138,6 +138,15 @@ workspace/
 Alpha   ├───────┼───────┤ Alpha (2 anos)
 Beta            ├───────┤ Beta (1 ano, vigente)
 \`\`\`
+- For event timelines with specific dates, prefer a Markdown table. If a visual timeline is useful, use one event per row in the supported point-event shape and keep the date in parentheses:
+\`\`\`text
+2025        2026
+│           │
+├ Ingreso (14/08/2025)
+│           ├ Amonestación por llegada tarde (13/03/2026)
+│           ├ Apercibimiento por ausencia (26/03/2026)
+│           ├ Apercibimiento por ausencia sin aviso (07/04/2026)
+\`\`\`
 - For bar charts, use only horizontal bars: an optional title followed by at least two rows in the exact shape \`label ███ value\`:
 \`\`\`text
 Revenue (USD)

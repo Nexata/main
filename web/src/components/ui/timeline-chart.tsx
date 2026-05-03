@@ -14,6 +14,8 @@ type TimelineEntry = {
   endYear: number;
   ongoing: boolean;
   duration: string;
+  point?: boolean;
+  dateLabel?: string;
 };
 
 type TimelineData = {
@@ -51,6 +53,8 @@ export function isTimeline(text: string): boolean {
   let hasAxisLine = false;
   let hasEntryLine = false;
   let hasDurationHint = false;
+  let hasPointEventLine = false;
+  let dateHintCount = 0;
 
   for (const line of lines) {
     const yearMatches = line.match(yearLineRegex);
@@ -66,12 +70,21 @@ export function isTimeline(text: string): boolean {
       hasEntryLine = true;
     }
 
+    if (/├/.test(line)) {
+      hasPointEventLine = true;
+    }
+
+    dateHintCount += line.match(/\(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\)/g)?.length ?? 0;
+
     if (/\((?:[^)]*a[ñn]os?[^)]*|[^)]*(vigente|continuo|actual|presente)[^)]*)\)/i.test(line)) {
       hasDurationHint = true;
     }
   }
 
-  return hasYearHeader && hasEntryLine && (hasAxisLine || hasDurationHint);
+  return hasYearHeader && (
+    (hasEntryLine && (hasAxisLine || hasDurationHint)) ||
+    (hasPointEventLine && dateHintCount >= 2)
+  );
 }
 
 // ─── Parser ──────────────────────────────────────────────────────────
@@ -111,7 +124,7 @@ function parseTimeline(text: string): TimelineData {
       : 6; // fallback
 
   // Step 2: Parse entry lines
-  const entries: TimelineEntry[] = [];
+  const rangeEntries: TimelineEntry[] = [];
 
   for (const line of lines) {
     if (!/├/.test(line)) continue;
@@ -136,6 +149,10 @@ function parseTimeline(text: string): TimelineData {
     // Extract the numeric year count from the duration string
     const yearCountMatch = duration.match(/(\d+)\s*a[ñn]os?/i);
     let durationYears = yearCountMatch ? parseInt(yearCountMatch[1]!, 10) : 0;
+
+    if (!durationYears && !ongoing && /\(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\)/.test(labelText)) {
+      continue;
+    }
 
     // Extract clean name
     const name = labelText.replace(/\s*\(.+?\)\s*$/, "").trim();
@@ -173,7 +190,7 @@ function parseTimeline(text: string): TimelineData {
       endYear = startYear + 1;
     }
 
-    entries.push({
+    rangeEntries.push({
       name,
       startYear: Math.round(startYear),
       endYear: Math.round(endYear),
@@ -182,7 +199,94 @@ function parseTimeline(text: string): TimelineData {
     });
   }
 
-  return { years, entries };
+  if (rangeEntries.length > 0) {
+    return { years, entries: rangeEntries };
+  }
+
+  return { years, entries: parsePointTimelineEntries(lines, yearPositions) };
+}
+
+function parsePointTimelineEntries(
+  lines: string[],
+  yearPositions: { year: number; pos: number }[],
+): TimelineEntry[] {
+  const entries: TimelineEntry[] = [];
+
+  for (let index = 0; index < lines.length; index++) {
+    const line = lines[index]!;
+    const markerIndex = line.indexOf("├");
+
+    if (markerIndex === -1) continue;
+
+    const chunks = [extractTimelineText(line.slice(markerIndex + 1))];
+
+    for (let nextIndex = index + 1; nextIndex < lines.length; nextIndex++) {
+      const nextLine = lines[nextIndex]!;
+      if (nextLine.includes("├")) break;
+
+      const chunk = extractTimelineText(nextLine);
+      if (chunk) chunks.push(chunk);
+
+      if (/\(\d{1,2}[/-]\d{1,2}(?:[/-]\d{2,4})?\)/.test(chunk)) {
+        index = nextIndex - 1;
+        break;
+      }
+    }
+
+    const label = chunks.filter(Boolean).join(" ").replace(/\s+/g, " ").trim();
+    const dateMatch = label.match(/\((\d{1,2})[/-](\d{1,2})(?:[/-]((?:\d{2}){1,2}))?\)/);
+    if (!label || !dateMatch) continue;
+
+    const year = parseEventYear(markerIndex, yearPositions, dateMatch[3]);
+    const month = Number(dateMatch[2]);
+    const day = Number(dateMatch[1]);
+    const startYear = dateToDecimalYear(year, month, day);
+    const name = label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+
+    entries.push({
+      name,
+      startYear,
+      endYear: startYear,
+      ongoing: false,
+      duration: "",
+      point: true,
+      dateLabel: `${day.toString().padStart(2, "0")}/${month.toString().padStart(2, "0")}/${year}`,
+    });
+  }
+
+  return entries.sort((a, b) => a.startYear - b.startYear);
+}
+
+function extractTimelineText(text: string) {
+  return text
+    .split("│")
+    .map((part) => part.replace(/[─┼┤└┴]/g, " ").trim())
+    .filter((part) => /[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]/.test(part))
+    .join(" ")
+    .trim();
+}
+
+function parseEventYear(
+  markerIndex: number,
+  yearPositions: { year: number; pos: number }[],
+  explicitYear?: string,
+) {
+  if (explicitYear) {
+    const numericYear = Number(explicitYear);
+    return numericYear < 100 ? 2000 + numericYear : numericYear;
+  }
+
+  return yearPositions.reduce((currentYear, yearPosition) =>
+    yearPosition.pos <= markerIndex ? yearPosition.year : currentYear
+  , yearPositions[0]?.year ?? new Date().getFullYear());
+}
+
+function dateToDecimalYear(year: number, month: number, day: number) {
+  const date = new Date(Date.UTC(year, month - 1, day));
+  const start = Date.UTC(year, 0, 1);
+  const end = Date.UTC(year + 1, 0, 1);
+
+  return year + (date.getTime() - start) / (end - start);
 }
 
 function positionToYear(
@@ -312,25 +416,35 @@ export function TimelineChart({ content }: TimelineChartProps) {
                       );
                     })}
 
-                    {/* Bar */}
+                    {/* Bar / point */}
                     <Tooltip>
                       <TooltipTrigger
                         render={
-                          <div
-                            className={cn(
-                              "absolute top-0.5 bottom-0.5 rounded-md transition-colors duration-150 hover:brightness-110 cursor-default",
-                              color.bg,
-                              entry.ongoing && "rounded-r-none",
-                            )}
-                            style={{
-                              left: `${startPct}%`,
-                              width: `${Math.max(widthPct, 1.5)}%`,
-                            }}
-                          />
+                          entry.point ? (
+                            <div
+                              className={cn(
+                                "absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 ring-card transition-transform duration-150 hover:scale-110 cursor-default",
+                                color.dot,
+                              )}
+                              style={{ left: `${startPct}%` }}
+                            />
+                          ) : (
+                            <div
+                              className={cn(
+                                "absolute top-0.5 bottom-0.5 rounded-md transition-colors duration-150 hover:brightness-110 cursor-default",
+                                color.bg,
+                                entry.ongoing && "rounded-r-none",
+                              )}
+                              style={{
+                                left: `${startPct}%`,
+                                width: `${Math.max(widthPct, 1.5)}%`,
+                              }}
+                            />
+                          )
                         }
                       >
                         {/* Inner label for wide bars */}
-                        {widthPct > 18 && (
+                        {!entry.point && widthPct > 18 && (
                           <span className={cn(
                             "absolute inset-0 flex items-center px-2 text-[10px] font-medium truncate pointer-events-none",
                             color.text,
@@ -339,7 +453,7 @@ export function TimelineChart({ content }: TimelineChartProps) {
                           </span>
                         )}
                         {/* Ongoing fade */}
-                        {entry.ongoing && (
+                        {!entry.point && entry.ongoing && (
                           <span className="absolute right-0 top-0 bottom-0 w-5 rounded-r bg-gradient-to-r from-transparent to-card pointer-events-none" />
                         )}
                       </TooltipTrigger>
@@ -347,8 +461,7 @@ export function TimelineChart({ content }: TimelineChartProps) {
                         <div className="text-center">
                           <div className="font-medium">{entry.name}</div>
                           <div className="text-[10px] opacity-80">
-                            {entry.startYear}–
-                            {entry.ongoing ? "presente" : entry.endYear}
+                            {entry.point ? entry.dateLabel : `${entry.startYear}–${entry.ongoing ? "presente" : entry.endYear}`}
                             {entry.duration && ` · ${entry.duration}`}
                           </div>
                         </div>
@@ -400,10 +513,10 @@ export function TimelineChart({ content }: TimelineChartProps) {
                     {entry.name}
                   </span>
                   <span className="text-[10px] text-muted-foreground/50 ml-auto shrink-0 whitespace-nowrap">
-                    {entry.startYear}–{entry.ongoing ? "presente" : entry.endYear}
+                    {entry.point ? entry.dateLabel : `${entry.startYear}–${entry.ongoing ? "presente" : entry.endYear}`}
                   </span>
                 </div>
-                {/* Bar */}
+                {/* Bar / point */}
                 <div className="relative h-5 rounded-md bg-muted/30">
                   {/* Gridlines */}
                   {data.years.map((year) => {
@@ -416,22 +529,31 @@ export function TimelineChart({ content }: TimelineChartProps) {
                       />
                     );
                   })}
-                  {/* Bar fill */}
-                  <div
-                    className={cn(
-                      "absolute top-0 bottom-0 rounded-md transition-colors duration-150",
-                      color.bg,
-                      entry.ongoing && "rounded-r-none",
-                    )}
-                    style={{
-                      left: `${startPct}%`,
-                      width: `${Math.max(widthPct, 2)}%`,
-                    }}
-                  >
-                    {entry.ongoing && (
-                      <span className="absolute right-0 top-0 bottom-0 w-4 rounded-r bg-gradient-to-r from-transparent to-muted/30 pointer-events-none" />
-                    )}
-                  </div>
+                  {entry.point ? (
+                    <div
+                      className={cn(
+                        "absolute top-1/2 size-3 -translate-x-1/2 -translate-y-1/2 rounded-full ring-4 ring-muted/30",
+                        color.dot,
+                      )}
+                      style={{ left: `${startPct}%` }}
+                    />
+                  ) : (
+                    <div
+                      className={cn(
+                        "absolute top-0 bottom-0 rounded-md transition-colors duration-150",
+                        color.bg,
+                        entry.ongoing && "rounded-r-none",
+                      )}
+                      style={{
+                        left: `${startPct}%`,
+                        width: `${Math.max(widthPct, 2)}%`,
+                      }}
+                    >
+                      {entry.ongoing && (
+                        <span className="absolute right-0 top-0 bottom-0 w-4 rounded-r bg-gradient-to-r from-transparent to-muted/30 pointer-events-none" />
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             );

@@ -1,5 +1,5 @@
 import React from "react"
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import type { UIMessage, useChat } from "@ai-sdk/react"
 import { cva, type VariantProps } from "class-variance-authority"
 import { motion, AnimatePresence } from "framer-motion"
@@ -233,6 +233,7 @@ import {
   'chat.retry.button' as chat_retry_button,
   'chat.tool_detail.view_details' as td_view_details,
   'chat.tool_detail.hide_details' as td_hide_details,
+  'chat.meta.syncing' as chat_meta_syncing,
   'common.brain' as common_brain,
 } from '@/paraglide/messages.js';
 import { getLocale } from "@/paraglide/runtime"
@@ -284,6 +285,7 @@ export interface ChatMessageProps {
   onBranchOff?: (messageId: string) => void
   onRetry?: (messageId: string) => void
   isStreaming?: boolean
+  isChatStreaming?: boolean
   isSyncing?: boolean
   isLastInGroup?: boolean
   /** Tool parts collected from subsequent whitespace-only assistant messages */
@@ -299,6 +301,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
   onBranchOff,
   onRetry,
   isStreaming = false,
+  isChatStreaming = false,
   isSyncing = false,
   isLastInGroup = true,
   extraToolParts,
@@ -684,6 +687,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                       key={`reingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isChatStreaming={isChatStreaming}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -702,6 +706,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                       key={`gmail-ingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isChatStreaming={isChatStreaming}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -720,6 +725,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                       key={`outlook-ingest-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isChatStreaming={isChatStreaming}
                       onRespond={(approvalId: string, approved: boolean) => {
                         addToolApprovalResponse?.({ id: approvalId, approved })
                       }}
@@ -739,6 +745,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                       key={`${rawName}-approval-${index}`}
                       part={part}
                       isSyncing={isSyncing}
+                      isChatStreaming={isChatStreaming}
                       icon={TOOL_ICON_MAP[rawName]!}
                       iconAlt={cfg.alt}
                       i18n={cfg}
@@ -2001,16 +2008,82 @@ const submittedToolCalls = new Set<string>()
 // Module-level set to track responded reingest approval calls
 const respondedApprovals = new Set<string>()
 
+// Approval responses need an immediate visual pending state before the SDK flips
+// the chat status to submitted/streaming.
+const pendingApprovalResponses = new Set<string>()
+const startedApprovalResponses = new Set<string>()
+
+function markApprovalProcessing(approvalId: string) {
+  pendingApprovalResponses.add(approvalId)
+}
+
+function useApprovalProcessing(
+  approvalId: string | undefined,
+  isSyncing: boolean,
+  isChatStreaming: boolean,
+) {
+  const [, forceUpdate] = useState(0)
+  const isProcessing = !!approvalId && pendingApprovalResponses.has(approvalId) && !isChatStreaming
+
+  useEffect(() => {
+    if (!approvalId || !pendingApprovalResponses.has(approvalId)) return
+    if (isChatStreaming) {
+      pendingApprovalResponses.delete(approvalId)
+      startedApprovalResponses.delete(approvalId)
+      forceUpdate((value) => value + 1)
+      return
+    }
+    if (isSyncing) {
+      startedApprovalResponses.add(approvalId)
+      return
+    }
+    if (startedApprovalResponses.has(approvalId)) {
+      pendingApprovalResponses.delete(approvalId)
+      startedApprovalResponses.delete(approvalId)
+      forceUpdate((value) => value + 1)
+    }
+  }, [approvalId, isSyncing, isChatStreaming])
+
+  return isProcessing
+}
+
+function ApprovalStateIcon({ isProcessing, wasApproved }: { isProcessing: boolean; wasApproved: boolean }) {
+  if (isProcessing) return <Loader2 className="h-3 w-3 animate-spin text-amber-600 dark:text-amber-400" />
+  return wasApproved
+    ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
+    : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
+}
+
+function ApprovalStateLabel({ isProcessing, approved, denied, wasApproved }: {
+  isProcessing: boolean
+  approved: () => string
+  denied: () => string
+  wasApproved: boolean
+}) {
+  if (isProcessing) {
+    return (
+      <>
+        <Loader2 className="h-3 w-3 animate-spin" />
+        {chat_meta_syncing()}
+      </>
+    )
+  }
+
+  return wasApproved ? approved() : denied()
+}
+
 // ── ReingestApprovalRenderer ────────────────────────────────────────────────
 
 function ReingestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isChatStreaming = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isChatStreaming?: boolean
 }) {
   const approvalId: string | undefined = part.approval?.id
   const state: string | undefined = part.state
@@ -2025,17 +2098,20 @@ function ReingestApprovalRenderer({
   const wasApproved = isResponded
     ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
     : false
+  const isApprovalProcessing = useApprovalProcessing(approvalId, isSyncing, isChatStreaming)
 
   function handleApprove() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
     respondedApprovals.add(`approved:${approvalId}`)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, true)
   }
 
   function handleDeny() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, false)
   }
 
@@ -2051,7 +2127,9 @@ function ReingestApprovalRenderer({
         {/* top state bar */}
         <div className={cn(
           "absolute top-0 left-0 right-0 h-[2px]",
-          isResponded
+          isApprovalProcessing
+            ? "bg-amber-400/70"
+            : isResponded
             ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
             : "bg-amber-400/60"
         )} />
@@ -2074,14 +2152,13 @@ function ReingestApprovalRenderer({
           <div className="flex items-center gap-1.5 shrink-0">
             <div className={cn(
               "flex items-center justify-center h-6 w-6 rounded-full border",
-              wasApproved
+              isApprovalProcessing
+                ? "bg-amber-500/15 border-amber-500/25"
+                : wasApproved
                 ? "bg-green-500/15 border-green-500/25"
                 : "bg-red-500/15 border-red-500/25"
             )}>
-              {wasApproved
-                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-              }
+              <ApprovalStateIcon isProcessing={isApprovalProcessing} wasApproved={wasApproved} />
             </div>
           </div>
         )}
@@ -2091,10 +2168,12 @@ function ReingestApprovalRenderer({
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
         {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-            {wasApproved
-              ? components_reingest_approval_approved()
-              : components_reingest_approval_denied()
-            }
+            <ApprovalStateLabel
+              isProcessing={isApprovalProcessing}
+              approved={components_reingest_approval_approved}
+              denied={components_reingest_approval_denied}
+              wasApproved={wasApproved}
+            />
           </span>
         )}
 
@@ -2132,10 +2211,12 @@ function GmailIngestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isChatStreaming = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isChatStreaming?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -2151,17 +2232,20 @@ function GmailIngestApprovalRenderer({
   const wasApproved = isResponded
     ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
     : false
+  const isApprovalProcessing = useApprovalProcessing(approvalId, isSyncing, isChatStreaming)
 
   function handleApprove() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
     respondedApprovals.add(`approved:${approvalId}`)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, true)
   }
 
   function handleDeny() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, false)
   }
 
@@ -2177,7 +2261,9 @@ function GmailIngestApprovalRenderer({
         {/* top state bar */}
         <div className={cn(
           "absolute top-0 left-0 right-0 h-[2px]",
-          isResponded
+          isApprovalProcessing
+            ? "bg-amber-400/70"
+            : isResponded
             ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
             : "bg-amber-400/60"
         )} />
@@ -2200,14 +2286,13 @@ function GmailIngestApprovalRenderer({
           <div className="flex items-center gap-1.5 shrink-0">
             <div className={cn(
               "flex items-center justify-center h-6 w-6 rounded-full border",
-              wasApproved
+              isApprovalProcessing
+                ? "bg-amber-500/15 border-amber-500/25"
+                : wasApproved
                 ? "bg-green-500/15 border-green-500/25"
                 : "bg-red-500/15 border-red-500/25"
             )}>
-              {wasApproved
-                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-              }
+              <ApprovalStateIcon isProcessing={isApprovalProcessing} wasApproved={wasApproved} />
             </div>
           </div>
         )}
@@ -2234,10 +2319,12 @@ function GmailIngestApprovalRenderer({
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
         {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-            {wasApproved
-              ? components_gmail_ingest_approval_approved()
-              : components_gmail_ingest_approval_denied()
-            }
+            <ApprovalStateLabel
+              isProcessing={isApprovalProcessing}
+              approved={components_gmail_ingest_approval_approved}
+              denied={components_gmail_ingest_approval_denied}
+              wasApproved={wasApproved}
+            />
           </span>
         )}
 
@@ -2275,10 +2362,12 @@ function OutlookIngestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isChatStreaming = false,
 }: {
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isChatStreaming?: boolean
 }) {
   const input = part.input as { messageId?: string; attachmentIds?: string[] } | undefined
   const approvalId: string | undefined = part.approval?.id
@@ -2294,17 +2383,20 @@ function OutlookIngestApprovalRenderer({
   const wasApproved = isResponded
     ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
     : false
+  const isApprovalProcessing = useApprovalProcessing(approvalId, isSyncing, isChatStreaming)
 
   function handleApprove() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
     respondedApprovals.add(`approved:${approvalId}`)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, true)
   }
 
   function handleDeny() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, false)
   }
 
@@ -2320,7 +2412,9 @@ function OutlookIngestApprovalRenderer({
         {/* top state bar */}
         <div className={cn(
           "absolute top-0 left-0 right-0 h-[2px]",
-          isResponded
+          isApprovalProcessing
+            ? "bg-amber-400/70"
+            : isResponded
             ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
             : "bg-amber-400/60"
         )} />
@@ -2343,14 +2437,13 @@ function OutlookIngestApprovalRenderer({
           <div className="flex items-center gap-1.5 shrink-0">
             <div className={cn(
               "flex items-center justify-center h-6 w-6 rounded-full border",
-              wasApproved
+              isApprovalProcessing
+                ? "bg-amber-500/15 border-amber-500/25"
+                : wasApproved
                 ? "bg-green-500/15 border-green-500/25"
                 : "bg-red-500/15 border-red-500/25"
             )}>
-              {wasApproved
-                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-              }
+              <ApprovalStateIcon isProcessing={isApprovalProcessing} wasApproved={wasApproved} />
             </div>
           </div>
         )}
@@ -2377,10 +2470,12 @@ function OutlookIngestApprovalRenderer({
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
         {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-            {wasApproved
-              ? components_outlook_ingest_approval_approved()
-              : components_outlook_ingest_approval_denied()
-            }
+            <ApprovalStateLabel
+              isProcessing={isApprovalProcessing}
+              approved={components_outlook_ingest_approval_approved}
+              denied={components_outlook_ingest_approval_denied}
+              wasApproved={wasApproved}
+            />
           </span>
         )}
 
@@ -2471,6 +2566,7 @@ function ProviderIngestApprovalRenderer({
   part,
   onRespond,
   isSyncing = false,
+  isChatStreaming = false,
   icon,
   iconAlt,
   i18n,
@@ -2478,6 +2574,7 @@ function ProviderIngestApprovalRenderer({
   part: any
   onRespond?: (approvalId: string, approved: boolean) => void
   isSyncing?: boolean
+  isChatStreaming?: boolean
   icon: string
   iconAlt: string
   i18n: ProviderIngestI18n
@@ -2500,17 +2597,20 @@ function ProviderIngestApprovalRenderer({
   const wasApproved = isResponded
     ? part.approval?.approved ?? respondedApprovals.has(`approved:${approvalId}`)
     : false
+  const isApprovalProcessing = useApprovalProcessing(approvalId, isSyncing, isChatStreaming)
 
   function handleApprove() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
     respondedApprovals.add(`approved:${approvalId}`)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, true)
   }
 
   function handleDeny() {
     if (!approvalId || isResponded) return
     respondedApprovals.add(approvalId)
+    markApprovalProcessing(approvalId)
     onRespond?.(approvalId, false)
   }
 
@@ -2526,7 +2626,9 @@ function ProviderIngestApprovalRenderer({
         {/* top state bar */}
         <div className={cn(
           "absolute top-0 left-0 right-0 h-[2px]",
-          isResponded
+          isApprovalProcessing
+            ? "bg-amber-400/70"
+            : isResponded
             ? wasApproved ? "bg-green-500/70" : "bg-red-500/70"
             : "bg-amber-400/60"
         )} />
@@ -2549,14 +2651,13 @@ function ProviderIngestApprovalRenderer({
           <div className="flex items-center gap-1.5 shrink-0">
             <div className={cn(
               "flex items-center justify-center h-6 w-6 rounded-full border",
-              wasApproved
+              isApprovalProcessing
+                ? "bg-amber-500/15 border-amber-500/25"
+                : wasApproved
                 ? "bg-green-500/15 border-green-500/25"
                 : "bg-red-500/15 border-red-500/25"
             )}>
-              {wasApproved
-                ? <Check className="h-3 w-3 text-green-600 dark:text-green-400" />
-                : <X className="h-3 w-3 text-red-600 dark:text-red-400" />
-              }
+              <ApprovalStateIcon isProcessing={isApprovalProcessing} wasApproved={wasApproved} />
             </div>
           </div>
         )}
@@ -2583,10 +2684,12 @@ function ProviderIngestApprovalRenderer({
       <div className="px-4 sm:px-5 py-3 border-t border-border/40 bg-muted/20 flex items-center justify-between gap-3">
         {isResponded && (
           <span className="text-xs text-muted-foreground flex items-center gap-1.5">
-            {wasApproved
-              ? i18n.approved()
-              : i18n.denied()
-            }
+            <ApprovalStateLabel
+              isProcessing={isApprovalProcessing}
+              approved={i18n.approved}
+              denied={i18n.denied}
+              wasApproved={wasApproved}
+            />
           </span>
         )}
 

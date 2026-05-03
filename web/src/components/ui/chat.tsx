@@ -115,6 +115,7 @@ export function Chat({
         onBranchOff,
         onRetry,
         isStreaming: isStreaming && message.id === lastMessage?.id,
+        isChatStreaming: isStreaming,
         isSyncing,
       }
     },
