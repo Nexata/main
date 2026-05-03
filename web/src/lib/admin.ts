@@ -317,15 +317,20 @@ export type BillingBillsParams = {
 };
 
 export async function getBillingBills(params: BillingBillsParams = {}) {
-	return await withAuthRetry((headers) =>
-		apiClient.admin.billing.bills.get({
+	return await withAuthRetry((headers) => {
+		const query: Parameters<
+			typeof apiClient.admin.billing.bills.get
+		>[0]['$query'] = {
+			limit: params.limit ?? 100,
+		};
+
+		if (params.cursor) query.cursor = params.cursor;
+
+		return apiClient.admin.billing.bills.get({
 			$headers: headers,
-			$query: {
-				cursor: params.cursor ?? undefined,
-				limit: params.limit ?? 100,
-			},
-		}),
-	);
+			$query: query,
+		});
+	});
 }
 
 export type BillingBills = Awaited<ReturnType<typeof getBillingBills>>;
