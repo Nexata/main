@@ -755,16 +755,28 @@ export namespace Legajox {
 		slug: string,
 		selection: SelectionInput[],
 	) {
-		// For re-ingest, resolve nexata file IDs back to external IDs
-		const _externalIds: string[] = [];
+		// For re-ingest, resolve Nexata IDs back to Legajox paths.
 		const resolvedSelection: { id: string; isDir: boolean }[] = [];
 
 		for (const item of normalizeSelection(selection)) {
 			if (item.isDir) {
-				// Folder re-ingest: pass the path directly
-				resolvedSelection.push(item);
+				const existing = (
+					await db
+						.select({ externalId: externalDir.externalId })
+						.from(externalDir)
+						.where(
+							and(
+								eq(externalDir.id, item.id),
+								eq(externalDir.provider, FileHost.LEGAJOX),
+							),
+						)
+				).at(0);
+
+				resolvedSelection.push({
+					id: existing?.externalId ?? item.id,
+					isDir: true,
+				});
 			} else {
-				// File re-ingest: look up external ID from file table
 				const existing = (
 					await db
 						.select({ externalId: file.externalId })
