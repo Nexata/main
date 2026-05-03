@@ -16,23 +16,19 @@ RUN bun build \
 	--outfile server \
 	src/index.ts
 
-FROM alpine AS runtime
+FROM debian:bookworm-slim AS runtime
 
 WORKDIR /app
 
-RUN apk add --no-cache \
-	chromium \
-	nss \
-	freetype \
-	harfbuzz \
-	ca-certificates \
-	nodejs \
-	npm \
-	ttf-freefont \
-	libstdc++ && \
-	npm install -g typescript && \
-	addgroup -S app && \
-	adduser -S -G app app
+RUN apt-get update && \
+	apt-get install -y --no-install-recommends \
+		ca-certificates \
+		chromium \
+		fonts-liberation \
+		libnss3 && \
+	rm -rf /var/lib/apt/lists/* && \
+	groupadd --system app && \
+	useradd --system --gid app --home-dir /app app
 
 COPY --from=build /app/server /app/server
 
@@ -44,7 +40,7 @@ ENV PORT=8080
 ENV DEBUG_HEADLESS=true
 ENV PUPPETEER_SKIP_DOWNLOAD=1
 ENV PUPPETEER_NO_SANDBOX=true
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
 
 USER app
 
