@@ -30,16 +30,16 @@ type TimelineChartProps = {
 // ─── Color palette (theme-aware) ─────────────────────────────────────
 
 const BAR_COLORS = [
-  { bg: "bg-blue-500/80 dark:bg-blue-400/70", text: "text-blue-50 dark:text-blue-950", dot: "bg-blue-500 dark:bg-blue-400" },
-  { bg: "bg-emerald-500/80 dark:bg-emerald-400/70", text: "text-emerald-50 dark:text-emerald-950", dot: "bg-emerald-500 dark:bg-emerald-400" },
-  { bg: "bg-violet-500/80 dark:bg-violet-400/70", text: "text-violet-50 dark:text-violet-950", dot: "bg-violet-500 dark:bg-violet-400" },
-  { bg: "bg-amber-500/80 dark:bg-amber-400/70", text: "text-amber-50 dark:text-amber-950", dot: "bg-amber-500 dark:bg-amber-400" },
-  { bg: "bg-rose-500/80 dark:bg-rose-400/70", text: "text-rose-50 dark:text-rose-950", dot: "bg-rose-500 dark:bg-rose-400" },
-  { bg: "bg-cyan-500/80 dark:bg-cyan-400/70", text: "text-cyan-50 dark:text-cyan-950", dot: "bg-cyan-500 dark:bg-cyan-400" },
-  { bg: "bg-orange-500/80 dark:bg-orange-400/70", text: "text-orange-50 dark:text-orange-950", dot: "bg-orange-500 dark:bg-orange-400" },
-  { bg: "bg-pink-500/80 dark:bg-pink-400/70", text: "text-pink-50 dark:text-pink-950", dot: "bg-pink-500 dark:bg-pink-400" },
-  { bg: "bg-teal-500/80 dark:bg-teal-400/70", text: "text-teal-50 dark:text-teal-950", dot: "bg-teal-500 dark:bg-teal-400" },
-  { bg: "bg-indigo-500/80 dark:bg-indigo-400/70", text: "text-indigo-50 dark:text-indigo-950", dot: "bg-indigo-500 dark:bg-indigo-400" },
+  { bg: "bg-blue-500/80 dark:bg-blue-400/70", dot: "bg-blue-500 dark:bg-blue-400" },
+  { bg: "bg-emerald-500/80 dark:bg-emerald-400/70", dot: "bg-emerald-500 dark:bg-emerald-400" },
+  { bg: "bg-violet-500/80 dark:bg-violet-400/70", dot: "bg-violet-500 dark:bg-violet-400" },
+  { bg: "bg-amber-500/80 dark:bg-amber-400/70", dot: "bg-amber-500 dark:bg-amber-400" },
+  { bg: "bg-rose-500/80 dark:bg-rose-400/70", dot: "bg-rose-500 dark:bg-rose-400" },
+  { bg: "bg-cyan-500/80 dark:bg-cyan-400/70", dot: "bg-cyan-500 dark:bg-cyan-400" },
+  { bg: "bg-orange-500/80 dark:bg-orange-400/70", dot: "bg-orange-500 dark:bg-orange-400" },
+  { bg: "bg-pink-500/80 dark:bg-pink-400/70", dot: "bg-pink-500 dark:bg-pink-400" },
+  { bg: "bg-teal-500/80 dark:bg-teal-400/70", dot: "bg-teal-500 dark:bg-teal-400" },
+  { bg: "bg-indigo-500/80 dark:bg-indigo-400/70", dot: "bg-indigo-500 dark:bg-indigo-400" },
 ];
 
 // ─── Detection ───────────────────────────────────────────────────────
@@ -155,7 +155,7 @@ function parseTimeline(text: string): TimelineData {
     }
 
     // Extract clean name
-    const name = labelText.replace(/\s*\(.+?\)\s*$/, "").trim();
+    const name = cleanTimelineLabel(labelText.replace(/\s*\(.+?\)\s*$/, ""));
 
     // Determine startYear from bar position relative to year header positions
     const startYear = positionToYear(barStartIdx, yearPositions, charPerYear, minYear, maxYear);
@@ -241,7 +241,7 @@ function parsePointTimelineEntries(
     const month = Number(dateMatch[2]);
     const day = Number(dateMatch[1]);
     const startYear = dateToDecimalYear(year, month, day);
-    const name = label.replace(/\s*\([^)]*\)\s*$/, "").trim();
+    const name = cleanTimelineLabel(label.replace(/\s*\([^)]*\)\s*$/, ""));
 
     entries.push({
       name,
@@ -263,6 +263,13 @@ function extractTimelineText(text: string) {
     .map((part) => part.replace(/[─┼┤└┴]/g, " ").trim())
     .filter((part) => /[a-zA-ZáéíóúñÁÉÍÓÚÑ0-9]/.test(part))
     .join(" ")
+    .trim();
+}
+
+function cleanTimelineLabel(text: string) {
+  return text
+    .replace(/[│┃┆┊┼─├┤└┴┬┐┌|]+/g, " ")
+    .replace(/\s+/g, " ")
     .trim();
 }
 
@@ -353,7 +360,7 @@ export function TimelineChart({ content }: TimelineChartProps) {
             <circle cx="18" cy="12" r="1.5" fill="currentColor" />
           </svg>
           <span className="text-sm font-medium text-foreground/80">
-            Timeline
+            Línea de tiempo
           </span>
         </div>
         <span className="text-[10px] font-mono text-muted-foreground/35 select-none">
@@ -363,10 +370,10 @@ export function TimelineChart({ content }: TimelineChartProps) {
 
       {/* ── Desktop view (sm+) ──────────────────────────────────── */}
       <div className="hidden sm:block px-4 pt-4 pb-3 overflow-x-auto [scrollbar-width:thin]">
-        <div className="min-w-0">
+        <div className="min-w-[720px] pr-4">
           {/* Year axis */}
           <div className="flex mb-1 pl-[var(--label-w)]" style={{ "--label-w": "130px" } as React.CSSProperties}>
-            <div className="relative flex-1 h-6">
+            <div className="relative h-6">
               {data.years.map((year) => {
                 const pct = ((year - minYear) / totalSpan) * 100;
                 return (
@@ -403,7 +410,7 @@ export function TimelineChart({ content }: TimelineChartProps) {
                   </div>
 
                   {/* Bar area */}
-                  <div className="relative flex-1 h-full">
+                  <div className="relative h-full min-w-0 flex-1 rounded-md bg-muted/10">
                     {/* Vertical gridlines */}
                     {data.years.map((year) => {
                       const pct = ((year - minYear) / totalSpan) * 100;
@@ -443,15 +450,6 @@ export function TimelineChart({ content }: TimelineChartProps) {
                           )
                         }
                       >
-                        {/* Inner label for wide bars */}
-                        {!entry.point && widthPct > 18 && (
-                          <span className={cn(
-                            "absolute inset-0 flex items-center px-2 text-[10px] font-medium truncate pointer-events-none",
-                            color.text,
-                          )}>
-                            {entry.name}
-                          </span>
-                        )}
                         {/* Ongoing fade */}
                         {!entry.point && entry.ongoing && (
                           <span className="absolute right-0 top-0 bottom-0 w-5 rounded-r bg-gradient-to-r from-transparent to-card pointer-events-none" />
