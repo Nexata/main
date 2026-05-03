@@ -182,12 +182,12 @@ function logAbsenceDetail(detail: AbsenceDetail): void {
 }
 
 async function refreshCookie(): Promise<string> {
-	const user = process.env.LEGAJOX_USER;
-	const password = process.env.LEGAJOX_PASSWORD;
+	const user = process.env.DEFAULT_USER;
+	const password = process.env.DEFAULT_PASSWORD;
 
 	if (!user || !password) {
 		throw new Error(
-			'LEGAJOX_USER and LEGAJOX_PASSWORD must be set in .env to auto-refresh the cookie.',
+			'DEFAULT_USER and DEFAULT_PASSWORD must be set in .env to auto-refresh the cookie.',
 		);
 	}
 

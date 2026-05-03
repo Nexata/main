@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Check, Copy, Globe, Link } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import { getLocale } from "@/paraglide/runtime";
 import {
   Dialog,
   DialogContent,
@@ -9,25 +10,42 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import {
-  "chat.share_modal.title" as chat_share_modal_title,
-  "chat.share_modal.description" as chat_share_modal_description,
-  "chat.share_modal.public_label" as chat_share_modal_public_label,
-  "chat.share_modal.clipboard_label" as chat_share_modal_clipboard_label,
-  "chat.share_modal.link_label" as chat_share_modal_link_label,
-  "chat.share_modal.copy_link" as chat_share_modal_copy_link,
-  "chat.share_modal.link_copied" as chat_share_modal_link_copied,
-  "chat.share_modal.done" as chat_share_modal_done,
-} from "@/paraglide/messages.js";
 
-interface ShareSuccessModalProps {
+type ShareSuccessModalProps = {
   open: boolean;
   onClose: () => void;
   shareUrl: string;
+};
+
+function getShareModalCopy() {
+  if (getLocale() === "en") {
+    return {
+      title: "Chat shared",
+      description: "The thread is now public and the share URL was copied to your clipboard.",
+      publicLabel: "Thread is now public",
+      clipboardLabel: "URL copied to clipboard",
+      linkLabel: "Share URL",
+      copyLink: "Copy URL",
+      linkCopied: "Copied",
+      done: "Done",
+    };
+  }
+
+  return {
+    title: "Chat compartido",
+    description: "El thread ahora es público y la URL para compartir se copió al portapapeles.",
+    publicLabel: "El thread ahora es público",
+    clipboardLabel: "URL copiada al portapapeles",
+    linkLabel: "URL para compartir",
+    copyLink: "Copiar URL",
+    linkCopied: "Copiada",
+    done: "Listo",
+  };
 }
 
 export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModalProps) {
   const [copied, setCopied] = useState(false);
+  const copy = getShareModalCopy();
 
   const handleCopy = async () => {
     try {
@@ -40,7 +58,7 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
   };
 
   return (
-    <Dialog open={open} onOpenChange={onClose}>
+    <Dialog open={open} onOpenChange={(nextOpen) => !nextOpen && onClose()}>
       <DialogContent className="max-w-sm">
         <DialogHeader className="items-center text-center">
           {/* Animated success icon */}
@@ -63,10 +81,10 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
           </div>
 
           <DialogTitle className="text-lg font-semibold">
-            {chat_share_modal_title()}
+            {copy.title}
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
-            {chat_share_modal_description()}
+            {copy.description}
           </DialogDescription>
         </DialogHeader>
 
@@ -81,13 +99,13 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
             <div className="flex items-center gap-2.5 rounded-lg border border-emerald-500/25 bg-emerald-50 px-3 py-2 dark:bg-emerald-950/30">
               <Globe className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
               <span className="text-sm font-medium text-emerald-700 dark:text-emerald-300">
-                {chat_share_modal_public_label()}
+                {copy.publicLabel}
               </span>
             </div>
             <div className="flex items-center gap-2.5 rounded-lg border border-blue-500/25 bg-blue-50 px-3 py-2 dark:bg-blue-950/30">
               <Check className="h-4 w-4 shrink-0 text-blue-600 dark:text-blue-400" />
               <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                {chat_share_modal_clipboard_label()}
+                {copy.clipboardLabel}
               </span>
             </div>
           </motion.div>
@@ -101,7 +119,7 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
           >
             <span className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
               <Link className="h-3.5 w-3.5" />
-              {chat_share_modal_link_label()}
+              {copy.linkLabel}
             </span>
             <div className="flex items-center gap-2">
               <div className="flex-1 min-w-0 rounded-lg border border-border bg-muted/50 px-3 py-1.5">
@@ -127,7 +145,7 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
                       className="flex items-center gap-1.5"
                     >
                       <Check className="h-3.5 w-3.5 text-emerald-500" />
-                      <span className="text-xs">{chat_share_modal_link_copied()}</span>
+                      <span className="text-xs">{copy.linkCopied}</span>
                     </motion.span>
                   ) : (
                     <motion.span
@@ -139,7 +157,7 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
                       className="flex items-center gap-1.5"
                     >
                       <Copy className="h-3.5 w-3.5" />
-                      <span className="text-xs">{chat_share_modal_copy_link()}</span>
+                      <span className="text-xs">{copy.copyLink}</span>
                     </motion.span>
                   )}
                 </AnimatePresence>
@@ -158,7 +176,7 @@ export function ShareSuccessModal({ open, onClose, shareUrl }: ShareSuccessModal
               className="w-full mt-1"
               onClick={onClose}
             >
-              {chat_share_modal_done()}
+              {copy.done}
             </Button>
           </motion.div>
         </div>

@@ -33,8 +33,6 @@ import {
 	'chat.meta.error' as chat_meta_error,
 	'chat.meta.title' as chat_meta_title,
 	'common.error' as common_error,
-	'common.loading' as common_loading,
-	'common.success' as common_success,
 } from '@/paraglide/messages.js';
 
 export const Route = createFileRoute('/_private/chat')({
@@ -1000,43 +998,45 @@ export function NexataChat() {
 	}
 
 	return (
-		<div className="flex flex-col h-full w-full min-h-0">
-			<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-				<Chat
-					className="flex-1 min-h-0"
-					messages={messages}
-					input={input}
-					handleInputChange={(e) =>
-						setInput(e.target.value.slice(0, CHAT_INPUT_MAX_CHARS))
-					}
-					handleSubmit={handleSubmit}
-					stop={stop}
-					isGenerating={isSdkStreaming}
-					isHydratingThread={isHydrating}
-					isNewChat={isNewChat}
-					welcomeLabel={welcomeText}
-					isUserLoading={isMeLoading}
-					setExtraReason={setExtraReasonPersisted}
-					addToolOutput={isReadOnly ? undefined : addToolOutput}
-					addToolApprovalResponse={
-						isReadOnly ? undefined : addToolApprovalResponse
-					}
-					onEditMessage={isReadOnly ? undefined : handleEditMessage}
-					onBranchOff={isReadOnly ? undefined : handleBranchOff}
-					onRetry={isReadOnly ? undefined : handleRetry}
-					isReadOnly={isReadOnly}
-					isSyncing={isSyncing}
-					onShareThread={canShareThread ? handleShareThread : undefined}
-					onLoadOlderMessages={loadOlderMessages}
-					isFetchingOlderMessages={isFetchingOlder}
-					hasOlderMessages={hasOlderMessages}
-				/>
+		<>
+			<div className="flex flex-col h-full w-full min-h-0">
+				<div className="flex flex-col flex-1 min-h-0 overflow-hidden">
+					<Chat
+						className="flex-1 min-h-0"
+						messages={messages}
+						input={input}
+						handleInputChange={(e) =>
+							setInput(e.target.value.slice(0, CHAT_INPUT_MAX_CHARS))
+						}
+						handleSubmit={handleSubmit}
+						stop={stop}
+						isGenerating={isSdkStreaming}
+						isHydratingThread={isHydrating}
+						isNewChat={isNewChat}
+						welcomeLabel={welcomeText}
+						isUserLoading={isMeLoading}
+						setExtraReason={setExtraReasonPersisted}
+						addToolOutput={isReadOnly ? undefined : addToolOutput}
+						addToolApprovalResponse={
+							isReadOnly ? undefined : addToolApprovalResponse
+						}
+						onEditMessage={isReadOnly ? undefined : handleEditMessage}
+						onBranchOff={isReadOnly ? undefined : handleBranchOff}
+						onRetry={isReadOnly ? undefined : handleRetry}
+						isReadOnly={isReadOnly}
+						isSyncing={isSyncing}
+						onShareThread={canShareThread ? handleShareThread : undefined}
+						onLoadOlderMessages={loadOlderMessages}
+						isFetchingOlderMessages={isFetchingOlder}
+						hasOlderMessages={hasOlderMessages}
+					/>
+				</div>
 			</div>
-		</div>
-		<ShareSuccessModal
-			open={shareModalOpen}
-			onClose={() => setShareModalOpen(false)}
-			shareUrl={shareUrl}
-		/>
+			<ShareSuccessModal
+				open={shareModalOpen}
+				onClose={() => setShareModalOpen(false)}
+				shareUrl={shareUrl}
+			/>
+		</>
 	);
 }

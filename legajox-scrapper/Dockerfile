@@ -16,7 +16,7 @@ RUN bun build \
 	--outfile server \
 	src/index.ts
 
-FROM alpine:3.22 AS runtime
+FROM alpine AS runtime
 
 WORKDIR /app
 
