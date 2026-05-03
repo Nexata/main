@@ -20,6 +20,7 @@ import pLimit from 'p-limit';
 
 const EMBED_BATCH_SIZE = 200;
 const EMBED_CONCURRENCY = 2;
+const POSTGRES_NUL_BYTE = String.fromCharCode(0);
 
 const MIME_HANDLERS: Record<
 	SupportedMime,
@@ -84,9 +85,11 @@ export async function stringToChunks(
 	fileId: string,
 	chunks: ToStringChunksResult['chunks'],
 ): Promise<[(typeof chunk.$inferInsert)[], number]> {
-	// Filter non-string/empty chunks and truncate to DB column limit
+	// Filter invalid/empty chunks, remove text Postgres cannot store, and truncate to DB column limit
 	const validChunks = chunks
-		.filter((c) => typeof c.text === 'string' && c.text.trim().length > 0)
+		.filter((c) => typeof c.text === 'string')
+		.map((c) => ({ ...c, text: c.text.replaceAll(POSTGRES_NUL_BYTE, '') }))
+		.filter((c) => c.text.trim().length > 0)
 		.map((c) =>
 			c.text.length > EMBEDDING_DB_MAX
 				? { ...c, text: c.text.slice(0, EMBEDDING_DB_MAX) }
