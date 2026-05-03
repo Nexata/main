@@ -92,6 +92,14 @@
 			"approved": "Ingesta de OneDrive aprobada",
 			"denied": "Ingesta de OneDrive denegada"
 		},
+		"legajox_ingest_approval": {
+			"title": "Confirmar ingesta de Legajox",
+			"description": "El asistente quiere ingestar archivos de Legajox",
+			"approve": "Aprobar",
+			"deny": "Denegar",
+			"approved": "Ingesta de Legajox aprobada",
+			"denied": "Ingesta de Legajox denegada"
+		},
 		"ingest_approval": {
 			"attachment_count": "{count} adjunto(s)",
 			"item_count": "{count} elemento(s) seleccionado(s)"

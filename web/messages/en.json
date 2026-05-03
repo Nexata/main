@@ -92,6 +92,14 @@
 			"approved": "OneDrive ingestion approved",
 			"denied": "OneDrive ingestion denied"
 		},
+		"legajox_ingest_approval": {
+			"title": "Confirm Legajox ingestion",
+			"description": "The assistant wants to ingest files from Legajox",
+			"approve": "Approve",
+			"deny": "Deny",
+			"approved": "Legajox ingestion approved",
+			"denied": "Legajox ingestion denied"
+		},
 		"ingest_approval": {
 			"attachment_count": "{count} attachment(s)",
 			"item_count": "{count} item(s) selected"

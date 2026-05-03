@@ -62,6 +62,7 @@ const APPROVAL_TOOLS = new Set([
 	'DriveIngest',
 	'DropboxIngest',
 	'OneDriveIngest',
+	'LegajoxIngest',
 ]);
 
 function normalizeParts(

@@ -235,6 +235,7 @@ import {
   'chat.tool_detail.hide_details' as td_hide_details,
   'common.brain' as common_brain,
 } from '@/paraglide/messages.js';
+import { getLocale } from "@/paraglide/runtime"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover"
@@ -728,7 +729,7 @@ const ChatMessageBase: React.FC<ChatMessageProps> = ({
                 }
 
                 if (
-                  (rawName === "DriveIngest" || rawName === "DropboxIngest" || rawName === "OneDriveIngest") &&
+                  (rawName === "DriveIngest" || rawName === "DropboxIngest" || rawName === "OneDriveIngest" || rawName === "LegajoxIngest") &&
                   ((part as any).state === "approval-requested" || (part as any).state === "approval-responded")
                 ) {
                   flushToolGroup()
@@ -2411,7 +2412,7 @@ function OutlookIngestApprovalRenderer({
   )
 }
 
-// ── ProviderIngestApprovalRenderer (shared for Drive/Dropbox/OneDrive) ───────
+// ── ProviderIngestApprovalRenderer (shared for provider ingests) ─────────────
 
 type ProviderIngestI18n = {
   alt: string
@@ -2421,6 +2422,10 @@ type ProviderIngestI18n = {
   deny: () => string
   approved: () => string
   denied: () => string
+}
+
+function legajoxIngestApprovalText(es: string, en: string) {
+  return getLocale() === "en" ? en : es
 }
 
 const PROVIDER_INGEST_I18N = {
@@ -2451,6 +2456,15 @@ const PROVIDER_INGEST_I18N = {
     approved: components_onedrive_ingest_approval_approved,
     denied: components_onedrive_ingest_approval_denied,
   },
+  LegajoxIngest: {
+    alt: "Legajox",
+    title: () => legajoxIngestApprovalText("Confirmar ingesta de Legajox", "Confirm Legajox ingestion"),
+    description: () => legajoxIngestApprovalText("El asistente quiere ingestar archivos de Legajox", "The assistant wants to ingest files from Legajox"),
+    approve: () => legajoxIngestApprovalText("Aprobar", "Approve"),
+    deny: () => legajoxIngestApprovalText("Denegar", "Deny"),
+    approved: () => legajoxIngestApprovalText("Ingesta de Legajox aprobada", "Legajox ingestion approved"),
+    denied: () => legajoxIngestApprovalText("Ingesta de Legajox denegada", "Legajox ingestion denied"),
+  },
 } as const satisfies Record<string, ProviderIngestI18n>
 
 function ProviderIngestApprovalRenderer({
@@ -2468,7 +2482,11 @@ function ProviderIngestApprovalRenderer({
   iconAlt: string
   i18n: ProviderIngestI18n
 }) {
-  const input = part.input as { selection?: { id: string; isDir: boolean }[] } | undefined
+  const input = part.input as {
+    selection?: { id: string; isDir: boolean }[]
+    Selection?: { Id?: string; id?: string; IsDir?: boolean; isDir?: boolean }[]
+  } | undefined
+  const selection = input?.selection ?? input?.Selection
   const approvalId: string | undefined = part.approval?.id
   const state: string | undefined = part.state
 
@@ -2545,7 +2563,7 @@ function ProviderIngestApprovalRenderer({
       </div>
 
       {/* Item count */}
-      {input?.selection && input.selection.length > 0 && (
+      {selection && selection.length > 0 && (
         <div className="px-4 sm:px-5 py-3 flex items-center gap-2.5">
           <div className={cn(
             "flex items-center gap-2 rounded-lg border p-3 flex-1 transition-all duration-200",
@@ -2555,7 +2573,7 @@ function ProviderIngestApprovalRenderer({
           )}>
             <FolderOpen className="h-4 w-4 text-muted-foreground shrink-0" />
             <span className="text-sm text-foreground">
-              {components_ingest_approval_item_count({ count: input.selection.length })}
+              {components_ingest_approval_item_count({ count: selection.length })}
             </span>
           </div>
         </div>
@@ -2842,4 +2860,5 @@ export const GROUPABLE_TOOL_BLACKLIST = new Set([
   "DriveIngest",
   "DropboxIngest",
   "OneDriveIngest",
+  "LegajoxIngest",
 ])

@@ -16,6 +16,7 @@ import { db, MODEL, REASONING_MODEL } from '@api/env';
 import { NexataFile } from '@api/file';
 import { Dropbox } from '@api/integration/dropbox';
 import { Drive, Gmail } from '@api/integration/google';
+import { isLegajoxAllowed, Legajox } from '@api/integration/legajox';
 import { OneDrive, Outlook } from '@api/integration/microsoft';
 import { FinishReason, message, OauthScope, thread } from '@api/schema';
 import { checkTenantCanChat, checkTenantCanIngest } from '@api/utils/billing';
@@ -520,6 +521,34 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 								activeUser,
 								approvalPart.input as { fileId: string },
 							);
+						} else if (approvalPart.toolName === 'LegajoxIngest') {
+							if (!isLegajoxAllowed(activeUser))
+								throw httpError(
+									HttpCode.FORBIDDEN,
+									ErrorCode.NO_CREDENTIAL_PERMISSION,
+									activeUser.language,
+								);
+
+							const selection =
+								approvalInput.Selection ?? approvalInput.selection;
+
+							if (!Array.isArray(selection))
+								throw httpError(
+									HttpCode.BAD_REQUEST,
+									ErrorCode.TOOL_CALL_NOT_FOUND,
+									activeUser.language,
+								);
+
+							toolOutput = await Legajox.ingest(
+								activeUser.id,
+								activeUser.slug,
+								selection as {
+									Id?: string;
+									id?: string;
+									IsDir?: boolean;
+									isDir?: boolean;
+								}[],
+							);
 						} else {
 							const ingestTools: Record<
 								string,
@@ -982,7 +1011,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 			detail: {
 				summary: 'Answer tool call',
 				description:
-					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for an approval-requiring tool call (e.g. NexataReingest, GmailIngestAttachments, OutlookIngestAttachments). Does not consume a message credit.',
+					'Submits user answers for a NexataAskQuestions tool call, or an approval/denial for an approval-requiring tool call (e.g. NexataReingest, GmailIngestAttachments, OutlookIngestAttachments, LegajoxIngest). Does not consume a message credit.',
 			},
 			body: tObject({
 				threadId: t.String({
