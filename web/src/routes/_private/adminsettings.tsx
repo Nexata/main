@@ -352,6 +352,7 @@ function CompanyOverviewSection() {
 							loading={tenantLoading}
 							logoUrl={myTenant?.logoUrl}
 							displayName={myTenant?.displayName}
+							squareClassName="h-10"
 						/>
 					</div>
 				</div>
