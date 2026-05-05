@@ -6,9 +6,17 @@ import {
 } from '@api/file/lib/types';
 import { withRetry } from '@api/utils/retry';
 import { tObject } from '@api/utils/type';
-import { generateText, jsonSchema, Output } from 'ai';
+import {
+	generateText,
+	jsonSchema,
+	NoObjectGeneratedError,
+	Output,
+	parsePartialJson,
+} from 'ai';
 import { type Static, t } from 'elysia';
 import sharp from 'sharp';
+
+type ImageToTextOutput = Static<typeof imageToTextOutput>;
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {
@@ -22,10 +30,13 @@ function getErrorMessage(error: unknown): string {
 }
 
 export function isIgnorableImageProcessingError(error: unknown): boolean {
+	if (NoObjectGeneratedError.isInstance(error)) return true;
+
 	const message = getErrorMessage(error);
 
 	return (
 		message.includes('No output generated') ||
+		message.includes('No object generated') ||
 		message.includes('Service unavailable') ||
 		message.includes('UNSUPPORTED_MIME_TYPE') ||
 		message.includes('UNSUPPORTED_FILE_TYPE')
@@ -82,13 +93,61 @@ const imageToTextOutput = tObject({
 	]),
 	ocr: t.Union([
 		t.String({
-			minLength: 10,
+			minLength: 1,
 			description:
-				'The text directly extracted from the image, if any. Use markdown syntax to format to represent text style in the image.',
+				'The text directly extracted from the image, if any. Short text such as logos, acronyms, labels, and stamps is valid. Use markdown syntax only when it represents text style in the image.',
 		}),
 		t.Null(),
 	]),
 });
+
+function normalizeTextOutput(value: unknown): ImageToTextOutput | null {
+	if (!value || typeof value !== 'object') return null;
+
+	const output = value as Record<string, unknown>;
+	if (typeof output.hasValue !== 'boolean') return null;
+
+	const description =
+		typeof output.description === 'string' || output.description === null
+			? output.description
+			: null;
+	const ocr =
+		typeof output.ocr === 'string' || output.ocr === null ? output.ocr : null;
+
+	return { hasValue: output.hasValue, description, ocr };
+}
+
+function parseJsonObjectPrefix(text: string): unknown {
+	const start = text.indexOf('{');
+	if (start === -1) return null;
+
+	for (let end = text.length; end > start; end--) {
+		const candidate = text.slice(start, end);
+		try {
+			return JSON.parse(candidate);
+		} catch {}
+	}
+
+	return null;
+}
+
+async function repairImageToTextOutput(
+	error: unknown,
+): Promise<{ output: ImageToTextOutput; usage: number } | null> {
+	if (!NoObjectGeneratedError.isInstance(error) || !error.text) return null;
+
+	const parsed = parseJsonObjectPrefix(error.text);
+	const { value, state } = parsed
+		? { value: parsed, state: 'successful-parse' as const }
+		: await parsePartialJson(error.text);
+
+	if (state === 'failed-parse' || state === 'undefined-input') return null;
+
+	const output = normalizeTextOutput(value);
+	if (!output) return null;
+
+	return { output, usage: error.usage?.totalTokens ?? 0 };
+}
 
 export async function imgToChunks(
 	f: FileLike,
@@ -106,29 +165,46 @@ export async function imgToChunks(
 				.toBuffer()
 		: fileLikeToUint8Array(f);
 
-	const res = await withRetry(() =>
-		generateText({
-			model: VLM_MODEL,
-			output: Output.object({
-				schema: jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
-			}),
-			system:
-				'You are an AI assistant for image processing inside a RAG system. Expected response type: ' +
-				JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties),
-			prompt: [
-				{
-					role: 'user',
-					content: [
-						{ type: 'text', text: 'Assess for the following image.' },
-						{ type: 'image', image },
-					],
-				},
-			],
-		}),
-	);
+	const res = await withRetry(async () => {
+		try {
+			const result = await generateText({
+				model: VLM_MODEL,
+				temperature: 0,
+				output: Output.object({
+					schema:
+						jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
+				}),
+				system: [
+					'You are an AI assistant for image processing inside a RAG system.',
+					'Return only the requested JSON object. Do not wrap it in markdown or add text outside JSON.',
+					'OCR text may be short. Do not pad, decorate, or invent text to meet a length.',
+					`Expected response type: ${JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties)}`,
+				].join('\n'),
+				prompt: [
+					{
+						role: 'user',
+						content: [
+							{ type: 'text', text: 'Assess for the following image.' },
+							{ type: 'image', image },
+						],
+					},
+				],
+			});
+
+			return {
+				output: result.output,
+				usage: result.totalUsage.totalTokens ?? result.usage.totalTokens ?? 0,
+			};
+		} catch (error) {
+			const repaired = await repairImageToTextOutput(error);
+			if (repaired) return repaired;
+
+			throw error;
+		}
+	});
 
 	const chunks: ToStringChunksResult['chunks'] = [];
-	const usage = res.totalUsage.totalTokens ?? res.usage.totalTokens ?? 0;
+	const usage = res.usage;
 
 	if (res.output.hasValue) {
 		if (res.output.description)
