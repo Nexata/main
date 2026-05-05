@@ -16,7 +16,10 @@ import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 const RENDER_SCALE = 2;
-const PAGE_CONCURRENCY = 3;
+const PAGE_CONCURRENCY = Math.max(
+	1,
+	Number(process.env.PDF_PAGE_CONCURRENCY ?? 1),
+);
 
 class CanvasFactory {
 	create(width: number, height: number) {
