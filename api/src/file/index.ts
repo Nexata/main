@@ -692,13 +692,6 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 					activeUser.language,
 				);
 
-			if (body.autoSync && existing.provider === FileHost.LEGAJOX)
-				throw httpError(
-					HttpCode.BAD_REQUEST,
-					ErrorCode.INVALID_REQUEST,
-					activeUser.language,
-				);
-
 			return (
 				await db
 					.update(externalDir)

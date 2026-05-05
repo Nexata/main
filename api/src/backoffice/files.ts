@@ -73,7 +73,7 @@ function groupByCredential(items: SyncItem[]): SyncGroup[] {
 export const filesRouter = new Elysia({ prefix: '/files' }).put(
 	'/sync',
 	async ({ body }) => {
-		const [dirsToSync, filesToSync] = await Promise.all([
+		const [dirsToSync, legajoxDirsToSync, filesToSync] = await Promise.all([
 			db
 				.select({
 					id: externalDir.id,
@@ -88,6 +88,31 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 				.innerJoin(credential, eq(credential.id, externalDir.credentialId))
 				.innerJoin(user, eq(user.id, credential.userId))
 				.where(eq(externalDir.autoSync, true)),
+			db
+				.select({
+					id: externalDir.id,
+					externalId: externalDir.externalId,
+					credentialId: externalDir.credentialId,
+					provider: externalDir.provider,
+					name: externalDir.name,
+					userId: file.userId,
+					slug: user.slug,
+				})
+				.from(externalDir)
+				.innerJoin(
+					file,
+					and(
+						eq(file.externalDirId, externalDir.id),
+						eq(file.provider, FileHost.LEGAJOX),
+					),
+				)
+				.innerJoin(user, eq(user.id, file.userId))
+				.where(
+					and(
+						eq(externalDir.autoSync, true),
+						eq(externalDir.provider, FileHost.LEGAJOX),
+					),
+				),
 			db
 				.select({
 					id: file.id,
@@ -112,6 +137,11 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 
 		const allItems = [
 			...dirsToSync.map((dir) => ({ ...dir, isDir: true })),
+			...legajoxDirsToSync.map((dir) => ({
+				...dir,
+				credentialId: dir.credentialId ?? '',
+				isDir: true,
+			})),
 			...filesToSync.map((f) => ({ ...f, isDir: false as const })),
 		];
 
@@ -120,11 +150,12 @@ export const filesRouter = new Elysia({ prefix: '/files' }).put(
 				.filter(
 					(item) =>
 						typeof item.externalId === 'string' &&
-						typeof item.credentialId === 'string',
+						(item.provider === FileHost.LEGAJOX ||
+							typeof item.credentialId === 'string'),
 				)
 				.map((item) => ({
 					externalId: item.externalId as string,
-					credentialId: item.credentialId as string,
+					credentialId: item.credentialId ?? '',
 					provider: item.provider,
 					name: item.name,
 					userId: item.userId,
