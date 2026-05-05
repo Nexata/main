@@ -44,7 +44,10 @@ import pLimit from 'p-limit';
 
 export { isLegajoxAllowed } from '@api/utils/legajox';
 
-const INGEST_CONCURRENCY = 8;
+const INGEST_CONCURRENCY = Math.max(
+	1,
+	Number(process.env.INGEST_CONCURRENCY ?? 4),
+);
 const RECHECK_INTERVAL = 50;
 const REQUEST_TIMEOUT_MS = 180_000;
 const SLOW_REQUEST_MS = 30_000;

@@ -4,6 +4,7 @@ import {
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
+import { withVlmRateLimit } from '@api/utils/ai-rate-limit';
 import { withRetry } from '@api/utils/retry';
 import { tObject } from '@api/utils/type';
 import {
@@ -17,6 +18,11 @@ import { type Static, t } from 'elysia';
 import sharp from 'sharp';
 
 type ImageToTextOutput = Static<typeof imageToTextOutput>;
+
+const VLM_IMAGE_MAX_DIMENSION = Number(
+	process.env.VLM_IMAGE_MAX_DIMENSION ?? 1600,
+);
+const VLM_IMAGE_MAX_BYTES = Number(process.env.VLM_IMAGE_MAX_BYTES ?? 950_000);
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {
@@ -75,6 +81,23 @@ function validateRawImage(
 		throw new InvalidRawImageError(
 			`Raw image byte length mismatch: expected ${expectedLength}, got ${bytes.byteLength}`,
 		);
+
+	return bytes;
+}
+
+async function prepareImageForVlm(image: FileLike): Promise<Uint8Array> {
+	const bytes = fileLikeToUint8Array(image);
+	if (bytes.byteLength <= VLM_IMAGE_MAX_BYTES) return bytes;
+
+	const pipeline = sharp(bytes).rotate().resize({
+		width: VLM_IMAGE_MAX_DIMENSION,
+		height: VLM_IMAGE_MAX_DIMENSION,
+		fit: 'inside',
+		withoutEnlargement: true,
+	});
+
+	const jpeg = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
+	if (jpeg.byteLength <= bytes.byteLength) return new Uint8Array(jpeg);
 
 	return bytes;
 }
@@ -153,7 +176,7 @@ export async function imgToChunks(
 	f: FileLike,
 	raw?: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
 ): Promise<ToStringChunksResult> {
-	const image = raw
+	const sourceImage = raw
 		? await sharp(validateRawImage(f, raw), {
 				raw: {
 					width: raw.width!,
@@ -164,32 +187,36 @@ export async function imgToChunks(
 				.png()
 				.toBuffer()
 		: fileLikeToUint8Array(f);
+	const image = await prepareImageForVlm(sourceImage);
 
 	const res = await withRetry(async () => {
 		try {
-			const result = await generateText({
-				model: VLM_MODEL,
-				temperature: 0,
-				output: Output.object({
-					schema:
-						jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
+			const result = await withVlmRateLimit(() =>
+				generateText({
+					model: VLM_MODEL,
+					temperature: 0,
+					maxRetries: 0,
+					output: Output.object({
+						schema:
+							jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
+					}),
+					system: [
+						'You are an AI assistant for image processing inside a RAG system.',
+						'Return only the requested JSON object. Do not wrap it in markdown or add text outside JSON.',
+						'OCR text may be short. Do not pad, decorate, or invent text to meet a length.',
+						`Expected response type: ${JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties)}`,
+					].join('\n'),
+					prompt: [
+						{
+							role: 'user',
+							content: [
+								{ type: 'text', text: 'Assess for the following image.' },
+								{ type: 'image', image },
+							],
+						},
+					],
 				}),
-				system: [
-					'You are an AI assistant for image processing inside a RAG system.',
-					'Return only the requested JSON object. Do not wrap it in markdown or add text outside JSON.',
-					'OCR text may be short. Do not pad, decorate, or invent text to meet a length.',
-					`Expected response type: ${JSON.stringify(jsonSchema(imageToTextOutput).jsonSchema.properties)}`,
-				].join('\n'),
-				prompt: [
-					{
-						role: 'user',
-						content: [
-							{ type: 'text', text: 'Assess for the following image.' },
-							{ type: 'image', image },
-						],
-					},
-				],
-			});
+			);
 
 			return {
 				output: result.output,
