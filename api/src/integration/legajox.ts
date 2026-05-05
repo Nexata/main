@@ -797,10 +797,10 @@ export namespace Legajox {
 	export async function ingestFromCredential(
 		userId: string,
 		slug: string,
-		credentialId: string,
+		_credentialId: string,
 		selection: IngestSelection[],
 	): Promise<IngestResult> {
-		return ingestSelection(userId, slug, credentialId, selection);
+		return ingestSelection(userId, slug, undefined, selection);
 	}
 
 	// --- Employees ---
