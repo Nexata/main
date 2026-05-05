@@ -1,5 +1,7 @@
 import {
+	type ImageToChunksInput,
 	InvalidRawImageError,
+	imgsToChunks,
 	imgToChunks,
 	isIgnorableImageProcessingError,
 	isRelevantImage,
@@ -18,7 +20,11 @@ Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 const RENDER_SCALE = 2;
 const PAGE_CONCURRENCY = Math.max(
 	1,
-	Number(process.env.PDF_PAGE_CONCURRENCY ?? 1),
+	Number(process.env.PDF_PAGE_CONCURRENCY ?? 2),
+);
+const PDF_IMAGE_BATCH_SIZE = Math.min(
+	2,
+	Math.max(1, Number(process.env.VLM_IMAGE_BATCH_SIZE ?? 2)),
 );
 
 class CanvasFactory {
@@ -99,6 +105,15 @@ async function renderPageFallback(
 	return rendered.tokenUsage ?? 0;
 }
 
+function isPdfImageDecodeError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : '';
+	return (
+		message.includes('OpenJPEG failed to initialize') ||
+		message.includes('Unable to decode image') ||
+		message.includes('JpxError')
+	);
+}
+
 export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	const pdf = await getDocumentProxy(f, {
 		// biome-ignore lint/suspicious/noExplicitAny: unpdf expects class constructor as Object
@@ -131,36 +146,41 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				}
 
 				try {
+					const imageInputs: ImageToChunksInput[] = [];
 					for (const img of await extractImages(pdf, pageNumber)) {
 						if (!isRelevantImage(img.width, img.height)) continue;
 
-						try {
-							const imgResult = await imgToChunks(img.data, {
+						imageInputs.push({
+							data: img.data,
+							raw: {
 								width: img.width,
 								height: img.height,
 								channels: img.channels,
-							});
+							},
+						});
+					}
 
-							hasImages = hasImages || imgResult.chunks.length > 0;
-							addPageChunks(pageChunks, pageNumber, imgResult);
-							pageUsage += imgResult.tokenUsage ?? 0;
+					for (let j = 0; j < imageInputs.length; j += PDF_IMAGE_BATCH_SIZE) {
+						try {
+							const imgResults = await imgsToChunks(
+								imageInputs.slice(j, j + PDF_IMAGE_BATCH_SIZE),
+							);
+
+							for (const imgResult of imgResults) {
+								hasImages = hasImages || imgResult.chunks.length > 0;
+								addPageChunks(pageChunks, pageNumber, imgResult);
+								pageUsage += imgResult.tokenUsage ?? 0;
+							}
 						} catch (error) {
-							if (error instanceof InvalidRawImageError) {
+							if (
+								error instanceof InvalidRawImageError ||
+								isPdfImageDecodeError(error)
+							) {
 								shouldRenderPageFallback = true;
 								continue;
 							}
 
 							if (isIgnorableImageProcessingError(error)) continue;
-
-							const message = error instanceof Error ? error.message : '';
-							if (
-								message.includes('OpenJPEG failed to initialize') ||
-								message.includes('Unable to decode image') ||
-								message.includes('JpxError')
-							) {
-								shouldRenderPageFallback = true;
-								continue;
-							}
 
 							throw error;
 						}

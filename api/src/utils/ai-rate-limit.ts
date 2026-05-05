@@ -2,9 +2,9 @@ import { log } from '@api/utils/env';
 import { APICallError, RetryError } from 'ai';
 import pLimit from 'p-limit';
 
-const VLM_CONCURRENCY = envInt('VLM_CONCURRENCY', 1, 1);
-const VLM_MIN_DELAY_MS = envInt('VLM_MIN_DELAY_MS', 2_000, 0);
-const VLM_COOLDOWN_MS = envInt('VLM_COOLDOWN_MS', 30_000, 0);
+const VLM_CONCURRENCY = envInt('VLM_CONCURRENCY', 2, 1);
+const VLM_MIN_DELAY_MS = envInt('VLM_MIN_DELAY_MS', 750, 0);
+const VLM_COOLDOWN_MS = envInt('VLM_COOLDOWN_MS', 15_000, 0);
 const VLM_MAX_RETRIES = envInt('VLM_MAX_RETRIES', 6, 0);
 const VLM_BASE_RETRY_DELAY_MS = envInt('VLM_BASE_RETRY_DELAY_MS', 2_000, 0);
 const VLM_MAX_RETRY_DELAY_MS = envInt('VLM_MAX_RETRY_DELAY_MS', 60_000, 1);
