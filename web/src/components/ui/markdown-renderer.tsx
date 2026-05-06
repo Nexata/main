@@ -831,61 +831,154 @@ function isAsciiDiagram(text: string): boolean {
   return false
 }
 
+// ─── Pre-normalizer ──────────────────────────────────────────────────────────
+//
+// Runs before colorization to fix the two most common visual-misalignment
+// sources in LLM-generated diagrams:
+//
+//  ① Mixed-border lines: if a line already contains Unicode box-drawing chars
+//    (U+2500–U+257F), any bare ASCII "|" on that line is also a border—upgrade
+//    it to │ (U+2502) so every glyph uses the same cell width.
+//
+//  ② Pure ASCII-border lines (only |, -, +, space): upgrade the whole line to
+//    Unicode equivalents so the font renders each cell at the correct width.
+//    Also upgrades the ─+─ junction to ─┼─.
+//
+//  ③ Arrow sequences: converts ──> → ──►  and <── → ◄──  (and their ASCII
+//    equivalents --> → ──►  /  <-- → ◄──) so arrows receive their accent
+//    colour and are visually unambiguous.
+//
+function normalizeDiagramContent(raw: string): string {
+  return raw
+    .split("\n")
+    .map((line) => {
+      let l = line
+
+      // ① Lines that already contain box-drawing chars: upgrade ASCII | → │
+      if (/[\u2500-\u257F]/.test(l)) {
+        l = l.replace(/\|/g, "\u2502") // | → │
+      }
+
+      // ② Pure ASCII-border lines (only | - + and spaces)
+      if (/^[ |+\-]*$/.test(l) && /[|+\-]/.test(l.trim())) {
+        l = l
+          .replace(/\|/g, "\u2502")                             // | → │
+          .replace(/-+/g, (m) => "\u2500".repeat(m.length))    // ---  → ───
+          .replace(/\u2500\+\u2500/g, "\u2500\u253C\u2500")    // ─+─  → ─┼─
+      }
+
+      // ③ Arrow normalization (only 2+ char sequences to avoid false positives)
+      l = l
+        // Unicode-dash arrows:  ──> → ──►   <── → ◄──
+        .replace(/(\u2500{2,})>/g, "$1\u25BA")
+        .replace(/<(\u2500{2,})/g, "\u25C4$1")
+        // ASCII-dash arrows:  --> → ──►   <-- → ◄──
+        .replace(/(-{2,})>/g, (_, d: string) => "\u2500".repeat(d.length) + "\u25BA")
+        .replace(/<(-{2,})/g, (_, d: string) => "\u25C4" + "\u2500".repeat(d.length))
+
+      return l
+    })
+    .join("\n")
+}
+
+// ─── Regex tokenizer ─────────────────────────────────────────────────────────
+//
+// Each capture group covers one semantic category.  Horizontal-line runs are
+// matched greedily (G3) so a whole row of ─────── becomes one span instead of
+// one per character.
+//
+//  G1  corners       ┌ ┐ └ ┘ ╔ ╗ ╚ ╝
+//  G2  junctions     ├ ┤ ┬ ┴ ┼ ┣ ┫ ┳ ┻ ╋ ╠ ╣ ╦ ╩ ╬
+//  G3  h-lines       ─ ━ ═  (greedy run)
+//  G4  v-lines       │ ┃ ║
+//  G5  arrows        ← → ↑ ↓ ↔ ↕ ⇒ ⇐ ⇑ ⇓ ⟵ ⟶ ⟺  and similar
+//  G6  shapes        ▼ ▲ ▶ ◀ ● ■ □ ○ ◆ ◇ ★ ☆ …  (U+25A0–U+25FF)
+//  G7  block fills   ░ ▒ ▓ █  (U+2580–U+259F)
+const DIAGRAM_TOKEN_RE = new RegExp(
+  "(" +
+    [
+      "[\u250C\u2510\u2514\u2518\u2554\u2557\u255A\u255D]",
+      "[\u251C\u2524\u252C\u2534\u253C\u2523\u252B\u2533\u253B\u254B\u2560\u2563\u2566\u2569\u256C]",
+      "[\u2500\u2501\u2550\u2504\u2505\u2508\u2509]+",
+      "[\u2502\u2503\u2551\u254E\u254F]",
+      "[\u2190-\u21FF]|[\u27F5-\u27FF]|[\u25BA\u25C4]",
+      "[\u25A0-\u25FF]",
+      "[\u2580-\u259F]",
+    ].join(")|(") +
+    ")",
+  "g",
+)
+
+// Tailwind classes per group (index 0 → G1)
+const DIAGRAM_GROUP_CLASSES = [
+  "text-primary/45",           // G1 corners      — subtle, structural
+  "text-primary/70",           // G2 junctions    — slightly more visible
+  "text-muted-foreground/38",  // G3 h-lines      — very muted scaffolding
+  "text-muted-foreground/52",  // G4 v-lines      — slightly more visible
+  "text-primary font-bold",    // G5 arrows       — full primary, bold
+  "text-primary font-semibold",// G6 shapes       — full primary
+  "text-muted-foreground/22",  // G7 block fills  — barely visible fill
+] as const
+
 /**
- * Single-pass colorizer: walks the full content string once, emitting runs of
- * plain text as React.Fragments and special chars (box-drawing, arrows,
- * geometric shapes) as colored <span>s. Newlines are left as-is so the
- * parent <pre> handles them naturally — no line-splitting, no block spans.
+ * Regex-based tokenizer: uses matchAll to split content into semantically
+ * coloured spans and plain-text fragments in a single pass.
+ * Newlines are preserved verbatim so the parent <pre> renders them naturally.
  */
 function colorizeAsciiContent(content: string): React.ReactNode[] {
   const nodes: React.ReactNode[] = []
-  let textAcc = ""
+  let lastIndex = 0
   let keyIdx = 0
 
-  const flush = () => {
-    if (!textAcc) return
-    nodes.push(<React.Fragment key={keyIdx++}>{textAcc}</React.Fragment>)
-    textAcc = ""
-  }
+  for (const match of content.matchAll(DIAGRAM_TOKEN_RE)) {
+    const matchStart = match.index!
 
-  for (const char of content) {
-    const code = char.charCodeAt(0)
-    // U+2500–U+257F  box-drawing  (┌─│└┐┘┬┴┼…)
-    const isBoxChar = code >= 0x2500 && code <= 0x257f
-    // U+2580–U+259F  block elements
-    // U+25A0–U+25FF  geometric shapes (▼▲●■▶◀◆…)
-    // U+2190–U+21FF  arrows (←→↑↓⇒⟶…)
-    const isGeomOrArrow =
-      (code >= 0x2580 && code <= 0x259f) ||
-      (code >= 0x25a0 && code <= 0x25ff) ||
-      (code >= 0x2190 && code <= 0x21ff)
-
-    if (isBoxChar || isGeomOrArrow) {
-      flush()
+    // Plain text before this token
+    if (matchStart > lastIndex) {
       nodes.push(
-        <span
-          key={keyIdx++}
-          className={isBoxChar ? "text-primary/70" : "text-primary font-semibold"}
-        >
-          {char}
-        </span>
+        <React.Fragment key={keyIdx++}>
+          {content.slice(lastIndex, matchStart)}
+        </React.Fragment>,
       )
-    } else {
-      textAcc += char
     }
+
+    // Find which group matched (groups are 1-based; slice(1) makes it 0-based)
+    const groupIndex = match.slice(1).findIndex((g) => g !== undefined)
+    const className = DIAGRAM_GROUP_CLASSES[groupIndex] ?? ""
+
+    nodes.push(
+      <span key={keyIdx++} className={className}>
+        {match[0]}
+      </span>,
+    )
+
+    lastIndex = matchStart + match[0].length
   }
 
-  flush()
+  // Trailing plain text
+  if (lastIndex < content.length) {
+    nodes.push(
+      <React.Fragment key={keyIdx++}>
+        {content.slice(lastIndex)}
+      </React.Fragment>,
+    )
+  }
+
   return nodes
 }
+
+// Explicit monospace font stack — JetBrains Mono / Fira Code / system fallback
+const MONO_FONT_FAMILY =
+  "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace"
 
 const AsciiDiagramRenderer = React.memo(function AsciiDiagramRenderer({
   content,
 }: {
   content: string
 }) {
-  const nodes = useMemo(() => colorizeAsciiContent(content), [content])
-  const hasBoxChars = /[\u2500-\u257F]/.test(content)
+  const normalized = useMemo(() => normalizeDiagramContent(content), [content])
+  const nodes = useMemo(() => colorizeAsciiContent(normalized), [normalized])
+  const hasBoxChars = /[\u2500-\u257F]/.test(normalized)
   const label = hasBoxChars ? "diagram" : "ascii"
 
   return (
@@ -895,9 +988,24 @@ const AsciiDiagramRenderer = React.memo(function AsciiDiagramRenderer({
         <CopyButton content={content} copyMessage="Copied diagram to clipboard" />
       }
     >
-      <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-sm leading-[1.6] text-foreground/90 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent">
-        {nodes}
-      </pre>
+      {/* Inner code-editor surface */}
+      <div className="rounded-lg overflow-hidden ring-1 ring-inset ring-border/20 bg-muted/10">
+        <pre
+          className={cn(
+            "m-0 overflow-x-auto p-5",
+            "whitespace-pre text-[13px] leading-[1.75]",
+            "text-foreground/80 selection:bg-primary/15",
+            "[scrollbar-width:thin]",
+            "[&::-webkit-scrollbar]:h-1.5",
+            "[&::-webkit-scrollbar-thumb]:rounded-full",
+            "[&::-webkit-scrollbar-thumb]:bg-border/50",
+            "[&::-webkit-scrollbar-track]:bg-transparent",
+          )}
+          style={{ fontFamily: MONO_FONT_FAMILY }}
+        >
+          {nodes}
+        </pre>
+      </div>
     </DiagramCard>
   )
 })
