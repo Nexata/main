@@ -351,13 +351,25 @@ function normalizeBatchedTextOutput(
 
 	const images = (value as Record<string, unknown>).images;
 	if (!Array.isArray(images)) return null;
+	const rawIndexes = images
+		.map((item) =>
+			item && typeof item === 'object'
+				? (item as Record<string, unknown>).index
+				: null,
+		)
+		.filter((index): index is number =>
+			Number.isInteger(typeof index === 'number' ? index : NaN),
+		);
+	const usesZeroBasedIndexes = rawIndexes.includes(0);
 
 	const normalized = images
 		.map((item) => {
 			if (!item || typeof item !== 'object') return null;
 
 			const image = item as Record<string, unknown>;
-			const index = typeof image.index === 'number' ? image.index : null;
+			const rawIndex = typeof image.index === 'number' ? image.index : null;
+			const index =
+				rawIndex !== null && usesZeroBasedIndexes ? rawIndex + 1 : rawIndex;
 			if (!index || index < 1 || index > count) return null;
 
 			const output = normalizeTextOutput(image);

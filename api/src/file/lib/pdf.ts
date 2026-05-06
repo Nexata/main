@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import {
 	type ImageToChunksInput,
 	InvalidRawImageError,
@@ -22,6 +23,40 @@ const PAGE_CONCURRENCY = Math.max(
 	1,
 	Number(process.env.PDF_PAGE_CONCURRENCY ?? 2),
 );
+
+type Deferred<T> = {
+	promise: Promise<T>;
+	resolve: (value: T) => void;
+	reject: (error: unknown) => void;
+};
+
+function createDeferred<T>(): Deferred<T> {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return { promise, resolve, reject };
+}
+
+function imageCacheKey(input: ImageToChunksInput): string {
+	const bytes =
+		input.data instanceof Uint8Array
+			? input.data
+			: ArrayBuffer.isView(input.data)
+				? new Uint8Array(
+						input.data.buffer,
+						input.data.byteOffset,
+						input.data.byteLength,
+					)
+				: new Uint8Array(input.data);
+	const hash = createHash('sha256').update(bytes).digest('hex');
+	return [input.raw?.width, input.raw?.height, input.raw?.channels, hash].join(
+		':',
+	);
+}
 
 class CanvasFactory {
 	create(width: number, height: number) {
@@ -126,6 +161,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	const { text, totalPages } = await extractText(pdf);
 
 	const limit = pLimit(PAGE_CONCURRENCY);
+	const imageCache = new Map<string, Promise<ToStringChunksResult>>();
 
 	const pageResults = await Promise.all(
 		Array.from({ length: totalPages }, (_, i) =>
@@ -165,12 +201,41 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 					}
 
 					try {
-						const imgResults = await imgsToChunks(imageInputs, 'best-effort');
+						const newInputs: ImageToChunksInput[] = [];
+						const newDeferreds: Deferred<ToStringChunksResult>[] = [];
+						const imageResults = imageInputs.map((input) => {
+							const key = imageCacheKey(input);
+							const cached = imageCache.get(key);
+							if (cached) return { promise: cached, countUsage: false };
 
-						for (const imgResult of imgResults) {
+							const deferred = createDeferred<ToStringChunksResult>();
+							imageCache.set(key, deferred.promise);
+							newInputs.push(input);
+							newDeferreds.push(deferred);
+							return { promise: deferred.promise, countUsage: true };
+						});
+
+						if (newInputs.length)
+							imgsToChunks(newInputs, 'best-effort').then(
+								(results) => {
+									for (let i = 0; i < newDeferreds.length; i++)
+										newDeferreds[i]!.resolve(results[i]!);
+								},
+								(error) => {
+									for (const deferred of newDeferreds) deferred.reject(error);
+								},
+							);
+
+						const imgResults = await Promise.all(
+							imageResults.map((result) => result.promise),
+						);
+
+						for (let i = 0; i < imgResults.length; i++) {
+							const imgResult = imgResults[i]!;
 							hasImages = hasImages || imgResult.chunks.length > 0;
 							addPageChunks(pageChunks, pageNumber, imgResult);
-							pageUsage += imgResult.tokenUsage ?? 0;
+							if (imageResults[i]?.countUsage)
+								pageUsage += imgResult.tokenUsage ?? 0;
 						}
 					} catch (error) {
 						if (
