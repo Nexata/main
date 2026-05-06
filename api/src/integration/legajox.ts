@@ -50,6 +50,10 @@ const INGEST_CONCURRENCY = Math.max(
 );
 const RECHECK_INTERVAL = 50;
 const REQUEST_TIMEOUT_MS = 180_000;
+const DOWNLOAD_BATCH_SIZE = Math.max(
+	1,
+	Number(process.env.DOWNLOAD_BATCH_SIZE ?? 25),
+);
 const SLOW_REQUEST_MS = 30_000;
 
 function assertLegajoxAccess(activeUser: ActiveUser) {
@@ -486,27 +490,49 @@ export namespace Legajox {
 		credentialId?: string,
 		externalDirId?: string,
 	): Promise<IngestResult> {
-		const data = await request<{
-			cursor: string | null;
-			entries: {
-				id: string;
-				name: string;
-				nexataId: string | null;
-				url?: string;
-				size?: number;
-				path?: string;
-				ext?: string;
-				updatedAt?: string;
-			}[];
-		}>('/documents/download', {
-			method: 'POST',
-			body: { selection },
-		});
+		type DownloadEntry = {
+			id: string;
+			name: string;
+			nexataId: string | null;
+			url?: string;
+			size?: number;
+			path?: string;
+			ext?: string;
+			updatedAt?: string;
+		};
 
-		const entries = data.entries.filter(
-			(e) => e.path && e.size !== 0 && isSupportedExt(e.name),
-		);
-		const discardedEntries = data.entries.length - entries.length;
+		const batches: { id: string; isDir: boolean }[][] = [];
+		for (let i = 0; i < selection.length; i += DOWNLOAD_BATCH_SIZE)
+			batches.push(selection.slice(i, i + DOWNLOAD_BATCH_SIZE));
+
+		const allEntries: DownloadEntry[] = [];
+		let discardedEntries = 0;
+
+		for (const batch of batches) {
+			try {
+				const data = await request<{
+					cursor: string | null;
+					entries: DownloadEntry[];
+				}>('/documents/download', {
+					method: 'POST',
+					body: { selection: batch },
+				});
+
+				const batchEntries = data.entries.filter(
+					(e) => e.path && e.size !== 0 && isSupportedExt(e.name),
+				);
+				discardedEntries += data.entries.length - batchEntries.length;
+				allEntries.push(...batchEntries);
+			} catch (err) {
+				captureException(err, {
+					tags: { source: 'Legajox.ingestDownloadedSelection.batch' },
+					extra: { batchSize: batch.length },
+				});
+				discardedEntries += batch.length;
+			}
+		}
+
+		const entries = allEntries;
 
 		const estimates: FileEstimate[] = entries.map((e) => ({
 			sizeBytes: (e.size ?? 0) * 1024 * 1024,
