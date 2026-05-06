@@ -1,6 +1,6 @@
 import {
 	imgToChunks,
-	isIgnorableImageProcessingError,
+	isIgnorableEmbeddedImageProcessingError,
 	isRelevantImage,
 } from '@api/file/lib/image';
 import {
@@ -46,7 +46,7 @@ export async function docToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				try {
 					imgResult = await imgToChunks(data);
 				} catch (error) {
-					if (isIgnorableImageProcessingError(error))
+					if (isIgnorableEmbeddedImageProcessingError(error))
 						return (html = html.replace(imgTag, ''));
 
 					throw error;

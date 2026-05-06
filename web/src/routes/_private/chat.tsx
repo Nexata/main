@@ -1,25 +1,25 @@
 'use client';
 
 import { type UIMessage, useChat } from '@ai-sdk/react';
-import { createFileRoute } from '@tanstack/react-router';
 import { useQueryClient } from '@tanstack/react-query';
+import { createFileRoute } from '@tanstack/react-router';
 import { decode } from '@toon-format/toon';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { infoToast } from '@/components/info-toast/info-toast';
 import { ShareSuccessModal } from '@/components/chat/share-success-modal';
+import { infoToast } from '@/components/info-toast/info-toast';
 import { Chat } from '@/components/ui/chat';
 import { useRandomWelcome } from '@/hooks/use-random-welcome';
+import { isAuthenticated } from '@/lib/auth';
 import {
 	bumpThreadListItem,
-	getThreadById,
 	getPublicThreadById,
+	getThreadById,
 	type ThreadById,
 	useBranchOffMessage,
 	usePublicThreadById,
 	useThreadById,
 	useUpdateThreadShare,
 } from '@/lib/chat';
-import { isAuthenticated } from '@/lib/auth';
 import { useChatUIStore } from '@/lib/chat.store';
 import { CHAT_INPUT_MAX_CHARS } from '@/lib/chat-input';
 import { getChatInstance, getChatPool, NEW_CHAT_KEY } from '@/lib/chat-pool';
@@ -231,7 +231,9 @@ export function NexataChat() {
 	// ----------------------------
 
 	const { id: searchThreadId } = Route.useSearch();
-	const displayThreadId = authenticated ? activeThreadId : (searchThreadId ?? null);
+	const displayThreadId = authenticated
+		? activeThreadId
+		: (searchThreadId ?? null);
 
 	useEffect(() => {
 		if (!authenticated) return;
@@ -311,7 +313,8 @@ export function NexataChat() {
 	const canShareThread = authenticated && !!displayThreadId && !isReadOnly;
 
 	const hydratedMessages = useMemo<UIMessage[]>(
-		() => hydrateThreadMessages((threadMessages ?? []) as ThreadById['messages']),
+		() =>
+			hydrateThreadMessages((threadMessages ?? []) as ThreadById['messages']),
 		[threadMessages],
 	);
 
@@ -319,7 +322,10 @@ export function NexataChat() {
 	// Chat Engine (per-thread from pool)
 	// ----------------------------
 
-	const chat = useMemo(() => getChatInstance(displayThreadId), [displayThreadId]);
+	const chat = useMemo(
+		() => getChatInstance(displayThreadId),
+		[displayThreadId],
+	);
 
 	const {
 		messages,
@@ -342,8 +348,10 @@ export function NexataChat() {
 	// ----------------------------
 
 	const appliedThreadRef = useRef<string | null>(null);
-	const [pendingPostSendHydrationThreadId, setPendingPostSendHydrationThreadId] =
-		useState<string | null>(null);
+	const [
+		pendingPostSendHydrationThreadId,
+		setPendingPostSendHydrationThreadId,
+	] = useState<string | null>(null);
 
 	useEffect(() => {
 		appliedThreadRef.current = null;
@@ -457,7 +465,7 @@ export function NexataChat() {
 	useEffect(() => {
 		setHasOlderMessages(true);
 		setIsFetchingOlder(false);
-	}, [displayThreadId]);
+	}, []);
 
 	// After hydration, recalculate whether older messages may exist. This also
 	// re-enables pagination after post-send rehydration of the same thread.
@@ -796,7 +804,7 @@ export function NexataChat() {
 
 	useEffect(() => {
 		closeToolDetail();
-	}, [displayThreadId, closeToolDetail]);
+	}, [closeToolDetail]);
 
 	// ----------------------------
 	// Edit message
@@ -916,7 +924,13 @@ export function NexataChat() {
 				setPendingPostSendHydrationThreadId(threadIdToRehydrate);
 			}
 		},
-		[addStreamingThread, activeThreadId, queryClient, sendMessage, me?.language],
+		[
+			addStreamingThread,
+			activeThreadId,
+			queryClient,
+			sendMessage,
+			me?.language,
+		],
 	);
 
 	const handleShareThread = useCallback(async () => {

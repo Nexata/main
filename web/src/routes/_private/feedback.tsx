@@ -186,7 +186,7 @@ export default function FeedbackPage() {
 			filterStatus === 'all' ? undefined : (filterStatus as FeedbackStatus),
 	});
 
-	useEffect(() => setPage(0), [filterType, filterStatus]);
+	useEffect(() => setPage(0), []);
 
 	const paginated = useMemo(() => {
 		if (!data) return { items: [], totalPages: 0 };

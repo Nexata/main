@@ -1,12 +1,14 @@
-import { VLM_MODEL } from '@api/env';
+import { VLM_MODEL, VLM_MODEL_NAME } from '@api/env';
 import {
 	type FileLike,
 	mdSplitter,
 	type ToStringChunksResult,
 } from '@api/file/lib/types';
 import { withVlmRateLimit } from '@api/utils/ai-rate-limit';
+import { log } from '@api/utils/env';
 import { tObject } from '@api/utils/type';
 import {
+	APICallError,
 	generateText,
 	jsonSchema,
 	NoObjectGeneratedError,
@@ -23,18 +25,36 @@ type RawImageMetadata = {
 	height?: number;
 	channels?: 1 | 2 | 3 | 4;
 };
-type PreparedImage = { image: Uint8Array; raw?: RawImageMetadata };
+type PreparedImage = {
+	image: Uint8Array;
+	raw?: RawImageMetadata;
+	width: number;
+	height: number;
+	byteLength: number;
+	mediaType: 'image/jpeg';
+};
+type ImageProcessingMode = 'strict' | 'best-effort';
 
 export type ImageToChunksInput = { data: FileLike; raw?: RawImageMetadata };
 
 const VLM_IMAGE_MAX_DIMENSION = Number(
 	process.env.VLM_IMAGE_MAX_DIMENSION ?? 1600,
 );
-const VLM_IMAGE_MAX_BYTES = Number(process.env.VLM_IMAGE_MAX_BYTES ?? 950_000);
+const VLM_IMAGE_MAX_BYTES = Number(process.env.VLM_IMAGE_MAX_BYTES ?? 750_000);
+const VLM_IMAGE_BATCH_MAX_BYTES = Number(
+	process.env.VLM_IMAGE_BATCH_MAX_BYTES ?? VLM_IMAGE_MAX_BYTES,
+);
+const VLM_IMAGE_MAX_PIXELS = Number(
+	process.env.VLM_IMAGE_MAX_PIXELS ?? 700_000,
+);
 const VLM_IMAGE_BATCH_SIZE = Math.min(
 	2,
 	Math.max(1, Number(process.env.VLM_IMAGE_BATCH_SIZE ?? 2)),
 );
+const VLM_IMAGE_JPEG_QUALITIES = [82, 72, 62, 52, 42] as const;
+const VLM_IMAGE_RESIZE_ATTEMPTS = 4;
+const VLM_IMAGE_DETAIL = process.env.VLM_IMAGE_DETAIL ?? 'low';
+const VLM_OUTPUT_TOKEN_MULTIPLIER = 20;
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {
@@ -45,6 +65,53 @@ export class InvalidRawImageError extends Error {
 
 function getErrorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : '';
+}
+
+function getApiCallStatus(error: unknown): number | undefined {
+	if (!APICallError.isInstance(error)) return undefined;
+
+	return (
+		(error as { statusCode?: number; status?: number }).statusCode ??
+		(error as { status?: number }).status
+	);
+}
+
+function getProviderErrorBody(error: unknown): unknown {
+	if (!error || typeof error !== 'object') return undefined;
+	return (error as { responseBody?: unknown }).responseBody;
+}
+
+function truncate(value: string, max = 500): string {
+	return value.length > max ? `${value.slice(0, max)}...` : value;
+}
+
+function getProviderErrorSummary(error: unknown): string {
+	const body = getProviderErrorBody(error);
+	const bodyText =
+		typeof body === 'string'
+			? body
+			: body
+				? JSON.stringify(body)
+				: getErrorMessage(error);
+
+	return truncate(bodyText);
+}
+
+function isImageBadRequest(error: unknown): boolean {
+	const status = getApiCallStatus(error);
+	if (status && status !== 400) return false;
+
+	const message = `${getErrorMessage(error)} ${getProviderErrorSummary(error)}`;
+	return (
+		status === 400 ||
+		message.includes('Bad Request') ||
+		message.includes('INVALID_REQUEST_BODY') ||
+		message.includes('IMAGE_FILE_EXCEEDS_MAX_SIZE') ||
+		message.includes('INVALID_IMAGE_FORMAT') ||
+		message.includes('IMAGE_EXCEEDS_MAX_RESOLUTION') ||
+		message.includes('INVALID_IMAGE_SIZE') ||
+		message.includes('unsupported image format')
+	);
 }
 
 export function isIgnorableImageProcessingError(error: unknown): boolean {
@@ -59,6 +126,12 @@ export function isIgnorableImageProcessingError(error: unknown): boolean {
 		message.includes('UNSUPPORTED_MIME_TYPE') ||
 		message.includes('UNSUPPORTED_FILE_TYPE')
 	);
+}
+
+export function isIgnorableEmbeddedImageProcessingError(
+	error: unknown,
+): boolean {
+	return isIgnorableImageProcessingError(error) || isImageBadRequest(error);
 }
 
 export function isRelevantImage(width: number, height: number) {
@@ -97,21 +170,97 @@ function validateRawImage(
 	return bytes;
 }
 
-async function prepareImageForVlm(image: FileLike): Promise<Uint8Array> {
+function targetDimensions(width: number, height: number, maxDimension: number) {
+	if (!width || !height) return { width: maxDimension, height: maxDimension };
+
+	const scale = Math.min(
+		1,
+		maxDimension / width,
+		maxDimension / height,
+		Math.sqrt(VLM_IMAGE_MAX_PIXELS / (width * height)),
+	);
+
+	return {
+		width: Math.max(1, Math.floor(width * scale)),
+		height: Math.max(1, Math.floor(height * scale)),
+	};
+}
+
+async function prepareImageForVlm(image: FileLike): Promise<PreparedImage> {
 	const bytes = fileLikeToUint8Array(image);
-	if (bytes.byteLength <= VLM_IMAGE_MAX_BYTES) return bytes;
+	const metadata = await sharp(bytes).metadata();
+	const width = metadata.width ?? 0;
+	const height = metadata.height ?? 0;
 
-	const pipeline = sharp(bytes).rotate().resize({
-		width: VLM_IMAGE_MAX_DIMENSION,
-		height: VLM_IMAGE_MAX_DIMENSION,
-		fit: 'inside',
-		withoutEnlargement: true,
-	});
+	if (
+		metadata.format === 'jpeg' &&
+		width <= VLM_IMAGE_MAX_DIMENSION &&
+		height <= VLM_IMAGE_MAX_DIMENSION &&
+		width * height <= VLM_IMAGE_MAX_PIXELS &&
+		bytes.byteLength <= VLM_IMAGE_MAX_BYTES
+	)
+		return {
+			image: bytes,
+			width,
+			height,
+			byteLength: bytes.byteLength,
+			mediaType: 'image/jpeg',
+		};
 
-	const jpeg = await pipeline.jpeg({ quality: 82, mozjpeg: true }).toBuffer();
-	if (jpeg.byteLength <= bytes.byteLength) return new Uint8Array(jpeg);
+	let best: { buffer: Buffer; width: number; height: number } | undefined;
+	let maxDimension = VLM_IMAGE_MAX_DIMENSION;
+	const minDimension = Math.min(VLM_IMAGE_MAX_DIMENSION, 600);
 
-	return bytes;
+	for (let attempt = 0; attempt < VLM_IMAGE_RESIZE_ATTEMPTS; attempt++) {
+		for (const quality of VLM_IMAGE_JPEG_QUALITIES) {
+			const size = targetDimensions(width, height, maxDimension);
+			const jpeg = await sharp(bytes)
+				.rotate()
+				.resize({
+					width: size.width,
+					height: size.height,
+					fit: 'inside',
+					withoutEnlargement: true,
+				})
+				.flatten({ background: '#fff' })
+				.jpeg({ quality, mozjpeg: true })
+				.toBuffer();
+
+			const jpegMetadata = await sharp(jpeg).metadata();
+			const prepared = {
+				buffer: jpeg,
+				width: jpegMetadata.width ?? size.width,
+				height: jpegMetadata.height ?? size.height,
+			};
+			if (!best || jpeg.byteLength < best.buffer.byteLength) best = prepared;
+			if (jpeg.byteLength <= VLM_IMAGE_MAX_BYTES)
+				return {
+					image: new Uint8Array(jpeg),
+					width: prepared.width,
+					height: prepared.height,
+					byteLength: jpeg.byteLength,
+					mediaType: 'image/jpeg',
+				};
+		}
+
+		const nextMaxDimension = Math.max(
+			minDimension,
+			Math.floor(maxDimension * 0.75),
+		);
+		if (nextMaxDimension === maxDimension) break;
+
+		maxDimension = nextMaxDimension;
+	}
+
+	if (!best) throw new InvalidRawImageError('Unable to prepare image for VLM');
+
+	return {
+		image: new Uint8Array(best.buffer),
+		width: best.width,
+		height: best.height,
+		byteLength: best.buffer.byteLength,
+		mediaType: 'image/jpeg',
+	};
 }
 
 async function prepareImageInput(
@@ -129,7 +278,16 @@ async function prepareImageInput(
 				.toBuffer()
 		: fileLikeToUint8Array(input.data);
 
-	return { image: await prepareImageForVlm(sourceImage), raw: input.raw };
+	return { ...(await prepareImageForVlm(sourceImage)), raw: input.raw };
+}
+
+function imagePart(image: PreparedImage) {
+	return {
+		type: 'image' as const,
+		image: image.image,
+		mediaType: image.mediaType,
+		providerOptions: { openai: { imageDetail: VLM_IMAGE_DETAIL } },
+	};
 }
 
 const imageToTextFields = {
@@ -289,7 +447,7 @@ async function chunksFromImageOutput(
 }
 
 async function generateImageText(
-	image: Uint8Array,
+	image: PreparedImage,
 ): Promise<{ output: ImageToTextOutput; usage: number }> {
 	try {
 		const result = await withVlmRateLimit(() =>
@@ -312,7 +470,7 @@ async function generateImageText(
 						role: 'user',
 						content: [
 							{ type: 'text', text: 'Assess for the following image.' },
-							{ type: 'image', image },
+							imagePart(image),
 						],
 					},
 				],
@@ -332,7 +490,7 @@ async function generateImageText(
 }
 
 async function generateBatchedImageText(
-	images: Uint8Array[],
+	images: PreparedImage[],
 ): Promise<{ output: BatchedImageToTextOutput; usage: number }> {
 	try {
 		const result = await withVlmRateLimit(() =>
@@ -362,7 +520,7 @@ async function generateBatchedImageText(
 							},
 							...images.flatMap((image, i) => [
 								{ type: 'text' as const, text: `Image ${i + 1}:` },
-								{ type: 'image' as const, image },
+								imagePart(image),
 							]),
 						],
 					},
@@ -387,11 +545,15 @@ export async function imgToChunks(
 	raw?: { width?: number; height?: number; channels?: 1 | 2 | 3 | 4 },
 ): Promise<ToStringChunksResult> {
 	const prepared = (await prepareImageInputs([{ data: f, raw }]))[0]!;
-	const res = await generateImageText(prepared.image);
+	const res = await generateImageText(prepared);
 	const chunks = await chunksFromImageOutput(res.output);
 
 	// Intentionally inflate token usage due to cost diff vs regular embeddings
-	return { metadata: raw, chunks, tokenUsage: res.usage * 20 };
+	return {
+		metadata: raw,
+		chunks,
+		tokenUsage: res.usage * VLM_OUTPUT_TOKEN_MULTIPLIER,
+	};
 }
 
 async function prepareImageInputs(
@@ -403,59 +565,116 @@ async function prepareImageInputs(
 async function preparedImageToChunks(
 	input: PreparedImage,
 ): Promise<ToStringChunksResult> {
-	const res = await generateImageText(input.image);
+	const res = await generateImageText(input);
 	return {
 		metadata: input.raw,
 		chunks: await chunksFromImageOutput(res.output),
-		tokenUsage: res.usage * 20,
+		tokenUsage: res.usage * VLM_OUTPUT_TOKEN_MULTIPLIER,
 	};
+}
+
+async function safePreparedImageToChunks(
+	input: PreparedImage,
+	mode: ImageProcessingMode,
+): Promise<ToStringChunksResult> {
+	try {
+		return await preparedImageToChunks(input);
+	} catch (error) {
+		if (
+			mode === 'best-effort' &&
+			isIgnorableEmbeddedImageProcessingError(error)
+		)
+			return { metadata: input.raw, chunks: [], tokenUsage: 0 };
+
+		throw error;
+	}
+}
+
+function createImageBatches(inputs: PreparedImage[]): PreparedImage[][] {
+	const batches: PreparedImage[][] = [];
+	let batch: PreparedImage[] = [];
+	let batchBytes = 0;
+
+	for (const input of inputs) {
+		const wouldExceedCount = batch.length >= VLM_IMAGE_BATCH_SIZE;
+		const wouldExceedBytes =
+			batch.length > 0 &&
+			batchBytes + input.byteLength > VLM_IMAGE_BATCH_MAX_BYTES;
+
+		if (wouldExceedCount || wouldExceedBytes) {
+			batches.push(batch);
+			batch = [];
+			batchBytes = 0;
+		}
+
+		batch.push(input);
+		batchBytes += input.byteLength;
+	}
+
+	if (batch.length) batches.push(batch);
+	return batches;
+}
+
+function logImageBatchFallback(error: unknown, batch: PreparedImage[]) {
+	log('warn', {
+		event: 'vlm_image_batch_fallback',
+		model: VLM_MODEL_NAME,
+		status: getApiCallStatus(error),
+		imageDetail: VLM_IMAGE_DETAIL,
+		imageCount: batch.length,
+		totalBytes: batch.reduce((acc, image) => acc + image.byteLength, 0),
+		images: batch.map((image) => ({
+			bytes: image.byteLength,
+			width: image.width,
+			height: image.height,
+			mediaType: image.mediaType,
+		})),
+		message: getProviderErrorSummary(error),
+	});
 }
 
 export async function imgsToChunks(
 	inputs: ImageToChunksInput[],
+	mode: ImageProcessingMode = 'strict',
 ): Promise<ToStringChunksResult[]> {
-	const results: ToStringChunksResult[] = [];
+	const prepared = await prepareImageInputs(inputs);
+	const batches = createImageBatches(prepared);
+	const batchResults = await Promise.all(
+		batches.map(async (batch) => {
+			if (batch.length === 1)
+				return [await safePreparedImageToChunks(batch[0]!, mode)];
 
-	for (let i = 0; i < inputs.length; i += VLM_IMAGE_BATCH_SIZE) {
-		const batch = await prepareImageInputs(
-			inputs.slice(i, i + VLM_IMAGE_BATCH_SIZE),
-		);
+			let res: Awaited<ReturnType<typeof generateBatchedImageText>>;
+			try {
+				res = await generateBatchedImageText(batch);
+			} catch (error) {
+				if (!isImageBadRequest(error)) throw error;
 
-		if (batch.length === 1) {
-			results.push(await preparedImageToChunks(batch[0]!));
-			continue;
-		}
-
-		let res: Awaited<ReturnType<typeof generateBatchedImageText>>;
-		try {
-			res = await generateBatchedImageText(batch.map(({ image }) => image));
-		} catch (error) {
-			if (!NoObjectGeneratedError.isInstance(error)) throw error;
-
-			for (const input of batch)
-				results.push(await preparedImageToChunks(input));
-			continue;
-		}
-
-		const usagePerImage = Math.ceil(res.usage / batch.length) * 20;
-		const byIndex = new Map<number, ImageToTextOutput>();
-		for (const item of res.output.images) byIndex.set(item.index, item);
-
-		for (let batchIndex = 0; batchIndex < batch.length; batchIndex++) {
-			const input = batch[batchIndex]!;
-			const output = byIndex.get(batchIndex + 1);
-			if (!output) {
-				results.push(await preparedImageToChunks(input));
-				continue;
+				logImageBatchFallback(error, batch);
+				return Promise.all(
+					batch.map((input) => safePreparedImageToChunks(input, mode)),
+				);
 			}
 
-			results.push({
-				metadata: input.raw,
-				chunks: await chunksFromImageOutput(output),
-				tokenUsage: usagePerImage,
-			});
-		}
-	}
+			const usagePerImage =
+				Math.ceil(res.usage / batch.length) * VLM_OUTPUT_TOKEN_MULTIPLIER;
+			const byIndex = new Map<number, ImageToTextOutput>();
+			for (const item of res.output.images) byIndex.set(item.index, item);
 
-	return results;
+			return Promise.all(
+				batch.map(async (input, batchIndex) => {
+					const output = byIndex.get(batchIndex + 1);
+					if (!output) return safePreparedImageToChunks(input, mode);
+
+					return {
+						metadata: input.raw,
+						chunks: await chunksFromImageOutput(output),
+						tokenUsage: usagePerImage,
+					};
+				}),
+			);
+		}),
+	);
+
+	return batchResults.flat();
 }

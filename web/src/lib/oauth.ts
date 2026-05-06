@@ -1,6 +1,6 @@
 import { API_BASE_URL } from '@/api';
-import { getMe } from './user';
 import { getFingerprint } from './fingerprint';
+import { getMe } from './user';
 
 const FLOW = 'login';
 const FRONTEND_CALLBACK = `${import.meta.env.VITE_FRONT_URL}/callback`;

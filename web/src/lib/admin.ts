@@ -1,6 +1,6 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { Language } from '@/lib/user';
 import { apiClient, withAuthRetry } from '@/api';
+import type { Language } from '@/lib/user';
 
 // Consumptions
 export async function getBillingUsage() {

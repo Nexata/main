@@ -3,7 +3,7 @@ import {
 	InvalidRawImageError,
 	imgsToChunks,
 	imgToChunks,
-	isIgnorableImageProcessingError,
+	isIgnorableEmbeddedImageProcessingError,
 	isRelevantImage,
 } from '@api/file/lib/image';
 import {
@@ -21,10 +21,6 @@ const RENDER_SCALE = 2;
 const PAGE_CONCURRENCY = Math.max(
 	1,
 	Number(process.env.PDF_PAGE_CONCURRENCY ?? 2),
-);
-const PDF_IMAGE_BATCH_SIZE = Math.min(
-	2,
-	Math.max(1, Number(process.env.VLM_IMAGE_BATCH_SIZE ?? 2)),
 );
 
 class CanvasFactory {
@@ -100,7 +96,15 @@ async function renderPageFallback(
 	chunks: ToStringChunksResult['chunks'],
 ): Promise<number> {
 	const png = await renderPageAsPng(pdf, pageNumber);
-	const rendered = await imgToChunks(new Uint8Array(png));
+	let rendered: ToStringChunksResult;
+	try {
+		rendered = await imgToChunks(new Uint8Array(png));
+	} catch (error) {
+		if (isIgnorableEmbeddedImageProcessingError(error)) return 0;
+
+		throw error;
+	}
+
 	addPageChunks(chunks, pageNumber, rendered);
 	return rendered.tokenUsage ?? 0;
 }
@@ -160,33 +164,26 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 						});
 					}
 
-					for (let j = 0; j < imageInputs.length; j += PDF_IMAGE_BATCH_SIZE) {
-						try {
-							const imgResults = await imgsToChunks(
-								imageInputs.slice(j, j + PDF_IMAGE_BATCH_SIZE),
-							);
+					try {
+						const imgResults = await imgsToChunks(imageInputs, 'best-effort');
 
-							for (const imgResult of imgResults) {
-								hasImages = hasImages || imgResult.chunks.length > 0;
-								addPageChunks(pageChunks, pageNumber, imgResult);
-								pageUsage += imgResult.tokenUsage ?? 0;
-							}
-						} catch (error) {
-							if (
-								error instanceof InvalidRawImageError ||
-								isPdfImageDecodeError(error)
-							) {
-								shouldRenderPageFallback = true;
-								continue;
-							}
-
-							if (isIgnorableImageProcessingError(error)) continue;
-
+						for (const imgResult of imgResults) {
+							hasImages = hasImages || imgResult.chunks.length > 0;
+							addPageChunks(pageChunks, pageNumber, imgResult);
+							pageUsage += imgResult.tokenUsage ?? 0;
+						}
+					} catch (error) {
+						if (
+							error instanceof InvalidRawImageError ||
+							isPdfImageDecodeError(error)
+						) {
+							shouldRenderPageFallback = true;
+						} else if (!isIgnorableEmbeddedImageProcessingError(error)) {
 							throw error;
 						}
 					}
 				} catch (error) {
-					if (!isIgnorableImageProcessingError(error)) {
+					if (!isIgnorableEmbeddedImageProcessingError(error)) {
 						const message = error instanceof Error ? error.message : '';
 						if (
 							message.includes('OpenJPEG failed to initialize') ||
