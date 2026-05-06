@@ -379,7 +379,7 @@ export function TimelineChart({ content }: TimelineChartProps) {
         <div className="min-w-[720px] pr-4">
           {/* Year axis */}
           <div className="flex mb-1 pl-[var(--label-w)]" style={{ "--label-w": "130px" } as React.CSSProperties}>
-            <div className="relative h-6">
+            <div className="relative h-6 w-full flex-1">
               {data.years.map((year) => {
                 const pct = ((year - minYear) / totalSpan) * 100;
                 return (

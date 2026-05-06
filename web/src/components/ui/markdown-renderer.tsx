@@ -782,7 +782,129 @@ function sanitizeSvgElement(element: Element) {
   }
 }
 
-type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart" | "line-chart"
+// ---------------------------------------------------------------------------
+// ASCII / Unicode box-drawing diagram detection & rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when `text` looks like an ASCII or Unicode-box diagram that
+ * the LLM produced outside of a code fence (e.g. using ┌─┐│└┘ characters,
+ * +---+ ASCII boxes, or multi-line geometric art with arrow symbols).
+ */
+function isAsciiDiagram(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+
+  const lines = trimmed.split("\n")
+
+  // Count Unicode box-drawing characters (U+2500–U+257F)
+  let boxCharCount = 0
+  for (const char of trimmed) {
+    const code = char.charCodeAt(0)
+    if (code >= 0x2500 && code <= 0x257f) boxCharCount++
+  }
+
+  // Multi-line block: 4+ box chars is strong enough evidence
+  if (lines.length >= 2 && boxCharCount >= 4) return true
+
+  // Single-line (LLM collapsed multi-line into one line via spaces):
+  // require 12+ chars to avoid false positives on stray characters
+  if (lines.length === 1 && boxCharCount >= 12) return true
+
+  // ASCII art: +---+ / +===+ borders with | side lines
+  if (
+    /[+][─\-=]{2,}[+]/.test(trimmed) &&
+    lines.some((l) => /^\s*\|.+\|\s*$/.test(l))
+  )
+    return true
+
+  // Multi-line geometric ASCII art (triangles, cones, spheres…)
+  // combined with at least one Unicode symbol (arrow, bullet, geometric shape)
+  if (lines.length >= 3) {
+    const geometricLines = lines.filter((l) =>
+      /^[\s/\\|_\-=+.oO#*~<>^v]+$/.test(l)
+    )
+    const hasSymbols = /[▶►◄◀▼▲↑↓←→●■○□◆◇]/.test(trimmed)
+    if (geometricLines.length >= 2 && hasSymbols) return true
+  }
+
+  return false
+}
+
+/**
+ * Single-pass colorizer: walks the full content string once, emitting runs of
+ * plain text as React.Fragments and special chars (box-drawing, arrows,
+ * geometric shapes) as colored <span>s. Newlines are left as-is so the
+ * parent <pre> handles them naturally — no line-splitting, no block spans.
+ */
+function colorizeAsciiContent(content: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = []
+  let textAcc = ""
+  let keyIdx = 0
+
+  const flush = () => {
+    if (!textAcc) return
+    nodes.push(<React.Fragment key={keyIdx++}>{textAcc}</React.Fragment>)
+    textAcc = ""
+  }
+
+  for (const char of content) {
+    const code = char.charCodeAt(0)
+    // U+2500–U+257F  box-drawing  (┌─│└┐┘┬┴┼…)
+    const isBoxChar = code >= 0x2500 && code <= 0x257f
+    // U+2580–U+259F  block elements
+    // U+25A0–U+25FF  geometric shapes (▼▲●■▶◀◆…)
+    // U+2190–U+21FF  arrows (←→↑↓⇒⟶…)
+    const isGeomOrArrow =
+      (code >= 0x2580 && code <= 0x259f) ||
+      (code >= 0x25a0 && code <= 0x25ff) ||
+      (code >= 0x2190 && code <= 0x21ff)
+
+    if (isBoxChar || isGeomOrArrow) {
+      flush()
+      nodes.push(
+        <span
+          key={keyIdx++}
+          className={isBoxChar ? "text-primary/70" : "text-primary font-semibold"}
+        >
+          {char}
+        </span>
+      )
+    } else {
+      textAcc += char
+    }
+  }
+
+  flush()
+  return nodes
+}
+
+const AsciiDiagramRenderer = React.memo(function AsciiDiagramRenderer({
+  content,
+}: {
+  content: string
+}) {
+  const nodes = useMemo(() => colorizeAsciiContent(content), [content])
+  const hasBoxChars = /[\u2500-\u257F]/.test(content)
+  const label = hasBoxChars ? "diagram" : "ascii"
+
+  return (
+    <DiagramCard
+      label={label}
+      actions={
+        <CopyButton content={content} copyMessage="Copied diagram to clipboard" />
+      }
+    >
+      <pre className="m-0 overflow-x-auto whitespace-pre font-mono text-sm leading-[1.6] text-foreground/90 [scrollbar-width:thin] [&::-webkit-scrollbar]:h-1.5 [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-border/50 [&::-webkit-scrollbar-track]:bg-transparent">
+        {nodes}
+      </pre>
+    </DiagramCard>
+  )
+})
+
+// ---------------------------------------------------------------------------
+
+type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart" | "line-chart" | "ascii-diagram"
 
 type MarkdownSegment =
   | { type: "markdown"; content: string }
@@ -801,14 +923,21 @@ function getStructuredBlockType(text: string): StructuredBlockType | null {
   const isLineChartBlock = isLineChart(normalizedText)
 
   const matchCount = [isTree, isTimelineBlock, isBarChartBlock, isLineChartBlock].filter(Boolean).length
-  if (matchCount !== 1) {
-    return null
+
+  if (matchCount === 1) {
+    if (isTree) return "directory-tree"
+    if (isTimelineBlock) return "timeline"
+    if (isLineChartBlock) return "line-chart"
+    return "bar-chart"
   }
 
-  if (isTree) return "directory-tree"
-  if (isTimelineBlock) return "timeline"
-  if (isLineChartBlock) return "line-chart"
-  return "bar-chart"
+  // Only check for ASCII diagrams when no other structured type matched,
+  // so we never compete with directory-tree (which also uses box chars).
+  if (matchCount === 0 && isAsciiDiagram(normalizedText)) {
+    return "ascii-diagram"
+  }
+
+  return null
 }
 
 function renderStructuredBlock(
@@ -826,6 +955,10 @@ function renderStructuredBlock(
 
   if (type === "line-chart") {
     return <LineChartRenderer key={key} content={content} />
+  }
+
+  if (type === "ascii-diagram") {
+    return <AsciiDiagramRenderer key={key} content={content} />
   }
 
   return <TimelineChart key={key} content={content} />
@@ -1045,6 +1178,10 @@ const COMPONENTS = {
 
     if (language === "svg") {
       return <SvgBlock content={textContent} />
+    }
+
+    if (language === "ascii" || language === "art" || language === "text-diagram") {
+      return <AsciiDiagramRenderer content={textContent} />
     }
 
     return match ? (
