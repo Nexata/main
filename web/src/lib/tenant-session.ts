@@ -1,4 +1,4 @@
-const STORAGE_KEY = "tenant_sessions";
+const STORAGE_KEY = 'tenant_sessions';
 
 export type Session = {
 	at: string;
@@ -17,10 +17,10 @@ export type Session = {
 };
 
 export function saveTenantSessions(sessions: Session[] | null) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
+	localStorage.setItem(STORAGE_KEY, JSON.stringify(sessions));
 }
 
 export function getTenantSessions() {
-  const raw = localStorage.getItem(STORAGE_KEY);
-  return raw ? JSON.parse(raw) : null;
+	const raw = localStorage.getItem(STORAGE_KEY);
+	return raw ? JSON.parse(raw) : null;
 }

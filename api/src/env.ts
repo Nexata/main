@@ -42,7 +42,11 @@ const novita = createOpenAI({
 export const MODEL = novita.chat('deepseek/deepseek-v4-flash');
 export const LIGHT_MODEL = novita.chat('openai/gpt-oss-120b');
 export const REASONING_MODEL = novita.chat('zai-org/glm-5');
-export const VLM_MODEL = novita.chat('google/gemma-4-26b-a4b-it');
+export const VLM_MODEL_NAME = warnEnv(
+	'VLM_MODEL_NAME',
+	'google/gemma-4-26b-a4b-it',
+);
+export const VLM_MODEL = novita.chat(VLM_MODEL_NAME);
 export const EMBEDDING_DIMENSIONS = 2048;
 export const EMBEDDING_MODEL = wrapEmbeddingModel({
 	model: novita.embeddingModel('qwen/qwen3-embedding-8b'),

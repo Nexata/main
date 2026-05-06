@@ -53,7 +53,7 @@ function LoginPage() {
 	useEffect(() => {
 		const locale = language as unknown as string;
 		if (isLocale(locale)) setLocale(locale, { reload: false });
-	}, []);
+	}, [language]);
 
 	return (
 		<div className="min-h-screen flex items-center justify-center px-6 sm:px-0 bg-card sm:bg-background">

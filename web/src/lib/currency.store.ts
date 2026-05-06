@@ -31,9 +31,7 @@ export function formatAmount(
 	quote: number | null,
 ) {
 	if (showARS && quote)
-		return (
-			'$' + (usd * quote).toLocaleString('es-AR', { maximumFractionDigits: 0 })
-		);
+		return `$${(usd * quote).toLocaleString('es-AR', { maximumFractionDigits: 0 })}`;
 	return (
 		'USD ' +
 		usd.toLocaleString('en-US', {
@@ -52,9 +50,7 @@ export function formatAmountUnit(
 	quote: number | null,
 ) {
 	if (showARS && quote)
-		return (
-			'$' + (usd * quote).toLocaleString('es-AR', { maximumFractionDigits: 2 })
-		);
+		return `$${(usd * quote).toLocaleString('es-AR', { maximumFractionDigits: 2 })}`;
 	return (
 		'USD ' +
 		usd.toLocaleString('en-US', {

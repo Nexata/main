@@ -13,13 +13,13 @@ import ToolDetailPanel, {
 	MobileToolDetailPanel,
 } from '@/components/tool-detail-panel/tool-detail-panel';
 import { WalkthroughProvider } from '@/components/walkthrough/walkthrough-provider';
-import { cn } from '@/lib/utils';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { isAuthenticated } from '@/lib/auth';
 import { useMobileSidebarStore } from '@/lib/mobile-sidebar.store';
 import { useSidebarStore } from '@/lib/sidebar.store';
 import { useToolDetailStore } from '@/lib/tool-detail.store';
 import { useMe, useMyTenant } from '@/lib/user';
+import { cn } from '@/lib/utils';
 
 export const Route = createFileRoute('/_private')({
 	beforeLoad: () => {
@@ -78,7 +78,7 @@ function PrivateLayout() {
 	useEffect(() => {
 		if (isPublicSharedChat) return;
 		closeMobileSidebar();
-	}, [location.pathname, closeMobileSidebar, isPublicSharedChat]);
+	}, [closeMobileSidebar, isPublicSharedChat]);
 
 	// Close tool detail panel when leaving /chat
 	useEffect(() => {
@@ -108,7 +108,7 @@ function PrivateLayout() {
 				fill: 'both',
 			},
 		);
-	}, [location.pathname, isPublicSharedChat]);
+	}, [isPublicSharedChat]);
 
 	if (isPublicSharedChat) {
 		return (
@@ -121,9 +121,7 @@ function PrivateLayout() {
 	}
 
 	return (
-		<div
-			className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased"
-		>
+		<div className="flex h-dvh w-screen overflow-hidden font-noto-sans antialiased">
 			{/* Desktop sidebar */}
 			{!isMobile && <Sidebar />}
 
@@ -164,7 +162,9 @@ function PrivateLayout() {
 				{isMobile && (
 					<div
 						className="flex items-center justify-between border-b border-border bg-sidebar px-4 py-3"
-						style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))' }}
+						style={{
+							paddingTop: 'max(0.75rem, env(safe-area-inset-top, 0px))',
+						}}
 					>
 						{/* Izquierda: botón menú */}
 						<button
@@ -199,8 +199,8 @@ function PrivateLayout() {
 					ref={controlsRef}
 					initial={{ opacity: 1, x: 0 }}
 					className={cn(
-						"flex-1 overflow-y-auto bg-background text-foreground",
-						isMobile && isChatRoute ? "p-0" : "p-3 sm:p-4 md:p-6",
+						'flex-1 overflow-y-auto bg-background text-foreground',
+						isMobile && isChatRoute ? 'p-0' : 'p-3 sm:p-4 md:p-6',
 					)}
 				>
 					<Outlet />

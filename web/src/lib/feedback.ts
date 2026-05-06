@@ -5,10 +5,10 @@ type FeedbackQuery = Parameters<typeof apiClient.feedback.get>[0]['$query'];
 export type FeedbackType = NonNullable<NonNullable<FeedbackQuery>['type']>;
 export type FeedbackStatus = NonNullable<NonNullable<FeedbackQuery>['status']>;
 export const FEEDBACK_STATUS_OPTIONS = [
-  'pending' as FeedbackStatus,
-  'in_review' as FeedbackStatus,
-  'wontfix' as FeedbackStatus,
-  'solved' as FeedbackStatus,
+	'pending' as FeedbackStatus,
+	'in_review' as FeedbackStatus,
+	'wontfix' as FeedbackStatus,
+	'solved' as FeedbackStatus,
 ] as const satisfies readonly FeedbackStatus[];
 
 // ListFeedback
@@ -33,16 +33,9 @@ export async function listFeedback(params?: {
 
 export type FeedbackList = Awaited<ReturnType<typeof listFeedback>>;
 
-export function useListFeedback(
-	params?: Parameters<typeof listFeedback>[0],
-) {
+export function useListFeedback(params?: Parameters<typeof listFeedback>[0]) {
 	return useQuery<FeedbackList>({
-		queryKey: [
-			'feedback',
-			params?.status,
-			params?.type,
-			params?.cursor,
-		],
+		queryKey: ['feedback', params?.status, params?.type, params?.cursor],
 		queryFn: () => listFeedback(params),
 		staleTime: Infinity,
 	});

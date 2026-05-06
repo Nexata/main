@@ -1,14 +1,14 @@
 import * as Sentry from '@sentry/react';
 import { createRootRoute, HeadContent, Outlet } from '@tanstack/react-router';
 import { TanStackRouterDevtools } from '@tanstack/react-router-devtools';
+import { API_BASE_URL } from '@/api';
+import { getAccessToken } from '@/lib/auth';
+import { getFingerprint } from '@/lib/fingerprint';
 import {
 	'error_boundary.description' as error_boundary_description,
 	'error_boundary.reload' as error_boundary_reload,
 	'error_boundary.title' as error_boundary_title,
 } from '@/paraglide/messages.js';
-import { getAccessToken } from '@/lib/auth';
-import { getFingerprint } from '@/lib/fingerprint';
-import { API_BASE_URL } from '@/api';
 import '../index.css';
 
 function clearPersistedStores() {

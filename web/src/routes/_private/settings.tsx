@@ -21,8 +21,8 @@ import {
 import { useEffect, useRef, useState } from 'react';
 import { ConfirmDeleteCredentialModal } from '@/components/credentials/credential-delete-modal';
 import { infoToast } from '@/components/info-toast/info-toast';
-import { SourceRow } from '@/components/sources/source-row';
 import { StorageFileTree } from '@/components/sources/file-tree';
+import { SourceRow } from '@/components/sources/source-row';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
 import { Card, CardContent } from '@/components/ui/card';
@@ -174,8 +174,8 @@ import {
 	'settings.files.table.actions' as settings_files_table_actions,
 	'settings.files.table.auto_sync' as settings_files_table_auto_sync,
 	'settings.files.table.ingested' as settings_files_table_ingested,
-	'settings.files.table.name' as settings_files_table_name,
 	'settings.files.table.ingested_by' as settings_files_table_ingested_by,
+	'settings.files.table.name' as settings_files_table_name,
 	'settings.files.table.provider' as settings_files_table_provider,
 	'settings.files.table.type' as settings_files_table_type,
 	'settings.files.table.updated_at' as settings_files_table_updated_at,
@@ -521,7 +521,9 @@ export function StorageSection({
 									className="cursor-pointer"
 									onClick={() => setLegajoxExpanded(!legajoxExpanded)}
 								>
-									{legajoxExpanded ? common_cancel() : settings_sources_view_details()}
+									{legajoxExpanded
+										? common_cancel()
+										: settings_sources_view_details()}
 								</Button>
 							</div>
 							{!legajoxExpanded && (
@@ -1529,159 +1531,166 @@ export function FilesManagementSection() {
 									const canAutoSync = canToggleFileAutoSync(file.provider);
 
 									return (
-									<TableRow
-										key={file.id}
-										className={`transition-colors ${selected.has(file.id) ? 'bg-primary/5' : ''}`}
-									>
-										<TableCell>
-											<Checkbox
-												checked={selected.has(file.id)}
-												onCheckedChange={() => toggleSelect(file.id)}
-											/>
-										</TableCell>
-										<TableCell>
-											<TooltipProvider>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<div className="flex items-center gap-2 min-w-0 cursor-default">
-															<div className="rounded-md bg-muted p-1.5 shrink-0">
-																<FileText className="w-3.5 h-3.5 text-muted-foreground" />
-															</div>
-																		{externalUrl ? (
-																			<a
-																				href={externalUrl}
-																				target="_blank"
-																				rel="noopener noreferrer"
-																	className="text-sm font-medium truncate max-w-[180px] hover:underline"
-																>
-																	{file.name}
-																	<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
-																</a>
-															) : (
-																<span className="text-sm font-medium truncate max-w-[180px]">
-																	{file.name}
-																</span>
-															)}
-														</div>
-													</TooltipTrigger>
-													<TooltipContent>{file.name}</TooltipContent>
-												</Tooltip>
-											</TooltipProvider>
-										</TableCell>
-										<TableCell>
-											<div className="flex items-center gap-2 min-w-0">
-												<UserMini user={file.ownedBy} />
-												{file.credential && (
-													<TooltipProvider>
-														<Tooltip>
-															<TooltipTrigger asChild>
-																<Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 cursor-help" />
-															</TooltipTrigger>
-															<TooltipContent>
-																<div className="text-center">
-																	<p className="font-bold text-xs">
-																		{settings_files_tooltip_credential_owner()}
-																	</p>
-																	<p className="text-xs">
-																		{file.credential.email}
-																	</p>
-																</div>
-															</TooltipContent>
-														</Tooltip>
-													</TooltipProvider>
-												)}
-											</div>
-										</TableCell>
-										<TableCell>
-											<ProviderBadge provider={file.provider} />
-										</TableCell>
-										<TableCell>
-											<TypeBadge type={file.type} />
-										</TableCell>
-										<TableCell>
-											<span className="text-sm whitespace-nowrap">
-												{format(new Date(file.ingestedAt), 'MMM d, yyyy HH:mm')}
-											</span>
-										</TableCell>
-										<TableCell>
-											<span className="text-sm whitespace-nowrap">
-												{format(new Date(file.modifiedAt), 'MMM d, yyyy HH:mm')}
-											</span>
-										</TableCell>
-										<TableCell className="text-center">
-											<TooltipProvider>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<div className="inline-flex">
-															<Switch
-																checked={file.autoSync ?? false}
-																disabled={!canAutoSync}
-																onCheckedChange={(v) =>
-																	handleFileAutoSyncToggle(file.id, v)
-																}
-																className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
-															/>
-														</div>
-													</TooltipTrigger>
-													<TooltipContent>
-														{!canAutoSync
-															? settings_files_tooltip_autosync_unavailable()
-															: file.autoSync
-																? settings_files_tooltip_autosync_on()
-																: settings_files_tooltip_autosync_off()}
-													</TooltipContent>
-												</Tooltip>
-											</TooltipProvider>
-										</TableCell>
-										<TableCell>
-											<div className="flex justify-end gap-1">
+										<TableRow
+											key={file.id}
+											className={`transition-colors ${selected.has(file.id) ? 'bg-primary/5' : ''}`}
+										>
+											<TableCell>
+												<Checkbox
+													checked={selected.has(file.id)}
+													onCheckedChange={() => toggleSelect(file.id)}
+												/>
+											</TableCell>
+											<TableCell>
 												<TooltipProvider>
 													<Tooltip>
-														<TooltipTrigger>
-															{/* CAMBIO 2: refresh unitario con su propio handler */}
-															<Button
-																size="icon"
-																variant="ghost"
-																className="h-8 w-8 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
-																disabled={
-																	file.provider === 'nexata' || !file.credential
-																}
-																onClick={() => handleSingleRefresh(file.id)}
-															>
-																<RefreshCcw className="w-3.5 h-3.5" />
-															</Button>
+														<TooltipTrigger asChild>
+															<div className="flex items-center gap-2 min-w-0 cursor-default">
+																<div className="rounded-md bg-muted p-1.5 shrink-0">
+																	<FileText className="w-3.5 h-3.5 text-muted-foreground" />
+																</div>
+																{externalUrl ? (
+																	<a
+																		href={externalUrl}
+																		target="_blank"
+																		rel="noopener noreferrer"
+																		className="text-sm font-medium truncate max-w-[180px] hover:underline"
+																	>
+																		{file.name}
+																		<ExternalLink className="w-3 h-3 inline-block ml-1 align-baseline text-muted-foreground" />
+																	</a>
+																) : (
+																	<span className="text-sm font-medium truncate max-w-[180px]">
+																		{file.name}
+																	</span>
+																)}
+															</div>
 														</TooltipTrigger>
-														<TooltipContent>
-															{settings_files_tooltip_reingest()}
-														</TooltipContent>
+														<TooltipContent>{file.name}</TooltipContent>
 													</Tooltip>
+												</TooltipProvider>
+											</TableCell>
+											<TableCell>
+												<div className="flex items-center gap-2 min-w-0">
+													<UserMini user={file.ownedBy} />
+													{file.credential && (
+														<TooltipProvider>
+															<Tooltip>
+																<TooltipTrigger asChild>
+																	<Info className="w-3.5 h-3.5 text-muted-foreground shrink-0 cursor-help" />
+																</TooltipTrigger>
+																<TooltipContent>
+																	<div className="text-center">
+																		<p className="font-bold text-xs">
+																			{settings_files_tooltip_credential_owner()}
+																		</p>
+																		<p className="text-xs">
+																			{file.credential.email}
+																		</p>
+																	</div>
+																</TooltipContent>
+															</Tooltip>
+														</TooltipProvider>
+													)}
+												</div>
+											</TableCell>
+											<TableCell>
+												<ProviderBadge provider={file.provider} />
+											</TableCell>
+											<TableCell>
+												<TypeBadge type={file.type} />
+											</TableCell>
+											<TableCell>
+												<span className="text-sm whitespace-nowrap">
+													{format(
+														new Date(file.ingestedAt),
+														'MMM d, yyyy HH:mm',
+													)}
+												</span>
+											</TableCell>
+											<TableCell>
+												<span className="text-sm whitespace-nowrap">
+													{format(
+														new Date(file.modifiedAt),
+														'MMM d, yyyy HH:mm',
+													)}
+												</span>
+											</TableCell>
+											<TableCell className="text-center">
+												<TooltipProvider>
 													<Tooltip>
-														<TooltipTrigger>
-															{/* CAMBIO 1: delete unitario abre el dialog en modo "single" con el nombre */}
-															<Button
-																size="icon"
-																variant="ghost"
-																className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
-																onClick={() =>
-																	setDeleteDialog({
-																		open: true,
-																		mode: 'single',
-																		fileId: file.id,
-																		fileName: file.name,
-																	})
-																}
-															>
-																<Trash2 className="w-3.5 h-3.5" />
-															</Button>
+														<TooltipTrigger asChild>
+															<div className="inline-flex">
+																<Switch
+																	checked={file.autoSync ?? false}
+																	disabled={!canAutoSync}
+																	onCheckedChange={(v) =>
+																		handleFileAutoSyncToggle(file.id, v)
+																	}
+																	className="cursor-pointer disabled:cursor-not-allowed disabled:opacity-40"
+																/>
+															</div>
 														</TooltipTrigger>
 														<TooltipContent>
-															{settings_files_tooltip_delete()}
+															{!canAutoSync
+																? settings_files_tooltip_autosync_unavailable()
+																: file.autoSync
+																	? settings_files_tooltip_autosync_on()
+																	: settings_files_tooltip_autosync_off()}
 														</TooltipContent>
 													</Tooltip>
 												</TooltipProvider>
-											</div>
-										</TableCell>
-									</TableRow>
+											</TableCell>
+											<TableCell>
+												<div className="flex justify-end gap-1">
+													<TooltipProvider>
+														<Tooltip>
+															<TooltipTrigger>
+																{/* CAMBIO 2: refresh unitario con su propio handler */}
+																<Button
+																	size="icon"
+																	variant="ghost"
+																	className="h-8 w-8 cursor-pointer disabled:opacity-30 disabled:cursor-not-allowed"
+																	disabled={
+																		file.provider === 'nexata' ||
+																		!file.credential
+																	}
+																	onClick={() => handleSingleRefresh(file.id)}
+																>
+																	<RefreshCcw className="w-3.5 h-3.5" />
+																</Button>
+															</TooltipTrigger>
+															<TooltipContent>
+																{settings_files_tooltip_reingest()}
+															</TooltipContent>
+														</Tooltip>
+														<Tooltip>
+															<TooltipTrigger>
+																{/* CAMBIO 1: delete unitario abre el dialog en modo "single" con el nombre */}
+																<Button
+																	size="icon"
+																	variant="ghost"
+																	className="h-8 w-8 cursor-pointer text-destructive hover:text-destructive hover:bg-destructive/10"
+																	onClick={() =>
+																		setDeleteDialog({
+																			open: true,
+																			mode: 'single',
+																			fileId: file.id,
+																			fileName: file.name,
+																		})
+																	}
+																>
+																	<Trash2 className="w-3.5 h-3.5" />
+																</Button>
+															</TooltipTrigger>
+															<TooltipContent>
+																{settings_files_tooltip_delete()}
+															</TooltipContent>
+														</Tooltip>
+													</TooltipProvider>
+												</div>
+											</TableCell>
+										</TableRow>
 									);
 								})}
 						</TableBody>

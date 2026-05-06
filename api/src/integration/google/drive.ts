@@ -51,7 +51,10 @@ import { and, eq, notInArray } from 'drizzle-orm';
 import { Elysia, type Static, t } from 'elysia';
 import pLimit from 'p-limit';
 
-const INGEST_CONCURRENCY = 8;
+const INGEST_CONCURRENCY = Math.max(
+	1,
+	Number(process.env.INGEST_CONCURRENCY ?? 4),
+);
 const DIR_LIST_CONCURRENCY = 5;
 const RECHECK_INTERVAL = 50;
 

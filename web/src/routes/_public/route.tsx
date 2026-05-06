@@ -6,7 +6,7 @@ export const Route = createFileRoute('/_public')({
 
 function PublicLayout() {
 	return (
-	  <div className="min-h-dvh w-full bg-background text-foreground">
+		<div className="min-h-dvh w-full bg-background text-foreground">
 			<Outlet />
 		</div>
 	);

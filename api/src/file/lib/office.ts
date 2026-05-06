@@ -1,6 +1,6 @@
 import {
 	imgToChunks,
-	isIgnorableImageProcessingError,
+	isIgnorableEmbeddedImageProcessingError,
 	isRelevantImage,
 } from '@api/file/lib/image';
 import {
@@ -85,7 +85,7 @@ async function nodeToMarkdown(
 			try {
 				imgResult = await imgToChunks(imgBuffer);
 			} catch (error) {
-				if (isIgnorableImageProcessingError(error))
+				if (isIgnorableEmbeddedImageProcessingError(error))
 					return [node.text ?? '---', 0];
 
 				throw error;

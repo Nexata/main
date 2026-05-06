@@ -1,7 +1,10 @@
+import { createHash } from 'node:crypto';
 import {
+	type ImageToChunksInput,
 	InvalidRawImageError,
+	imgsToChunks,
 	imgToChunks,
-	isIgnorableImageProcessingError,
+	isIgnorableEmbeddedImageProcessingError,
 	isRelevantImage,
 } from '@api/file/lib/image';
 import {
@@ -16,7 +19,44 @@ import { extractImages, extractText, getDocumentProxy } from 'unpdf';
 Object.assign(globalThis, { DOMMatrix, ImageData, Path2D });
 
 const RENDER_SCALE = 2;
-const PAGE_CONCURRENCY = 3;
+const PAGE_CONCURRENCY = Math.max(
+	1,
+	Number(process.env.PDF_PAGE_CONCURRENCY ?? 2),
+);
+
+type Deferred<T> = {
+	promise: Promise<T>;
+	resolve: (value: T) => void;
+	reject: (error: unknown) => void;
+};
+
+function createDeferred<T>(): Deferred<T> {
+	let resolve!: (value: T) => void;
+	let reject!: (error: unknown) => void;
+	const promise = new Promise<T>((res, rej) => {
+		resolve = res;
+		reject = rej;
+	});
+
+	return { promise, resolve, reject };
+}
+
+function imageCacheKey(input: ImageToChunksInput): string {
+	const bytes =
+		input.data instanceof Uint8Array
+			? input.data
+			: ArrayBuffer.isView(input.data)
+				? new Uint8Array(
+						input.data.buffer,
+						input.data.byteOffset,
+						input.data.byteLength,
+					)
+				: new Uint8Array(input.data);
+	const hash = createHash('sha256').update(bytes).digest('hex');
+	return [input.raw?.width, input.raw?.height, input.raw?.channels, hash].join(
+		':',
+	);
+}
 
 class CanvasFactory {
 	create(width: number, height: number) {
@@ -91,9 +131,26 @@ async function renderPageFallback(
 	chunks: ToStringChunksResult['chunks'],
 ): Promise<number> {
 	const png = await renderPageAsPng(pdf, pageNumber);
-	const rendered = await imgToChunks(new Uint8Array(png));
+	let rendered: ToStringChunksResult;
+	try {
+		rendered = await imgToChunks(new Uint8Array(png));
+	} catch (error) {
+		if (isIgnorableEmbeddedImageProcessingError(error)) return 0;
+
+		throw error;
+	}
+
 	addPageChunks(chunks, pageNumber, rendered);
 	return rendered.tokenUsage ?? 0;
+}
+
+function isPdfImageDecodeError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : '';
+	return (
+		message.includes('OpenJPEG failed to initialize') ||
+		message.includes('Unable to decode image') ||
+		message.includes('JpxError')
+	);
 }
 
 export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
@@ -104,6 +161,7 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 	const { text, totalPages } = await extractText(pdf);
 
 	const limit = pLimit(PAGE_CONCURRENCY);
+	const imageCache = new Map<string, Promise<ToStringChunksResult>>();
 
 	const pageResults = await Promise.all(
 		Array.from({ length: totalPages }, (_, i) =>
@@ -128,42 +186,69 @@ export async function pdfToChunks(f: FileLike): Promise<ToStringChunksResult> {
 				}
 
 				try {
+					const imageInputs: ImageToChunksInput[] = [];
 					for (const img of await extractImages(pdf, pageNumber)) {
 						if (!isRelevantImage(img.width, img.height)) continue;
 
-						try {
-							const imgResult = await imgToChunks(img.data, {
+						imageInputs.push({
+							data: img.data,
+							raw: {
 								width: img.width,
 								height: img.height,
 								channels: img.channels,
-							});
+							},
+						});
+					}
 
+					try {
+						const newInputs: ImageToChunksInput[] = [];
+						const newDeferreds: Deferred<ToStringChunksResult>[] = [];
+						const imageResults = imageInputs.map((input) => {
+							const key = imageCacheKey(input);
+							const cached = imageCache.get(key);
+							if (cached) return { promise: cached, countUsage: false };
+
+							const deferred = createDeferred<ToStringChunksResult>();
+							imageCache.set(key, deferred.promise);
+							newInputs.push(input);
+							newDeferreds.push(deferred);
+							return { promise: deferred.promise, countUsage: true };
+						});
+
+						if (newInputs.length)
+							imgsToChunks(newInputs, 'best-effort').then(
+								(results) => {
+									for (let i = 0; i < newDeferreds.length; i++)
+										newDeferreds[i]!.resolve(results[i]!);
+								},
+								(error) => {
+									for (const deferred of newDeferreds) deferred.reject(error);
+								},
+							);
+
+						const imgResults = await Promise.all(
+							imageResults.map((result) => result.promise),
+						);
+
+						for (let i = 0; i < imgResults.length; i++) {
+							const imgResult = imgResults[i]!;
 							hasImages = hasImages || imgResult.chunks.length > 0;
 							addPageChunks(pageChunks, pageNumber, imgResult);
-							pageUsage += imgResult.tokenUsage ?? 0;
-						} catch (error) {
-							if (error instanceof InvalidRawImageError) {
-								shouldRenderPageFallback = true;
-								continue;
-							}
-
-							if (isIgnorableImageProcessingError(error)) continue;
-
-							const message = error instanceof Error ? error.message : '';
-							if (
-								message.includes('OpenJPEG failed to initialize') ||
-								message.includes('Unable to decode image') ||
-								message.includes('JpxError')
-							) {
-								shouldRenderPageFallback = true;
-								continue;
-							}
-
+							if (imageResults[i]?.countUsage)
+								pageUsage += imgResult.tokenUsage ?? 0;
+						}
+					} catch (error) {
+						if (
+							error instanceof InvalidRawImageError ||
+							isPdfImageDecodeError(error)
+						) {
+							shouldRenderPageFallback = true;
+						} else if (!isIgnorableEmbeddedImageProcessingError(error)) {
 							throw error;
 						}
 					}
 				} catch (error) {
-					if (!isIgnorableImageProcessingError(error)) {
+					if (!isIgnorableEmbeddedImageProcessingError(error)) {
 						const message = error instanceof Error ? error.message : '';
 						if (
 							message.includes('OpenJPEG failed to initialize') ||

@@ -4,8 +4,8 @@ import {
 	Crown,
 	Diamond,
 	Gem,
-	Sparkles,
 	type LucideIcon,
+	Sparkles,
 } from 'lucide-react';
 import { getLocale } from '@/paraglide/runtime';
 

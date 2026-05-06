@@ -22,6 +22,7 @@ import { BatchBillingModal } from '@/components/batch-billing/batch-billing-moda
 import { BuyMessagesModal } from '@/components/buy-messages/buy-messages-modal';
 import { CurrencyToggle } from '@/components/currency-toggle/currency-toggle';
 import { infoToast } from '@/components/info-toast/info-toast';
+import { PaymentMethodModal } from '@/components/payment-method/payment-method-modal';
 import { TenantLogo } from '@/components/tenant-logo/tenant-logo';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
@@ -44,7 +45,6 @@ import {
 import { FilePreview } from '@/components/ui/file-preview';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PaymentMethodModal } from '@/components/payment-method/payment-method-modal';
 import {
 	Popover,
 	PopoverContent,
@@ -89,7 +89,7 @@ import {
 	useCurrencyStore,
 } from '@/lib/currency.store';
 import { extractErrorText } from '@/lib/error';
-import { PLAN_CONFIG, type TenantPlan, getPlanLabel } from '@/lib/tenant-plan';
+import { getPlanLabel, PLAN_CONFIG, type TenantPlan } from '@/lib/tenant-plan';
 import { type Language, useMyTenant } from '@/lib/user';
 import {
 	'admin.billing.batch.detail_months' as admin_billing_batch_detail_months,
@@ -1282,7 +1282,7 @@ function TraceEventsSection() {
 	useEffect(() => {
 		setCursorStack([null]);
 		setPage(1);
-	}, [selectedTypes, from, to, pageSize]);
+	}, []);
 
 	const cap = (s?: string) => (s ? s[0]?.toUpperCase() + s.slice(1) : '');
 
@@ -1432,7 +1432,7 @@ function TraceEventsSection() {
 		if (!type) return traces_filter_type();
 		const helper = TRACE[type];
 		return helper?.label ?? traces_filter_type();
-	}, [selectedTypes]);
+	}, [selectedTypes, TRACE]);
 
 	const SkeletonRows = () =>
 		Array.from({ length: pageSize }).map((_, i) => (

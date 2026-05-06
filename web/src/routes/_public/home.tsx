@@ -901,7 +901,7 @@ function SourcesMarquee({
 		measure();
 		const t = setTimeout(measure, 120);
 		return () => clearTimeout(t);
-	}, [sources]);
+	}, []);
 
 	// Frame-by-frame drive — no CSS keyframes, no reset on re-render
 	useAnimationFrame((_, delta) => {
@@ -1641,7 +1641,7 @@ function UseCasesInteractive({
 			<div className="lg:hidden space-y-4">
 				{/* Numbered pill tabs */}
 				<div className="flex gap-2 justify-center flex-wrap">
-					{items.map((uc, i) => {
+					{items.map((_uc, i) => {
 						const isActive = active === i;
 						const isPast = active > i;
 						return (
