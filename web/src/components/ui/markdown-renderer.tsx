@@ -782,7 +782,237 @@ function sanitizeSvgElement(element: Element) {
   }
 }
 
-type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart" | "line-chart"
+// ---------------------------------------------------------------------------
+// ASCII / Unicode box-drawing diagram detection & rendering
+// ---------------------------------------------------------------------------
+
+/**
+ * Returns true when `text` looks like an ASCII or Unicode-box diagram that
+ * the LLM produced outside of a code fence (e.g. using ┌─┐│└┘ characters,
+ * +---+ ASCII boxes, or multi-line geometric art with arrow symbols).
+ */
+function isAsciiDiagram(text: string): boolean {
+  const trimmed = text.trim()
+  if (!trimmed) return false
+
+  const lines = trimmed.split("\n")
+
+  // Count Unicode box-drawing characters (U+2500–U+257F)
+  let boxCharCount = 0
+  for (const char of trimmed) {
+    const code = char.charCodeAt(0)
+    if (code >= 0x2500 && code <= 0x257f) boxCharCount++
+  }
+
+  // Multi-line block: 4+ box chars is strong enough evidence
+  if (lines.length >= 2 && boxCharCount >= 4) return true
+
+  // Single-line (LLM collapsed multi-line into one line via spaces):
+  // require 12+ chars to avoid false positives on stray characters
+  if (lines.length === 1 && boxCharCount >= 12) return true
+
+  // ASCII art: +---+ / +===+ borders with | side lines
+  if (
+    /[+][─\-=]{2,}[+]/.test(trimmed) &&
+    lines.some((l) => /^\s*\|.+\|\s*$/.test(l))
+  )
+    return true
+
+  // Multi-line geometric ASCII art (triangles, cones, spheres…)
+  // combined with at least one Unicode symbol (arrow, bullet, geometric shape)
+  if (lines.length >= 3) {
+    const geometricLines = lines.filter((l) =>
+      /^[\s/\\|_\-=+.oO#*~<>^v]+$/.test(l)
+    )
+    const hasSymbols = /[▶►◄◀▼▲↑↓←→●■○□◆◇]/.test(trimmed)
+    if (geometricLines.length >= 2 && hasSymbols) return true
+  }
+
+  return false
+}
+
+// ─── Pre-normalizer ──────────────────────────────────────────────────────────
+//
+// Runs before colorization to fix the two most common visual-misalignment
+// sources in LLM-generated diagrams:
+//
+//  ① Mixed-border lines: if a line already contains Unicode box-drawing chars
+//    (U+2500–U+257F), any bare ASCII "|" on that line is also a border—upgrade
+//    it to │ (U+2502) so every glyph uses the same cell width.
+//
+//  ② Pure ASCII-border lines (only |, -, +, space): upgrade the whole line to
+//    Unicode equivalents so the font renders each cell at the correct width.
+//    Also upgrades the ─+─ junction to ─┼─.
+//
+//  ③ Arrow sequences: converts ──> → ──►  and <── → ◄──  (and their ASCII
+//    equivalents --> → ──►  /  <-- → ◄──) so arrows receive their accent
+//    colour and are visually unambiguous.
+//
+function normalizeDiagramContent(raw: string): string {
+  return raw
+    .split("\n")
+    .map((line) => {
+      let l = line
+
+      // ① Lines that already contain box-drawing chars: upgrade ASCII | → │
+      if (/[\u2500-\u257F]/.test(l)) {
+        l = l.replace(/\|/g, "\u2502") // | → │
+      }
+
+      // ② Pure ASCII-border lines (only | - + and spaces)
+      if (/^[ |+\-]*$/.test(l) && /[|+\-]/.test(l.trim())) {
+        l = l
+          .replace(/\|/g, "\u2502")                             // | → │
+          .replace(/-+/g, (m) => "\u2500".repeat(m.length))    // ---  → ───
+          .replace(/\u2500\+\u2500/g, "\u2500\u253C\u2500")    // ─+─  → ─┼─
+      }
+
+      // ③ Arrow normalization (only 2+ char sequences to avoid false positives)
+      l = l
+        // Unicode-dash arrows:  ──> → ──►   <── → ◄──
+        .replace(/(\u2500{2,})>/g, "$1\u25BA")
+        .replace(/<(\u2500{2,})/g, "\u25C4$1")
+        // ASCII-dash arrows:  --> → ──►   <-- → ◄──
+        .replace(/(-{2,})>/g, (_, d: string) => "\u2500".repeat(d.length) + "\u25BA")
+        .replace(/<(-{2,})/g, (_, d: string) => "\u25C4" + "\u2500".repeat(d.length))
+
+      return l
+    })
+    .join("\n")
+}
+
+// ─── Regex tokenizer ─────────────────────────────────────────────────────────
+//
+// Each capture group covers one semantic category.  Horizontal-line runs are
+// matched greedily (G3) so a whole row of ─────── becomes one span instead of
+// one per character.
+//
+//  G1  corners       ┌ ┐ └ ┘ ╔ ╗ ╚ ╝
+//  G2  junctions     ├ ┤ ┬ ┴ ┼ ┣ ┫ ┳ ┻ ╋ ╠ ╣ ╦ ╩ ╬
+//  G3  h-lines       ─ ━ ═  (greedy run)
+//  G4  v-lines       │ ┃ ║
+//  G5  arrows        ← → ↑ ↓ ↔ ↕ ⇒ ⇐ ⇑ ⇓ ⟵ ⟶ ⟺  and similar
+//  G6  shapes        ▼ ▲ ▶ ◀ ● ■ □ ○ ◆ ◇ ★ ☆ …  (U+25A0–U+25FF)
+//  G7  block fills   ░ ▒ ▓ █  (U+2580–U+259F)
+const DIAGRAM_TOKEN_RE = new RegExp(
+  "(" +
+    [
+      "[\u250C\u2510\u2514\u2518\u2554\u2557\u255A\u255D]",
+      "[\u251C\u2524\u252C\u2534\u253C\u2523\u252B\u2533\u253B\u254B\u2560\u2563\u2566\u2569\u256C]",
+      "[\u2500\u2501\u2550\u2504\u2505\u2508\u2509]+",
+      "[\u2502\u2503\u2551\u254E\u254F]",
+      "[\u2190-\u21FF]|[\u27F5-\u27FF]|[\u25BA\u25C4]",
+      "[\u25A0-\u25FF]",
+      "[\u2580-\u259F]",
+    ].join(")|(") +
+    ")",
+  "g",
+)
+
+// Tailwind classes per group (index 0 → G1)
+const DIAGRAM_GROUP_CLASSES = [
+  "text-primary/45",           // G1 corners      — subtle, structural
+  "text-primary/70",           // G2 junctions    — slightly more visible
+  "text-muted-foreground/38",  // G3 h-lines      — very muted scaffolding
+  "text-muted-foreground/52",  // G4 v-lines      — slightly more visible
+  "text-primary font-bold",    // G5 arrows       — full primary, bold
+  "text-primary font-semibold",// G6 shapes       — full primary
+  "text-muted-foreground/22",  // G7 block fills  — barely visible fill
+] as const
+
+/**
+ * Regex-based tokenizer: uses matchAll to split content into semantically
+ * coloured spans and plain-text fragments in a single pass.
+ * Newlines are preserved verbatim so the parent <pre> renders them naturally.
+ */
+function colorizeAsciiContent(content: string): React.ReactNode[] {
+  const nodes: React.ReactNode[] = []
+  let lastIndex = 0
+  let keyIdx = 0
+
+  for (const match of content.matchAll(DIAGRAM_TOKEN_RE)) {
+    const matchStart = match.index!
+
+    // Plain text before this token
+    if (matchStart > lastIndex) {
+      nodes.push(
+        <React.Fragment key={keyIdx++}>
+          {content.slice(lastIndex, matchStart)}
+        </React.Fragment>,
+      )
+    }
+
+    // Find which group matched (groups are 1-based; slice(1) makes it 0-based)
+    const groupIndex = match.slice(1).findIndex((g) => g !== undefined)
+    const className = DIAGRAM_GROUP_CLASSES[groupIndex] ?? ""
+
+    nodes.push(
+      <span key={keyIdx++} className={className}>
+        {match[0]}
+      </span>,
+    )
+
+    lastIndex = matchStart + match[0].length
+  }
+
+  // Trailing plain text
+  if (lastIndex < content.length) {
+    nodes.push(
+      <React.Fragment key={keyIdx++}>
+        {content.slice(lastIndex)}
+      </React.Fragment>,
+    )
+  }
+
+  return nodes
+}
+
+// Explicit monospace font stack — JetBrains Mono / Fira Code / system fallback
+const MONO_FONT_FAMILY =
+  "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', monospace"
+
+const AsciiDiagramRenderer = React.memo(function AsciiDiagramRenderer({
+  content,
+}: {
+  content: string
+}) {
+  const normalized = useMemo(() => normalizeDiagramContent(content), [content])
+  const nodes = useMemo(() => colorizeAsciiContent(normalized), [normalized])
+  const hasBoxChars = /[\u2500-\u257F]/.test(normalized)
+  const label = hasBoxChars ? "diagram" : "ascii"
+
+  return (
+    <DiagramCard
+      label={label}
+      actions={
+        <CopyButton content={content} copyMessage="Copied diagram to clipboard" />
+      }
+    >
+      {/* Inner code-editor surface */}
+      <div className="rounded-lg overflow-hidden ring-1 ring-inset ring-border/20 bg-muted/10">
+        <pre
+          className={cn(
+            "m-0 overflow-x-auto p-5",
+            "whitespace-pre text-[13px] leading-[1.75]",
+            "text-foreground/80 selection:bg-primary/15",
+            "[scrollbar-width:thin]",
+            "[&::-webkit-scrollbar]:h-1.5",
+            "[&::-webkit-scrollbar-thumb]:rounded-full",
+            "[&::-webkit-scrollbar-thumb]:bg-border/50",
+            "[&::-webkit-scrollbar-track]:bg-transparent",
+          )}
+          style={{ fontFamily: MONO_FONT_FAMILY }}
+        >
+          {nodes}
+        </pre>
+      </div>
+    </DiagramCard>
+  )
+})
+
+// ---------------------------------------------------------------------------
+
+type StructuredBlockType = "directory-tree" | "timeline" | "bar-chart" | "line-chart" | "ascii-diagram"
 
 type MarkdownSegment =
   | { type: "markdown"; content: string }
@@ -801,14 +1031,21 @@ function getStructuredBlockType(text: string): StructuredBlockType | null {
   const isLineChartBlock = isLineChart(normalizedText)
 
   const matchCount = [isTree, isTimelineBlock, isBarChartBlock, isLineChartBlock].filter(Boolean).length
-  if (matchCount !== 1) {
-    return null
+
+  if (matchCount === 1) {
+    if (isTree) return "directory-tree"
+    if (isTimelineBlock) return "timeline"
+    if (isLineChartBlock) return "line-chart"
+    return "bar-chart"
   }
 
-  if (isTree) return "directory-tree"
-  if (isTimelineBlock) return "timeline"
-  if (isLineChartBlock) return "line-chart"
-  return "bar-chart"
+  // Only check for ASCII diagrams when no other structured type matched,
+  // so we never compete with directory-tree (which also uses box chars).
+  if (matchCount === 0 && isAsciiDiagram(normalizedText)) {
+    return "ascii-diagram"
+  }
+
+  return null
 }
 
 function renderStructuredBlock(
@@ -826,6 +1063,10 @@ function renderStructuredBlock(
 
   if (type === "line-chart") {
     return <LineChartRenderer key={key} content={content} />
+  }
+
+  if (type === "ascii-diagram") {
+    return <AsciiDiagramRenderer key={key} content={content} />
   }
 
   return <TimelineChart key={key} content={content} />
@@ -1045,6 +1286,10 @@ const COMPONENTS = {
 
     if (language === "svg") {
       return <SvgBlock content={textContent} />
+    }
+
+    if (language === "ascii" || language === "art" || language === "text-diagram") {
+      return <AsciiDiagramRenderer content={textContent} />
     }
 
     return match ? (

@@ -9,7 +9,9 @@
 		"api:dev": "cd api && bun --watch src/index.ts",
 		"web:dev": "cd web && bun run dev",
 		"check": "biome check --fix --unsafe --verbose",
+		"legajox:dev": "cd legajox-scrapper && bun src/index.ts",
 		"dev": "bunx concurrently \"bun run api:dev\" \"bun run web:dev\"",
+		"dev:all": "bunx concurrently \"bun run api:dev\" \"bun run web:dev\" \"bun run legajox:dev\"",
 		"preview": "docker compose up --build"
 	},
 	"workspaces": [
