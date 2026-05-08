@@ -365,18 +365,31 @@ function NexataFileSearchRenderer({ output }: { output: any }) {
       <div className="flex flex-col gap-1.5">
         {files.map((f: any, i: number) => (
           <ListCard key={f.id ?? i}>
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium truncate">{f.name}</span>
-              <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                {f.provider && <Badge>{f.provider}</Badge>}
-                {f.type && <span>{f.type}</span>}
-                {f.modifiedAt && <span>{formatDate(f.modifiedAt)}</span>}
+            <div className="flex items-start gap-2">
+              <div className="flex flex-col gap-1 min-w-0 flex-1">
+                <span className="text-sm font-medium truncate">{f.name}</span>
+                <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                  {f.provider && <Badge>{f.provider}</Badge>}
+                  {f.type && <span>{f.type}</span>}
+                  {f.modifiedAt && <span>{formatDate(f.modifiedAt)}</span>}
+                </div>
+                {f.ownedBy?.displayName && (
+                  <span className="text-xs text-muted-foreground">{f.ownedBy.displayName}</span>
+                )}
+                {f.chunks?.length > 0 && (
+                  <span className="text-xs text-muted-foreground">{td_chunks({ count: f.chunks.length })}</span>
+                )}
               </div>
-              {f.ownedBy?.displayName && (
-                <span className="text-xs text-muted-foreground">{f.ownedBy.displayName}</span>
-              )}
-              {f.chunks?.length > 0 && (
-                <span className="text-xs text-muted-foreground">{td_chunks({ count: f.chunks.length })}</span>
+              {f.url && (
+                <a
+                  href={f.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="shrink-0 text-muted-foreground hover:text-foreground transition-colors"
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <ExternalLink className="h-3.5 w-3.5" />
+                </a>
               )}
             </div>
           </ListCard>

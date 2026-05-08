@@ -464,7 +464,9 @@ export const fileRouter = new Elysia({ prefix: '/file', tags: ['File'] })
 	.use(authPlugin())
 	.post(
 		'/',
-		async ({ body: { files, metadata }, activeUser }) => {
+		async ({ body: { files, metadata }, activeUser, request, server }) => {
+			server?.timeout(request, 0);
+
 			const results: string[] = [];
 			for (const f of files) {
 				const blockReason = await checkTenantCanIngest(activeUser.slug);

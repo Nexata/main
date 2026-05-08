@@ -1,4 +1,5 @@
 import { requireEnv } from '@api/utils/env';
+import { withRetry } from '@api/utils/retry';
 import { s3 } from 'bun';
 
 export const S3_ACCESS_URL = requireEnv('S3_ACCESS_URL');
@@ -17,7 +18,7 @@ export async function uploadTenantPfp(slug: string, f: File) {
 
 export async function uploadFile(slug: string, id: string, f: File) {
 	const key = `t/${slug}/f/${id}`;
-	await s3.write(key, f, { acl: 'public-read', type: f.type });
+	await withRetry(() => s3.write(key, f, { acl: 'public-read', type: f.type }));
 	return `${S3_ACCESS_URL}/${key}`;
 }
 

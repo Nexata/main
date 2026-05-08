@@ -246,6 +246,10 @@
 				"api_access": "Acceso a API incluido"
 			},
 			"plans": {
+				"initial": {
+					"title": "Inicial",
+					"description": "Un plan inicial económico para uso recurrente liviano."
+				},
 				"personal": {
 					"title": "Personal",
 					"description": "Ideal para profesionales independientes y equipos pequeños."
@@ -671,6 +675,7 @@
 			"tenant_logo": "Logo de la empresa",
 			"plans": {
 				"free": "Gratis",
+				"initial": "Inicial",
 				"personal": "Personal",
 				"team": "Team",
 				"business": "Business",

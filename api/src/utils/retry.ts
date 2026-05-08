@@ -4,12 +4,15 @@ function isTransientError(error: unknown): boolean {
 	if (!(error instanceof Error)) return false;
 
 	const message = error.message;
+	const name = error.name;
 
 	if (
+		name === 'TimeoutError' ||
 		message.includes('fetch failed') ||
 		message.includes('ECONNRESET') ||
 		message.includes('ETIMEDOUT') ||
 		message.includes('UND_ERR_CONNECT_TIMEOUT') ||
+		message.includes('operation timed out') ||
 		message.includes('socket hang up')
 	)
 		return true;

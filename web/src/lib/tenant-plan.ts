@@ -5,12 +5,14 @@ import {
 	Diamond,
 	Gem,
 	type LucideIcon,
+	Rocket,
 	Sparkles,
 } from 'lucide-react';
 import { getLocale } from '@/paraglide/runtime';
 
 export type TenantPlan =
 	| 'free'
+	| 'initial'
 	| 'personal'
 	| 'team'
 	| 'business'
@@ -33,6 +35,7 @@ type PlanConfig = {
 
 export const PLAN_ORDER: TenantPlan[] = [
 	'free',
+	'initial',
 	'personal',
 	'team',
 	'business',
@@ -53,6 +56,19 @@ export const PLAN_CONFIG: Record<TenantPlan, PlanConfig> = {
 		cardIconContainerClassName: 'bg-emerald-500/10',
 		cardIconClassName: 'text-emerald-600',
 		Icon: Sparkles,
+	},
+	initial: {
+		baseBill: 7.5,
+		messageLimit: 75,
+		storageLimit: 0.375 * 1024,
+		embedLimit: 448 * 125_000,
+		hasApiAccess: false,
+		isVisibleInUpgradeModal: true,
+		isSelfServe: true,
+		badgeClassName: 'bg-lime-500/10 text-lime-600',
+		cardIconContainerClassName: 'bg-lime-500/10',
+		cardIconClassName: 'text-lime-600',
+		Icon: Rocket,
 	},
 	personal: {
 		baseBill: 20,
@@ -147,6 +163,7 @@ export function getPlanLabel(plan: TenantPlan) {
 		locale === 'es'
 			? {
 					free: 'Gratis',
+					initial: 'Inicial',
 					personal: 'Personal',
 					team: 'Team',
 					business: 'Business',
@@ -155,6 +172,7 @@ export function getPlanLabel(plan: TenantPlan) {
 				}
 			: {
 					free: 'Free',
+					initial: 'Initial',
 					personal: 'Personal',
 					team: 'Team',
 					business: 'Business',
@@ -171,6 +189,8 @@ export function getPlanDescription(plan: TenantPlan) {
 		locale === 'es'
 			? {
 					free: 'Para explorar Nexata con límites iniciales y sin acceso a API.',
+					initial:
+						'Un plan inicial económico para uso recurrente liviano.',
 					personal:
 						'Ideal para profesionales independientes y equipos pequeños.',
 					team: 'Diseñado para equipos que ya necesitan colaboración y acceso a API.',
@@ -183,6 +203,7 @@ export function getPlanDescription(plan: TenantPlan) {
 				}
 			: {
 					free: 'For exploring Nexata with starter limits and no API access.',
+					initial: 'An affordable starter plan for light ongoing use.',
 					personal: 'Great for individual professionals and small teams.',
 					team: 'Built for teams that already need collaboration and API access.',
 					business:
