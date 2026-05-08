@@ -246,6 +246,10 @@
 				"api_access": "API access included"
 			},
 			"plans": {
+				"initial": {
+					"title": "Initial",
+					"description": "An affordable starter plan for light ongoing use."
+				},
 				"personal": {
 					"title": "Personal",
 					"description": "Great for individual professionals and small teams."
@@ -671,6 +675,7 @@
 			"tenant_logo": "Company Logo",
 			"plans": {
 				"free": "Free",
+				"initial": "Initial",
 				"personal": "Personal",
 				"team": "Team",
 				"business": "Business",

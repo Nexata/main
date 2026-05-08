@@ -9,6 +9,7 @@ import {
 
 export enum Plan {
 	FREE = 'free',
+	INITIAL = 'initial',
 	PERSONAL = 'personal',
 	TEAM = 'team',
 	BUSINESS = 'business',
@@ -31,6 +32,13 @@ export const PLANS: Record<
 		messageLimit: 10,
 		storageLimit: 10,
 		embedLimit: 10 * 125_000,
+		hasApiAccess: false,
+	},
+	[Plan.INITIAL]: {
+		baseBill: 7.5,
+		messageLimit: 75,
+		storageLimit: 0.375 * 1024,
+		embedLimit: 448 * 125_000,
 		hasApiAccess: false,
 	},
 	[Plan.PERSONAL]: {
