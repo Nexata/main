@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion } from "framer-motion"
-import { ArrowUp, CircleHelp, Ellipsis, Info, Loader2, Paperclip, Share2, Square, Brain, X  } from "lucide-react"
+import { ArrowUp, CircleHelp, Ellipsis, Info, Loader2, Paperclip, Share2, Brain, X  } from "lucide-react"
 import { omit } from "remeda"
 import { CHAT_INPUT_MAX_CHARS, CHAT_INPUT_WARNING_THRESHOLD } from "@/lib/chat-input"
 import { cn } from "@/lib/utils"
@@ -35,6 +35,7 @@ interface MessageInputBaseProps
   transcribeAudio?: (blob: Blob) => Promise<string>
   setExtraReason?: (value: boolean) => void
   onShareThread?: () => void
+  isAwaitingToolInput?: boolean
 }
 
 interface MessageInputWithoutAttachmentProps extends MessageInputBaseProps {
@@ -62,6 +63,7 @@ export function MessageInput({
   transcribeAudio,
   setExtraReason,
   onShareThread,
+  isAwaitingToolInput = false,
   ...props
 }: MessageInputProps) {
   const [isDragging, setIsDragging] = useState(false)
@@ -93,6 +95,8 @@ export function MessageInput({
       setShowInterruptPrompt(false)
     }
   }, [isGenerating])
+
+  const isInputBlocked = isGenerating || isAwaitingToolInput
 
   const addFiles = (files: File[] | null) => {
     if (props.allowAttachments) {
@@ -324,8 +328,10 @@ export function MessageInput({
                 "h-9 py-2",
                 "overflow-y-auto scrollbar-thin",
                 "placeholder:text-muted-foreground",
+                isInputBlocked && "cursor-not-allowed opacity-60",
                 className
               )}
+              disabled={isInputBlocked}
               {...(props.allowAttachments
                 ? omit(props, ["allowAttachments", "files", "setFiles"])
                 : omit(props, ["allowAttachments"]))}
@@ -478,22 +484,16 @@ export function MessageInput({
                 </Button>
               </div>
 
-              {isGenerating && stop ? (
-                <Button
-                  type="button"
-                  size="icon"
-                  className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                  onMouseDown={(e) => e.preventDefault()}
-                  onClick={stop}
-                >
-                  <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
-                </Button>
+              {isGenerating ? (
+                <div className="h-8 w-8 rounded-full flex items-center justify-center bg-foreground/10">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
               ) : (
                 <Button
                   type="submit"
                   size="icon"
                   className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                  disabled={(!hasContent && !hasFiles) || isGenerating}
+                  disabled={(!hasContent && !hasFiles) || isAwaitingToolInput}
                 >
                   <ArrowUp className="h-5 w-5" />
                 </Button>
@@ -518,8 +518,10 @@ export function MessageInput({
                 "min-h-0",
                 "overflow-y-auto scrollbar-thin",
                 "placeholder:text-muted-foreground",
+                isInputBlocked && "cursor-not-allowed opacity-60",
                 className
               )}
+              disabled={isInputBlocked}
               {...(props.allowAttachments
                 ? omit(props, ["allowAttachments", "files", "setFiles"])
                 : omit(props, ["allowAttachments"]))}
@@ -729,22 +731,16 @@ export function MessageInput({
                   </span>
                 )}
 
-                {isGenerating && stop ? (
-                  <Button
-                    type="button"
-                    size="icon"
-                    className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                    onMouseDown={(e) => e.preventDefault()}
-                    onClick={stop}
-                  >
-                    <Square className="h-5 w-5 animate-pulse" fill="currentColor" />
-                  </Button>
+                {isGenerating ? (
+                  <div className="h-8 w-8 rounded-full flex items-center justify-center bg-foreground/10">
+                    <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                  </div>
                 ) : (
                   <Button
                     type="submit"
                     size="icon"
                     className="h-8 w-8 rounded-full bg-foreground text-background cursor-pointer"
-                    disabled={(!hasContent && !hasFiles) || isGenerating}
+                    disabled={(!hasContent && !hasFiles) || isAwaitingToolInput}
                   >
                     <ArrowUp className="h-5 w-5" />
                   </Button>

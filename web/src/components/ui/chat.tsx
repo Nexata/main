@@ -89,6 +89,18 @@ export function Chat({
   const showWelcomeSkeleton = isNewChat && isHydrating && messages.length === 0
   const lastMessage = messages.length > 0 ? messages[messages.length - 1] : undefined
 
+  const isAwaitingToolInput = !isStreaming && messages.some((msg) => {
+    if (msg.role !== 'assistant') return false
+    return (msg.parts ?? []).some((p) => {
+      const part = p as Record<string, unknown>
+      return (
+        (part['type'] === 'tool-NexataAskQuestions' ||
+          (part['type'] === 'dynamic-tool' && part['toolName'] === 'NexataAskQuestions')) &&
+        part['state'] === 'input-available'
+      )
+    })
+  })
+
   const assistantHasText =
     lastMessage?.role === "assistant" &&
     lastMessage.parts?.some((p) => p.type === "text" && (p.text?.length ?? 0) > 0)
@@ -246,6 +258,7 @@ export function Chat({
                     setFiles={setFiles}
                     stop={handleStop}
                     isGenerating={isGenerating}
+                    isAwaitingToolInput={isAwaitingToolInput}
                     transcribeAudio={transcribeAudio}
                     setExtraReason={setExtraReason}
                     onShareThread={onShareThread}
