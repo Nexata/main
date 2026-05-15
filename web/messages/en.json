@@ -21,7 +21,8 @@
 		"title": "Nexata | Select tenant",
 		"welcome": "Welcome {name}",
 		"selectPrompt": "Select the tenant you want to access",
-		"userFallback": "User"
+		"userFallback": "User",
+		"create_tenant": "Create new organization"
 	},
 
 	"months": {
@@ -332,6 +333,15 @@
 			"google": "Google",
 			"microsoft": "Microsoft",
 			"dropbox": "Dropbox"
+		},
+		"create_tenant_prompt": "Don't have a Nexata organization?",
+		"create_tenant_button": "Create one for free",
+		"auth_error": {
+			"title": "Sign-in error",
+			"description": "Something went wrong during authentication. Please try again.",
+			"state_mismatch": "The authentication session expired or is invalid. Please sign in again.",
+			"user_not_found": "No account was found associated with that provider.",
+			"close": "Close"
 		}
 	},
 	"sidebar": {
@@ -913,7 +923,8 @@
 				"title": "Profile",
 				"subtitle": "Manage your personal information",
 				"back_to_chat": "Back to chat",
-				"logout": "Logout"
+				"logout": "Logout",
+				"create_tenant": "Create new organization"
 			},
 			"info": {
 				"messages_used": "Messages used this month"

@@ -12,6 +12,7 @@ import {
 	LogOut,
 	Monitor,
 	Pencil,
+	Plus,
 	RotateCw,
 	Smartphone,
 	Trash2,
@@ -21,6 +22,7 @@ import { UAParser } from 'ua-parser-js';
 import { AsyncConfirmButton } from '@/components/async-confirm-button/async-confirm-button';
 import { infoToast } from '@/components/info-toast/info-toast';
 import { LanguageSelector } from '@/components/language-selector/language-selector';
+import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -81,6 +83,7 @@ import {
 	'user.profile.api_keys.toasts.generate.success_title' as profile_api_keys_toast_generate_success_title,
 	'user.profile.header.back_to_chat' as profile_back_to_chat,
 	'user.profile.edit.cancel' as profile_cancel,
+	'user.profile.header.create_tenant' as profile_create_tenant,
 	'user.profile.danger_zone.subtitle' as profile_danger_zone_subtitle,
 	'user.profile.danger_zone.title' as profile_danger_zone_title,
 	'user.profile.devices.revoke.error_description' as profile_device_revoke_error_description,
@@ -148,6 +151,7 @@ export default function ProfilePage() {
 	const [apiKeyModalOpen, setApiKeyModalOpen] = useState(false);
 	const [generatedApiKey, setGeneratedApiKey] = useState<string | null>(null);
 	const [deleteApiKeyOpen, setDeleteApiKeyOpen] = useState(false);
+	const [registerOpen, setRegisterOpen] = useState(false);
 	const [actualFingerprint, setActualFingerprint] = useState<string | null>(
 		null,
 	);
@@ -369,6 +373,17 @@ export default function ProfilePage() {
 						>
 							<Building2 className="h-4 w-4 mr-2" />
 							{sidebar_tenant_switch()}
+						</Button>
+					)}
+
+					{!canSwitchTenant && (
+						<Button
+							variant="outline"
+							className="cursor-pointer"
+							onClick={() => setRegisterOpen(true)}
+						>
+							<Plus className="h-4 w-4 mr-2" />
+							{profile_create_tenant()}
 						</Button>
 					)}
 
@@ -768,15 +783,21 @@ export default function ProfilePage() {
 				</CardContent>
 			</Card>
 
-			<ConfirmDeleteAccountModal
-				open={deleteAccountOpen}
-				onOpenChange={setDeleteAccountOpen}
-				onConfirm={async () => {
-					await deleteMe();
-				}}
-			/>
+		<ConfirmDeleteAccountModal
+			open={deleteAccountOpen}
+			onOpenChange={setDeleteAccountOpen}
+			onConfirm={async () => {
+				await deleteMe();
+			}}
+		/>
 
-			<ApiKeyOneTimeModal
+		<RegisterTenantModal
+			open={registerOpen}
+			onOpenChange={setRegisterOpen}
+			language={language}
+		/>
+
+		<ApiKeyOneTimeModal
 				open={apiKeyModalOpen}
 				apiKey={generatedApiKey}
 				clientId={me?.id ?? null}

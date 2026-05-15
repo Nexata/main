@@ -21,7 +21,8 @@
 		"title": "Nexata | Seleccionar tenant",
 		"welcome": "Bienvenido {name}",
 		"selectPrompt": "Seleccioná el tenant al que querés ingresar",
-		"userFallback": "Usuario"
+		"userFallback": "Usuario",
+		"create_tenant": "Crear nueva empresa"
 	},
 
 	"months": {
@@ -332,6 +333,15 @@
 			"google": "Google",
 			"microsoft": "Microsoft",
 			"dropbox": "Dropbox"
+		},
+		"create_tenant_prompt": "¿No tenés empresa en Nexata?",
+		"create_tenant_button": "Crear empresa gratis",
+		"auth_error": {
+			"title": "Error al iniciar sesión",
+			"description": "Hubo un problema al autenticarte. Por favor, intentá de nuevo.",
+			"state_mismatch": "La sesión de autenticación expiró o es inválida. Por favor, iniciá sesión nuevamente.",
+			"user_not_found": "No se encontró una cuenta asociada a ese proveedor.",
+			"close": "Cerrar"
 		}
 	},
 	"sidebar": {
@@ -913,7 +923,8 @@
 				"title": "Perfil",
 				"subtitle": "Administrá tu información personal",
 				"back_to_chat": "Volver al chat",
-				"logout": "Cerrar Sesión"
+				"logout": "Cerrar Sesión",
+				"create_tenant": "Crear nueva empresa"
 			},
 			"info": {
 				"messages_used": "Mensajes usados este mes"
