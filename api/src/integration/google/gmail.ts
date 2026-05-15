@@ -10,6 +10,7 @@ import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
 import { Nullish, tObject } from '@api/utils/type';
 import { gmail, type gmail_v1 } from '@googleapis/gmail';
 import { Elysia, type Static, t } from 'elysia';
+import TurndownService from 'turndown';
 
 export namespace Gmail {
 	export const fromRequest = async (
@@ -48,9 +49,18 @@ export namespace Gmail {
 		return { email: header.trim() };
 	}
 
+	const turndown = new TurndownService({ headingStyle: 'atx', bulletListMarker: '-' });
+
+	function htmlToText(html: string): string {
+		try {
+			return turndown.turndown(html);
+		} catch {
+			return html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+		}
+	}
+
 	function extractBody(payload?: gmail_v1.Schema$MessagePart): {
 		text?: string;
-		html?: string;
 	} {
 		if (!payload) return {};
 
@@ -68,10 +78,13 @@ export namespace Gmail {
 			for (const part of payload.parts) {
 				const partBody = extractBody(part);
 				if (partBody.text && !result.text) result.text = partBody.text;
-				if (partBody.html && !result.html) result.html = partBody.html;
+				if ('html' in partBody && partBody.html && !result.html)
+					result.html = (partBody as { html: string }).html;
 			}
 
-		return result;
+		if (result.text) return { text: result.text };
+		if (result.html) return { text: htmlToText(result.html) };
+		return {};
 	}
 
 	function extractAttachments(
