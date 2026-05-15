@@ -11,12 +11,20 @@ export default function CallbackPage() {
 	const navigate = useNavigate();
 
 	React.useEffect(() => {
+		const params = new URLSearchParams(window.location.search);
+
+		// If the backend returned an error, redirect to login with the error code
+		const error = params.get('error');
+		if (error) {
+			navigate({ to: '/login', search: { authError: error } });
+			return;
+		}
+
 		try {
-			const params = new URLSearchParams(window.location.search);
 			const encoded = params.get('sessions');
 
 			if (!encoded) {
-				navigate({ to: '/login' });
+				navigate({ to: '/login', search: { authError: 'unknown' } });
 				return;
 			}
 
@@ -24,7 +32,7 @@ export default function CallbackPage() {
 			const sessions: Session[] = JSON.parse(decoded);
 
 			if (!Array.isArray(sessions) || sessions.length === 0) {
-				navigate({ to: '/login' });
+				navigate({ to: '/login', search: { authError: 'unknown' } });
 				return;
 			}
 
@@ -44,7 +52,7 @@ export default function CallbackPage() {
 			});
 		} catch (err) {
 			console.error('Callback parse error:', err);
-			navigate({ to: '/login' });
+			navigate({ to: '/login', search: { authError: 'unknown' } });
 		}
 	}, [navigate]);
 

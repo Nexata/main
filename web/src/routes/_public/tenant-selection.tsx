@@ -5,12 +5,17 @@ import {
 	useSearch,
 } from '@tanstack/react-router';
 import { motion } from 'framer-motion';
-import React from 'react';
+import { Plus } from 'lucide-react';
+import React, { useState } from 'react';
+import RegisterTenantModal from '@/components/register-tenant/register-tenant.modal';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
+import { getStoredLanguage } from '@/hooks/use-sync-language';
 import { saveTokens } from '@/lib/auth';
 import { type Session, saveTenantSessions } from '@/lib/tenant-session';
 import {
+	'tenant-selection.create_tenant' as tenant_selection_create_tenant,
 	'tenant-selection.selectPrompt' as tenant_selection_selectPrompt,
 	'tenant-selection.title' as tenant_selection_title,
 	'tenant-selection.userFallback' as tenant_selection_userFallback,
@@ -43,10 +48,13 @@ function stringToColor(str: string) {
 export default function TenantSelectionPage() {
 	const navigate = useNavigate();
 	const queryClient = useQueryClient();
+	const language = getStoredLanguage();
 
 	const { sessions: encoded } = useSearch({
 		from: '/_public/tenant-selection',
 	});
+
+	const [registerOpen, setRegisterOpen] = useState(false);
 
 	const sessions: Session[] | null = React.useMemo(() => {
 		try {
@@ -83,84 +91,104 @@ export default function TenantSelectionPage() {
 	}
 
 	return (
-		<motion.div
-			initial={{ opacity: 0, scale: 0.96 }}
-			animate={{ opacity: 1, scale: 1 }}
-			transition={{ duration: 0.25 }}
-			className="w-full max-w-xl mx-auto min-h-screen flex items-center justify-center"
-		>
-			<Card className="rounded-2xl border shadow-xl w-full">
-				<CardContent className="p-8 space-y-6">
-					{/* User greeting */}
-					<div className="flex flex-col items-center gap-3">
-						{user.pfpUrl ? (
-							<img
-								src={user.pfpUrl}
-								className="w-16 h-16 rounded-full object-cover"
-								referrerPolicy="no-referrer"
-							/>
-						) : (
-							<div
-								className="w-16 h-16 rounded-full flex items-center justify-center text-white font-semibold"
-								style={{
-									backgroundColor: stringToColor(
-										user.displayName ?? user.email,
-									),
-									fontSize: 24,
-								}}
-							>
-								{(user.displayName ?? user.email)[0]?.toUpperCase()}
-							</div>
-						)}
-
-						<h2 className="text-xl font-semibold text-center">
-							{tenant_selection_welcome({
-								name: user.displayName ?? tenant_selection_userFallback(),
-							})}
-						</h2>
-
-						<p className="text-sm text-muted-foreground">{user.email}</p>
-						<Separator className="my-1" />
-						<p className="text-sm opacity-70 text-center">
-							{tenant_selection_selectPrompt()}
-						</p>
-					</div>
-
-					{/* Tenant list */}
-					<div className="space-y-3">
-						{sessions.map((s, i) => (
-							<motion.button
-								key={i}
-								whileHover={{ scale: 1.02 }}
-								whileTap={{ scale: 0.98 }}
-								onClick={() => selectSession(s)}
-								className="w-full rounded-xl border p-4 flex items-center gap-4 hover:bg-muted transition"
-							>
-								{s.tenant.logoUrl ? (
-									<img
-										src={s.tenant.logoUrl}
-										className="w-10 h-10 rounded-md object-cover"
-									/>
-								) : (
-									<div
-										className="w-10 h-10 rounded-md flex items-center justify-center text-white font-semibold"
-										style={{
-											backgroundColor: stringToColor(s.tenant.displayName),
-										}}
-									>
-										{s.tenant.displayName[0]}
-									</div>
-								)}
-
-								<div className="text-left">
-									<div className="font-semibold">{s.tenant.displayName}</div>
-									<div className="text-xs opacity-60">{s.tenant.slug}</div>
+		<>
+			<motion.div
+				initial={{ opacity: 0, scale: 0.96 }}
+				animate={{ opacity: 1, scale: 1 }}
+				transition={{ duration: 0.25 }}
+				className="w-full max-w-xl mx-auto min-h-screen flex items-center justify-center"
+			>
+				<Card className="rounded-2xl border shadow-xl w-full">
+					<CardContent className="p-8 space-y-6">
+						{/* User greeting */}
+						<div className="flex flex-col items-center gap-3">
+							{user.pfpUrl ? (
+								<img
+									src={user.pfpUrl}
+									className="w-16 h-16 rounded-full object-cover"
+									referrerPolicy="no-referrer"
+								/>
+							) : (
+								<div
+									className="w-16 h-16 rounded-full flex items-center justify-center text-white font-semibold"
+									style={{
+										backgroundColor: stringToColor(
+											user.displayName ?? user.email,
+										),
+										fontSize: 24,
+									}}
+								>
+									{(user.displayName ?? user.email)[0]?.toUpperCase()}
 								</div>
-							</motion.button>
-						))}
-					</div>
-				</CardContent>
-			</Card>
-		</motion.div>
+							)}
+
+							<h2 className="text-xl font-semibold text-center">
+								{tenant_selection_welcome({
+									name: user.displayName ?? tenant_selection_userFallback(),
+								})}
+							</h2>
+
+							<p className="text-sm text-muted-foreground">{user.email}</p>
+							<Separator className="my-1" />
+							<p className="text-sm opacity-70 text-center">
+								{tenant_selection_selectPrompt()}
+							</p>
+						</div>
+
+						{/* Tenant list */}
+						<div className="space-y-3">
+							{sessions.map((s, i) => (
+								<motion.button
+									key={i}
+									whileHover={{ scale: 1.02 }}
+									whileTap={{ scale: 0.98 }}
+									onClick={() => selectSession(s)}
+									className="w-full rounded-xl border p-4 flex items-center gap-4 hover:bg-muted transition"
+								>
+									{s.tenant.logoUrl ? (
+										<img
+											src={s.tenant.logoUrl}
+											className="w-10 h-10 rounded-md object-cover"
+										/>
+									) : (
+										<div
+											className="w-10 h-10 rounded-md flex items-center justify-center text-white font-semibold"
+											style={{
+												backgroundColor: stringToColor(s.tenant.displayName),
+											}}
+										>
+											{s.tenant.displayName[0]}
+										</div>
+									)}
+
+									<div className="text-left">
+										<div className="font-semibold">{s.tenant.displayName}</div>
+										<div className="text-xs opacity-60">{s.tenant.slug}</div>
+									</div>
+								</motion.button>
+							))}
+						</div>
+
+						{/* Create new tenant */}
+						<div className="pt-2 border-t border-border flex justify-center">
+							<Button
+								variant="ghost"
+								className="gap-2 cursor-pointer text-muted-foreground hover:text-foreground"
+								onClick={() => setRegisterOpen(true)}
+							>
+								<Plus className="h-4 w-4" />
+								{tenant_selection_create_tenant()}
+							</Button>
+						</div>
+					</CardContent>
+				</Card>
+			</motion.div>
+
+			<RegisterTenantModal
+				open={registerOpen}
+				onOpenChange={setRegisterOpen}
+				language={language}
+			/>
+		</>
 	);
 }

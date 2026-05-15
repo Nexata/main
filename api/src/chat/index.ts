@@ -31,6 +31,7 @@ import { Nullish, tObject } from '@api/utils/type';
 import { captureException } from '@sentry/bun';
 import { encode } from '@toon-format/toon';
 import {
+	APICallError,
 	consumeStream,
 	createUIMessageStreamResponse,
 	type ModelMessage,
@@ -42,6 +43,15 @@ import { and, eq, lte, or, sql } from 'drizzle-orm';
 import { Elysia, t } from 'elysia';
 
 const MAX_WEB_SEARCHES_PER_MESSAGE = 3;
+
+const apiCallErrorExtras = (error: unknown) => {
+	if (!APICallError.isInstance(error)) return {};
+	return {
+		statusCode: error.statusCode,
+		responseBody: error.responseBody,
+		apiUrl: error.url,
+	};
+};
 
 const countAskQuestionsSinceLastUserMessage = (
 	threadMessages: PartialMessage[],
@@ -378,7 +388,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					} else {
 						captureException(error, {
 							tags: { source: 'chat:onError' },
-							extra: { threadId },
+							extra: { threadId, ...apiCallErrorExtras(error) },
 						});
 						syncResolver.resolve({
 							messages: [],
@@ -804,23 +814,23 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 							reason: FinishReason.STOPPED,
 						});
 					},
-					onError: async ({ error }) => {
-						if (error instanceof Error && error.name === 'AbortError') {
-							syncResolver.resolve({
-								messages: [],
-								reason: FinishReason.STOPPED,
-							});
-						} else {
-							captureException(error, {
-								tags: { source: 'chat:answer:approve:onError' },
-								extra: { threadId: body.threadId },
-							});
-							syncResolver.resolve({
-								messages: [],
-								reason: FinishReason.ERROR,
-							});
-						}
-					},
+				onError: async ({ error }) => {
+					if (error instanceof Error && error.name === 'AbortError') {
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.STOPPED,
+						});
+					} else {
+						captureException(error, {
+							tags: { source: 'chat:answer:approve:onError' },
+							extra: { threadId: body.threadId, ...apiCallErrorExtras(error) },
+						});
+						syncResolver.resolve({
+							messages: [],
+							reason: FinishReason.ERROR,
+						});
+					}
+				},
 				});
 
 				const uiStream = createSyncedStream(
@@ -976,7 +986,7 @@ export const chatRouter = new Elysia({ prefix: '/chat', tags: ['Chat'] })
 					} else {
 						captureException(error, {
 							tags: { source: 'chat:answer:onError' },
-							extra: { threadId: body.threadId },
+							extra: { threadId: body.threadId, ...apiCallErrorExtras(error) },
 						});
 						syncResolver.resolve({
 							messages: [],

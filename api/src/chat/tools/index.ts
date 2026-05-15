@@ -150,7 +150,11 @@ const toolify = <
 								.join('\n');
 
 							const aggregated = new AggregateError(errors, message);
-							throw aggregated;
+							captureException(aggregated, {
+								tags: { source: 'tool' },
+								extra: { input },
+							});
+							return { error: message };
 						}
 
 						return mold
@@ -166,7 +170,10 @@ const toolify = <
 							extra: { input },
 						});
 
-						throw error;
+						return {
+							error:
+								error instanceof Error ? error.message : String(error),
+						};
 					}
 				}
 			: undefined,

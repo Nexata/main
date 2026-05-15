@@ -489,7 +489,6 @@ export async function persistChat(params: {
 const SYNC_TIMEOUT = 30_000;
 const STREAM_HEARTBEAT_INTERVAL = 10_000;
 const UNSUCCESSFUL_FINISH_REASONS = new Set<FinishReason>([
-	FinishReason.ERROR,
 	FinishReason.LENGTH,
 	FinishReason.STOPPED,
 ]);
