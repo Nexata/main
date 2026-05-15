@@ -16,7 +16,7 @@ import {
 import { userCacheKey } from '@api/utils/auth';
 import { addCredentialToUserCache } from '@api/utils/credential';
 import { requireEnv } from '@api/utils/env';
-import { ErrorCode, HttpCode, httpError } from '@api/utils/error';
+import { ErrorCode } from '@api/utils/error';
 import { lowerEq } from '@api/utils/sql';
 import { Nullish } from '@api/utils/type';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -109,17 +109,28 @@ export async function authorizeOauthCallback(
 		userAgent?: string;
 	}>,
 ) {
+	// Helper: redirect to the given URL with ?error=code instead of throwing
+	const errorRedirect = (targetUrl: string | null | undefined, code: string) => {
+		const fallback = `${requireEnv('DEFAULT_REDIRECT_URL')}/callback`;
+		const dest = new URL(targetUrl ?? fallback);
+		dest.searchParams.set('error', code);
+		return redirect(dest.href);
+	};
+
 	const q = await cache.getdel<OauthExtendedState>(query.state);
-	if (!q) throw httpError(HttpCode.CONFLICT, ErrorCode.STATE_NOT_FOUND);
+	if (!q) return errorRedirect(null, ErrorCode.STATE_NOT_FOUND);
+
+	// Resolve redirect URL early so it's available in all error paths
+	const redirectUrl = q.redirect ?? null;
 
 	if (
 		q.flow === 'credential' &&
 		realOauthScopes[q.scope].some((s) => !tokens.scopes().includes(s))
 	)
-		throw httpError(HttpCode.CONFLICT, ErrorCode.SCOPE_MISMATCH);
+		return errorRedirect(redirectUrl, ErrorCode.SCOPE_MISMATCH);
 
 	if (q.flow === 'credential' && !tokens.hasRefreshToken())
-		throw httpError(HttpCode.CONFLICT, ErrorCode.NO_REFRESH_TOKEN);
+		return errorRedirect(redirectUrl, ErrorCode.NO_REFRESH_TOKEN);
 
 	const metadata = await metadataFunc(
 		await Promise.resolve()
@@ -129,7 +140,7 @@ export async function authorizeOauthCallback(
 		tokens.data,
 	);
 
-	const url = q.redirect && new URL(q.redirect);
+	const url = redirectUrl && new URL(redirectUrl);
 
 	if (q.flow === 'login') {
 		const users = await db
@@ -145,7 +156,7 @@ export async function authorizeOauthCallback(
 			.$withCache(false);
 
 		if (!users.length)
-			throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
+			return errorRedirect(redirectUrl, ErrorCode.USER_NOT_FOUND);
 
 		const toUpdate = users.filter(
 			(row) =>
@@ -232,7 +243,7 @@ export async function authorizeOauthCallback(
 		await db.select().from(user).where(eq(user.id, q.userId)).$withCache(false)
 	).at(0);
 
-	if (!u?.id) throw httpError(HttpCode.FORBIDDEN, ErrorCode.USER_NOT_FOUND);
+	if (!u?.id) return errorRedirect(redirectUrl, ErrorCode.USER_NOT_FOUND);
 
 	if ((!u.displayName && metadata.name) || (!u.pfpUrl && metadata.pfpUrl)) {
 		await db
@@ -275,10 +286,7 @@ export async function authorizeOauthCallback(
 	).at(0);
 
 	if (!cred)
-		throw httpError(
-			HttpCode.INTERNAL_SERVER_ERROR,
-			ErrorCode.CREDENTIAL_NOT_UPSERTED,
-		);
+		return errorRedirect(redirectUrl, ErrorCode.CREDENTIAL_NOT_UPSERTED);
 
 	if (cred.userId !== u.id)
 		await db
