@@ -181,6 +181,7 @@ The API validates required environment variables at runtime. Common variables in
 | --- | --- |
 | `NODE_ENV` | Production/development mode switch |
 | `PORT` | API listen port |
+| `MAX_REQUEST_BODY_SIZE_MB` | Maximum API request body size in MB, defaults to `128` |
 | `NEXATA_SECRET` | Application secret for tokens and signed state |
 | `DATABASE_URL` | PostgreSQL connection string used by Neon HTTP client and Drizzle |
 | `NEON_PROXY_URL` | Local Neon HTTP proxy URL for development |

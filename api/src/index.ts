@@ -18,9 +18,20 @@ import { helmet } from 'elysia-helmet';
 import { logger } from 'elysia-logger';
 import { sentry } from 'elysiajs-sentry';
 
+const DEFAULT_MAX_REQUEST_BODY_SIZE_MB = 128;
+const configuredMaxRequestBodySizeMb = Number(
+	process.env.MAX_REQUEST_BODY_SIZE_MB ?? DEFAULT_MAX_REQUEST_BODY_SIZE_MB,
+);
+const maxRequestBodySize =
+	Number.isFinite(configuredMaxRequestBodySizeMb) &&
+	configuredMaxRequestBodySizeMb > 0
+		? configuredMaxRequestBodySizeMb * 1024 * 1024
+		: DEFAULT_MAX_REQUEST_BODY_SIZE_MB * 1024 * 1024;
+
 export const app = new Elysia({
 	serve: {
 		idleTimeout: 255,
+		maxRequestBodySize,
 	},
 })
 	.use(
