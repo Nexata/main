@@ -87,7 +87,11 @@ function isRateLimitError(error: unknown): boolean {
 function isRetryableVlmError(error: unknown): boolean {
 	if (isRateLimitError(error)) return true;
 
-	if (error instanceof Error && error.name === 'TimeoutError') return true;
+	if (
+		error instanceof Error &&
+		(error.name === 'TimeoutError' || error.name === 'AbortError')
+	)
+		return true;
 
 	if (APICallError.isInstance(error)) {
 		const status =
@@ -115,6 +119,7 @@ function isRetryableVlmError(error: unknown): boolean {
 		message.includes('ETIMEDOUT') ||
 		message.includes('UND_ERR_CONNECT_TIMEOUT') ||
 		message.includes('operation timed out') ||
+		message.includes('aborted') ||
 		message.includes('socket hang up') ||
 		message.includes('Service unavailable')
 	);

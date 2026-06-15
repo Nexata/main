@@ -55,6 +55,9 @@ const VLM_IMAGE_JPEG_QUALITIES = [82, 72, 62, 52, 42] as const;
 const VLM_IMAGE_RESIZE_ATTEMPTS = 4;
 const VLM_IMAGE_DETAIL = process.env.VLM_IMAGE_DETAIL ?? 'low';
 const VLM_OUTPUT_TOKEN_MULTIPLIER = 20;
+const VLM_REQUEST_TIMEOUT_MS = Number(
+	process.env.VLM_REQUEST_TIMEOUT_MS ?? 60_000,
+);
 
 export class InvalidRawImageError extends Error {
 	constructor(message: string) {
@@ -114,6 +117,21 @@ function isImageBadRequest(error: unknown): boolean {
 	);
 }
 
+function isVlmTimeoutError(error: unknown): boolean {
+	if (
+		error instanceof Error &&
+		(error.name === 'TimeoutError' || error.name === 'AbortError')
+	)
+		return true;
+
+	const message = getErrorMessage(error);
+	return (
+		message.includes('aborted') ||
+		message.includes('timed out') ||
+		message.includes('operation timed out')
+	);
+}
+
 export function isIgnorableImageProcessingError(error: unknown): boolean {
 	if (NoObjectGeneratedError.isInstance(error)) return true;
 
@@ -131,7 +149,11 @@ export function isIgnorableImageProcessingError(error: unknown): boolean {
 export function isIgnorableEmbeddedImageProcessingError(
 	error: unknown,
 ): boolean {
-	return isIgnorableImageProcessingError(error) || isImageBadRequest(error);
+	return (
+		isIgnorableImageProcessingError(error) ||
+		isImageBadRequest(error) ||
+		isVlmTimeoutError(error)
+	);
 }
 
 export function isRelevantImage(width: number, height: number) {
@@ -467,6 +489,7 @@ async function generateImageText(
 				model: VLM_MODEL,
 				temperature: 0,
 				maxRetries: 0,
+				abortSignal: AbortSignal.timeout(VLM_REQUEST_TIMEOUT_MS),
 				output: Output.object({
 					schema:
 						jsonSchema<Static<typeof imageToTextOutput>>(imageToTextOutput),
@@ -510,6 +533,7 @@ async function generateBatchedImageText(
 				model: VLM_MODEL,
 				temperature: 0,
 				maxRetries: 0,
+				abortSignal: AbortSignal.timeout(VLM_REQUEST_TIMEOUT_MS),
 				output: Output.object({
 					schema: jsonSchema<Static<typeof batchedImageToTextOutput>>(
 						batchedImageToTextOutput,
