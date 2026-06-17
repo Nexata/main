@@ -40,12 +40,12 @@ const MIME_HANDLERS: Record<
 	[SupportedMime.XLS]: excelToChunks,
 	[SupportedMime.DOCX]: docToChunks,
 	[SupportedMime.DOC]: docToChunks,
-	[SupportedMime.RTF]: officeToChunks,
-	[SupportedMime.ODT]: officeToChunks,
-	[SupportedMime.ODS]: officeToChunks,
-	[SupportedMime.ODP]: officeToChunks,
-	[SupportedMime.PPTX]: officeToChunks,
-	[SupportedMime.PPT]: officeToChunks,
+	[SupportedMime.RTF]: (f) => officeToChunks(f, 'rtf'),
+	[SupportedMime.ODT]: (f) => officeToChunks(f, 'odt'),
+	[SupportedMime.ODS]: (f) => officeToChunks(f, 'ods'),
+	[SupportedMime.ODP]: (f) => officeToChunks(f, 'odp'),
+	[SupportedMime.PPTX]: (f) => officeToChunks(f, 'pptx'),
+	[SupportedMime.PPT]: (f) => officeToChunks(f, 'pptx'),
 };
 
 function isValidUtf8(f: FileLike): boolean {

@@ -1,3 +1,7 @@
+import { randomUUID } from 'node:crypto';
+import { unlink, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
 	imgToChunks,
 	isIgnorableEmbeddedImageProcessingError,
@@ -162,8 +166,51 @@ async function plainOfficeToChunks(
 	};
 }
 
+const OFFICE_PARSE_OPTIONS = {
+	outputErrorToConsole: true,
+	extractAttachments: true,
+} as const;
+
+function isOfficeTypeDetectionError(error: unknown): boolean {
+	const message = error instanceof Error ? error.message : '';
+	return (
+		message.includes('currently supports') ||
+		message.includes('zip files') ||
+		message.includes('IMPROPER_BUFFERS') ||
+		message.includes('EXTENSION_UNSUPPORTED')
+	);
+}
+
+/**
+ * Parses an office document, tolerating repaired/recovered files.
+ *
+ * officeparser sniffs the type from the buffer via `file-type`, which only
+ * recognizes OOXML/ODF when their signature entry (e.g. `[Content_Types].xml`)
+ * comes first in the ZIP. Recovered files (reordered entries, `[trash]/`
+ * members) defeat this and get rejected as plain "zip". officeparser trusts the
+ * file extension when given a path, so we fall back to a temp file with the
+ * known extension to bypass the buffer sniffing.
+ */
+async function parseOfficeResilient(buffer: Buffer, ext?: string) {
+	try {
+		return await parseOffice(buffer, OFFICE_PARSE_OPTIONS);
+	} catch (error) {
+		if (!ext || !isOfficeTypeDetectionError(error)) throw error;
+
+		const tmpPath = join(tmpdir(), `nexata-office-${randomUUID()}.${ext}`);
+		await writeFile(tmpPath, buffer);
+
+		try {
+			return await parseOffice(tmpPath, OFFICE_PARSE_OPTIONS);
+		} finally {
+			await unlink(tmpPath).catch(() => {});
+		}
+	}
+}
+
 export async function officeToChunks(
 	f: FileLike,
+	ext?: string,
 ): Promise<ToStringChunksResult> {
 	let tokenUsage = 0;
 	const chunks: ToStringChunksResult['chunks'] = [];
@@ -173,9 +220,9 @@ export async function officeToChunks(
 			chunks.push(...r.chunks);
 		});
 
-	const ast = await parseOffice(
+	const ast = await parseOfficeResilient(
 		Buffer.from(ArrayBuffer.isView(f) ? f.buffer : f),
-		{ outputErrorToConsole: true, extractAttachments: true },
+		ext,
 	);
 
 	switch (ast.content[0]!.type) {
