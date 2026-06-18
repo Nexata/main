@@ -310,7 +310,7 @@ export async function getThreadMessages(
 					op.cursor ? lt(message.createdAt, op.cursor) : undefined,
 				),
 			)
-			.limit(op.limit ?? 100)
+			.limit(op.limit ?? 250)
 			.orderBy(desc(message.createdAt))
 			.groupBy(message.id)
 	).reverse();
